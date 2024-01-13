@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+
+  <Type Name="adapt::DHierarchy&lt;*&gt;">
+    <DisplayString>{{num of fields = {m_field_names.size()}, layer = {m_max_layer}}}</DisplayString>
+    <Expand>
+    </Expand>
+  </Type>
+
+  <Type Name="adapt::detail::FieldRef_impl&lt;*&gt;">
+    <DisplayString Condition="m_type==adapt::FieldType::I08">{{ type = {m_type}, value = {*(int8_t*)(m_ptr)} }}</DisplayString>
+    <DisplayString Condition="m_type==adapt::FieldType::I16">{{ type = {m_type}, value = {*(int16_t*)(m_ptr)} }}</DisplayString>
+    <DisplayString Condition="m_type==adapt::FieldType::I32">{{ type = {m_type}, value = {*(int32_t*)(m_ptr)} }}</DisplayString>
+    <DisplayString Condition="m_type==adapt::FieldType::I64">{{ type = {m_type}, value = {*(int64_t*)(m_ptr)} }}</DisplayString>
+    <DisplayString Condition="m_type==adapt::FieldType::F32">{{ type = {m_type}, value = {*(float*)(m_ptr)} }}</DisplayString>
+    <DisplayString Condition="m_type==adapt::FieldType::F64">{{ type = {m_type}, value = {*(double*)(m_ptr)} }}</DisplayString>
+    <DisplayString Condition="m_type==adapt::FieldType::C32">{{ type = {m_type}, value = {*(std::complex&lt;float&gt;*)(m_ptr)} }}</DisplayString>
+    <DisplayString Condition="m_type==adapt::FieldType::C64">{{ type = {m_type}, value = {*(std::complex&lt;double&gt;*)(m_ptr)} }}</DisplayString>
+    <DisplayString Condition="m_type==adapt::FieldType::Str">{{ type = {m_type}, value = {*(std::string*)(m_ptr)} }}</DisplayString>
+    <DisplayString Condition="m_type==adapt::FieldType::Jbp">{{ type = {m_type}, value = {*(adapt::JBpos*)(m_ptr)} }}</DisplayString>
+  </Type>
+
+  <Type Name="adapt::detail::ElementRef_impl&lt;*&gt;">
+    <DisplayString>{{layer = {m_layer}, num of fields = {m_hierarchy.m_hierarchy->m_field_infos_by_layer[m_layer + 1].size()}, element size = {m_hierarchy.m_hierarchy->m_element_sizes[m_layer + 1]}}</DisplayString>
+    <Expand>
+      <CustomListItems>
+        <Variable Name="ptr" InitialValue="m_block" />
+        <Variable Name="size" InitialValue="m_hierarchy.m_hierarchy->m_field_infos_by_layer[m_layer + 1].size()" />
+        <Variable Name="index" InitialValue="0" />
+        <Variable Name="field_ptr" InitialValue="&amp;m_hierarchy.m_hierarchy->m_field_infos_by_layer[m_layer + 1][0]" />
+        <Variable Name="name_ptr" InitialValue="&amp;m_hierarchy.m_hierarchy->m_field_names[0]" />
+        <Variable Name="is_max_layer" InitialValue="m_hierarchy.m_hierarchy->m_max_layer==m_layer" />
+        <Variable Name="element_size" InitialValue="m_hierarchy.m_hierarchy->m_element_sizes[m_layer + 1]" />
+
+        <Size>size + 1</Size>
+        <Loop>
+          <If Condition="index&lt;size">
+            <Exec>name_ptr = &amp;m_hierarchy.m_hierarchy->m_field_names[field_ptr->m_index]</Exec>
+            <Item Name="{*name_ptr}, type = {field_ptr->m_type}" Condition="field_ptr->m_type==adapt::FieldType::I08">int(*(char*)(ptr + field_ptr->m_ptr_offset))</Item>
+            <Item Name="{*name_ptr}, type = {field_ptr->m_type}" Condition="field_ptr->m_type==adapt::FieldType::I16">*(short*)(ptr + field_ptr->m_ptr_offset)</Item>
+            <Item Name="{*name_ptr}, type = {field_ptr->m_type}" Condition="field_ptr->m_type==adapt::FieldType::I32">*(int*)(ptr + field_ptr->m_ptr_offset)</Item>
+            <Item Name="{*name_ptr}, type = {field_ptr->m_type}" Condition="field_ptr->m_type==adapt::FieldType::I64">*(long long*)(ptr + field_ptr->m_ptr_offset)</Item>
+            <Item Name="{*name_ptr}, type = {field_ptr->m_type}" Condition="field_ptr->m_type==adapt::FieldType::F32">*(float*)(ptr + field_ptr->m_ptr_offset)</Item>
+            <Item Name="{*name_ptr}, type = {field_ptr->m_type}" Condition="field_ptr->m_type==adapt::FieldType::F64">*(double*)(ptr + field_ptr->m_ptr_offset)</Item>
+            <Item Name="{*name_ptr}, type = {field_ptr->m_type}" Condition="field_ptr->m_type==adapt::FieldType::Str">*(std::string*)(ptr + field_ptr->m_ptr_offset)</Item>
+            <Item Name="{*name_ptr}, type = {field_ptr->m_type}" Condition="field_ptr->m_type==adapt::FieldType::Jbp">*(adapt::JBpos*)(ptr + field_ptr->m_ptr_offset)</Item>
+            <Exec>field_ptr++</Exec>
+            <Exec>index++</Exec>
+          </If>
+          <If Condition="index==size">
+            <Item Name="block">(ElementBlock*)(m_block + element_size)</Item>
+          </If>
+        </Loop>
+      </CustomListItems>
+    </Expand>
+  </Type>
+  
+  <Type Name="adapt::detail::ElementIterator_impl&lt;*&gt;">
+    <DisplayString>{{{m_ref}}}</DisplayString>
+    <Expand>
+      <Item Name="ref">m_ref</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="adapt::detail::Traverser_impl&lt;*&gt;">
+    <DisplayString>fix = {m_fixed_layer}, trav = {m_trav_layer}</DisplayString>
+    <Expand>
+      <CustomListItems>
+        <Variable Name="ptr" InitialValue="m_iterators[1].m_ref.m_block" />
+        <Variable Name="layer" InitialValue="0" />
+        <Variable Name="element_block" InitialValue="(ElementBlock*)(m_iterators[0].m_ref.m_block + m_container->m_element_sizes[0])" />
+        <Variable Name="block_size" InitialValue="m_container->m_element_sizes[1] + (m_container->m_max_layer != layer) * sizeof(ElementBlock)" />
+        <Variable Name="first_ptr" InitialValue="element_block->m_blocks" />
+        <Size>m_iterators.size() - 1</Size>
+        <Loop>
+          <Item Name="pos[{layer}] = {(ptr-first_ptr)/block_size}">m_iterators[layer + 1].m_ref</Item>
+          <Exec>++layer</Exec>
+          <Exec>ptr = m_iterators[layer + 1].m_ref.m_block</Exec>
+          <Exec>element_block = (ElementBlock*)(m_iterators[layer].m_ref.m_block + m_container->m_element_sizes[layer])</Exec>
+          <Exec>block_size = m_container->m_element_sizes[layer + 1] + (m_container->m_max_layer != layer) * sizeof(ElementBlock)</Exec>
+          <Exec>first_ptr = element_block->m_blocks</Exec>
+        </Loop>
+      </CustomListItems>
+    </Expand>
+  </Type>
+  
+  <Type Name="adapt::Bpos">
+    <DisplayString Condition="mLayer==-1">{{ layer = {mLayer}, [ none ] }}</DisplayString>
+    <DisplayString Condition="mLayer==0">{{ layer = {mLayer}, [ {mRow} ] }}</DisplayString>
+    <DisplayString Condition="mLayer==1">
+      {{ Layer = {mLayer}, [ {mRow}, {mTposArr[0]} ] }}
+    </DisplayString>
+    <DisplayString Condition="mLayer==2">
+      {{ Layer = {mLayer}, [ {mRow}, {mTposArr[0]}, {mTposArr[1]} ] }}
+    </DisplayString>
+    <DisplayString Condition="mLayer==3">
+      {{ Layer = {mLayer}, [ {mRow}, {mTposPtr[0]}, {mTposPtr[1]}, {mTposPtr[2]} ] }}
+    </DisplayString>
+    <DisplayString Condition="mLayer==4">
+      {{ Layer = {mLayer}, [ {mRow}, {mTposPtr[0]}, {mTposPtr[1]}, {mTposPtr[2]}, {mTposPtr[3]} ] }}
+    </DisplayString>
+    <DisplayString Condition="mLayer==5">
+      {{ Layer = {mLayer}, [ {mRow}, {mTposPtr[0]}, {mTposPtr[1]}, {mTposPtr[2]}, {mTposPtr[3]}, {mTposPtr[4]} ] }}
+    </DisplayString>
+    <DisplayString Condition="mLayer==6">
+      {{ Layer = {mLayer}, [ {mRow}, {mTposPtr[0]}, {mTposPtr[1]}, {mTposPtr[2]}, {mTposPtr[3]}, {mTposPtr[4]}, {mTposPtr[5]} ] }}
+    </DisplayString>
+    <Expand>
+    </Expand>
+  </Type>
+
+  <Type Name="adapt::JBpos">
+    <DisplayString>{{ rank = {m_max_rank} }}</DisplayString>
+    <Expand>
+      <ArrayItems>
+        <Size>m_max_rank + 1</Size>
+        <ValuePointer>m_bpos</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+</AutoVisualizer>

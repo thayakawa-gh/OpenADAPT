@@ -1,0 +1,43 @@
+set(PROJECT_NAME Test)
+
+project(${PROJECT_NAME})
+
+find_package(GTest REQUIRED)
+find_package(yaml-cpp REQUIRED)
+find_package(Matplot++ REQUIRED)
+
+add_executable(${PROJECT_NAME}
+	"TestLayerInfo.cpp" "TestContainer.cpp"
+	"TestEvaluate.cpp" "TestExtract.cpp" "TestShow.cpp" "TestFilter.cpp"
+	"TestTraverser.cpp")
+
+target_link_libraries(${PROJECT_NAME} OpenADAPT GTest::GTest GTest::Main yaml-cpp Matplot++::matplot)
+
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
+
+add_custom_target(COPY_FILES ALL DEPENDS ${PROJECT_NAME})
+add_custom_command(
+	TARGET COPY_FILES POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E copy
+	${CMAKE_CURRENT_SOURCE_DIR}/OpenADAPT-student_list.txt
+	${CMAKE_CURRENT_BINARY_DIR}/)
+	
+set_target_properties(
+	${PROJECT_NAME}
+	PROPERTIES
+		OUTPUT_NAME "OpenADAPT-${PROJECT_NAME}")
+
+install(
+	TARGETS ${PROJECT_NAME}
+	EXPORT ${PACKAGE_NAME}Config
+	RUNTIME DESTINATION bin/${CMAKE_BUILD_TYPE})
+
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/OpenADAPT-student_list.txt
+		DESTINATION bin/${CMAKE_BUILD_TYPE})
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+	install(
+		DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/
+		DESTINATION bin/${CMAKE_BUILD_TYPE}
+		FILES_MATCHING PATTERN *.pdb)
+endif()
