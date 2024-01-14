@@ -1,7 +1,5 @@
 # OpenADAPT
 
-An open source data analysis and processing library for C++.
-
 ADAPT is a header-only data analysis and processing library for C++ offering the following features:
 
 * Hierarchically structured data containers.
@@ -22,7 +20,7 @@ If needed, it can be built and installed with CMake using the following commands
 git clone https://github.com/thayakawa-gh/OpenADAPT.git
 mkdir build
 cd build
-cmake ../OpenADAPT -DCMAKE_INSTALL_PREFIX=path_to_install_dir -DBUILD_TEST=ON -DBUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=debug_release_or_anything_you_want
+cmake ../OpenADAPT -DCMAKE_INSTALL_PREFIX=path_to_install_dir
 make
 make install
 ```
@@ -33,6 +31,7 @@ find_package(OpenADAPT REQUIRED)
 target_link_libraries(YOUR_PACKAGE_NAME OpenADAPT::OpenADAPT)
 ```
 
+The test and example codes are built by adding `-DBUILD_TEST=ON` and `-DBUILD_EXAMPLES` to the cmake command, respectively. Note that GTest, yaml-cpp and matplot++ are required for these builds.
 
 ## Examples
 
@@ -78,9 +77,8 @@ target_link_libraries(YOUR_PACKAGE_NAME OpenADAPT::OpenADAPT)
 	shikyo_uyuu_ka.Push((int8_t)3, 94, 67, 81, 76, 96);
 ```
 
-### Access fields
+### Access, traverse and extract data
 ```cpp
-
 	auto [name, jpn, math, eng] = t.GetPlaceholders("name", "jpn", "math", "eng");
 	auto dummy_dummy_ko = t[0][0];
 	std::cout << dummy_dummy_ko[name].str() << std::endl;//Output: 濃伊田美衣子
