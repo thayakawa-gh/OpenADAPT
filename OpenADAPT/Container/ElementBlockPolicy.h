@@ -195,13 +195,13 @@ private:
 		assert(it->GetType() == DFieldInfo::ValueTypeToTagType<Type>());
 		assert((intptr_t)(ptr + it->GetPtrOffset()) % alignof(Type) == 0);
 		new (ptr + it->GetPtrOffset()) Type(std::forward<Arg>(arg));
-		Create_static_rec(++it, ptr, std::forward<Args>(args)...);
+		Create_static_rec<Container>(++it, ptr, std::forward<Args>(args)...);
 	}
 public:
 	template <class Container, class ...Args>
 	static void Create_static(const std::vector<eval::RttiPlaceholder<Container>>& ms, char* ptr, Args&& ...args)
 	{
-		Create_static_rec(ms.begin(), ptr, std::forward<Args>(args)...);
+		Create_static_rec<Container>(ms.begin(), ptr, std::forward<Args>(args)...);
 	}
 
 	template <FieldType Type>

@@ -24,8 +24,8 @@ public:
 	JointInterface_impl() = default;
 	virtual ~JointInterface_impl() = default;
 
-	virtual void Init(const Traverser& t, const std::vector<const void*>& outer_t) = 0;
-	virtual void Init(const ConstTraverser& t, const std::vector<const void*>& outer_t) = 0;
+	virtual void Init(const Traverser& t, const std::vector<std::tuple<const void*, const Bpos*, bool>>& outer_t) = 0;
+	virtual void Init(const ConstTraverser& t, const std::vector<std::tuple<const void*, const Bpos*, bool>>& outer_t) = 0;
 	virtual void Init(const Container& s, const Bpos& bpos) = 0;
 	virtual void Init() = 0;
 	virtual bool Find(const Traverser& t, Bpos& bpos) const = 0;
@@ -55,7 +55,7 @@ public:
 	}
 
 	template <RankType Rank, class ...Types, node_or_placeholder ...Keys>
-		requires (Rank > 0) && ((std::decay_t<Keys>::Rank < Rank) && ...)
+		requires (Rank > 0)
 	void SetKeyJoint(const Hashtable<Types...>& hash, Keys&& ...keys)
 	{
 		auto j = MakeKeyJoint<Rank, Container>
@@ -63,7 +63,7 @@ public:
 		m_joints[Rank] = std::move(j);
 	}
 	template <RankType Rank, class ...Types, node_or_placeholder ...Keys>
-		requires (Rank > 0) && ((std::decay_t<Keys>::Rank < Rank) && ...)
+		requires (Rank > 0)
 	void SetKeyJoint(Hashtable<Types...>&& hash, Keys&& ...keys)
 	{
 		auto j = MakeKeyJoint<Rank, Container>
@@ -71,7 +71,7 @@ public:
 		m_joints[Rank] = std::move(j);
 	}
 	template <RankType Rank, node_or_placeholder ...KeysLeft, node_or_placeholder ...KeysRight>
-		requires (((std::decay_t<KeysLeft>::Rank < Rank) && ...) && !(ranked_placeholder<KeysRight> || ...))
+		requires (!(ranked_placeholder<KeysRight> || ...))
 	void SetKeyJoint(std::tuple<KeysLeft...> left, std::tuple<KeysRight...> right)
 	{
 		const auto& self = static_cast<const Container&>(*this);
@@ -87,7 +87,7 @@ public:
 			std::move(left));
 	}
 	template <RankType Rank, node_or_placeholder KeyLeft, node_or_placeholder KeyRight>
-		requires (std::decay_t<KeyLeft>::Rank < Rank && !ranked_placeholder<KeyRight>)
+		requires (!ranked_placeholder<KeyRight>)
 	void SetKeyJoint(KeyLeft&& left, KeyRight&& right)
 	{
 		SetKeyJoint<Rank>(std::forward_as_tuple(std::forward<KeyLeft>(left)), std::forward_as_tuple(std::forward<KeyRight>(right)));

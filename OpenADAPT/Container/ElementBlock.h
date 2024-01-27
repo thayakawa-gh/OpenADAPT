@@ -195,8 +195,9 @@ public:
 		//Empty状態と区別するため。
 		throw Forbidden("");
 	}
-	template <class LayerSD, class ...Args>
-	void Push(HierarchySD h, LayerSD layer, Args&& ...args)
+private:
+	template <bool UnsafeFlag, class LayerSD, class ...Args>
+	void Push_impl(HierarchySD h, LayerSD layer, Args&& ...args)
 	{
 		[[maybe_unused]] constexpr auto get_size = [](const auto& arr)
 		{
@@ -214,9 +215,21 @@ public:
 		auto [ismaxlayer, elmsize, blocksize] = GetBlockTraits(h, layer);
 		const auto& ms = GetPlaceholdersIn(h, layer);
 		char* pos = m_blocks + size * blocksize;
-		Create(ms, pos, std::forward<Args>(args)...);
+		if constexpr (UnsafeFlag) Create_static(ms, pos, std::forward<Args>(args)...);
+		else Create(ms, pos, std::forward<Args>(args)...);
 		if (!ismaxlayer) CreateElementBlock(pos + elmsize);
 		m_end += blocksize;
+	}
+public:
+	template <class LayerSD, class ...Args>
+	void Push(HierarchySD h, LayerSD layer, Args&& ...args)
+	{
+		return Push_impl<false>(h, layer, std::forward<Args>(args)...);
+	}
+	template <class LayerSD, class ...Args>
+	void Push_unsafe(HierarchySD h, LayerSD layer, Args&& ...args)
+	{
+		return Push_impl<true>(h, layer, std::forward<Args>(args)...);
 	}
 	//必要であれば空の領域を確保し、各フィールドをデフォルトコンストラクタから構築する。
 	//下層のElementBlockも用意される。
@@ -321,6 +334,11 @@ public:
 	static void Create(const Placeholders& phs, char* ptr, Args&& ...args)
 	{
 		Policy::Create(phs, ptr, std::forward<Args>(args)...);
+	}
+	template <class Placeholders, class ...Args>
+	static void Create_static(const Placeholders& phs, char* ptr, Args&& ...args)
+	{
+		Policy::Create_static(phs, ptr, std::forward<Args>(args)...);
 	}
 	template <class Placeholders, class ...Args>
 	static void Create_default(const Placeholders& phs, char* ptr)

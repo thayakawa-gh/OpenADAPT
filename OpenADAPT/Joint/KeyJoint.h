@@ -61,15 +61,14 @@ private:
 	template <size_t I, class ...Args>
 	void Init_impl(const Args& ...args)
 	{
-		if constexpr ((I < sizeof...(Nodes)) && any_node<GetType_t<I, Nodes...>>)
-		{
+		if constexpr (any_node<GetType_t<I, Nodes...>>)
 			std::get<I>(m_keys).Init(args...);
+		if constexpr (I < sizeof...(Nodes) - 1)
 			Init_impl<I + 1>(args...);
-		}
 	}
 public:
-	virtual void Init(const Traverser& t, const std::vector<const void*>& outer_t) override { Init_impl<0>(t, outer_t); }
-	virtual void Init(const ConstTraverser& t, const std::vector<const void*>& outer_t) override { Init_impl<0>(t, outer_t); }
+	virtual void Init(const Traverser& t, const std::vector<std::tuple<const void*, const Bpos*, bool>>& outer_t) override { Init_impl<0>(t, outer_t); }
+	virtual void Init(const ConstTraverser& t, const std::vector<std::tuple<const void*, const Bpos*, bool>>& outer_t) override { Init_impl<0>(t, outer_t); }
 	virtual void Init(const Container& s, const Bpos& bpos) override { Init_impl<0>(s, bpos); }
 	virtual void Init() override { Init_impl<0>(); }
 private:

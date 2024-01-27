@@ -64,7 +64,18 @@ struct RttiEvalProxy : public detail::RttiMethods<RttiEvalProxy<TravOrStor, NP, 
 		};
 		return std::apply(eval, m_args);
 	}
+	template <class Type>
+		requires (DFieldInfo::ValueTypeToTagType<Type>() != FieldType::Emp)
+	decltype(auto) as() const
+	{
+		return as<DFieldInfo::ValueTypeToTagType<Type>()>();
+	}
 	template <FieldType Type>
+	decltype(auto) as_unsafe() const
+	{
+		return as<Type>();
+	}
+	template <class Type>
 	decltype(auto) as_unsafe() const
 	{
 		return as<Type>();
