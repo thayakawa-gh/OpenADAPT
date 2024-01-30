@@ -56,6 +56,10 @@ void StoreData(Tree& t)
 	t.Reserve(1);//1クラス分のスペースを用意（注2）。std::vector::reserveみたいなもの。
 	t.Push((int8_t)3, (int8_t)1);//3年1組。それぞれ"grade"と"class"の値として収まる。std::vector::push_backみたいなもの。
 
+	//DTreeの場合、Push_unsafeを使うと型のチェックや分岐をしなくなるため、Pushよりも動作が高速になる。
+	//ただし、DTreeの保持する型と厳密に一致している必要がある。例えばI16のフィールドに代入するときは正しくint16_t型で与えなければならない。
+	//Str型の場合も、文字列リテラルやchar*ではなくstd::stringに変換して与えなければならない。
+
 	auto cls_1 = t[0];//3年1組の要素への参照を取得。
 	cls_1.Reserve(3);//3年1組に生徒3人分のスペースを用意（注2）。限界集落。
 	cls_1.Push((int16_t)0, "濃伊田美衣子");//出席番号と名前を格納。
@@ -146,6 +150,8 @@ void QuickStart_dtree()
 	auto [name, jpn, math, eng] = t.GetPlaceholders("name", "jpn", "math", "eng");
 	auto dummy_dummy_ko = t[0][0];
 	std::cout << dummy_dummy_ko[name].str() << std::endl;//濃伊田美衣子
+	//str_unsafe()など_unsafeのキャスト関数を使うと、型チェックが省略されるので多少高速である。安全が保証されるときはこちらを。
+	std::cout << dummy_dummy_ko[name].str_unsafe() << std::endl;
 
 	//プレースホルダからラムダ関数を作ることができる。
 	using Lambda = adapt::eval::RttiFuncNode<adapt::DTree>;

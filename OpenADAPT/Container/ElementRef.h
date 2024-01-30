@@ -242,6 +242,29 @@ public:
 		return m_elements->GetCapacity(GetHierarchy(), GetLayer());
 	}
 
+	template <LayerType Layer>
+		requires HasStaticLayer
+	size_t GetSize(LayerConstant<Layer> layer) const
+	{
+		if constexpr (Layer == GetLayer()) return GetSize();
+		else
+		{
+			size_t res = 0;
+			for (auto&& e : *this) res += e.GetSize(layer);
+			return res;
+		}
+	}
+	size_t GetSize(LayerType layer) const
+	{
+		if (layer == GetLayer()) return GetSize();
+		else
+		{
+			size_t res = 0;
+			for (auto&& e : *this) res += e.GetSize(layer);
+			return res;
+		}
+	}
+
 	void Reserve(BindexType size) const
 		requires IsNonConst
 	{
@@ -489,6 +512,18 @@ public:
 	BindexType GetCapacity() const
 	{
 		return GetLowerElements().GetCapacity();
+	}
+	template <LayerType Layer>
+		requires HasStaticLayer
+	size_t GetSize(LayerConstant<Layer> layer) const
+	{
+		static_assert(Layer <= GetHierarchy().value().GetMaxLayer());
+		return GetLowerElements().GetSize(layer);
+	}
+	size_t GetSize(LayerType layer) const
+	{
+		assert(layer <= GetHierarchy().value().GetMaxLayer());
+		return GetLowerElements().GetSize(layer);
 	}
 
 	/*template <class ...Args>

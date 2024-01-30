@@ -200,6 +200,18 @@ public:
 		return GetTopElement().GetBranch(bpos, layer);
 	}
 
+	//layer層要素数を返す。
+	//1層以上を与えた場合、結果はBindexTypeの最大値を超える可能性があるので、size_tで返す。
+	template <LayerType Layer>
+	size_t GetSize(LayerConstant<Layer> layer) const
+	{
+		return GetTopElement().GetSize(layer);
+	}
+	size_t GetSize(LayerType layer) const
+	{
+		return GetTopElement().GetSize(layer);
+	}
+
 	ElementRef_0 operator[](BindexType index)
 	{
 		return GetBranch(index);

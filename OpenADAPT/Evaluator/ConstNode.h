@@ -20,7 +20,8 @@ struct CttiConstNode : public detail::CttiMethods<CttiConstNode<Type>, std::add_
 {
 	using RetType = Type;
 
-	CttiConstNode() {}
+	CttiConstNode()
+		: m_value() {}
 	CttiConstNode(const Type& t)
 		: m_value(t)
 	{}

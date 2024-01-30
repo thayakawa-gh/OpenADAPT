@@ -924,7 +924,7 @@ private:
 	};
 	Matching<> m_matching;
 	bool m_exist = false;
-	bool m_result;
+	bool m_result = false;
 	Bpos_ m_cand;
 };
 template <class ArgType_, class Container>

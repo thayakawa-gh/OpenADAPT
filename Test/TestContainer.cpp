@@ -16,11 +16,18 @@ void TestContainer(Container& tree, const std::vector<Class>& cls,
 	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
 	auto [exam, math, jpn, eng, sci, soc] = l2;
 
+	EXPECT_EQ(tree.GetSize(0_layer), 4);
+	EXPECT_EQ(tree.GetSize(1_layer), 120);
+	EXPECT_EQ(tree.GetSize(2_layer), 480);
+
 	size_t clssize = cls.size();
 	for (BindexType i = 0; i < clssize; ++i)
 	{
 		const auto& tc = tree[i];
 		const Class& c = cls[i];
+
+		EXPECT_EQ(tc.GetSize(1_layer), 30);
+		EXPECT_EQ(tc.GetSize(2_layer), 120);
 
 		if constexpr (d_container<Container>)
 		{
@@ -38,6 +45,8 @@ void TestContainer(Container& tree, const std::vector<Class>& cls,
 		{
 			const auto& ts = tc[j];
 			const Student& s = c.m_students[j];
+
+			EXPECT_EQ(ts.GetSize(2_layer), 4);
 
 			if constexpr (d_container<Container>)
 			{
