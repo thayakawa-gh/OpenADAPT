@@ -6,7 +6,6 @@
 #include <algorithm>
 #include <OpenADAPT/Utility/TypeTraits.h>
 #include <OpenADAPT/Joint/LayerInfo.h>
-#include <OpenADAPT/Evaluator/Function.h>
 #include <OpenADAPT/Evaluator/NodeBase.h>
 #include <OpenADAPT/Traverser/ExternalTraverser.h>
 
@@ -50,29 +49,29 @@ struct CttiFuncNode<Func, TypeList<Nodes...>, Container_, std::index_sequence<In
 
 	static constexpr RankType MaxRank = Container::MaxRank;
 
-	CttiFuncNode() = default;
-	template <any_node ...Nodes_>
-		requires (sizeof...(Nodes) == sizeof...(Nodes_)) && (sizeof...(Nodes) > 1)
-	CttiFuncNode(Nodes_&& ...nodes)
-		: m_nodes(std::forward<Nodes_>(nodes)...)
+	CttiFuncNode() {}
+	template <class Func_, any_node ...Nodes_>
+		requires (sizeof...(Nodes) == sizeof...(Nodes_) && sizeof...(Nodes) > 1)
+	CttiFuncNode(Func_&& f, Nodes_&& ...nodes)
+		: m_func(std::forward<Func_>(f)), m_nodes(std::forward<Nodes_>(nodes)...)
 	{}
-	template <any_node Node_>
-		requires (!std::is_same_v<std::remove_cvref_t<Node_>, CttiFuncNode>)//コピー、ムーブコンストラクタと曖昧にならないように。
-	CttiFuncNode(Node_&& node)
-		: m_nodes(std::forward<Node_>(node))
+	template <class Func_, any_node Node_>
+		requires (sizeof...(Nodes) == 1 && !std::is_same_v<std::remove_cvref_t<Node_>, CttiFuncNode>)
+	CttiFuncNode(Func_&& f, Node_&& node)
+		: m_func(std::forward<Func_>(f)), m_nodes(std::forward<Node_>(node))
 	{}
 
 	auto IncreaseDepth() const&
 	{
 		using Nodes_ = TypeList<std::remove_cvref_t<decltype(std::get<Indices>(m_nodes).IncreaseDepth())>...>;
 		using Ret = CttiFuncNode<Func, Nodes_, Container, std::index_sequence<Indices...>>;
-		return Ret(std::get<Indices>(m_nodes).IncreaseDepth()...);
+		return Ret(m_func, std::get<Indices>(m_nodes).IncreaseDepth()...);
 	}
 	auto IncreaseDepth()&&
 	{
 		using Nodes_ = TypeList<std::remove_cvref_t<decltype(std::get<Indices>(m_nodes).IncreaseDepth())>...>;
 		using Ret = CttiFuncNode<Func, Nodes_, Container, std::index_sequence<Indices...>>;
-		return Ret(std::get<Indices>(std::move(m_nodes)).IncreaseDepth()...);
+		return Ret(std::move(m_func), std::get<Indices>(std::move(m_nodes)).IncreaseDepth()...);
 	}
 
 private:
@@ -162,46 +161,46 @@ public:
 	RetType Evaluate(const Traverser& t) const
 		requires std::is_trivially_copyable_v<RetType>
 	{
-		return Func::Exec(std::get<Indices>(m_nodes).Evaluate(t)...);
+		return m_func.Exec(std::get<Indices>(m_nodes).Evaluate(t)...);
 	}
 	RetType Evaluate(const ConstTraverser& t) const
 		requires std::is_trivially_copyable_v<RetType>
 	{
-		return Func::Exec(std::get<Indices>(m_nodes).Evaluate(t)...);
+		return m_func.Exec(std::get<Indices>(m_nodes).Evaluate(t)...);
 	}
 	const RetType& Evaluate(const Traverser& t) const
 		requires (!std::is_trivially_copyable_v<RetType>)
 	{
-		Func::Exec(std::get<Indices>(m_nodes).Evaluate(t)..., this->m_buffer);
+		m_func.Exec(this->m_buffer, std::get<Indices>(m_nodes).Evaluate(t)...);
 		return this->m_buffer;
 	}
 	const RetType& Evaluate(const ConstTraverser& t) const
 		requires (!std::is_trivially_copyable_v<RetType>)
 	{
-		Func::Exec(std::get<Indices>(m_nodes).Evaluate(t)..., this->m_buffer);
+		m_func.Exec(this->m_buffer, std::get<Indices>(m_nodes).Evaluate(t)...);
 		return this->m_buffer;
 	}
 
 	RetType Evaluate(const Container& s) const
 		requires std::is_trivially_copyable_v<RetType>
 	{
-		return Func::Exec(std::get<Indices>(m_nodes).Evaluate(s)...);
+		return m_func.Exec(std::get<Indices>(m_nodes).Evaluate(s)...);
 	}
 	RetType Evaluate(const Container& s, const Bpos& bpos) const
 		requires std::is_trivially_copyable_v<RetType>
 	{
-		return Func::Exec(std::get<Indices>(m_nodes).Evaluate(s, bpos)...);
+		return m_func.Exec(std::get<Indices>(m_nodes).Evaluate(s, bpos)...);
 	}
 	const RetType& Evaluate(const Container& s) const
 		requires (!std::is_trivially_copyable_v<RetType>)
 	{
-		Func::Exec(std::get<Indices>(m_nodes).Evaluate(s)..., this->m_buffer);
+		m_func.Exec(this->m_buffer, std::get<Indices>(m_nodes).Evaluate(s)...);
 		return this->m_buffer;
 	}
 	const RetType& Evaluate(const Container& s, const Bpos& bpos) const
 		requires (!std::is_trivially_copyable_v<RetType>)
 	{
-		Func::Exec(std::get<Indices>(m_nodes).Evaluate(s, bpos)..., this->m_buffer);
+		m_func.Exec(this->m_buffer, std::get<Indices>(m_nodes).Evaluate(s, bpos)...);
 		return this->m_buffer;
 	}
 #ifdef _MSC_VER
@@ -230,6 +229,7 @@ public:
 	}
 
 private:
+	[[no_unique_address]] Func m_func;
 	std::tuple<Nodes...> m_nodes;
 	bool m_init_flag = true;
 };
@@ -264,9 +264,19 @@ struct RttiFuncNode_impl<Func, Container, TypeList<Nodes...>, Type, std::index_s
 	using ConstTraverser = Container::ConstTraverser;
 	template <size_t Index>
 	using ArgType = Func::template ArgType<Index>;
-	using Base::Base;
+
+	RttiFuncNode_impl() {}
+	template <class Func_, node_or_placeholder ...Nodes_>
+	RttiFuncNode_impl(Func_&& f, Nodes_&& ...nodes)
+		: Base(std::forward<Nodes_>(nodes)...), m_func(std::forward<Func_>(f)) {}
 
 	virtual ~RttiFuncNode_impl() = default;
+	virtual void CopyFrom(const RttiFuncNode_base<Container>& that) override
+	{
+		Base::CopyFrom(that);
+		const auto* x = dynamic_cast<const RttiFuncNode_impl*>(&that);
+		m_func = x->m_func;
+	}
 	virtual RttiFuncNode_base<Container>* Clone() const override
 	{
 		auto* res = new RttiFuncNode_impl{};
@@ -280,27 +290,29 @@ struct RttiFuncNode_impl<Func, Container, TypeList<Nodes...>, Type, std::index_s
 	virtual DFieldInfo::TagTypeToValueType<Type>
 		Evaluate(const Traverser& t, Number<Type>) const override
 	{
-		return Func::Exec(this->template GetArg<Indices, DFieldInfo::ValueTypeToTagType<ArgType<Indices>>()>(t)...);
+		return m_func.Exec(this->template GetArg<Indices, DFieldInfo::ValueTypeToTagType<ArgType<Indices>>()>(t)...);
 	}
 	virtual DFieldInfo::TagTypeToValueType<Type>
 		Evaluate(const ConstTraverser& t, Number<Type>) const override
 	{
-		return Func::Exec(this->template GetArg<Indices, DFieldInfo::ValueTypeToTagType<ArgType<Indices>>()>(t)...);
+		return m_func.Exec(this->template GetArg<Indices, DFieldInfo::ValueTypeToTagType<ArgType<Indices>>()>(t)...);
 	}
 	virtual DFieldInfo::TagTypeToValueType<Type>
 		Evaluate(const Container& s, Number<Type>) const override
 	{
-		return Func::Exec(this->template GetArg<Indices, DFieldInfo::ValueTypeToTagType<ArgType<Indices>>()>(s)...);
+		return m_func.Exec(this->template GetArg<Indices, DFieldInfo::ValueTypeToTagType<ArgType<Indices>>()>(s)...);
 	}
 	virtual DFieldInfo::TagTypeToValueType<Type>
 		Evaluate(const Container& s, const Bpos& bpos, Number<Type>) const override
 	{
-		return Func::Exec(this->template GetArg<Indices, DFieldInfo::ValueTypeToTagType<ArgType<Indices>>()>(s, bpos)...);
+		return m_func.Exec(this->template GetArg<Indices, DFieldInfo::ValueTypeToTagType<ArgType<Indices>>()>(s, bpos)...);
 	}
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
 	virtual FieldType GetType() const override { return Type; }
+
+	[[no_unique_address]] Func m_func;
 };
 
 template <class Func, class Container, class ...Nodes, FieldType Type, size_t ...Indices>
@@ -315,13 +327,24 @@ struct RttiFuncNode_impl<Func, Container, TypeList<Nodes...>, Type, std::index_s
 	using ConstTraverser = Container::ConstTraverser;
 	template <size_t Index>
 	using ArgType = Func::template ArgType<Index>;
-	using Base::Base;
+
+	RttiFuncNode_impl() {}
+	template <class Func_, node_or_placeholder ...Nodes_>
+	RttiFuncNode_impl(Func_&& f, Nodes_&& ...nodes)
+		: Base(std::forward<Nodes_>(nodes)...), m_func(std::forward<Func_>(f)) {}
 
 	virtual ~RttiFuncNode_impl() = default;
+	virtual void CopyFrom(const RttiFuncNode_base<Container>& that) override
+	{
+		Base::CopyFrom(that);
+		const auto* x = dynamic_cast<const RttiFuncNode_impl*>(&that);
+		m_func = x->m_func;
+	}
 	virtual RttiFuncNode_base<Container>* Clone() const override
 	{
 		auto* res = new RttiFuncNode_impl{};
 		res->CopyFrom(*this);
+		res->m_func = m_func;
 		return res;
 	}
 #ifdef _MSC_VER
@@ -331,31 +354,33 @@ struct RttiFuncNode_impl<Func, Container, TypeList<Nodes...>, Type, std::index_s
 	virtual const DFieldInfo::TagTypeToValueType<Type>&
 		Evaluate(const Traverser& t, Number<Type>) const override
 	{
-		Func::Exec(this->template GetArg<Indices, DFieldInfo::ValueTypeToTagType<ArgType<Indices>>()>(t)..., m_buf);
+		m_func.Exec(m_buf, this->template GetArg<Indices, DFieldInfo::ValueTypeToTagType<ArgType<Indices>>()>(t)...);
 		return m_buf;
 	}
 	virtual const DFieldInfo::TagTypeToValueType<Type>&
 		Evaluate(const ConstTraverser& t, Number<Type>) const override
 	{
-		Func::Exec(this->template GetArg<Indices, DFieldInfo::ValueTypeToTagType<ArgType<Indices>>()>(t)..., m_buf);
+		m_func.Exec(m_buf, this->template GetArg<Indices, DFieldInfo::ValueTypeToTagType<ArgType<Indices>>()>(t)...);
 		return m_buf;
 	}
 	virtual const DFieldInfo::TagTypeToValueType<Type>&
 		Evaluate(const Container& s, Number<Type>) const override
 	{
-		Func::Exec(this->template GetArg<Indices, DFieldInfo::ValueTypeToTagType<ArgType<Indices>>()>(s)..., m_buf);
+		m_func.Exec(m_buf, this->template GetArg<Indices, DFieldInfo::ValueTypeToTagType<ArgType<Indices>>()>(s)...);
 		return m_buf;
 	}
 	virtual const DFieldInfo::TagTypeToValueType<Type>&
 		Evaluate(const Container& s, const Bpos& bpos, Number<Type>) const override
 	{
-		Func::Exec(this->template GetArg<Indices, DFieldInfo::ValueTypeToTagType<ArgType<Indices>>()>(s, bpos)..., m_buf);
+		m_func.Exec(m_buf, this->template GetArg<Indices, DFieldInfo::ValueTypeToTagType<ArgType<Indices>>()>(s, bpos)...);
 		return m_buf;
 	}
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
 	virtual FieldType GetType() const override { return Type; }
+
+	[[no_unique_address]] Func m_func;
 	mutable DFieldInfo::TagTypeToValueType<Type> m_buf;
 };
 
@@ -365,97 +390,91 @@ struct RttiFuncNode_impl<Func, Container, TypeList<Nodes...>, Type, std::index_s
 namespace detail
 {
 
-template <template <class...> class Func, class ...ArgTypes, any_node ...Nodes,
-	class FuncA = Func<ArgTypes...>, class Container = typename ExtractContainer<std::decay_t<Nodes>...>::Container>
-auto MakeRttiFuncNode_construct(int, Nodes&& ...n)
-	-> eval::RttiFuncNode<Container>
+template <class ...ArgTypes, class Func, any_node ...Nodes,
+	class Container = typename ExtractContainer<std::decay_t<Nodes>...>::Container>
+auto MakeRttiFuncNode_construct(int, Func&& f, Nodes&& ...n)
+	-> decltype(f(std::declval<ArgTypes>()...), eval::RttiFuncNode<Container>{})
 {
-	//FuncはArgTypes全てに対して適用可能なものしか定義されていない。
-	//例えばPlus<int64_t, std::string>はint64_t + stringが不可能なので未定義。
-	//もしFunc<ArgTypes...>が未定義であれば、FuncAの推定に失敗するので、この関数は呼ばれず、下の例外を投げるほうが呼ばれる。
+	using FuncA = FuncDefinition<std::decay_t<Func>, ArgTypes...>;
 	using NodeImpl = detail::RttiFuncNode_impl<FuncA, Container, TypeList<std::decay_t<Nodes>...>>;
 	eval::RttiFuncNode<Container> res;
-	res.template Construct<NodeImpl>(std::forward<Nodes>(n)...);
+	res.template Construct<NodeImpl>(std::forward<Func>(f), std::forward<Nodes>(n)...);
 	return res;
 }
-template <template <class...> class Func, class ...ArgTypes, any_node ...Nodes>
-auto MakeRttiFuncNode_construct(float, Nodes&& ...)
+template <class ...ArgTypes, class Func, any_node ...Nodes>
+auto MakeRttiFuncNode_construct(float, Func&&, Nodes&& ...)
 	-> eval::RttiFuncNode<typename ExtractContainer<std::decay_t<Nodes>...>::Container>
 {
 	throw MismatchType("");
 }
 
-template <template <class...> class Func, FieldType ...Types>
-struct MakeRttiFuncNode_convert
+template <class Func, FieldType ...Types, any_node ...Nodes, size_t ...Indices>
+auto MakeRttiFuncNode_expand(Func&& f, ValueList<Types...>, std::tuple<Nodes...> t, std::index_sequence<Indices...>)
 {
-	template <any_node ...Nodes>
-	auto operator()(Nodes&& ...n) const
-	{
-		return MakeRttiFuncNode_construct<Func, DFieldInfo::TagTypeToValueType<Types>...>(1, std::forward<Nodes>(n)...);
-	}
-};
+	return MakeRttiFuncNode_construct<DFieldInfo::TagTypeToValueType<Types>...>(1, std::forward<Func>(f), std::get<Indices>(t)...);
+}
 
-template <template <class...> class Func, FieldType ...Types, any_node ...Nodes>
-auto MakeRttiFuncNode(ValueList<Types...>, std::tuple<Nodes...> t)
+template <class Func, FieldType ...Types, any_node ...Nodes>
+auto MakeRttiFuncNode(Func&& f, ValueList<Types...> v, std::tuple<Nodes...> t)
 {
-	return std::apply(MakeRttiFuncNode_convert<Func, Types...>(), std::move(t));
+	return MakeRttiFuncNode_expand(std::forward<Func>(f), v, std::move(t), std::make_index_sequence<sizeof...(Nodes)>{});
 }
 
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable: 4702)
 #endif
-template <template <class...> class Func, FieldType ...Types, any_node ...Nodes, any_node Head, any_node ...Body>
-auto MakeRttiFuncNode(ValueList<Types...>, std::tuple<Nodes...> t, Head&& head, Body&& ...body)
+template <class Func, FieldType ...Types, any_node ...Nodes, any_node Head, any_node ...Body>
+auto MakeRttiFuncNode(Func&& f, ValueList<Types...>, std::tuple<Nodes...> t, Head&& head, Body&& ...body)
 {
 	if (head.IsI08())
-		return MakeRttiFuncNode<Func>(ValueList<Types..., FieldType::I08>(),
-									  TupleAdd(std::move(t), std::forward<Head>(head)),
-									  std::forward<Body>(body)...);
+		return MakeRttiFuncNode(std::forward<Func>(f), ValueList<Types..., FieldType::I08>(),
+			TupleAdd(std::move(t), std::forward<Head>(head)),
+			std::forward<Body>(body)...);
 	else if (head.IsI16())
-		return MakeRttiFuncNode<Func>(ValueList<Types..., FieldType::I16>(),
-									  TupleAdd(std::move(t), std::forward<Head>(head)),
-									  std::forward<Body>(body)...);
+		return MakeRttiFuncNode(std::forward<Func>(f), ValueList<Types..., FieldType::I16>(),
+			TupleAdd(std::move(t), std::forward<Head>(head)),
+			std::forward<Body>(body)...);
 	else if (head.IsI32())
-		return MakeRttiFuncNode<Func>(ValueList<Types..., FieldType::I32>(),
-									  TupleAdd(std::move(t), std::forward<Head>(head)),
-									  std::forward<Body>(body)...);
+		return MakeRttiFuncNode(std::forward<Func>(f), ValueList<Types..., FieldType::I32>(),
+			TupleAdd(std::move(t), std::forward<Head>(head)),
+			std::forward<Body>(body)...);
 	else if (head.IsI64())
-		return MakeRttiFuncNode<Func>(ValueList<Types..., FieldType::I64>(),
-									  TupleAdd(std::move(t), std::forward<Head>(head)),
-									  std::forward<Body>(body)...);
+		return MakeRttiFuncNode(std::forward<Func>(f), ValueList<Types..., FieldType::I64>(),
+			TupleAdd(std::move(t), std::forward<Head>(head)),
+			std::forward<Body>(body)...);
 	else if (head.IsF32())
-		return MakeRttiFuncNode<Func>(ValueList<Types..., FieldType::F32>(),
-									  TupleAdd(std::move(t), std::forward<Head>(head)),
-									  std::forward<Body>(body)...);
+		return MakeRttiFuncNode(std::forward<Func>(f), ValueList<Types..., FieldType::F32>(),
+			TupleAdd(std::move(t), std::forward<Head>(head)),
+			std::forward<Body>(body)...);
 	else if (head.IsF64())
-		return MakeRttiFuncNode<Func>(ValueList<Types..., FieldType::F64>(),
-									  TupleAdd(std::move(t), std::forward<Head>(head)),
-									  std::forward<Body>(body)...);
+		return MakeRttiFuncNode(std::forward<Func>(f), ValueList<Types..., FieldType::F64>(),
+			TupleAdd(std::move(t), std::forward<Head>(head)),
+			std::forward<Body>(body)...);
 	else if (head.IsC32())
-		return MakeRttiFuncNode<Func>(ValueList<Types..., FieldType::C32>(),
-									  TupleAdd(std::move(t), std::forward<Head>(head)),
-									  std::forward<Body>(body)...);
+		return MakeRttiFuncNode(std::forward<Func>(f), ValueList<Types..., FieldType::C32>(),
+			TupleAdd(std::move(t), std::forward<Head>(head)),
+			std::forward<Body>(body)...);
 	else if (head.IsC64())
-		return MakeRttiFuncNode<Func>(ValueList<Types..., FieldType::C64>(),
-									  TupleAdd(std::move(t), std::forward<Head>(head)),
-									  std::forward<Body>(body)...);
+		return MakeRttiFuncNode(std::forward<Func>(f), ValueList<Types..., FieldType::C64>(),
+			TupleAdd(std::move(t), std::forward<Head>(head)),
+			std::forward<Body>(body)...);
 	else if (head.IsStr())
-		return MakeRttiFuncNode<Func>(ValueList<Types..., FieldType::Str>(),
-									  TupleAdd(std::move(t), std::forward<Head>(head)),
-									  std::forward<Body>(body)...);
+		return MakeRttiFuncNode(std::forward<Func>(f), ValueList<Types..., FieldType::Str>(),
+			TupleAdd(std::move(t), std::forward<Head>(head)),
+			std::forward<Body>(body)...);
 	else if (head.IsJbp())
-		return MakeRttiFuncNode<Func>(ValueList<Types..., FieldType::Jbp>(),
-									  TupleAdd(std::move(t), std::forward<Head>(head)),
-									  std::forward<Body>(body)...);
+		return MakeRttiFuncNode(std::forward<Func>(f), ValueList<Types..., FieldType::Jbp>(),
+			TupleAdd(std::move(t), std::forward<Head>(head)),
+			std::forward<Body>(body)...);
 	throw MismatchType("");
 }
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
 
-template <template <class...> class Func, class ...NPs>
-auto MakeFunctionNode(NPs&& ...nps)
+template <class Func, class ...NPs>
+auto MakeFunctionNode(Func&& f, NPs&& ...nps)
 {
 	/*
 	1. 全てのノード構成要素がCttiNodeである場合
@@ -474,23 +493,23 @@ auto MakeFunctionNode(NPs&& ...nps)
 
 	if constexpr (has_rtti_type)
 	{
-		return MakeRttiFuncNode<Func>(ValueList<>(), std::tuple<>(),
+		return MakeRttiFuncNode(std::forward<Func>(f), ValueList<>(), std::tuple<>(),
 									  ConvertToNode(std::forward<NPs>(nps), std::true_type{})...);
 	}
 	else
 	{
-		using FuncType = Func<typename GetNodeType<std::decay_t<NPs>>::Type::RetType...>;
+		using FuncType = FuncDefinition<std::decay_t<Func>, typename GetNodeType<std::decay_t<NPs>>::Type::RetType...>;
 		return eval::CttiFuncNode<FuncType, TypeList<typename GetNodeType<std::decay_t<NPs>>::Type...>>
-		{ ConvertToNode(std::forward<NPs>(nps), std::false_type{})... };
+		(std::forward<Func>(f), ConvertToNode(std::forward<NPs>(nps), std::false_type{})...);
 	}
 }
 
-template <template <class...> class Func, neither_node_nor_placeholder Constant,
+template <class Func, neither_node_nor_placeholder Constant,
 	FieldType Type = DFieldInfo::GetSameSizeTagType<std::remove_cvref_t<Constant>>()>
 	requires (Type != FieldType::Emp)
-auto MakeRttiFuncNodeFromConstant(Constant&& c)
+auto MakeRttiFuncNodeFromConstant(Func&& f, Constant&& c)
 {
-	return MakeRttiFuncNode<Func>(ValueList<>(), std::tuple<>(), RttiConstNode(std::forward<Constant>(c)));
+	return MakeRttiFuncNode(std::forward<Func>(f), ValueList<>(), std::tuple<>(), RttiConstNode(std::forward<Constant>(c)));
 }
 
 }
@@ -501,8 +520,12 @@ template <node_or_placeholder NPs>
 auto ConvertToRttiFuncNode(NPs&& nps)
 {
 	if constexpr (rtti_func_node<NPs>) return std::forward<NPs>(nps);
-	else return MakeRttiFuncNode<detail::Forward>(ValueList<>(), std::tuple<>(),
-		ConvertToNode(std::forward<NPs>(nps), std::true_type{}));
+	else
+	{
+		auto f = [](const auto& a) { return a; };
+		return detail::MakeRttiFuncNode(f, ValueList<>(), std::tuple<>(),
+			ConvertToNode(std::forward<NPs>(nps), std::true_type{}));
+	}
 }
 
 }

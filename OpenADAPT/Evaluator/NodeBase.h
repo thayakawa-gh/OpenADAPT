@@ -2,8 +2,9 @@
 #define ADAPT_EVALUATOR_NODEBASE_H
 
 #include <algorithm>
+#include <functional>
+#include <OpenADAPT/Utility/Verbose.h>
 #include <OpenADAPT/Common/Concepts.h>
-#include <OpenADAPT/Evaluator/Function.h>
 
 namespace adapt
 {
@@ -13,6 +14,71 @@ namespace eval
 
 namespace detail
 {
+
+//template <node Node1>
+//const Node1& ConvertToNode(const Node1& node) { return node; }
+template <any_node Node1>
+Node1&& ConvertToNode(Node1&& node) { return std::forward<Node1>(node); }
+template <ctti_placeholder PH>
+auto ConvertToNode(PH ph) { return eval::CttiFieldNode{ ph }; }
+template <rtti_placeholder PH>
+auto ConvertToNode(PH ph) { return eval::RttiFieldNode{ ph }; }
+
+template <bool Rtti, any_node Node1>
+Node1&& ConvertToNode(Node1&& node, std::bool_constant<Rtti>) { return std::forward<Node1>(node); }
+template <bool Rtti, ctti_placeholder PH>
+auto ConvertToNode(PH ph, std::bool_constant<Rtti>) { return eval::CttiFieldNode{ ph }; }
+template <bool Rtti, rtti_placeholder PH>
+auto ConvertToNode(PH ph, std::bool_constant<Rtti>) { return eval::RttiFieldNode{ ph }; }
+
+//constant nodeの場合はCttiとRttiが区別できないので、引数でどちらかを指定する。
+template <neither_node_nor_placeholder Constant>
+auto ConvertToNode(Constant&& c, std::bool_constant<false>) { return eval::CttiConstNode<std::decay_t<Constant>>(std::forward<Constant>(c)); }
+template <neither_node_nor_placeholder Constant>
+auto ConvertToNode(Constant&& c, std::bool_constant<true>) { return eval::RttiConstNode(std::forward<Constant>(c)); }
+
+template <class Func, class ...NPs>
+auto MakeFunctionNode(Func&& f, NPs&& ...nps);
+
+
+#define GET_RET_TYPE_VA_FN(FN) decltype(FN(std::declval<ArgTypes_>()...))
+
+template <class Func, class ...ArgTypes>
+concept FuncApplicable = requires(Func f, const ArgTypes& ...a)
+{
+	{ f(a...) } -> non_void;
+};
+template <class Func, class RetType, class ...ArgTypes>
+concept FuncWithBufApplicable = requires(Func f, RetType & buf, const ArgTypes& ...a)
+{
+	{ f(buf, a...) } -> std::same_as<void>;
+};
+template <class Func, class ...ArgTypes>
+	requires FuncApplicable<Func, ArgTypes...>
+struct FuncDefinition
+{
+	template <size_t Index> using ArgType = GetType_t<Index, ArgTypes...>;
+	using RetType = std::invoke_result_t<Func, ArgTypes...>;
+	
+	FuncDefinition() {}
+	FuncDefinition(const FuncDefinition& that) { *this = that; }
+	FuncDefinition(FuncDefinition&& that) noexcept { *this = std::move(that); };
+
+	FuncDefinition& operator=(const FuncDefinition& that) { m_func = that.m_func; return *this; }
+	FuncDefinition& operator=(FuncDefinition&& that) noexcept { m_func = std::move(that.m_func); return *this; }
+
+	template <class Func_>
+		requires std::convertible_to<Func_&&, Func>
+	FuncDefinition(Func_&& f) : m_func(std::forward<Func_>(f)) {}
+
+	RetType Exec(const ArgTypes& ...a) const { return std::invoke(m_func, a...); }
+	void Exec(RetType& buf, const ArgTypes& ...a) const
+	{
+		if constexpr (FuncWithBufApplicable<Func, RetType, ArgTypes...>)std::invoke(m_func, buf, a...);
+		else buf = std::invoke(m_func, a...);
+	}
+	Func m_func;
+};
 
 template <class ...Nodes>
 struct ExtractContainer;
@@ -404,8 +470,6 @@ struct RttiFuncNode_body<Container_, TypeList<Nodes...>, std::index_sequence<Ind
 			throw MismatchType(message);
 		}
 		m_nodes = x->m_nodes;
-		//_implの方は関数によってbufferを持ちうるが、
-		//まあそこまでコピーする必要はないだろう。
 	}
 
 	virtual void IncreaseDepth() override
@@ -579,10 +643,10 @@ struct RttiFuncNode : public detail::RttiMethods<RttiFuncNode<Container_>, std::
 		return *this;
 	}
 
-	template <class NodeImpl, class ...Args>
-	void Construct(Args&& ...nodes)
+	template <class NodeImpl, class Func, class ...Args>
+	void Construct(Func&& f, Args&& ...nodes)
 	{
-		m_impl = std::make_unique<NodeImpl>(std::forward<Args>(nodes)...);
+		m_impl = std::make_unique<NodeImpl>(std::forward<Func>(f), std::forward<Args>(nodes)...);
 	}
 
 	RttiFuncNode IncreaseDepth() const&

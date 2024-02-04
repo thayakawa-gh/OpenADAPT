@@ -7,7 +7,6 @@
 #include <ranges>
 #include <OpenADAPT/Utility/Verbose.h>
 #include <OpenADAPT/Common/Bpos.h>
-#include <OpenADAPT/Evaluator/Function.h>
 #include <OpenADAPT/Evaluator/FieldNode.h>
 #include <OpenADAPT/Evaluator/FuncNode.h>
 #include <OpenADAPT/Joint/LayerInfo.h>

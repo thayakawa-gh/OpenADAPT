@@ -6,54 +6,27 @@
 #include <OpenADAPT/Utility/Macro.h>
 #include <OpenADAPT/Common/Concepts.h>
 #include <OpenADAPT/Evaluator/ConstNode.h>
+#include <OpenADAPT/Evaluator/FuncNode.h>
 #include <OpenADAPT/Joint/LayerInfo.h>
 
 namespace adapt
 {
 
-//前方宣言
 namespace eval
 {
-
-template <class Combination>
-struct RttiFuncNode;
 
 namespace detail
 {
 
-//template <node Node1>
-//const Node1& ConvertToNode(const Node1& node) { return node; }
-template <any_node Node1>
-Node1&& ConvertToNode(Node1&& node) { return std::forward<Node1>(node); }
-template <ctti_placeholder PH>
-auto ConvertToNode(PH ph) { return eval::CttiFieldNode{ ph }; }
-template <rtti_placeholder PH>
-auto ConvertToNode(PH ph) { return eval::RttiFieldNode{ ph }; }
-
-template <bool Rtti, any_node Node1>
-Node1&& ConvertToNode(Node1&& node, std::bool_constant<Rtti>) { return std::forward<Node1>(node); }
-template <bool Rtti, ctti_placeholder PH>
-auto ConvertToNode(PH ph, std::bool_constant<Rtti>) { return eval::CttiFieldNode{ ph }; }
-template <bool Rtti, rtti_placeholder PH>
-auto ConvertToNode(PH ph, std::bool_constant<Rtti>) { return eval::RttiFieldNode{ ph }; }
-
-//constant nodeの場合はCttiとRttiが区別できないので、引数でどちらかを指定する。
-template <neither_node_nor_placeholder Constant>
-auto ConvertToNode(Constant&& c, std::bool_constant<false>) { return eval::CttiConstNode<std::decay_t<Constant>>(std::forward<Constant>(c)); }
-template <neither_node_nor_placeholder Constant>
-auto ConvertToNode(Constant&& c, std::bool_constant<true>) { return eval::RttiConstNode(std::forward<Constant>(c)); }
-
-template <template <class...> class Func, class ...NPs>
-auto MakeFunctionNode(NPs&& ...nps);
-
+/*
 #define GET_RET_TYPE_OP1(OP) decltype(OP std::declval<ArgType_>())
 #define GET_RET_TYPE_OP2(OP) decltype(std::declval<ArgType1_>() OP std::declval<ArgType2_>())
 #define GET_RET_TYPE_FN1(FN) decltype(FN(std::declval<ArgType_>()))
 #define GET_RET_TYPE_FN2(FN) decltype(FN(std::declval<ArgType1_>(), std::declval<ArgType2_>()))
 #define GET_RET_TYPE_FN3(FN) decltype(FN(std::declval<ArgType1_>(), std::declval<ArgType2_>(), std::declval<ArgType3_>()))
+*/
 
-#define GET_RET_TYPE_VA_FN(FN) decltype(FN(std::declval<ArgTypes_>()...))
-
+/*
 //1 arg function
 #define DEFINE_FUNC1_IMPL(NAME, DEFAULT_RET, PROCESS)\
 template <class ArgType_>\
@@ -88,18 +61,6 @@ struct NAME\
 	static RetType Exec(const ArgType_& a) { return PROCESS; }\
 	static void Exec(const ArgType_& a, RetType& buf) { PROCESS_BUF; }\
 };
-/*#define SPECIALIZE_FUNC1_IMPL_WB(NAME, ARG_TYPE, RET_TYPE, PROCESS, PROCESS_BUF)\
-template <>\
-struct NAME<ARG_TYPE>\
-{\
-	template <size_t Index, std::nullptr_t = nullptr> struct ArgType_impl;\
-	template <std::nullptr_t X> struct ArgType_impl<0, X> { using Type = ARG_TYPE; };\
-	template <size_t Index> using ArgType = ArgType_impl<Index>::Type;\
-	using RetType = RET_TYPE;\
-	static RetType Exec(const ARG_TYPE& a) { return PROCESS; }\
-	static void Exec(const ARG_TYPE& a, RetType& buf) { PROCESS_BUF; }\
-};*/
-
 
 //2 arg function
 #define DEFINE_FUNC2_IMPL(NAME, DEFAULT_RET, PROCESS)\
@@ -137,18 +98,6 @@ struct NAME\
 	static RetType Exec(const ArgType1_& a1, const ArgType2_& a2) { return PROCESS; }\
 	static void Exec(const ArgType1_& a1, const ArgType2_& a2, RetType& buf) { PROCESS_BUF; }\
 };
-/*#define SPECIALIZE_FUNC2_IMPL_WB(NAME, ARG_TYPE1, ARG_TYPE2, RET_TYPE, PROCESS, PROCESS_BUF)\
-template <>\
-struct NAME<ARG_TYPE1, ARG_TYPE2>\
-{\
-	template <size_t Index, std::nullptr_t = nullptr> struct ArgType_impl;\
-	template <std::nullptr_t X> struct ArgType_impl<0, X> { using Type = ARG_TYPE1; };\
-	template <std::nullptr_t X> struct ArgType_impl<1, X> { using Type = ARG_TYPE2; };\
-	template <size_t Index> using ArgType = ArgType_impl<Index>::Type;\
-	using RetType = RET_TYPE;\
-	static RetType Exec(const ARG_TYPE1& a1, const ARG_TYPE2& a2) { return PROCESS; }\
-	static void Exec(const ARG_TYPE1& a1, const ARG_TYPE2& a2, RetType& buf) { PROCESS_BUF; }\
-};*/
 
 //3 arg function
 #define DEFINE_FUNC3_IMPL(NAME, DEFAULT_RET, PROCESS)\
@@ -188,22 +137,9 @@ struct NAME\
 	static RetType Exec(const ArgType1_& a1, const ArgType2_& a2, const ArgType3_& a3) { return PROCESS; }\
 	static void Exec(const ArgType1_& a1, const ArgType2_& a2, const ArgType3_& a3, RetType& buf) { PROCESS_BUF; }\
 };
-/*#define SPECIALIZE_FUNC3_IMPL_WB(NAME, ARG_TYPE1, ARG_TYPE2, ARG_TYPE3, RET_TYPE, PROCESS, PROCESS_BUF)\
-template <>\
-struct NAME<ARG_TYPE1, ARG_TYPE2, ARG_TYPE3>\
-{\
-	template <size_t Index, std::nullptr_t = nullptr> struct ArgType_impl;\
-	template <std::nullptr_t X> struct ArgType_impl<0, X> { using Type = ARG_TYPE1; };\
-	template <std::nullptr_t X> struct ArgType_impl<1, X> { using Type = ARG_TYPE2; };\
-	template <std::nullptr_t X> struct ArgType_impl<1, X> { using Type = ARG_TYPE3; };\
-	template <size_t Index> using ArgType = ArgType_impl<Index>::Type;\
-	using RetType = RET_TYPE;\
-	static RetType Exec(const ARG_TYPE1& a1, const ARG_TYPE2& a2, const ARG_TYPE3& a3) { return PROCESS; }\
-	static void Exec(const ARG_TYPE1& a1, const ARG_TYPE2& a2, const ARG_TYPE3& a3, RetType& buf) { PROCESS_BUF; }\
-};*/
 
 
-//3 arg function
+//variadic function
 #define DEFINE_VARIADIC_FUNC_IMPL(NAME, DEFAULT_RET, PROCESS)\
 template <class ...ArgTypes_>\
 concept NAME##Applicable = requires(const ArgTypes_& ...a)\
@@ -279,10 +215,12 @@ template <class ...NPs>\
 auto NAME_ID(NPs&& ...nps)\
 {\
 	return detail::MakeFunctionNode<NAME>(std::forward<NPs>(nps)...);\
-}
+}*/
+
+
 
 //unary operator
-DEFINE_FUNC1_IMPL(LogicalNot, GET_RET_TYPE_OP1(!),
+/*DEFINE_FUNC1_IMPL(LogicalNot, GET_RET_TYPE_OP1(!),
 				  ADAPT_TIE_ARGS(!a));
 DEFINE_FUNC1_IMPL(Negate, GET_RET_TYPE_OP1(-),
 				  ADAPT_TIE_ARGS(-a));
@@ -381,10 +319,7 @@ DEFINE_FUNC2_IMPL(Log2, ADAPT_TIE_ARGS(decltype(log(std::declval<ArgType1_>()) /
 DEFINE_FUNC2_IMPL(Min, GET_RET_TYPE_FN2(std::min),
 				  ADAPT_TIE_ARGS(std::min(a1, a2)));
 DEFINE_FUNC2_IMPL(Max, GET_RET_TYPE_FN2(std::max),
-				  ADAPT_TIE_ARGS(std::max(a1, a2)));
-
-template <class T1, class T2>
-decltype(auto) IfElse(bool a, T1&& b, T2&& c) { return a ? b : c; }
+				  ADAPT_TIE_ARGS(std::max(a1, a2)));*/
 
 template <size_t I, class Res, std::integral Int, class T, class ...U>
 Res Switch(Int i, T&& t, U&& ...u)
@@ -417,6 +352,7 @@ void SwitchBuf(Res& res, Int i, T&& ...t)
 	SwitchBuf<0>(res, i, std::forward<T>(t)...);
 }
 
+/*
 //3 arg function
 DEFINE_FUNC3_IMPL_WB(If_, GET_RET_TYPE_FN3(IfElse),
 					 ADAPT_TIE_ARGS(IfElse(a1, a2, a3)),
@@ -426,11 +362,12 @@ DEFINE_FUNC3_IMPL_WB(If_, GET_RET_TYPE_FN3(IfElse),
 DEFINE_VARIADIC_FUNC_IMPL_WB(Switch_, GET_RET_TYPE_VA_FN(Switch),
 							 ADAPT_TIE_ARGS(Switch(a...)),
 							 ADAPT_TIE_ARGS(SwitchBuf(buf, a...)));
+*/
 
 //pass through function 主にFieldNode -> FuncNodeという変換を行うもの。
 //DEFINE_FUNC1_IMPL_WB(Forward, ArgType_,
 //	ADAPT_TIE_ARGS(a), ADAPT_TIE_ARGS(buf = a));
-template <class ArgType_>
+/*template <class ArgType_>
 struct Forward
 {
 	template <size_t Index, std::nullptr_t = nullptr>
@@ -451,91 +388,320 @@ struct Forward
 	{
 		buf = a;
 	}
-};
+};*/
 
-template <class ArgType_, class RetType_>
-	requires std::convertible_to<ArgType_, RetType_>
+template <class Ret>
 struct Cast
 {
-	template <size_t Index, std::nullptr_t = nullptr> struct ArgType_impl;
-	template <std::nullptr_t X> struct ArgType_impl<0, X> { using Type = ArgType_; };
-	template <size_t Index> using ArgType = ArgType_impl<Index>::Type;
-	using RetType = RetType_;
-	static RetType Exec(const ArgType_& a) { return RetType(a); }
-	static void Exec(const ArgType_& a, RetType& buf) { buf = RetType(a); }
+	Cast() {}
+	template <class Arg>
+		requires std::convertible_to<Arg, Ret>
+	Ret operator()(const Arg& a) const { return Ret(a); }
+	template <class Arg>
+		requires std::convertible_to<Arg, Ret>
+	void operator()(Ret& buf, const Arg& a) const { buf = Ret(a); }
 };
-template <class RetType_>
-struct CastWrapper
-{
-	template <class ArgType_>
-	using Func = Cast<ArgType_, RetType_>;
-};
-//CastWrapperを使うとVisual Studio上でcast関数を使ったときに戻り値の型がerror-typeになって、
-//エディタが赤波線だらけになってしまう。
-//頻出する以下のものだけでも回避する。
-template <class ArgType_>
-using CastI08 = Cast<ArgType_, int8_t>;
-template <class ArgType_>
-using CastI16 = Cast<ArgType_, int16_t>;
-template <class ArgType_>
-using CastI32 = Cast<ArgType_, int32_t>;
-template <class ArgType_>
-using CastI64 = Cast<ArgType_, int64_t>;
-template <class ArgType_>
-using CastF32 = Cast<ArgType_, float>;
-template <class ArgType_>
-using CastF64 = Cast<ArgType_, double>;
-template <class ArgType_>
-using CastC32 = Cast<ArgType_, std::complex<float>>;
-template <class ArgType_>
-using CastC64 = Cast<ArgType_, std::complex<double>>;
 
 }
 
-DEFINE_OP1(detail::LogicalNot, !)
-DEFINE_OP1(detail::Negate, -)
+template <node_or_placeholder Arg>
+auto operator!(Arg&& a)
+{
+	auto f = [](const auto& a) -> decltype(!a) { return !a; };
+	return detail::MakeFunctionNode(f, std::forward<Arg>(a));
+}
+template <node_or_placeholder Arg>
+auto operator-(Arg&& a)
+{
+	auto f = [](const auto& a) -> decltype(-a) { return -a; };
+	return detail::MakeFunctionNode(f, std::forward<Arg>(a));
+}
 
-DEFINE_OP2(detail::Plus, +)
-DEFINE_OP2(detail::Minus, -)
-DEFINE_OP2(detail::Multiply, *)
-DEFINE_OP2(detail::Divide, / )
-DEFINE_OP2(detail::Modulus, %)
+template <class Arg1, class Arg2>
+	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
+auto operator+(Arg1&& a, Arg2&& b)
+{
+	auto f = Overload(
+		[](const auto& a, const auto& b) -> decltype(a + b) { return a + b; },
+		[](auto& buf, const auto& a, const auto& b) { buf = a; buf += b; });
+	return detail::MakeFunctionNode(f, std::forward<Arg1>(a), std::forward<Arg2>(b));
+}
+template <class Arg1, class Arg2>
+	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
+auto operator-(Arg1&& a, Arg2&& b)
+{
+	auto f = Overload(
+		[](const auto& a, const auto& b) -> decltype(a - b) { return a - b; },
+		[](auto& buf, const auto& a, const auto& b) { buf = a; buf -= b; });
+	return detail::MakeFunctionNode(f, std::forward<Arg1>(a), std::forward<Arg2>(b));
+}
+template <class Arg1, class Arg2>
+	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
+auto operator*(Arg1&& a, Arg2&& b)
+{
+	auto f = Overload(
+		[](const auto& a, const auto& b) -> decltype(a * b) { return a * b; },
+		[](auto& buf, const auto& a, const auto& b) { buf = a; buf *= b; });
+	return detail::MakeFunctionNode(f, std::forward<Arg1>(a), std::forward<Arg2>(b));
+}
+template <class Arg1, class Arg2>
+	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
+auto operator/(Arg1&& a, Arg2&& b)
+{
+	auto f = Overload(
+		[](const auto& a, const auto& b) -> decltype(a / b) { return a / b; },
+		[](auto& buf, const auto& a, const auto& b) { buf = a; buf /= b; });
+	return detail::MakeFunctionNode(f, std::forward<Arg1>(a), std::forward<Arg2>(b));
+}
+template <class Arg1, class Arg2>
+	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
+auto operator%(Arg1&& a, Arg2&& b)
+{
+	auto f = Overload(
+		[](const auto& a, const auto& b) -> decltype(a % b) { return a % b; },
+		[](auto& buf, const auto& a, const auto& b) { buf = a; buf %= b; });
+	return detail::MakeFunctionNode(f, std::forward<Arg1>(a), std::forward<Arg2>(b));
+}
 
-DEFINE_FN2(detail::Power, pow);
-DEFINE_OP2(detail::Equal, == );
-DEFINE_OP2(detail::NotEqual, != );
-DEFINE_OP2(detail::Less, < );
-DEFINE_OP2(detail::LessEqual, <= );
-DEFINE_OP2(detail::Greater, > );
-DEFINE_OP2(detail::GreaterEqual, >= );
-DEFINE_OP2(detail::LocgicalAnd, &&);
-DEFINE_OP2(detail::LogicalOr, || );
+template <class Arg1, class Arg2>
+	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
+auto pow(Arg1&& a, Arg2&& b)
+{
+	auto f = [](const auto& a, const auto& b) -> decltype(std::pow(a, b)) { return std::pow(a, b); };
+	return detail::MakeFunctionNode(f, std::forward<Arg1>(a), std::forward<Arg2>(b));
+}
+template <class Arg1, class Arg2>
+	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
+auto operator==(Arg1&& a, Arg2&& b)
+{
+	auto f = [](const auto& a, const auto& b) -> decltype(a == b) { return a == b; };
+	return detail::MakeFunctionNode(f, std::forward<Arg1>(a), std::forward<Arg2>(b));
+}
+template <class Arg1, class Arg2>
+	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
+auto operator!=(Arg1&& a, Arg2&& b)
+{
+	auto f = [](const auto& a, const auto& b) -> decltype(a != b) { return a != b; };
+	return detail::MakeFunctionNode(f, std::forward<Arg1>(a), std::forward<Arg2>(b));
+}
+template <class Arg1, class Arg2>
+	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
+auto operator<(Arg1&& a, Arg2&& b)
+{
+	auto f = [](const auto& a, const auto& b) -> decltype(a < b) { return a < b; };
+	return detail::MakeFunctionNode(f, std::forward<Arg1>(a), std::forward<Arg2>(b));
+}
+template <class Arg1, class Arg2>
+	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
+auto operator<=(Arg1&& a, Arg2&& b)
+{
+	auto f = [](const auto& a, const auto& b) -> decltype(a <= b) { return a <= b; };
+	return detail::MakeFunctionNode(f, std::forward<Arg1>(a), std::forward<Arg2>(b));
+}
+template <class Arg1, class Arg2>
+	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
+auto operator>(Arg1&& a, Arg2&& b)
+{
+	auto f = [](const auto& a, const auto& b) -> decltype(a > b) { return a > b; };
+	return detail::MakeFunctionNode(f, std::forward<Arg1>(a), std::forward<Arg2>(b));
+}
+template <class Arg1, class Arg2>
+	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
+auto operator>=(Arg1&& a, Arg2&& b)
+{
+	auto f = [](const auto& a, const auto& b) -> decltype(a >= b) { return a >= b; };
+	return detail::MakeFunctionNode(f, std::forward<Arg1>(a), std::forward<Arg2>(b));
+}
+template <class Arg1, class Arg2>
+	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
+auto operator&&(Arg1&& a, Arg2&& b)
+{
+	auto f = [](const auto& a, const auto& b) -> decltype(a && b) { return a && b; };
+	return detail::MakeFunctionNode(f, std::forward<Arg1>(a), std::forward<Arg2>(b));
+}
+template <class Arg1, class Arg2>
+	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
+auto operator||(Arg1&& a, Arg2&& b)
+{
+	auto f = [](const auto& a, const auto& b) -> decltype(a || b) { return a || b; };
+	return detail::MakeFunctionNode(f, std::forward<Arg1>(a), std::forward<Arg2>(b));
+}
+//index operatorはメンバ関数として用意しなければならないので、ここでは定義できない。
 
+template <node_or_placeholder Arg>
+auto sin(Arg&& a)
+{
+	auto f = [](const auto& a) -> decltype(std::sin(a)) { return std::sin(a); };
+	return detail::MakeFunctionNode(f, std::forward<Arg>(a));
+}
+template <node_or_placeholder Arg>
+auto cos(Arg&& a)
+{
+	auto f = [](const auto& a) -> decltype(std::cos(a)) { return std::cos(a); };
+	return detail::MakeFunctionNode(f, std::forward<Arg>(a));
+}
+template <node_or_placeholder Arg>
+auto tan(Arg&& a)
+{
+	auto f = [](const auto& a) -> decltype(std::tan(a)) { return std::tan(a); };
+	return detail::MakeFunctionNode(f, std::forward<Arg>(a));
+}
+template <node_or_placeholder Arg>
+auto asin(Arg&& a)
+{
+	auto f = [](const auto& a) -> decltype(std::asin(a)) { return std::asin(a); };
+	return detail::MakeFunctionNode(f, std::forward<Arg>(a));
+}
+template <node_or_placeholder Arg>
+auto acos(Arg&& a)
+{
+	auto f = [](const auto& a) -> decltype(std::acos(a)) { return std::acos(a); };
+	return detail::MakeFunctionNode(f, std::forward<Arg>(a));
+}
+template <node_or_placeholder Arg>
+auto atan(Arg&& a)
+{
+	auto f = [](const auto& a) -> decltype(std::atan(a)) { return std::atan(a); };
+	return detail::MakeFunctionNode(f, std::forward<Arg>(a));
+}
+template <node_or_placeholder Arg>
+auto exp(Arg&& a)
+{
+	auto f = [](const auto& a) -> decltype(std::exp(a)) { return std::exp(a); };
+	return detail::MakeFunctionNode(f, std::forward<Arg>(a));
+}
+template <node_or_placeholder Arg>
+auto square(Arg&& a)
+{
+	auto f = Overload(
+		[](const auto& a) -> decltype(a * a) { return a * a; },
+		[](auto& buf, const auto& a) { buf = a; buf *= a; });
+	return detail::MakeFunctionNode(f, std::forward<Arg>(a));
+}
+template <node_or_placeholder Arg>
+auto sqrt(Arg&& a)
+{
+	auto f = [](const auto& a) -> decltype(std::sqrt(a)) { return std::sqrt(a); };
+	return detail::MakeFunctionNode(f, std::forward<Arg>(a));
+}
+template <node_or_placeholder Arg>
+auto cube(Arg&& a)
+{
+	auto f = Overload(
+		[](const auto& a) -> decltype(a * a * a) { return a * a * a; },
+		[](auto& buf, const auto& a) { buf = a; buf *= a; buf *= a; });
+	return detail::MakeFunctionNode(f, std::forward<Arg>(a));
+}
+template <node_or_placeholder Arg>
+auto cbrt(Arg&& a)
+{
+	auto f = [](const auto& a) -> decltype(std::cbrt(a)) { return std::cbrt(a); };
+	return detail::MakeFunctionNode(f, std::forward<Arg>(a));
+}
+template <node_or_placeholder Arg>
+auto ceil(Arg&& a)
+{
+	auto f = [](const auto& a) -> decltype(std::ceil(a)) { return std::ceil(a); };
+	return detail::MakeFunctionNode(f, std::forward<Arg>(a));
+}
+template <node_or_placeholder Arg>
+auto floor(Arg&& a)
+{
+	auto f = [](const auto& a) -> decltype(std::floor(a)) { return std::floor(a); };
+	return detail::MakeFunctionNode(f, std::forward<Arg>(a));
+}
+template <node_or_placeholder Arg>
+auto log(Arg&& a)
+{
+	auto f = [](const auto& a) -> decltype(std::log(a)) { return std::log(a); };
+	return detail::MakeFunctionNode(f, std::forward<Arg>(a));
+}
+template <node_or_placeholder Arg>
+auto log10(Arg&& a)
+{
+	auto f = [](const auto& a) -> decltype(std::log10(a)) { return std::log10(a); };
+	return detail::MakeFunctionNode(f, std::forward<Arg>(a));
+}
+template <node_or_placeholder Arg>
+auto abs(Arg&& a)
+{
+	auto f = [](const auto& a) -> decltype(std::abs(a)) { return std::abs(a); };
+	return detail::MakeFunctionNode(f, std::forward<Arg>(a));
+}
+template <node_or_placeholder Arg>
+auto len(Arg&& a)
+{
+	auto f = [](const auto& a) -> decltype(std::ranges::size(a)) { return std::ranges::size(a); };
+	return detail::MakeFunctionNode(f, std::forward<Arg>(a));
+}
+template <node_or_placeholder Arg>
+auto tostr(Arg&& a)
+{
+	auto f = Overload(
+		[](const auto& a) -> decltype(std::to_string(a)) { return std::to_string(a); },
+		[](auto& buf, const auto& a) { ToStr(a, buf); });
+	return detail::MakeFunctionNode(f, std::forward<Arg>(a));
+}
+
+template <class Arg1, class Arg2>
+	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
+auto atan2(Arg1&& a, Arg2&& b)
+{
+	auto f = [](const auto& a, const auto& b) -> decltype(std::atan2(a, b)) { return std::atan2(a, b); };
+	return detail::MakeFunctionNode(f, std::forward<Arg1>(a), std::forward<Arg2>(b));
+}
+template <class Arg1, class Arg2>
+	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
+auto log2(Arg1&& a, Arg2&& b)
+{
+	auto f = [](const auto& a, const auto& b) -> decltype(std::log2(a, b)) { return std::log2(a, b); };
+	return detail::MakeFunctionNode(f, std::forward<Arg1>(a), std::forward<Arg2>(b));
+}
+template <class Arg1, class Arg2>
+	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
+auto hypot(Arg1&& a, Arg2&& b)
+{
+	auto f = [](const auto& a, const auto& b) -> decltype(std::hypot(a, b)) { return std::hypot(a, b); };
+	return detail::MakeFunctionNode(f, std::forward<Arg1>(a), std::forward<Arg2>(b));
+}
+template <class Arg1, class Arg2>
+	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
+auto max(Arg1&& a, Arg2&& b)
+{
+	auto f = [](const auto& a, const auto& b) -> decltype(std::max(a, b)) { return std::max(a, b); };
+	return detail::MakeFunctionNode(f, std::forward<Arg1>(a), std::forward<Arg2>(b));
+}
+template <class Arg1, class Arg2>
+	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
+auto min(Arg1&& a, Arg2&& b)
+{
+	auto f = [](const auto& a, const auto& b) -> decltype(std::min(a, b)) { return std::min(a, b); };
+	return detail::MakeFunctionNode(f, std::forward<Arg1>(a), std::forward<Arg2>(b));
+}
+
+template <class Arg1, class Arg2, class Arg3>
+	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2> || node_or_placeholder<Arg3>)
+auto if_(Arg1&& a, Arg2&& b, Arg3&& c)
+{
+	auto f = [](const auto& a, const auto& b, const auto& c) -> decltype(a ? b : c) { return a ? b : c; };
+	return detail::MakeFunctionNode(f, std::forward<Arg1>(a), std::forward<Arg2>(b), std::forward<Arg3>(c));
+}
+template <class ...Args>
+	requires (node_or_placeholder<Args> || ...)
+auto switch_(Args&& ...args)
+{
+	auto f = [](const auto& ...as) -> decltype(detail::Switch(as...)) { return detail::Switch(as...); };
+	return detail::MakeFunctionNode(f, std::forward<Args>(args)...);
+}
+
+template <node_or_placeholder Arg>
+auto fwd(Arg&& a)
+{
+	auto f = [](const auto& a) { return a; };
+	return detail::MakeFunctionNode(f, std::forward<Arg>(a));
+}
+/*
 // TODO: define index operator
-
-DEFINE_FN1(detail::Sin, sin);
-DEFINE_FN1(detail::Cos, cos);
-DEFINE_FN1(detail::Tan, tan);
-DEFINE_FN1(detail::ASin, asin);
-DEFINE_FN1(detail::ACos, acos);
-DEFINE_FN1(detail::ATan, atan);
-DEFINE_FN1(detail::Exponential, exp);
-DEFINE_FN1(detail::Square, square);
-DEFINE_FN1(detail::Sqrt, sqrt);
-DEFINE_FN1(detail::Cube, cube);
-DEFINE_FN1(detail::Cbrt, cbrt);
-DEFINE_FN1(detail::Ceil, ceil);
-DEFINE_FN1(detail::Floor, floor);
-DEFINE_FN1(detail::Log, log);
-DEFINE_FN1(detail::Log10, log10);
-DEFINE_FN1(detail::Abs, abs);
-DEFINE_FN1(detail::Len, len);
-DEFINE_FN1(detail::NumToStr, tostr);
-
-DEFINE_FN2(detail::ATan2, atan2);
-DEFINE_FN2(detail::Log2, log2);
-DEFINE_FN2(detail::Min, min);
-DEFINE_FN2(detail::Max, max);
 
 DEFINE_FN3(detail::If_, if_);
 
@@ -543,13 +709,13 @@ DEFINE_VAR_FN(detail::Switch_, switch_);
 
 //通常は使わない。Placeholderや定数をFuncNodeに変換したい時に使う。
 DEFINE_FN1(detail::Forward, fwd);
+*/
+
 
 template <class T, node_or_placeholder NP>
 auto cast(NP&& np)
 {
-	//using NP_ = std::remove_cvref_t<NP>;
-	using CastWrapper = detail::CastWrapper<T>;
-	return detail::MakeFunctionNode<CastWrapper::template Func>(std::forward<NP>(np));
+	return detail::MakeFunctionNode(detail::Cast<T>{}, std::forward<NP>(np));
 }
 template <FieldType Type, node_or_placeholder NP>
 auto cast(NP&& np)
@@ -557,7 +723,7 @@ auto cast(NP&& np)
 	using ValueType = DFieldInfo::TagTypeToValueType<Type>;
 	return cast<ValueType>(std::forward<NP>(np));
 }
-/*
+
 template <node_or_placeholder NP> auto cast_i08(NP&& np) { return cast<FieldType::I08>(std::forward<NP>(np)); }
 template <node_or_placeholder NP> auto cast_i16(NP&& np) { return cast<FieldType::I16>(std::forward<NP>(np)); }
 template <node_or_placeholder NP> auto cast_i32(NP&& np) { return cast<FieldType::I32>(std::forward<NP>(np)); }
@@ -566,7 +732,8 @@ template <node_or_placeholder NP> auto cast_f32(NP&& np) { return cast<FieldType
 template <node_or_placeholder NP> auto cast_f64(NP&& np) { return cast<FieldType::F64>(std::forward<NP>(np)); }
 template <node_or_placeholder NP> auto cast_c32(NP&& np) { return cast<FieldType::C32>(std::forward<NP>(np)); }
 template <node_or_placeholder NP> auto cast_c64(NP&& np) { return cast<FieldType::C64>(std::forward<NP>(np)); }
-*/
+
+/*
 template <node_or_placeholder NP> auto cast_i08(NP&& np) { return detail::MakeFunctionNode<detail::CastI08>(std::forward<NP>(np)); }
 template <node_or_placeholder NP> auto cast_i16(NP&& np) { return detail::MakeFunctionNode<detail::CastI16>(std::forward<NP>(np)); }
 template <node_or_placeholder NP> auto cast_i32(NP&& np) { return detail::MakeFunctionNode<detail::CastI32>(std::forward<NP>(np)); }
@@ -575,8 +742,27 @@ template <node_or_placeholder NP> auto cast_f32(NP&& np) { return detail::MakeFu
 template <node_or_placeholder NP> auto cast_f64(NP&& np) { return detail::MakeFunctionNode<detail::CastF64>(std::forward<NP>(np)); }
 template <node_or_placeholder NP> auto cast_c32(NP&& np) { return detail::MakeFunctionNode<detail::CastC32>(std::forward<NP>(np)); }
 template <node_or_placeholder NP> auto cast_c64(NP&& np) { return detail::MakeFunctionNode<detail::CastC64>(std::forward<NP>(np)); }
+*/
 
 }
+
+template <class Func>
+struct UserFunc
+{
+	template <class Func_>
+		requires std::convertible_to<Func_, Func>
+	UserFunc(Func_&& f) : m_func(std::forward<Func_>(f)) {}
+
+	template <class ...NPs>
+		requires (node_or_placeholder<NPs> || ...)
+	auto operator()(NPs&& ...nps) const
+	{
+		return adapt::eval::detail::MakeFunctionNode(m_func, std::forward<NPs>(nps)...);
+	}
+private:
+	Func m_func;
+};
+template<class Func> UserFunc(Func&&) -> UserFunc<std::decay_t<Func>>;
 
 }
 

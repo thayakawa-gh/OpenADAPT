@@ -9,7 +9,7 @@ find_package(Matplot++ REQUIRED)
 add_executable(${PROJECT_NAME}
 	"TestLayerInfo.cpp" "TestContainer.cpp"
 	"TestEvaluate.cpp" "TestExtract.cpp" "TestShow.cpp" "TestFilter.cpp"
-	"TestTraverser.cpp")
+	"TestTraverser.cpp" "TestUserFunc.cpp")
 
 target_link_libraries(${PROJECT_NAME} OpenADAPT GTest::GTest GTest::Main yaml-cpp Matplot++::matplot)
 

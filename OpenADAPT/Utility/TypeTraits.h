@@ -270,6 +270,9 @@ using CommonRef_t = CommonRef<T...>::Type;
 
 //static constexpr auto x = ConstantSequence<1, 2, 3>();
 
+template <class T>
+concept non_void = !std::same_as<T, void>;
+
 template <class T, template <class...> class U>
 concept derived_from_xt = IsBaseOf_XT<U, T>::value;
 

@@ -290,8 +290,16 @@ void CalculateWithLambda_ctti(const Tree& t)
 	assert(rank(t, bpos) == 3);
 	//将来的には、階層関数にもouterを付与できるようにしたい。これが必要な状況がいくらか考えられる。
 
+	//例8 ユーザー定義関数
+	//ラムダ関数中で使う関数をユーザーが定義することもできる。
+	auto average = adapt::UserFunc([](int32_t a, int32_t b, int32_t c) { return (a + b + c) / 3.; });
+	auto avg_3_subjs = average(jpn, math, eng);
+	assert(avg_3_subjs(t, bpos) == (48 + 8 + 24) / 3.);
+	//ジェネリックラムダのようなテンプレートを含む関数を使う場合は、必ずconceptやSFINAEを用いて制約しておくこと。
+	//特にRttiの場合、FieldTypeに定義されている全ての型で呼び出しを試みるため、制約のない汎用引数の関数はコンパイルエラーに繋がる。
+	auto constrained = adapt::UserFunc([](const auto& x, const auto& y) -> decltype(x + y) { return x + y; });
 
-	//例8 Rttiへの変換
+	//例9 Rttiへの変換
 	//CttiPlaceholderから作られたラムダ関数は実行される関数などの情報をstaticに持っており、
 	//Rttiの場合と異なりラムダ関数ごとに型が異なる。
 	//そのため通常はvectorに纏めたりすることは出来ないのだが、

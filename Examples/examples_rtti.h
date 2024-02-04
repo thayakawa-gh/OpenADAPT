@@ -280,6 +280,15 @@ void CalculateWithLambda_rtti(const Tree& t)
 	bpos = { 0, 0, 3 };//濃伊田美衣子の後期期末試験の位置。
 	assert(rank(t, bpos).i64() == 3);
 	//将来的には、階層関数にもouterを付与できるようにしたい。これが必要な状況がいくらか考えられる。
+
+	//例8 ユーザー定義関数
+	//ラムダ関数中で使う関数をユーザーが定義することもできる。
+	auto average = adapt::UserFunc([](int32_t a, int32_t b, int32_t c) { return (a + b + c) / 3.; });
+	auto avg_3_subjs = average(jpn, math, eng);
+	assert(avg_3_subjs(t, bpos).f64() == (48 + 8 + 24) / 3.);
+	//ジェネリックラムダのようなテンプレートを含む関数を使う場合は、必ずconceptやSFINAEを用いて制約しておくこと。
+	//特にRttiの場合、FieldTypeに定義されている全ての型で呼び出しを試みるため、制約のない汎引数関数はコンパイルエラーに繋がる。
+	auto constrained = adapt::UserFunc([](const auto& x, const auto& y) -> decltype(x + y) { return x + y; });
 }
 
 //ラムダ関数およびそれに基づくViewを活用した走査。
