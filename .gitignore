@@ -3,7 +3,7 @@
 
 build/
 CMakeSettings.json
-vcpkg.json
+vcpkg*.json
 
 # User-specific files
 *.suo
