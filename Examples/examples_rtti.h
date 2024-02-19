@@ -288,6 +288,7 @@ void CalculateWithLambda_rtti(const Tree& t)
 	assert(avg_3_subjs(t, bpos).f64() == (48 + 8 + 24) / 3.);
 	//ジェネリックラムダのようなテンプレートを含む関数を使う場合は、必ずconceptやSFINAEを用いて制約しておくこと。
 	//特にRttiの場合、FieldTypeに定義されている全ての型で呼び出しを試みるため、制約のない汎引数関数はコンパイルエラーに繋がる。
+	//また、intやdoubleなどを引数に取る関数を与えると、動作上は問題ないが警告が出る可能性がある。
 	auto constrained = adapt::UserFunc([](const auto& x, const auto& y) -> decltype(x + y) { return x + y; });
 }
 

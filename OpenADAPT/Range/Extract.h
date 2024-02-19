@@ -29,9 +29,9 @@ class CttiExtractor
 	template <LayerType Layer, StaticChar Name, class NP, class ...Cmp, class ...NPs_>
 	static consteval auto GetStructure(LayerConstant<Layer> layer, TypeList<Cmp...>, TypeList<std::tuple<StaticString<Name>, NP>, NPs_...>)
 	{
-		using Decayed = std::decay_t<NP>;
-		if constexpr (Decayed::GetLayer() == Layer)
-			return GetStructure(layer, TypeList<Cmp..., Named<Name, typename Decayed::RetType>>{}, TypeList<NPs_...>{});
+		using DecayedNP = std::decay_t<NP>;
+		if constexpr (DecayedNP::GetLayer() == Layer)
+			return GetStructure(layer, TypeList<Cmp..., Named<Name, std::decay_t<typename DecayedNP::RetType>>>{}, TypeList<NPs_...>{});
 		else
 			return GetStructure(layer, TypeList<Cmp...>{}, TypeList<NPs_...>{});
 	}

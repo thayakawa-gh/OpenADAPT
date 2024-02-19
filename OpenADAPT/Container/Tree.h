@@ -19,10 +19,6 @@ class Tree_base : public Hierarchy_
 		template <class> class Qualifier>
 	friend class detail::Traverser_impl;
 
-	template <LayerType Layer>
-	using LayerSD = std::conditional_t<s_hierarchy<Hierarchy_>, LayerConstant<Layer>, LayerType>;
-	using TopLayerSD = LayerSD<-1_layer>;
-	using LayerSD_0 = LayerSD<0_layer>;
 
 	using ElementBlockPolicy = ElementBlockPolicy_;
 
@@ -51,15 +47,15 @@ public:
 	using ElementBlock = ElementBlock_impl<Hierarchy, ElementBlockPolicy>;
 
 	template <LayerType Layer>
-	using ElementRefSD = ElementRef_impl<Hierarchy, std::type_identity_t, LayerSD<Layer>>;
+	using ElementRefF = ElementRef_impl<Hierarchy, std::type_identity_t, LayerConstant<Layer>>;
 	template <LayerType Layer>
-	using ConstElementRefSD = ElementRef_impl<Hierarchy, std::add_const_t, LayerSD<Layer>>;
+	using ConstElementRefF = ElementRef_impl<Hierarchy, std::add_const_t, LayerConstant<Layer>>;
 
-	using TopElementRef = ElementRef_impl<Hierarchy, std::type_identity_t, TopLayerSD>;
-	using TopConstElementRef = ElementRef_impl<Hierarchy, std::add_const_t, TopLayerSD>;
+	using TopElementRef = ElementRef_impl<Hierarchy, std::type_identity_t, LayerConstant<(LayerType)-1>>;
+	using TopConstElementRef = ElementRef_impl<Hierarchy, std::add_const_t, LayerConstant<(LayerType)-1>>;
 
-	using ElementRef_0 = ElementRef_impl<Hierarchy, std::type_identity_t, LayerSD_0>;
-	using ConstElementRef_0 = ElementRef_impl<Hierarchy, std::add_const_t, LayerSD_0>;
+	using ElementRef_0 = ElementRef_impl<Hierarchy, std::type_identity_t, LayerConstant<(LayerType)0>>;
+	using ConstElementRef_0 = ElementRef_impl<Hierarchy, std::add_const_t, LayerConstant<(LayerType)0>>;
 
 	using ElementRef = ElementRef_impl<Hierarchy, std::type_identity_t, LayerType>;
 	using ConstElementRef = ElementRef_impl<Hierarchy, std::add_const_t, LayerType>;
@@ -115,7 +111,7 @@ public:
 	}
 
 	void VerifyStructure()
-		requires d_hierarchy<Hierarchy>
+		requires d_hierarchy<Hierarchy> || f_hierarchy<Hierarchy>
 	{
 		Hierarchy::VerifyStructure();
 		Construct();
@@ -159,12 +155,12 @@ public:
 		return GetTopElement();
 	}
 	template <std::integral ...Indices>
-	ElementRefSD<(LayerType)sizeof...(Indices)> GetBranch(BindexType index, Indices ...indices)
+	ElementRefF<(LayerType)sizeof...(Indices)> GetBranch(BindexType index, Indices ...indices)
 	{
 		return GetLowerElements().GetBranch(index, indices...);
 	}
 	template <std::integral ...Indices>
-	ConstElementRefSD<(LayerType)sizeof...(Indices)> GetBranch(BindexType index, Indices ...indices) const
+	ConstElementRefF<(LayerType)sizeof...(Indices)> GetBranch(BindexType index, Indices ...indices) const
 	{
 		return GetLowerElements().GetBranch(index, indices...);
 	}
@@ -292,17 +288,17 @@ public:
 
 	auto GetLowerElements() const
 	{
-		if constexpr (s_hierarchy<Hierarchy>)
-			return ElementListRef_impl<Hierarchy, std::add_const_t, LayerConstant<0_layer>>{ this, 0_layer, GetBlockOneLayerDown() };
-		else
-			return ElementListRef_impl<Hierarchy, std::add_const_t, LayerType>{ this, 0_layer, GetBlockOneLayerDown() };
+		//if constexpr (s_hierarchy<Hierarchy>)
+			return ElementListRef_impl<Hierarchy, std::add_const_t, LayerConstant<0_layer>>(this, 0_layer, GetBlockOneLayerDown());
+		//else
+		//	return ElementListRef_impl<Hierarchy, std::add_const_t, LayerType>(this, 0_layer, GetBlockOneLayerDown());
 	}
 	auto GetLowerElements()
 	{
-		if constexpr (s_hierarchy<Hierarchy>)
-			return ElementListRef_impl<Hierarchy, std::type_identity_t, LayerConstant<0_layer>>{ this, 0_layer, GetBlockOneLayerDown() };
-		else
-			return ElementListRef_impl<Hierarchy, std::type_identity_t, LayerType>{ this, 0_layer, GetBlockOneLayerDown() };
+		//if constexpr (s_hierarchy<Hierarchy>)
+			return ElementListRef_impl<Hierarchy, std::type_identity_t, LayerConstant<0_layer>>(this, 0_layer, GetBlockOneLayerDown());
+		//else
+		//	return ElementListRef_impl<Hierarchy, std::type_identity_t, LayerType>(this, 0_layer, GetBlockOneLayerDown());
 	}
 
 private:
@@ -323,14 +319,14 @@ private:
 	//濫用してはいけないので、privateで定義しておく。
 	detail::ElementIterator_impl<Hierarchy, std::add_const_t> GetTopIterator() const
 	{
-		return detail::ElementIterator_impl<Hierarchy, std::add_const_t>{ this, -1, m_top_element };
+		return detail::ElementIterator_impl<Hierarchy, std::add_const_t>(this, -1, m_top_element);
 	}
 	detail::ElementIterator_impl<Hierarchy, std::type_identity_t> GetTopIterator()
 	{
-		return detail::ElementIterator_impl<Hierarchy, std::type_identity_t>{ this, -1, m_top_element };
+		return detail::ElementIterator_impl<Hierarchy, std::type_identity_t>(this, -1, m_top_element);
 	}
 
-	char* m_top_element;
+	char* m_top_element = nullptr;
 };
 
 }
@@ -340,6 +336,7 @@ class STree : public detail::Tree_base<STree<LayerElements...>,
 									   SHierarchy<STree<LayerElements...>, LayerElements...>,
 									   detail::SElementBlockPolicy>
 {
+public:
 	using Base = detail::Tree_base<STree<LayerElements...>,
 								   SHierarchy<STree<LayerElements...>, LayerElements...>,
 								   detail::SElementBlockPolicy>;
@@ -350,6 +347,25 @@ class DTree : public detail::Tree_base<DTree, DHierarchy<DTree>, detail::DElemen
 {
 public:
 	using Base = detail::Tree_base<DTree, DHierarchy<DTree>, detail::DElementBlockPolicy>;
+	using Base::Base;
+};
+
+template <named_tuple TopLayer, named_tuple Layer0>
+class STable : public detail::Tree_base<STable<TopLayer, Layer0>,
+										SHierarchy<STable<TopLayer, Layer0>, TopLayer, Layer0>,
+										detail::SElementBlockPolicy>
+{
+public:
+	using Base = detail::Tree_base<STable<TopLayer, Layer0>,
+								   SHierarchy<STable<TopLayer, Layer0>, TopLayer, Layer0>,
+								   detail::SElementBlockPolicy>;
+	using Base::Base;
+};
+
+class DTable : public detail::Tree_base<DTable, FHierarchy<DTable, 0>, detail::DElementBlockPolicy>
+{
+public:
+	using Base = detail::Tree_base<DTable, FHierarchy<DTable, 0>, detail::DElementBlockPolicy>;
 	using Base::Base;
 };
 

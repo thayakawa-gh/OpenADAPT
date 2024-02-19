@@ -187,6 +187,22 @@ public:
 template <template <auto...> class Base, class Derived>
 inline constexpr bool IsBaseOf_XN_v = IsBaseOf_XN<Base, Derived>::value;
 
+
+template <template <auto, class...> class Base, class Derived>
+struct IsBaseOf_NXT
+{
+	template <auto N, class ...U>
+	static constexpr std::true_type check(const Base<N, U...>*);
+	static constexpr std::false_type check(const void*);
+
+	static const Derived* d;
+public:
+	static constexpr bool value = decltype(check(d))::value;
+};
+
+template <template <auto, class...> class Base, class Derived>
+inline constexpr bool IsBaseOf_NXT_v = IsBaseOf_NXT<Base, Derived>::value;
+
 template <template <class ...> class T, class U>
 struct IsSame_XT : public std::false_type {};
 template <template <class ...> class T, class ...X>
@@ -278,6 +294,9 @@ concept derived_from_xt = IsBaseOf_XT<U, T>::value;
 
 template <class T, template <auto...> class U>
 concept derived_from_xn = IsBaseOf_XN<U, T>::value;
+
+template <class T, template <auto, class...> class U>
+concept derived_from_nxt = IsBaseOf_NXT<U, T>::value;
 
 template <class T, template <class...> class U>
 concept same_as_xt = IsSame_XT<U, T>::value;

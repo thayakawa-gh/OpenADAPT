@@ -104,3 +104,62 @@ TEST_F(Aggregator, STree_Filter)
 		std::make_tuple(math, eng, jpn, sci, soc),
 		std::true_type{});
 }
+
+template <class Container, class Layer>
+void TestFilter(Container& table, const std::vector<Class>& clses, const Layer& l)
+{
+	auto [number, name, exam, math, jpn, eng, sci, soc] = l;
+
+	auto exam_1 = exam == 1;
+	auto sum5subjs = math + jpn + eng + sci + soc;
+
+	auto range = table | Filter(exam_1, sum5subjs >= 400) | GetRange(0_layer);
+	auto trav = range.begin();
+
+	InitAll(trav, exam_1, sum5subjs);
+
+	using enum adapt::FieldType;
+	auto Evaluate = []<FieldType Type, class Trav, class NP>(Number<Type>, const Trav & t, NP & np)
+	{
+		if constexpr (typed_node_or_placeholder<NP>) return np.Evaluate(t);
+		else return np.Evaluate(t).template as<Type>();
+	};
+	for (BindexType i = 0; i < clses.size(); ++i)
+	{
+		auto& c = clses[i];
+		for (BindexType j = 0; j < c.m_students.size(); ++j)
+		{
+			auto& s = c.m_students[j];
+			for (BindexType k = 0; k < s.m_records.size(); ++k)
+			{
+				auto& r = s.m_records[k];
+				if (r.m_exam != 1) continue;
+				if (Sum5Subjs(r) < 400) continue;
+
+				EXPECT_EQ(Evaluate(Number<Str>{}, trav, name), s.m_name);
+
+				//filterは階層関数内部の走査には効力を持たない。
+				EXPECT_EQ(Evaluate(Number<I32>{}, trav, sum5subjs), Sum5Subjs(r));
+
+				++trav;
+			}
+		}
+	}
+}
+
+TEST_F(Aggregator, STable_Filter)
+{
+	auto [number, name, exam, math, eng, jpn, sci, soc] =
+		m_stable.GetPlaceholders("number"_fld, "name"_fld, "exam"_fld, "math"_fld, "japanese"_fld, "english"_fld, "science"_fld, "social"_fld);
+
+	TestFilter(m_stable, m_class,
+		std::make_tuple(number, name, exam, math, eng, jpn, sci, soc));
+}
+TEST_F(Aggregator, DTable_Filter)
+{
+	auto [number, name, exam, math, eng, jpn, sci, soc] =
+		m_dtable.GetPlaceholders("number", "name", "exam", "math", "japanese", "english", "science", "social");
+
+	TestFilter(m_dtable, m_class,
+		std::make_tuple(number, name, exam, math, eng, jpn, sci, soc));
+}

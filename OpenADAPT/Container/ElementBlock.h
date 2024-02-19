@@ -19,6 +19,7 @@ struct HierarchyWrapper<SHierarchy<Container, LayerElements...>>
 {
 	using Hierarchy = SHierarchy<Container, LayerElements...>;
 	constexpr HierarchyWrapper() {};
+	//null初期化したい状況があるのでポインタで受け取る。
 	constexpr HierarchyWrapper(const Hierarchy*) {}
 	static consteval Hierarchy value() { return Hierarchy{}; }
 	constexpr bool operator==(const HierarchyWrapper&) const { return true; }
@@ -27,10 +28,22 @@ template <class Container>
 struct HierarchyWrapper<DHierarchy<Container>>
 {
 	using Hierarchy = DHierarchy<Container>;
-	HierarchyWrapper() {};
-	HierarchyWrapper(const Hierarchy* h) : m_hierarchy(h) {}
-	const Hierarchy& value() const { return *m_hierarchy; }
-	bool operator==(const HierarchyWrapper& h) const { return m_hierarchy == h.m_hierarchy; }
+	constexpr HierarchyWrapper() {};
+	//null初期化したい状況があるのでポインタで受け取る。
+	constexpr HierarchyWrapper(const Hierarchy* h) : m_hierarchy(h) {}
+	constexpr const Hierarchy& value() const { return *m_hierarchy; }
+	constexpr bool operator==(const HierarchyWrapper& h) const { return m_hierarchy == h.m_hierarchy; }
+	const Hierarchy* m_hierarchy = nullptr;
+};
+template <class Container, LayerType MaxLayer>
+struct HierarchyWrapper<FHierarchy<Container, MaxLayer>>
+{
+	using Hierarchy = FHierarchy<Container, MaxLayer>;
+	constexpr HierarchyWrapper() {};
+	//null初期化したい状況があるのでポインタで受け取る。
+	constexpr HierarchyWrapper(const Hierarchy* h) : m_hierarchy(h) {}
+	constexpr const Hierarchy& value() const { return *m_hierarchy; }
+	constexpr bool operator==(const HierarchyWrapper& h) const { return m_hierarchy == h.m_hierarchy; }
 	const Hierarchy* m_hierarchy = nullptr;
 };
 
@@ -358,7 +371,8 @@ public:
 		ElementBlock_impl* e_to = std::launder(reinterpret_cast<ElementBlock_impl*>(to));
 		*e_to = std::move(*e_from);
 	}
-	template <s_hierarchy Hier, LayerType L>
+	template <class Hier, LayerType L>
+		requires s_hierarchy<Hier> || f_hierarchy<Hier>
 	static void DestroyElementBlock(HierarchyWrapper<Hier> h, LayerConstant<L>, char* ptr)
 	{
 		//ptrの先にElementBlockがあるものとして、それを削除する。
@@ -390,10 +404,18 @@ public:
 	}
 
 
-	template <s_hierarchy Hier, LayerType L>
+	template <class Hier, LayerType L>
+		requires s_hierarchy<Hier>
 	static ptrdiff_t GetPtrDiff(HierarchyWrapper<Hier>, LayerConstant<L>, BindexType index)
 	{
 		constexpr ptrdiff_t blocksize = GetBlockSize(HierarchyWrapper<Hier>{}, LayerConstant<L>{});
+		return (ptrdiff_t)index * blocksize;
+	}
+	template <class Hier, LayerType L>
+		requires f_hierarchy<Hier>
+	static ptrdiff_t GetPtrDiff(HierarchyWrapper<Hier> h, LayerConstant<L>, BindexType index)
+	{
+		ptrdiff_t blocksize = GetBlockSize(h, LayerConstant<L>{});
 		return (ptrdiff_t)index * blocksize;
 	}
 	static ptrdiff_t GetPtrDiff(HierarchySD h, LayerType layer, BindexType index)
@@ -403,11 +425,22 @@ public:
 	}
 
 	template <s_hierarchy Hier, LayerType L>
-	static consteval std::tuple<bool, size_t, size_t> GetBlockTraits(HierarchyWrapper<Hier>, LayerConstant<L>)
+	static consteval auto GetBlockTraits(HierarchyWrapper<Hier>, LayerConstant<L>)
 	{
-		constexpr bool ismaxlayer = L == Hier::GetMaxLayer();
-		constexpr size_t elmsize = Hier::GetElementSize(LayerConstant<L>{});
-		constexpr size_t blocksize = elmsize + (!ismaxlayer) * sizeof(ElementBlock_impl);
+		constexpr auto ismaxlayer = std::bool_constant<(L == Hier::GetMaxLayer())>{};
+		constexpr auto elmsize = SizeConstant<Hier::GetElementSize(LayerConstant<L>{})>{};
+		constexpr auto blocksize = SizeConstant<(elmsize + (!ismaxlayer) * sizeof(ElementBlock_impl))>{};
+		//constexpr bool ismaxlayer = L == Hier::GetMaxLayer();
+		//constexpr size_t elmsize = Hier::GetElementSize(LayerConstant<L>{});
+		//constexpr size_t blocksize = elmsize + (!ismaxlayer) * sizeof(ElementBlock_impl);
+		return std::make_tuple(ismaxlayer, elmsize, blocksize);
+	}
+	template <f_hierarchy Hier, LayerType L>
+	static constexpr auto GetBlockTraits(HierarchyWrapper<Hier> h, LayerConstant<L>)
+	{
+		constexpr auto ismaxlayer = std::bool_constant<(L == Hier::GetMaxLayer())>{};
+		size_t elmsize = h.value().GetElementSize(LayerConstant<L>{});
+		size_t blocksize = elmsize + (!ismaxlayer) * sizeof(ElementBlock_impl);
 		return std::make_tuple(ismaxlayer, elmsize, blocksize);
 	}
 	static constexpr std::tuple<bool, size_t, size_t> GetBlockTraits(HierarchySD h, LayerType layer)
@@ -418,29 +451,35 @@ public:
 		return std::make_tuple(ismaxlayer, elmsize, blocksize);
 	}
 
-	template <s_hierarchy Hier, LayerType L>
+	template <class Hier, LayerType L>
+		requires s_hierarchy<Hier> || f_hierarchy<Hier>
 	static consteval bool IsMaxLayer(HierarchyWrapper<Hier>, LayerConstant<L>)
 	{
-		return IsMaxLayer(HierarchySD{}, L);
+		return Hierarchy::GetMaxLayer() == L;
 	}
 	static constexpr bool IsMaxLayer(HierarchySD h, LayerType layer)
 	{
-		if constexpr (s_hierarchy<Hierarchy>) return Hierarchy::GetMaxLayer() == layer;
-		else return h.value().GetMaxLayer() == layer;
+		if constexpr (s_hierarchy<Hierarchy> || f_hierarchy<Hierarchy>)
+			return Hierarchy::GetMaxLayer() == layer;
+		else
+			return h.value().GetMaxLayer() == layer;
 	}
 
 	template <s_hierarchy Hier, LayerType L>
 	static consteval size_t GetBlockSize(HierarchyWrapper<Hier>, LayerConstant<L>)
 	{
 		return GetBlockSize(HierarchyWrapper<Hier>{}, L);
-		//return Hier::GetElementSize(LayerConstant<L>{}) + (L != Hier::GetMaxLayer()) * sizeof(ElementBlock_impl);
+	}
+	template <f_hierarchy Hier, LayerType L>
+	static constexpr size_t GetBlockSize(HierarchyWrapper<Hier> h, LayerConstant<L>)
+	{
+		constexpr bool ismaxlayer = IsMaxLayer(HierarchyWrapper<Hier>{}, LayerConstant<L>{});
+		constexpr size_t blocksize = (!ismaxlayer) * sizeof(ElementBlock_impl);
+		return GetElementSize(h, LayerConstant<L>{}) + blocksize;
 	}
 	static constexpr size_t GetBlockSize(HierarchySD h, LayerType layer)
 	{
-		//if constexpr (s_hierarchy<Hierarchy>)
-		//	return GetElementSize(h, layer) + (!IsMaxLayer(h, layer)) * sizeof(ElementBlock_impl);
-		//else
-			return GetElementSize(h, layer) + (!IsMaxLayer(h, layer)) * sizeof(ElementBlock_impl);
+		return GetElementSize(h, layer) + (!IsMaxLayer(h, layer)) * sizeof(ElementBlock_impl);
 	}
 
 	template <s_hierarchy Hier, LayerType L>
@@ -462,8 +501,8 @@ public:
 	}
 	static constexpr decltype(auto) GetPlaceholdersIn(HierarchySD h, LayerType layer)
 	{
-		if constexpr (s_hierarchy<Hierarchy>) return Hierarchy::GetPlaceholdersIn(layer);
-		else return h.value().GetPlaceholdersIn(layer);
+		static_assert(!s_hierarchy<Hierarchy>);
+		return h.value().GetPlaceholdersIn(layer);
 	}
 
 private:

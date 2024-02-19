@@ -6,6 +6,9 @@
 #include <OpenADAPT/Utility/NamedTuple.h>
 #include <OpenADAPT/Common/Definition.h>
 #include <OpenADAPT/Common/Bpos.h>
+#ifdef USE_ANKERL_UNORDERED_DENSE
+#include <ankerl/unordered_dense.h>
+#endif
 
 namespace adapt
 {
@@ -55,11 +58,19 @@ struct Hasher;
 template <class Key>
 struct Hasher<std::tuple<Key>, 1>
 {
-	size_t operator()(const Key& key) const
+	using is_transparent = void;
+#ifdef USE_ANKERL_UNORDERED_DENSE
+	using is_avalanching = void;
+#endif
+	template <class T>
+		requires std::convertible_to<T, Key>
+	size_t operator()(const T& key) const noexcept
 	{
 		return std::hash<Key>{}(key);
 	}
-	size_t operator()(const std::tuple<Key>& key) const
+	template <class T>
+		requires std::convertible_to<T, Key>
+	size_t operator()(const std::tuple<T>& key) const noexcept
 	{
 		return (*this)(std::get<0>(key));
 	}
@@ -67,28 +78,37 @@ struct Hasher<std::tuple<Key>, 1>
 template <class ...Keys, size_t Size>
 struct Hasher<std::tuple<Keys...>, Size>
 {
+	using is_transparent = void;
+#ifdef USE_ANKERL_UNORDERED_DENSE
+	using is_avalanching = void;
+#endif
 private:
 	template <size_t I, class ...Keys_>
-	static size_t Combine(const std::tuple<Keys_...>& v)
+	static size_t Combine(const std::tuple<Keys_...>& v) noexcept
 	{
 		if constexpr (sizeof...(Keys_) == I) return 0;
 		else
 		{
 			size_t seed = Combine<I + 1>(v);
-			using Key = std::tuple_element_t<I, std::tuple<Keys_...>>;
+			using Key = GetType_t<I, Keys...>;
 			return seed ^ (Hasher<std::tuple<Key>>{}(std::get<I>(v)) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
 		}
 	}
 public:
-	size_t operator()(const std::tuple<Keys...>& keys) const
+	size_t operator()(const std::tuple<Keys...>& keys) const noexcept
 	{
 		return Combine<0>(keys);
 	}
 };
 }
 
+#ifdef USE_ANKERL_UNORDERED_DENSE
+template <class ...Types>
+using Hashtable = ankerl::unordered_dense::map<std::tuple<Types...>, Bpos, detail::Hasher<std::tuple<Types...>>>;
+#else
 template <class ...Types>
 using Hashtable = std::unordered_map<std::tuple<Types...>, Bpos, detail::Hasher<std::tuple<Types...>>>;
+#endif
 
 template <class T>
 concept direction_flag = std::is_same_v<ForwardFlag, T> || std::is_same_v<BackwardFlag, T>;
@@ -185,13 +205,9 @@ concept dynamically_layered = anything_layered<T> && !statistically_layered<T>;
 
 template <class T>
 concept placeholder = anything_typed<T> && anything_layered<T> &&
-	requires(std::remove_cvref_t<T> v,
-			 typename std::remove_cvref_t<T>::Container s,
-			 typename std::remove_cvref_t<T>::Container::Traverser t)
+	requires(std::remove_cvref_t<T> v)
 {
 	typename std::remove_cvref_t<T>::Container;
-	typename std::remove_cvref_t<T>::Container::Traverser;
-	typename std::remove_cvref_t<T>::Container::ConstTraverser;
 	{ v.GetIndex() } -> similar_to<uint16_t>;
 	{ v.GetPtrOffset() } -> similar_to<ptrdiff_t>;
 };
@@ -373,7 +389,16 @@ std::ranges::viewable_range<T> && requires (T t)
 };
 
 template <class T>
-concept s_hierarchy = requires(std::remove_reference_t<T> h)
+concept any_hierarchy = requires(std::remove_cvref_t<T> h, LayerType layer, const std::string & name)
+{
+	//typename std::remove_cvref_t<T>::RttiPlaceholder;
+	{ h.GetMaxLayer() } -> std::convertible_to<LayerType>;
+	{ h.GetElementSize(0_layer) } -> std::convertible_to<size_t>;
+	{ h.GetPlaceholder(name) } -> rtti_placeholder;
+	h.GetPlaceholdersIn(0_layer);
+};
+template <class T>
+concept s_hierarchy = any_hierarchy<T> && requires(std::remove_cvref_t<T> h)
 {
 	//typename std::remove_cvref_t<T>::template CttiPlaceholder<0_layer, int32_t>;
 	LayerConstant<std::remove_cvref_t<T>::GetMaxLayer()>{};
@@ -382,7 +407,13 @@ concept s_hierarchy = requires(std::remove_reference_t<T> h)
 	std::remove_cvref_t<T>::GetPlaceholdersIn(0_layer);
 };
 template <class T>
-concept d_hierarchy = requires(std::remove_reference_t<T> h, LayerType layer, const std::string & name)
+concept f_hierarchy = any_hierarchy<T> && !s_hierarchy<T> && requires(std::remove_cvref_t<T> h)
+{
+	LayerConstant<std::remove_cvref_t<T>::GetMaxLayer()>{};
+};
+template <class T>
+concept d_hierarchy = any_hierarchy<T> && !s_hierarchy<T> && !f_hierarchy<T> &&
+	requires(std::remove_cvref_t<T> h, LayerType layer, const std::string & name)
 {
 	//typename std::remove_cvref_t<T>::RttiPlaceholder;
 	{ h.GetMaxLayer() } -> similar_to<LayerType>;
@@ -390,26 +421,44 @@ concept d_hierarchy = requires(std::remove_reference_t<T> h, LayerType layer, co
 	{ h.GetPlaceholder(name) } -> rtti_placeholder;
 	h.GetPlaceholdersIn(layer);
 };
+
+//joined containerはhierarchyではないので、ここではany_hierarchyを要求しない。
 template <class T>
-concept any_tree =
-	requires(std::remove_reference_t<T> t, LayerType layer, BindexType index)
+concept any_container = requires(std::remove_cvref_t<T> t, LayerType layer)
 {
 	typename std::remove_cvref_t<T>::Traverser;
 	typename std::remove_cvref_t<T>::ConstTraverser;
 	typename std::remove_cvref_t<T>::Range;
 	typename std::remove_cvref_t<T>::ConstRange;
-	{ t[index][index] };
 	{ t.GetRange(layer) } -> traversal_range;
-	{ static_cast<const std::remove_cvref_t<T>&>(t).GetRange(layer) } -> std::same_as<typename std::remove_cvref_t<T>::ConstRange>;
 };
+
+template <class T>
+concept any_table = any_container<T> && (std::remove_cvref_t<T>::MaxLayer == 0_layer);
+template <class T>
+concept s_table = s_hierarchy<T> && any_table<T>;
+template <class T>
+concept d_table = f_hierarchy<T> && any_table<T>;
+
+template <class T>
+concept any_tree = any_container<T> && !any_table<T>;
 template <class T>
 concept s_tree = s_hierarchy<T> && any_tree<T>;
 template <class T>
 concept d_tree = d_hierarchy<T> && any_tree<T>;
 
+//hierarchyであるものはjoined_containerではない。
 template <class T>
-concept container_simplex = s_tree<T> || d_tree<T>;
+concept container_simplex = any_container<T> && any_hierarchy<T>;
 
+namespace detail
+{
+template <RankType MaxRank_, class Container>
+class JointMethods;
+}
+
+template <class T>
+concept joined_container = any_container<T> && derived_from_nxt<std::remove_cvref_t<T>, detail::JointMethods>;
 
 template <template <class> class Modifier, class ...Containers>
 class DJoinedContainer;
@@ -422,6 +471,12 @@ template <class T>
 struct IsSJoinedContainer : public std::false_type {};
 //template <template <class> class Qualifier, class ...Containers>
 //struct IsSJoinedContainer<SJoinedContainer<Qualifier, Containers...>> : public std::true_type {};
+
+//以下のコンセプトをjoined_containerから引き継ぐ形にすると
+//どういうわけか明らかに満足するクラスを渡しても満足しなくなる。
+//たとえばd_joined_contaier = joined_container<T>;とするだけでも狂う。
+//それどころか、any_containerなどのコンセプトも巻き添えを食って機能しなくなる。
+//msvc、gcc、clangいずれも同様だったのでコンパイラのバグではないと思うが、原因が分からない。
 template <class T>
 concept d_joined_container = IsDJoinedContainer<std::remove_cvref_t<T>>::value;
 template <class T>
@@ -429,16 +484,16 @@ concept s_joined_container = IsSJoinedContainer<std::remove_cvref_t<T>>::value;
 
 //階層構造をdynamicにしか決定できないもの。
 template <class T>
-concept d_container = d_tree<T> || d_joined_container<T>;
+concept d_container = d_tree<T> || d_table<T> || d_joined_container<T>;
 //階層構造をstaticに決定できるもの。
 template <class T>
-concept s_container = s_tree<T> || s_joined_container<T>;
+concept s_container = s_tree<T> || s_table<T> || s_joined_container<T>;
 
-template <class T>
-concept joined_container = s_joined_container<T> || d_joined_container<T>;
+//template <class T>
+//concept joined_container = s_joined_container<T> || d_joined_container<T>;
 
-template <class T>
-concept any_container = container_simplex<T> || joined_container<T>;
+//template <class T>
+//concept any_container = container_simplex<T> || joined_container<T>;
 
 
 namespace detail

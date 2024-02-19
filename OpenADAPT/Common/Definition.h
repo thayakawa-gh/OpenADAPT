@@ -22,10 +22,9 @@ struct RankConstant : IntegralConstant<RankType, Rank, RankConstant> {};
 template <DepthType Depth>
 struct DepthConstant : IntegralConstant<DepthType, Depth, DepthConstant> {};
 
-template <LayerType Layer>
-inline constexpr LayerConstant<Layer> layer_ = LayerConstant<Layer>{};
-template <RankType Rank>
-inline constexpr RankConstant<Rank> rank_ = RankConstant<Rank>{};
+template <size_t Size>
+struct SizeConstant : IntegralConstant<size_t, Size, SizeConstant> {};
+
 
 namespace detail
 {

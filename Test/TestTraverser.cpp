@@ -212,3 +212,97 @@ TEST_F(Aggregator, DJoinedContainer_Traverser)
 				  std::make_tuple(name),
 				  std::make_tuple(math));
 }
+
+
+
+template <class Container, class Layer0>
+void TestTraverser(Container& tree, const std::vector<Class>& cls,
+	const Layer0& l0)
+{
+	using enum FieldType;
+	//constexpr bool is_joined = joined_container<Container>;
+
+	auto [class_, name, math] = l0;
+
+	auto get_field = []<FieldType Type, class Trav, class PH>(Number<Type>, const Trav & t, PH & ph)
+	{
+		if constexpr (s_container<Container>) return t[ph];
+		else return t[ph].template as<Type>();
+	};
+
+	auto range = tree.GetRange(0_layer);
+	auto trav = range.begin();
+	Bpos cur(2);
+	Bpos buf(2);
+
+	//正順
+	size_t clssize = cls.size();
+	for (BindexType i = 0; i < clssize; ++i)
+	{
+		cur[0] = i;
+		const Class& c = cls[i];
+		size_t stusize = c.m_students.size();
+		for (BindexType j = 0; j < stusize; ++j)
+		{
+			cur[1] = j;
+			const Student& s = c.m_students[j];
+			size_t recsize = s.m_records.size();
+			for (BindexType k = 0; k < recsize; ++k)
+			{
+				cur[2] = k;
+				const Record& r = s.m_records[k];
+
+				EXPECT_EQ(get_field(Number<I08>{}, trav, class_), c.m_class);
+				EXPECT_EQ(get_field(Number<Str>{}, trav, name), s.m_name);
+				EXPECT_EQ(get_field(Number<I32>{}, trav, math), r.m_math);
+
+				++trav;
+			}
+		}
+	}
+	EXPECT_EQ(trav, range.end());
+
+	//逆順
+	for (int32_t i = (int32_t)clssize - 1; i >= 0; --i)
+	{
+		//forループをBindexTypeで回してはいけない。unsignedなのでi >= 0の判定が意味をなさない。
+		cur[0] = i;
+		const Class& c = cls[i];
+		size_t stusize = c.m_students.size();
+		for (int32_t j = (int32_t)stusize - 1; j >= 0; --j)
+		{
+			cur[1] = j;
+			const Student& s = c.m_students[j];
+			size_t recsize = s.m_records.size();
+			for (int32_t k = (int32_t)recsize - 1; k >= 0; --k)
+			{
+				--trav;
+
+				cur[2] = k;
+				const Record& r = s.m_records[k];
+
+				EXPECT_EQ(get_field(Number<I08>{}, trav, class_), c.m_class);
+				EXPECT_EQ(get_field(Number<Str>{}, trav, name), s.m_name);
+				EXPECT_EQ(get_field(Number<I32>{}, trav, math), r.m_math);
+			}
+		}
+	}
+	EXPECT_EQ(trav, range.begin());
+}
+TEST_F(Aggregator, Traverse_dtable)
+{
+	auto& t = m_dtable;
+
+	auto [class_, name, math] = t.GetPlaceholders("class", "name", "math");
+	static_assert(adapt::container_simplex<adapt::DTable>);
+	TestTraverser(t, m_class,
+		std::make_tuple(class_, name, math));
+}
+TEST_F(Aggregator, Traverse_stable)
+{
+	auto& t = m_stable;
+
+	auto [class_, name, math] = t.GetPlaceholders("class"_fld, "name"_fld, "math"_fld);
+	TestTraverser(t, m_class,
+		std::make_tuple(class_, name, math));
+}

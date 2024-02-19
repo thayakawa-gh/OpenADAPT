@@ -323,7 +323,7 @@ protected:
 		using ConstTraverser = Container::ConstTraverser;
 		using Trav = std::conditional_t<any_traverser<TravOrStor>, TravOrStor, ConstTraverser>;
 		Trav* trav = static_cast<Trav*>(m_traverser);
-		//
+
 		if constexpr (!Func::IsRaisingFunc)
 		{
 			//is系関数の場合、重複計算を避けるためにtraverserの一致を確認する。
@@ -335,10 +335,17 @@ protected:
 					bool match = m_func.MatchFixed(t);
 					if (match) return m_func.MatchTrav(t);
 				}
-				else
+				else if constexpr (!std::same_as<Bpos_, std::nullptr_t>)
 				{
 					bool match = m_func.MatchFixed(t, bpos);
 					if (match) return m_func.MatchTrav(t, bpos);
+				}
+				else
+				{
+					//なお、Container + nullptrの場合、is系関数であることがありえないことに加え、
+					//MatchFixedがコンパイルエラーになる。
+					//明らかに呼び出してはいけない関数を呼び出しているので、InvalidArgを投げる。
+					throw InvalidArg("is-function must NOT be called with only a single container argument.");
 				}
 			}
 		}
@@ -374,7 +381,8 @@ protected:
 		else
 		{
 			if constexpr (any_traverser<TravOrStor>) return m_func.MatchTrav(t);
-			else return m_func.MatchTrav(t, bpos);
+			else if constexpr (!std::same_as<Bpos_, std::nullptr_t>) return m_func.MatchTrav(t, bpos);
+			else throw InvalidArg("is-function must NOT be called with only a single container argument.");
 		}
 	}
 public:
@@ -619,9 +627,7 @@ struct RttiLayerFuncNode_impl<Func_, Container_, Node_, Type, std::index_sequenc
 	}
 	virtual RetTypeRef Evaluate(const Container& s, Number<Type>) const override
 	{
-		//Bposのデフォルトコンストラクタのコストは十分小さいし、-1層の計算は決して頻繁に行われないので、
-		//これでも問題ないだろう。
-		return Base::Evaluate_impl(s, Bpos());
+		return Base::Evaluate_impl(s, nullptr);
 	}
 	virtual RetTypeRef Evaluate(const Container& s, const Bpos& bpos, Number<Type>) const override
 	{

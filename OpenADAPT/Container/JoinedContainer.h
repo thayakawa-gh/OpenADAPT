@@ -4,7 +4,6 @@
 #include <OpenADAPT/Joint/LayerInfo.h>
 #include <OpenADAPT/Container/Tree.h>
 #include <OpenADAPT/Traverser/ExternalTraverser.h>
-#include <OpenADAPT/Joint/KeyJoint.h>
 
 namespace adapt
 {
@@ -15,6 +14,8 @@ namespace adapt
 //コンパイル時にストレージ構造を完全に決定できるので、出力もstaticにできる。
 //template <template <class> class Qualifier, class ...Containers>
 //class SJoinedContainer {};
+template <RankType MaxRank>
+class SJointLayerInfo {};
 
 template <template <class> class Qualifier, container_simplex ...IContainers>
 class DJoinedRange;
@@ -200,7 +201,7 @@ public:
 		return RttiPlaceholder<Rank>(iph.GetInternalLayer(), iph.GetIndex(), iph.GetType(), iph.GetPtrOffset(), this->GetJointLayers());
 	}
 	template <RankType Rank, class ...Args>
-		requires (Rank <= MaxRank) && d_tree<IContainer<Rank>>
+		requires (Rank <= MaxRank)
 	auto GetPlaceholders(const Args& ...names) const
 	{
 		return std::make_tuple(GetPlaceholder<Rank>(names)...);

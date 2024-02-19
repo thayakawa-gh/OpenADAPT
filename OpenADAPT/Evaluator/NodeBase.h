@@ -53,12 +53,17 @@ concept FuncWithBufApplicable = requires(Func f, RetType & buf, const ArgTypes& 
 {
 	{ f(buf, a...) } -> std::same_as<void>;
 };
-template <class Func, class ...ArgTypes>
+template <class Func, class RetType_, class ...ArgTypes>
 	requires FuncApplicable<Func, ArgTypes...>
 struct FuncDefinition
 {
 	template <size_t Index> using ArgType = GetType_t<Index, ArgTypes...>;
-	using RetType = std::invoke_result_t<Func, ArgTypes...>;
+	using RetType = RetType_;
+	//RetTypeはここでもstd::invoke_result_tで判別できないことはないが、
+	//Cttiではそれでも許されるものの、
+	//Rttiの場合はDFieldInfoからFieldTypeに変換しなければならず、
+	//例えばFuncが参照型を返すような場合、FieldTypeの判定がうまくいかない。
+	//よって、外部から与えることにする。
 	
 	FuncDefinition() {}
 	FuncDefinition(const FuncDefinition& that) { *this = that; }

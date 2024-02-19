@@ -43,6 +43,18 @@ public:
 	using std::tuple<T...>::tuple;
 };
 
+template <class T>
+struct IsTuple : public std::false_type {};
+template <class ...T>
+struct IsTuple<std::tuple<T...>> : public std::true_type {};
+template <class T>
+struct IsNamedTuple : public std::false_type {};
+template <class ...T>
+struct IsNamedTuple<NamedTuple<T...>> : public std::true_type {};
+
+template <class T>
+concept named_tuple = IsNamedTuple<T>::value;
+
 template <StaticChar Name_, class ...T>
 decltype(auto) Get(NamedTuple<T...>& t) { return std::get<NamedTuple<T...>::FindName(Name_)>(t); }
 template <StaticChar Name_, class ...T>
@@ -96,17 +108,31 @@ struct TupleElementName<Index, NamedTuple<Named<Names, Ts>...>>
 template <size_t Index, class T>
 using TupleElementName_t = TupleElementName<Index, T>::Type;
 
-template <class T>
-struct IsTuple : public std::false_type {};
-template <class ...T>
-struct IsTuple<std::tuple<T...>> : public std::true_type {};
-template <class T>
-struct IsNamedTuple : public std::false_type {};
-template <class ...T>
-struct IsNamedTuple<NamedTuple<T...>> : public std::true_type {};
-
-template <class T>
-concept named_tuple = IsNamedTuple<T>::value;
+template <class ...Tuples>
+struct NamedTupleCat;
+template <>
+struct NamedTupleCat<>
+{
+	using Type = NamedTuple<>;
+};
+template <named_tuple Tuple>
+struct NamedTupleCat<Tuple>
+{
+	using Type = Tuple;
+};
+template <StaticChar ...Names1, class ...Ts1, StaticChar ...Names2, class ...Ts2>
+struct NamedTupleCat<NamedTuple<Named<Names1, Ts1>...>, NamedTuple<Named<Names2, Ts2>...>>
+{
+	using Type = NamedTuple<Named<Names1, Ts1>..., Named<Names2, Ts2>...>;
+};
+template <named_tuple TupleHead, named_tuple ...Tuples>
+	requires (sizeof...(Tuples) >= 2)
+struct NamedTupleCat<TupleHead, Tuples...>
+{
+	using Type = NamedTupleCat<TupleHead, typename NamedTupleCat<Tuples...>::Type>::Type;
+};
+template <named_tuple ...Tuples>
+using NamedTupleCat_t = typename NamedTupleCat<Tuples...>::Type;
 
 }
 

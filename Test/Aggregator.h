@@ -48,11 +48,11 @@ class Aggregator : public ::testing::Test
 {
 	using TopLayer = NamedTuple<Named<"school", std::string>>;
 	using Layer0 = NamedTuple<Named<"grade", int8_t>, Named<"class", int8_t>>;
-	using Layer1 = NamedTuple<Named<"number", int16_t>, Named<"name", std::string>, Named<"name_furigana", std::string>, Named<"date_of_birth", int32_t>,
-		Named<"postal_code", int32_t>, Named<"address", std::string>, Named<"phone", std::string>, Named<"email", std::string>>;
+	using Layer1 = NamedTuple<Named<"number", int16_t>, Named<"name", std::string>, Named<"date_of_birth", int32_t>, Named<"phone", std::string>, Named<"email", std::string>>;
 	using Layer2 = NamedTuple<Named<"exam", int8_t>, Named<"math", int32_t>, Named<"japanese", int32_t>, Named<"english", int32_t>, Named<"science", int32_t>, Named<"social", int32_t>>;
 
 	using STree_ = STree<TopLayer, Layer0, Layer1, Layer2>;
+	using STable_ = STable<TopLayer, NamedTupleCat_t<Layer0, Layer1, Layer2>>;
 
 	void Generate()
 	{
@@ -197,8 +197,8 @@ class Aggregator : public ::testing::Test
 		if constexpr (d_tree<Tree>)
 		{
 			t.AddLayer({ { "grade", I08 }, { "class", I08 } });
-			t.AddLayer({ { "number", I16 }, { "name", Str }, { "name_furigana", Str }, { "date_of_birth", I32 },
-					   { "postal_code", I32 }, { "address", Str }, { "phone", Str }, { "email", Str } });
+			t.AddLayer({ { "number", I16 }, { "name", Str }, { "date_of_birth", I32 },
+					     { "phone", Str }, { "email", Str } });
 			t.AddLayer({ { "exam", I08 },  {"math", I32}, {"japanese", I32}, {"english", I32}, {"science", I32}, {"social", I32}});
 			t.SetTopLayer({ { "school", Str } });
 			t.VerifyStructure();
@@ -213,13 +213,42 @@ class Aggregator : public ::testing::Test
 			ce.Reserve((BindexType)c.m_students.size());
 			for (auto& s : c.m_students)
 			{
-				ce.Push(s.m_number, s.m_name, s.m_name_furigana, s.m_date_of_birth,
-						s.m_postal_code, s.m_address, s.m_phone, s.m_email);
+				ce.Push(s.m_number, s.m_name, /*s.m_name_furigana,*/ s.m_date_of_birth,
+						/*s.m_postal_code, s.m_address,*/ s.m_phone, s.m_email);
 				auto&& se = ce.Back();
 				se.Reserve((BindexType)s.m_records.size());
 				for (auto& r : s.m_records)
 				{
 					se.Push(r.m_exam, r.m_math, r.m_japanese, r.m_english, r.m_science, r.m_social);
+				}
+			}
+		}
+	}
+	template <class Table>
+	static void MakeTable(Table& t, const std::vector<Class>& cs)
+	{
+		using enum FieldType;
+		if constexpr (d_table<Table>)
+		{
+			t.SetLayer(0, { { "grade", I08 }, { "class", I08 },
+						 { "number", I16 }, { "name", Str }, { "date_of_birth", I32 },
+						 { "phone", Str }, { "email", Str },
+						 { "exam", I08 },  {"math", I32}, {"japanese", I32}, {"english", I32}, {"science", I32}, {"social", I32} });
+			t.SetTopLayer({ { "school", Str } });
+			t.VerifyStructure();
+		}
+
+		t.SetTopFields("胴差県立散布流中学校");
+		for (auto& c : cs)
+		{
+			for (auto& s : c.m_students)
+			{
+				for (auto& r : s.m_records)
+				{
+					t.Push(c.m_grade, c.m_class,
+						s.m_number, s.m_name, /*s.m_name_furigana,*/ s.m_date_of_birth,
+						/*s.m_postal_code, s.m_address,*/ s.m_phone, s.m_email,
+						r.m_exam, r.m_math, r.m_japanese, r.m_english, r.m_science, r.m_social);
 				}
 			}
 		}
@@ -232,10 +261,14 @@ protected:
 		MakeClass();
 		MakeTree(m_stree, m_class);
 		MakeTree(m_dtree, m_class);
+		MakeTable(m_stable, m_class);
+		MakeTable(m_dtable, m_class);
 	}
 
 	DTree m_dtree;
 	STree_ m_stree;
+	DTable m_dtable;
+	STable_ m_stable;
 	std::vector<Class> m_class;
 };
 
@@ -339,5 +372,26 @@ inline int64_t RankMathAll(const std::vector<Class>& a, const Record& r)
 	}
 	return count;
 }
-
+inline double MeanMath0(const std::vector<Class>& a)
+{
+	double res = 0;
+	size_t count = 0;
+	for (auto& c : a)
+	{
+		for (auto& s : c.m_students)
+		{
+			for (auto& r : s.m_records)
+			{
+				if (r.m_exam != 0) continue;
+				res += r.m_math;
+				++count;
+			}
+		}
+	}
+	return res / (double)count;
+}
+inline int32_t Sum5Subjs(const Record& r)
+{
+	return r.m_math + r.m_japanese + r.m_english + r.m_science + r.m_social;
+}
 #endif

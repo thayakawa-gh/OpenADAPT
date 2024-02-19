@@ -188,7 +188,7 @@ private:
 template <class Hierarchy_, template <class> class Qualifier, class LayerSD>
 class ElementListRef_impl
 {
-	using HierarchySD = HierarchyWrapper<Hierarchy_>;
+	using HierarchyRef = HierarchyWrapper<Hierarchy_>;
 	using ElementBlockPolicy = std::conditional_t<s_hierarchy<Hierarchy_>, SElementBlockPolicy, DElementBlockPolicy>;
 
 	static constexpr bool HasStaticLayer = same_as_xn<LayerSD, LayerConstant>;
@@ -203,7 +203,7 @@ public:
 
 	static constexpr bool IsNonConst = !std::is_const_v<Qualifier<char>>;
 
-	ElementListRef_impl(HierarchySD h, LayerSD layer, Qualifier<ElementBlock>* elms)
+	ElementListRef_impl(HierarchyRef h, LayerSD layer, Qualifier<ElementBlock>* elms)
 		: m_elements(elms), m_layer(layer), m_hierarchy(h)
 	{}
 	ElementListRef_impl(const ElementListRef_impl&) noexcept = default;
@@ -333,14 +333,14 @@ public:
 	}
 
 private:
-	HierarchySD GetHierarchy() const requires d_hierarchy<Hierarchy> { return m_hierarchy; }
-	static consteval HierarchySD GetHierarchy() requires s_hierarchy<Hierarchy> { return {}; }
+	HierarchyRef GetHierarchy() const requires !s_hierarchy<Hierarchy> { return m_hierarchy; }
+	static consteval HierarchyRef GetHierarchy() requires s_hierarchy<Hierarchy> { return {}; }
 	LayerType GetLayer() const requires (!HasStaticLayer) { return m_layer; }
 	static consteval auto GetLayer() requires HasStaticLayer { return LayerSD{}; }
 
 	Qualifier<ElementBlock>* m_elements;
 	[[no_unique_address]] LayerSD m_layer = {};
-	[[no_unique_address]] HierarchySD m_hierarchy;
+	[[no_unique_address]] HierarchyRef m_hierarchy;
 };
 
 //このクラスはLayerをコンパイル時に与えるか実行時に与えるかを使い分けられる。
@@ -371,15 +371,16 @@ public:
 	using const_iterator = ElementIterator_impl<Hierarchy, std::add_const_t>;
 
 private:
-	using HierarchySD = HierarchyWrapper<Hierarchy>;
+	using HierarchyRef = HierarchyWrapper<Hierarchy>;
 	static constexpr bool HasStaticLayer = same_as_xn<LayerSD, LayerConstant>;
+	static constexpr bool HasFixedMaxLayer = f_hierarchy<Hierarchy> || s_hierarchy<Hierarchy>;
 public:
 
 	static constexpr bool IsNonConst = !std::is_const_v<Qualifier<char>>;
 
 	ElementRef_impl() = default;
 	//SElementRef_impl(Qualifier<char>* block) : m_block(block) {}
-	ElementRef_impl(HierarchySD p, LayerSD layer, Qualifier<char>* block)
+	ElementRef_impl(HierarchyRef p, LayerSD layer, Qualifier<char>* block)
 		: m_block(block), m_layer(layer), m_hierarchy(p)
 	{}
 
@@ -517,7 +518,10 @@ public:
 		requires HasStaticLayer
 	size_t GetSize(LayerConstant<Layer> layer) const
 	{
-		static_assert(Layer <= GetHierarchy().value().GetMaxLayer());
+		if constexpr (s_hierarchy<Hierarchy> || f_hierarchy<Hierarchy>)
+			static_assert(Layer <= Hierarchy::GetMaxLayer());
+		else
+			assert(layer <= GetHierarchy().value().GetMaxLayer());
 		return GetLowerElements().GetSize(layer);
 	}
 	size_t GetSize(LayerType layer) const
@@ -598,7 +602,7 @@ public:
 private:
 	Qualifier<ElementBlock>* GetLowerBlock() const
 	{
-		if constexpr (HasStaticLayer && s_hierarchy<Hierarchy>)
+		if constexpr (HasStaticLayer && HasFixedMaxLayer)
 		{
 			static_assert([]() { return LayerSD{} < Hierarchy::GetMaxLayer(); } ());
 			//return std::launder(reinterpret_cast<Qualifier<ElementBlock>*>(m_block + Hierarchy::GetElementSize(LayerSD{})));
@@ -619,14 +623,14 @@ private:
 		return (const ElementBlock*)(m_block + elmsize);
 	}
 
-	HierarchySD GetHierarchy() const requires d_hierarchy<Hierarchy> { return m_hierarchy; }
-	static consteval HierarchySD GetHierarchy() requires s_hierarchy<Hierarchy> { return {}; }
+	const HierarchyRef& GetHierarchy() const requires (!s_hierarchy<Hierarchy>) { return m_hierarchy; }
+	static consteval HierarchyRef GetHierarchy() requires s_hierarchy<Hierarchy> { return HierarchyRef{}; }
 	LayerType GetLayer() const requires (!HasStaticLayer) { return m_layer; }
 	static consteval LayerSD GetLayer() requires HasStaticLayer { return {}; }
 
 	Qualifier<char>* m_block = nullptr;
 	[[no_unique_address]] LayerSD m_layer;//LayerSDはLayerTypeまたはLayerConstant。
-	[[no_unique_address]] HierarchySD m_hierarchy;
+	[[no_unique_address]] HierarchyRef m_hierarchy;
 };
 
 template <class Hierarchy_, template <class> class Qualifier>
@@ -815,7 +819,7 @@ public:
 
 private:
 
-	HierarchySD GetHierarchy() const requires d_hierarchy<Hierarchy> { return m_ref.GetHierarchy(); }
+	HierarchySD GetHierarchy() const requires !s_hierarchy<Hierarchy> { return m_ref.GetHierarchy(); }
 	static consteval HierarchySD GetHierarchy() requires s_hierarchy<Hierarchy> { return ElementRef::GetHierarchy(); }
 
 	ElementRef m_ref;

@@ -21,12 +21,16 @@ namespace eval
 namespace detail
 {
 
-template <class RetType, bool Trivial = std::is_trivially_copyable_v<RetType>>
+//trivialな場合とreferenceの場合はバッファは使わない。
+template <class RetType, bool Trivial = std::is_reference_v<RetType> || std::is_trivially_copyable_v<RetType>>
 struct CttiFuncNodeBuffer
-{};
+{
+	static constexpr bool HasBuffer = false;
+};
 template <class RetType>
 struct CttiFuncNodeBuffer<RetType, false>
 {
+	static constexpr bool HasBuffer = true;
 	mutable RetType m_buffer;
 };
 
@@ -48,6 +52,7 @@ struct CttiFuncNode<Func, TypeList<Nodes...>, Container_, std::index_sequence<In
 	using ConstTraverser = Container::ConstTraverser;
 
 	static constexpr RankType MaxRank = Container::MaxRank;
+	static constexpr bool HasBuffer = detail::CttiFuncNodeBuffer<typename Func::RetType>::HasBuffer;
 
 	CttiFuncNode() {}
 	template <class Func_, any_node ...Nodes_>
@@ -159,46 +164,46 @@ public:
 #pragma warning(disable: 4702)
 #endif
 	RetType Evaluate(const Traverser& t) const
-		requires std::is_trivially_copyable_v<RetType>
+		requires (!HasBuffer)
 	{
 		return m_func.Exec(std::get<Indices>(m_nodes).Evaluate(t)...);
 	}
 	RetType Evaluate(const ConstTraverser& t) const
-		requires std::is_trivially_copyable_v<RetType>
+		requires (!HasBuffer)
 	{
 		return m_func.Exec(std::get<Indices>(m_nodes).Evaluate(t)...);
 	}
 	const RetType& Evaluate(const Traverser& t) const
-		requires (!std::is_trivially_copyable_v<RetType>)
+		requires HasBuffer
 	{
 		m_func.Exec(this->m_buffer, std::get<Indices>(m_nodes).Evaluate(t)...);
 		return this->m_buffer;
 	}
 	const RetType& Evaluate(const ConstTraverser& t) const
-		requires (!std::is_trivially_copyable_v<RetType>)
+		requires HasBuffer
 	{
 		m_func.Exec(this->m_buffer, std::get<Indices>(m_nodes).Evaluate(t)...);
 		return this->m_buffer;
 	}
 
 	RetType Evaluate(const Container& s) const
-		requires std::is_trivially_copyable_v<RetType>
+		requires (!HasBuffer)
 	{
 		return m_func.Exec(std::get<Indices>(m_nodes).Evaluate(s)...);
 	}
 	RetType Evaluate(const Container& s, const Bpos& bpos) const
-		requires std::is_trivially_copyable_v<RetType>
+		requires (!HasBuffer)
 	{
 		return m_func.Exec(std::get<Indices>(m_nodes).Evaluate(s, bpos)...);
 	}
 	const RetType& Evaluate(const Container& s) const
-		requires (!std::is_trivially_copyable_v<RetType>)
+		requires HasBuffer
 	{
 		m_func.Exec(this->m_buffer, std::get<Indices>(m_nodes).Evaluate(s)...);
 		return this->m_buffer;
 	}
 	const RetType& Evaluate(const Container& s, const Bpos& bpos) const
-		requires (!std::is_trivially_copyable_v<RetType>)
+		requires HasBuffer
 	{
 		m_func.Exec(this->m_buffer, std::get<Indices>(m_nodes).Evaluate(s, bpos)...);
 		return this->m_buffer;
@@ -395,7 +400,9 @@ template <class ...ArgTypes, class Func, any_node ...Nodes,
 auto MakeRttiFuncNode_construct(int, Func&& f, Nodes&& ...n)
 	-> decltype(f(std::declval<ArgTypes>()...), eval::RttiFuncNode<Container>{})
 {
-	using FuncA = FuncDefinition<std::decay_t<Func>, ArgTypes...>;
+	using DecFunc = std::decay_t<Func>;
+	using RetType = std::decay_t<std::invoke_result_t<DecFunc, ArgTypes...>>;
+	using FuncA = FuncDefinition<DecFunc, RetType, ArgTypes...>;
 	using NodeImpl = detail::RttiFuncNode_impl<FuncA, Container, TypeList<std::decay_t<Nodes>...>>;
 	eval::RttiFuncNode<Container> res;
 	res.template Construct<NodeImpl>(std::forward<Func>(f), std::forward<Nodes>(n)...);
@@ -498,7 +505,8 @@ auto MakeFunctionNode(Func&& f, NPs&& ...nps)
 	}
 	else
 	{
-		using FuncType = FuncDefinition<std::decay_t<Func>, typename GetNodeType<std::decay_t<NPs>>::Type::RetType...>;
+		using RetType = std::invoke_result_t<std::decay_t<Func>, typename GetNodeType<std::decay_t<NPs>>::Type::RetType...>;
+		using FuncType = FuncDefinition<std::decay_t<Func>, RetType, typename GetNodeType<std::decay_t<NPs>>::Type::RetType...>;
 		return eval::CttiFuncNode<FuncType, TypeList<typename GetNodeType<std::decay_t<NPs>>::Type...>>
 		(std::forward<Func>(f), ConvertToNode(std::forward<NPs>(nps), std::false_type{})...);
 	}

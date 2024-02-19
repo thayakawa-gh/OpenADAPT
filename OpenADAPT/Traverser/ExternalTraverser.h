@@ -247,7 +247,7 @@ public:
 
 private:
 	template <RankType Rank, joint_mode JointMode>
-	bool MoveToBegin_impl(PromptJoint, JointMode)
+	bool MoveToBegin_impl(JointMode)
 	{
 		if constexpr (Rank <= MaxRank)
 		{

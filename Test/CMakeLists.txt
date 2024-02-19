@@ -5,13 +5,21 @@ project(${PROJECT_NAME})
 find_package(GTest REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(Matplot++ REQUIRED)
+find_package(unordered_dense)
 
 add_executable(${PROJECT_NAME}
 	"TestLayerInfo.cpp" "TestContainer.cpp"
 	"TestEvaluate.cpp" "TestExtract.cpp" "TestShow.cpp" "TestFilter.cpp"
 	"TestTraverser.cpp" "TestUserFunc.cpp")
 
+if(${unordered_dense_FOUND})
+	message("unordered_dense found")
+	target_compile_definitions(${PROJECT_NAME} PRIVATE USE_ANKERL_UNORDERED_DENSE)
+	target_link_libraries(${PROJECT_NAME} OpenADAPT GTest::GTest GTest::Main yaml-cpp Matplot++::matplot unordered_dense::unordered_dense)
+else()
+	message("unordered_dense not found")
 target_link_libraries(${PROJECT_NAME} OpenADAPT GTest::GTest GTest::Main yaml-cpp Matplot++::matplot)
+endif()
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 

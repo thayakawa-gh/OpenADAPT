@@ -4,7 +4,7 @@ double my_hypot(double a, double b) { return std::hypot(a, b); }
 
 TEST_F(Aggregator, UserFunc_dtree)
 {
-	auto hypot = UserFunc([](double a, double b) { return std::hypot(a, b); });
+	auto hypot = UserFunc([](std::integral auto a, std::integral auto b) { return std::hypot((double)a, (double)b); });
 	auto hypot2 = UserFunc(my_hypot);
 
 	//0層要素。学年とクラス。
@@ -21,7 +21,7 @@ TEST_F(Aggregator, UserFunc_dtree)
 }
 TEST_F(Aggregator, UserFunc_stree)
 {
-	auto hypot = UserFunc([](double a, double b) { return std::hypot(a, b); });
+	auto hypot = UserFunc([](std::integral auto a, std::integral auto b) { return std::hypot((double)a, (double)b); });
 	auto hypot2 = UserFunc(my_hypot);
 
 	//0層要素。学年とクラス。

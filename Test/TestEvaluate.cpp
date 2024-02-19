@@ -335,3 +335,67 @@ TEST_F(Aggregator, DJoinedContainer_Evaluate_1_2)
 				 std::make_tuple(exam, math, jpn, eng, sci, soc),
 				 std::true_type{});
 }
+
+template <class Table, class Layer>
+void TestEvaluate(Table& table, const std::vector<Class>& cls, const Layer& l)
+{
+	auto [class_, name, number, exam, math, jpn, eng, sci, soc] = l;
+
+	auto sum5 = math + jpn + eng + sci + soc;
+	auto mean_math0 = sum((exam == 0) * math) / 120.;
+	InitAll(table, sum5, mean_math0);
+	using enum FieldType;
+	BindexType i = 2;
+	BindexType j = 15;
+	BindexType k = 3;
+	Bpos bpos{ i * 4 * 30 + j * 4 + k };
+	auto eval1 = [&table, &bpos]<class Node, FieldType Type>(const Node & node, Number<Type>)
+	{
+		if constexpr (typed_node<decltype(node)>) return node.Evaluate(table, bpos);
+		else return node.Evaluate(table, bpos).as<Type>();
+	};
+	auto eval0 = [&table]<class Node, FieldType Type>(const Node& node, Number<Type>)
+	{
+		if constexpr (typed_node<decltype(node)>) return node.Evaluate(table);
+		else return node.Evaluate(table).as<Type>();
+	};
+	const auto& r = cls[i].m_students[j].m_records[k];
+	EXPECT_EQ(eval1(sum5, Number<I32>{}), Sum5Subjs(r));
+	EXPECT_EQ(eval0(mean_math0, Number<F64>{}), MeanMath0(cls));
+}
+TEST_F(Aggregator, STable_Evaluate)
+{
+	const auto& t = m_stable;
+	auto [class_, name, number, exam, math, jpn, eng, sci, soc] =
+		t.GetPlaceholders("class"_fld, "name"_fld, "number"_fld,
+			"exam"_fld, "math"_fld, "japanese"_fld, "english"_fld, "science"_fld, "social"_fld);
+	TestEvaluate(t, m_class, std::make_tuple(class_, name, number, exam, math, jpn, eng, sci, soc));
+}
+TEST_F(Aggregator, DTable_Evaluate)
+{
+	const auto& t = m_dtable;
+	auto [class_, name, number, exam, math, jpn, eng, sci, soc] =
+		t.GetPlaceholders("class", "name", "number",
+			"exam", "math", "japanese", "english", "science", "social");
+	TestEvaluate(t, m_class, std::make_tuple(class_, name, number, exam, math, jpn, eng, sci, soc));
+}
+TEST_F(Aggregator, DJoinedTable_Evaluate)
+{
+	auto& t = m_dtable;
+	auto hash = [&t]()
+	{
+		auto a = t.GetPlaceholder("number").i16();//MakeHashmapはキーの型を特定する必要があるため、
+		auto b = t.GetPlaceholder("name").str();//これらのPlaceholderは予め型情報を与えなければならない。
+		auto c = t.GetPlaceholder("exam").i08();//これらのPlaceholderは予め型情報を与えなければならない。
+		return t | MakeHashtable(a, b, c);
+	}();
+
+	auto jtree = Join(t, 0_layer, 0_layer, t);
+	auto [grade, class_, number, name, exam0] = jtree.GetPlaceholders<0>("grade"_fld, "class"_fld, "number"_fld, "name"_fld, "exam"_fld);
+	auto [exam1, math, jpn, eng, sci, soc] = jtree.GetPlaceholders<1>("exam"_fld, "math"_fld, "japanese"_fld, "english"_fld, "science"_fld, "social"_fld);
+
+	jtree.SetKeyJoint<1>(std::move(hash), number, name, exam0);
+
+	TestEvaluate(jtree, m_class,
+		std::make_tuple(class_, name, number, exam1, math, jpn, eng, sci, soc));
+}

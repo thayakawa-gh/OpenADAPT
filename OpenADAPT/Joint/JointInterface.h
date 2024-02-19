@@ -4,6 +4,7 @@
 #include <vector>
 #include <memory>
 #include <OpenADAPT/Common/Bpos.h>
+#include <OpenADAPT/Common/Concepts.h>
 
 namespace adapt
 {

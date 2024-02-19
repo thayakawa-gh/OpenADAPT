@@ -108,3 +108,74 @@ TEST_F(Aggregator, DJoinedContainer_Extract_1)
 				std::make_tuple(number, name, dob),
 				std::make_tuple(exam, math, jpn, eng, sci, soc));
 }
+
+
+template <class Container, class Layer>
+void TestExtract(Container& s, Layer l)
+{
+	auto [grade, class_, number, name, exam, math, jpn, eng, sci, soc] = l;
+
+	auto sum = math + jpn + eng + sci + soc;
+	auto topsubj = max(math, max(jpn, max(eng, max(sci, soc))));
+	if constexpr (s_container<Container>)
+	{
+		static_assert(sum.GetLayer() == 0_layer);
+		static_assert(topsubj.GetLayer() == 0_layer);
+	}
+	else
+	{
+		assert(sum.GetLayer() == 0_layer);
+		assert(topsubj.GetLayer() == 0_layer);
+	}
+
+	auto res = s | Extract(sum, topsubj);
+
+	auto [sum_, topsubj_] = res.GetPlaceholders("fld0"_fld, "fld1"_fld);
+
+	using enum FieldType;
+
+	auto Evaluate = []<FieldType Type, class Trav, class NP>(Number<Type>, const Trav & t, NP & np)
+	{
+		if constexpr (typed_node_or_placeholder<NP>) return np(t);
+		else return np(t).template as<Type>();
+	};
+	static_assert(std::ranges::input_range<decltype(s.GetRange(0))>);
+	InitAll(sum, topsubj);
+	for (auto [t, r] : views::Zip(s.GetRange(0), res.GetRange(0)))
+	{
+		EXPECT_EQ(Evaluate(Number<I32>{}, t, sum), Evaluate(Number<I32>{}, r, sum_));
+		EXPECT_EQ(Evaluate(Number<I32>{}, t, topsubj), Evaluate(Number<I32>{}, r, topsubj_));
+	}
+}
+TEST_F(Aggregator, STable_Extract)
+{
+	auto& t = m_stable;
+	auto [grade, class_, number, name, exam, math, jpn, eng, sci, soc] =
+		t.GetPlaceholders("grade"_fld, "class"_fld, "number"_fld, "name"_fld,
+			"exam"_fld, "math"_fld, "japanese"_fld, "english"_fld, "science"_fld, "social"_fld);
+	TestExtract(t, std::make_tuple(grade, class_, number, name, exam, math, jpn, eng, sci, soc));
+}
+TEST_F(Aggregator, DTable_Extract)
+{
+	auto& t = m_dtable;
+	auto [grade, class_, number, name, exam, math, jpn, eng, sci, soc] =
+		t.GetPlaceholders("grade", "class", "number", "name", "exam", "math", "japanese", "english", "science", "social");
+	TestExtract(t, std::make_tuple(grade, class_, number, name, exam, math, jpn, eng, sci, soc));
+}
+TEST_F(Aggregator, DJoinedTable_Extract)
+{
+	auto& t = m_dtable;
+	auto jt = Join(m_dtable, 0_layer, 0_layer, m_dtable);
+	auto [grade, class_, number, name, exam0] = jt.GetPlaceholders<0>("grade", "class", "number", "name", "exam");
+	auto [exam1, math, jpn, eng, sci, soc] = jt.GetPlaceholders<1>("exam", "math", "japanese", "english", "science", "social");
+	auto hash = [&t]()
+	{
+		auto a = t.GetPlaceholder("number").i16();//MakeHashmapはキーの型を特定する必要があるため、
+		auto b = t.GetPlaceholder("name").str();//これらのPlaceholderは予め型情報を与えなければならない。
+		auto c = t.GetPlaceholder("exam").i08();//これらのPlaceholderは予め型情報を与えなければならない。
+		return t | MakeHashtable(a, b, c);
+	}();
+	jt.SetKeyJoint<1>(std::move(hash), number, name, exam0);
+
+	TestExtract(jt, std::make_tuple(grade, class_, number, name, exam1, math, jpn, eng, sci, soc));
+}
