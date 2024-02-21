@@ -612,7 +612,7 @@ public:
 
 	static constexpr LayerType GetMaxLayer() { return MaxLayer; }
 
-	FHierarchy() {};
+	FHierarchy() : m_element_sizes{ 0, 0 } {};
 
 	void SetTopLayer(const std::vector<std::pair<std::string, FieldType>>& cols)
 	{

@@ -1477,7 +1477,7 @@ public:
 	FieldRef GetField(const RttiPlaceholder& m, BindexType i) const
 	{
 		assert(m.GetInternalLayer() == 0_layer);
-		return (*(m_iterators[0].begin() + i))[m];
+		return (*(m_iterators[0]->begin() + i))[m];
 	}
 
 	template <class Type>
