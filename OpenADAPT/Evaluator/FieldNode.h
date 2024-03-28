@@ -798,9 +798,11 @@ template <class Components, placeholder Placeholder, FieldType Type, class Nodes
 struct RttiIndexedFieldNode_impl;
 template <class Container, placeholder Placeholder, FieldType Type, class ...Nodes, FieldType ...IndTypes, size_t ...Indices>
 struct RttiIndexedFieldNode_impl<Container, Placeholder, Type, TypeList<Nodes...>, ValueList<IndTypes...>, std::index_sequence<Indices...>>
-	: public RttiFuncNode_body<Container, TypeList<Nodes...>, std::index_sequence<Indices...>>
+	: public RttiFuncNode_body<Container, TypeList<Nodes...>, std::index_sequence<Indices...>,
+							   TypeList<DFieldInfo::TagTypeToValueType<IndTypes>...>>
 {
-	using Base = RttiFuncNode_body<Container, TypeList<Nodes...>, std::index_sequence<Indices...>>;
+	using Base = RttiFuncNode_body<Container, TypeList<Nodes...>, std::index_sequence<Indices...>,
+								   TypeList<DFieldInfo::TagTypeToValueType<IndTypes>...>>;
 	using Traverser = Container::Traverser;
 	using ConstTraverser = Container::ConstTraverser;
 
@@ -878,15 +880,15 @@ struct RttiIndexedFieldNode_impl<Container, Placeholder, Type, TypeList<Nodes...
 
 	virtual RetTypeRef Evaluate(const Traverser& t, Number<Type>) const override
 	{
-		return t.GetField(m_placeholder, this->template GetArg<Indices, IndTypes>(t)...).template as_unsafe<Type>();
+		return t.GetField(m_placeholder, this->template GetArg<Indices>(t)...).template as_unsafe<Type>();
 	}
 	virtual RetTypeRef Evaluate(const ConstTraverser& t, Number<Type>) const override
 	{
-		return t.GetField(m_placeholder, this->template GetArg<Indices, IndTypes>(t)...).template as_unsafe<Type>();
+		return t.GetField(m_placeholder, this->template GetArg<Indices>(t)...).template as_unsafe<Type>();
 	}
 	virtual RetTypeRef Evaluate(const Container& s, Number<Type>) const override
 	{
-		return s.GetBranch((BindexType)this->template GetArg<Indices, IndTypes>(s)...).GetField(m_placeholder).template as_unsafe<Type>();
+		return s.GetBranch((BindexType)this->template GetArg<Indices>(s)...).GetField(m_placeholder).template as_unsafe<Type>();
 	}
 	virtual RetTypeRef Evaluate(const Container& s, const Bpos& bpos, Number<Type>) const override
 	{
@@ -896,13 +898,13 @@ struct RttiIndexedFieldNode_impl<Container, Placeholder, Type, TypeList<Nodes...
 			constexpr LayerConstant<(LayerType)sizeof...(Indices)> isize;
 			return s.
 				GetBranch(bpos, m_placeholder.GetInternalLayer() - isize).
-				GetBranch((BindexType)this->template GetArg<Indices, IndTypes>(s, bpos)...).
+				GetBranch((BindexType)this->template GetArg<Indices>(s, bpos)...).
 				GetField(m_placeholder).template as_unsafe<Type>();
 		}
 		else
 		{
 			//joined Containerの場合、simplexと同じ方法は使えない。
-			return s.GetField(m_placeholder, bpos, this->template GetArg<Indices, IndTypes>(s, bpos)...).template as_unsafe<Type>();
+			return s.GetField(m_placeholder, bpos, this->template GetArg<Indices>(s, bpos)...).template as_unsafe<Type>();
 		}
 	}
 

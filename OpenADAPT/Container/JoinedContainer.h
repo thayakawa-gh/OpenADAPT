@@ -204,7 +204,22 @@ public:
 		requires (Rank <= MaxRank)
 	auto GetPlaceholders(const Args& ...names) const
 	{
-		return std::make_tuple(GetPlaceholder<Rank>(names)...);
+		static constexpr bool all_conv_string_view = (std::convertible_to<Args, std::string_view> && ...);
+		static constexpr bool not_s_hierarchy = !s_hierarchy<IContainer<Rank>>;
+		//以下の条件のどちらかを満たす場合、RttiPlaceholderなのでarrayで返す。
+		//1. s_hierarchyでない。
+		//2. 引数全てが、string_viewに変換可能な型。 
+		if constexpr (all_conv_string_view || not_s_hierarchy)
+			return std::array<RttiPlaceholder<Rank>, sizeof...(Args)>{ GetPlaceholder<Rank>(names)... };
+		else
+			return std::make_tuple(GetPlaceholder<Rank>(names)...);
+	}
+
+	template <placeholder PH>
+	auto GetFieldName(const PH& ph) const
+	{
+		static constexpr RankType Rank = PH::Rank;
+		return std::get<Rank>(m_containers)->GetFieldName(ph.Derank());
 	}
 
 private:
@@ -425,6 +440,8 @@ public:
 	{
 		return ConstSentinel{};
 	}
+
+	const Container& GetContainer() const { return *m_container; }
 
 private:
 

@@ -159,6 +159,12 @@ public:
 		return GetLayerInfo().GetTravLayer();
 	}
 
+	template <size_t Index, class ...Args>
+	decltype(auto) GetArg(const Args& ...args) const
+	{
+		return std::get<Index>(m_nodes).Evaluate(args...);
+	}
+
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable: 4702)
@@ -166,46 +172,46 @@ public:
 	RetType Evaluate(const Traverser& t) const
 		requires (!HasBuffer)
 	{
-		return m_func.Exec(std::get<Indices>(m_nodes).Evaluate(t)...);
+		return m_func.Exec(*this, t);
 	}
 	RetType Evaluate(const ConstTraverser& t) const
 		requires (!HasBuffer)
 	{
-		return m_func.Exec(std::get<Indices>(m_nodes).Evaluate(t)...);
+		return m_func.Exec(*this, t);
 	}
 	const RetType& Evaluate(const Traverser& t) const
 		requires HasBuffer
 	{
-		m_func.Exec(this->m_buffer, std::get<Indices>(m_nodes).Evaluate(t)...);
+		m_func.ExecWithBuf(this->m_buffer, *this, t);
 		return this->m_buffer;
 	}
 	const RetType& Evaluate(const ConstTraverser& t) const
 		requires HasBuffer
 	{
-		m_func.Exec(this->m_buffer, std::get<Indices>(m_nodes).Evaluate(t)...);
+		m_func.Exec(this->m_buffer, *this, t);
 		return this->m_buffer;
 	}
 
 	RetType Evaluate(const Container& s) const
 		requires (!HasBuffer)
 	{
-		return m_func.Exec(std::get<Indices>(m_nodes).Evaluate(s)...);
+		return m_func.Exec(*this, s);
 	}
 	RetType Evaluate(const Container& s, const Bpos& bpos) const
 		requires (!HasBuffer)
 	{
-		return m_func.Exec(std::get<Indices>(m_nodes).Evaluate(s, bpos)...);
+		return m_func.Exec(*this, s, bpos);
 	}
 	const RetType& Evaluate(const Container& s) const
 		requires HasBuffer
 	{
-		m_func.Exec(this->m_buffer, std::get<Indices>(m_nodes).Evaluate(s)...);
+		m_func.ExecWithBuf(this->m_buffer, *this, s);
 		return this->m_buffer;
 	}
 	const RetType& Evaluate(const Container& s, const Bpos& bpos) const
 		requires HasBuffer
 	{
-		m_func.Exec(this->m_buffer, std::get<Indices>(m_nodes).Evaluate(s, bpos)...);
+		m_func.ExecWithBuf(this->m_buffer, *this, s, bpos);
 		return this->m_buffer;
 	}
 #ifdef _MSC_VER
@@ -261,14 +267,14 @@ struct RttiFuncNode_impl;
 template <class Func, class Container, class ...Nodes, FieldType Type, size_t ...Indices>
 	requires (DFieldInfo::IsTrivial(Type))
 struct RttiFuncNode_impl<Func, Container, TypeList<Nodes...>, Type, std::index_sequence<Indices...>>
-	: public RttiFuncNode_body<Container, TypeList<Nodes...>, std::index_sequence<Indices...>>
+	: public RttiFuncNode_body<Container, TypeList<Nodes...>, std::index_sequence<Indices...>,
+							   TypeList<typename Func::template ArgType<Indices>...>>
 {
 	static_assert(DFieldInfo::IsInt(Type) || DFieldInfo::IsFlt(Type) || DFieldInfo::IsCpx(Type));
-	using Base = RttiFuncNode_body<Container, TypeList<Nodes...>, std::index_sequence<Indices...>>;
+	using Base = RttiFuncNode_body<Container, TypeList<Nodes...>, std::index_sequence<Indices...>,
+								   TypeList<typename Func::template ArgType<Indices>...>>;
 	using Traverser = Container::Traverser;
 	using ConstTraverser = Container::ConstTraverser;
-	template <size_t Index>
-	using ArgType = Func::template ArgType<Index>;
 
 	RttiFuncNode_impl() {}
 	template <class Func_, node_or_placeholder ...Nodes_>
@@ -295,22 +301,22 @@ struct RttiFuncNode_impl<Func, Container, TypeList<Nodes...>, Type, std::index_s
 	virtual DFieldInfo::TagTypeToValueType<Type>
 		Evaluate(const Traverser& t, Number<Type>) const override
 	{
-		return m_func.Exec(this->template GetArg<Indices, DFieldInfo::ValueTypeToTagType<ArgType<Indices>>()>(t)...);
+		return m_func.Exec(*this, t);
 	}
 	virtual DFieldInfo::TagTypeToValueType<Type>
 		Evaluate(const ConstTraverser& t, Number<Type>) const override
 	{
-		return m_func.Exec(this->template GetArg<Indices, DFieldInfo::ValueTypeToTagType<ArgType<Indices>>()>(t)...);
+		return m_func.Exec(*this, t);
 	}
 	virtual DFieldInfo::TagTypeToValueType<Type>
 		Evaluate(const Container& s, Number<Type>) const override
 	{
-		return m_func.Exec(this->template GetArg<Indices, DFieldInfo::ValueTypeToTagType<ArgType<Indices>>()>(s)...);
+		return m_func.Exec(*this, s);
 	}
 	virtual DFieldInfo::TagTypeToValueType<Type>
 		Evaluate(const Container& s, const Bpos& bpos, Number<Type>) const override
 	{
-		return m_func.Exec(this->template GetArg<Indices, DFieldInfo::ValueTypeToTagType<ArgType<Indices>>()>(s, bpos)...);
+		return m_func.Exec(*this, s, bpos);
 	}
 #ifdef _MSC_VER
 #pragma warning(pop)
@@ -323,16 +329,16 @@ struct RttiFuncNode_impl<Func, Container, TypeList<Nodes...>, Type, std::index_s
 template <class Func, class Container, class ...Nodes, FieldType Type, size_t ...Indices>
 	requires (!DFieldInfo::IsTrivial(Type))
 struct RttiFuncNode_impl<Func, Container, TypeList<Nodes...>, Type, std::index_sequence<Indices...>>
-	: public RttiFuncNode_body<Container, TypeList<Nodes...>, std::index_sequence<Indices...>>
+	: public RttiFuncNode_body<Container, TypeList<Nodes...>, std::index_sequence<Indices...>,
+							   TypeList<typename Func::template ArgType<Indices>...>>
 {
 	//m_bufをメンバとして保つ必要があるため、trivialの方と統合できない。
 	static_assert(DFieldInfo::IsStr(Type) || DFieldInfo::IsJbp(Type));
-	using Base = RttiFuncNode_body<Container, TypeList<Nodes...>, std::index_sequence<Indices...>>;
+	using Base = RttiFuncNode_body<Container, TypeList<Nodes...>,
+								   std::index_sequence<Indices...>, TypeList<typename Func::template ArgType<Indices>...>>;
 	using Traverser = Container::Traverser;
 	using ConstTraverser = Container::ConstTraverser;
-	template <size_t Index>
-	using ArgType = Func::template ArgType<Index>;
-
+	
 	RttiFuncNode_impl() {}
 	template <class Func_, node_or_placeholder ...Nodes_>
 	RttiFuncNode_impl(Func_&& f, Nodes_&& ...nodes)
@@ -359,25 +365,25 @@ struct RttiFuncNode_impl<Func, Container, TypeList<Nodes...>, Type, std::index_s
 	virtual const DFieldInfo::TagTypeToValueType<Type>&
 		Evaluate(const Traverser& t, Number<Type>) const override
 	{
-		m_func.Exec(m_buf, this->template GetArg<Indices, DFieldInfo::ValueTypeToTagType<ArgType<Indices>>()>(t)...);
+		m_func.ExecWithBuf(m_buf, *this, t);
 		return m_buf;
 	}
 	virtual const DFieldInfo::TagTypeToValueType<Type>&
 		Evaluate(const ConstTraverser& t, Number<Type>) const override
 	{
-		m_func.Exec(m_buf, this->template GetArg<Indices, DFieldInfo::ValueTypeToTagType<ArgType<Indices>>()>(t)...);
+		m_func.ExecWithBuf(m_buf, *this, t);
 		return m_buf;
 	}
 	virtual const DFieldInfo::TagTypeToValueType<Type>&
 		Evaluate(const Container& s, Number<Type>) const override
 	{
-		m_func.Exec(m_buf, this->template GetArg<Indices, DFieldInfo::ValueTypeToTagType<ArgType<Indices>>()>(s)...);
+		m_func.ExecWithBuf(m_buf, *this, s);
 		return m_buf;
 	}
 	virtual const DFieldInfo::TagTypeToValueType<Type>&
 		Evaluate(const Container& s, const Bpos& bpos, Number<Type>) const override
 	{
-		m_func.Exec(m_buf, this->template GetArg<Indices, DFieldInfo::ValueTypeToTagType<ArgType<Indices>>()>(s, bpos)...);
+		m_func.ExecWithBuf(m_buf, *this, s, bpos);
 		return m_buf;
 	}
 #ifdef _MSC_VER

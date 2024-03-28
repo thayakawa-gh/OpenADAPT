@@ -49,15 +49,30 @@ concept FuncApplicable = requires(Func f, const ArgTypes& ...a)
 	{ f(a...) } -> non_void;
 };
 template <class Func, class RetType, class ...ArgTypes>
-concept FuncWithBufApplicable = requires(Func f, RetType & buf, const ArgTypes& ...a)
+concept FuncWithBufApplicable = 
+	FuncApplicable<Func, ArgTypes...> &&
+	requires(Func f, RetType& buf, const ArgTypes& ...a)
 {
 	{ f(buf, a...) } -> std::same_as<void>;
+};
+template <class Func, class ...Args>
+concept FuncShortCircuitApplicable = requires(Func f, const Args& ...args)
+{
+	{ f.ShortCircuit(args...) } -> non_void;
+};
+template <class Func, class RetType, class ...Args>
+concept FuncShortCircuitWithBufApplicable = 
+	FuncShortCircuitApplicable<Func, Args...> &&
+	requires (Func f, RetType& buf, const Args& ...args)
+{
+	{ f.ShortCircuitWithBuf(buf, args...) } -> std::same_as<void>;
 };
 template <class Func, class RetType_, class ...ArgTypes>
 	requires FuncApplicable<Func, ArgTypes...>
 struct FuncDefinition
 {
-	template <size_t Index> using ArgType = GetType_t<Index, ArgTypes...>;
+	template <size_t Index>
+	using ArgType = GetType_t<Index, ArgTypes...>;
 	using RetType = RetType_;
 	//RetTypeはここでもstd::invoke_result_tで判別できないことはないが、
 	//Cttiではそれでも許されるものの、
@@ -76,12 +91,58 @@ struct FuncDefinition
 		requires std::convertible_to<Func_&&, Func>
 	FuncDefinition(Func_&& f) : m_func(std::forward<Func_>(f)) {}
 
-	RetType Exec(const ArgTypes& ...a) const { return std::invoke(m_func, a...); }
-	void Exec(RetType& buf, const ArgTypes& ...a) const
+private:
+	template <class NodeImpl, size_t ...Indices, class ...Args>
+	RetType Exec_nonsc(std::index_sequence<Indices...>, const NodeImpl& ni, const Args& ...args) const
 	{
-		if constexpr (FuncWithBufApplicable<Func, RetType, ArgTypes...>)std::invoke(m_func, buf, a...);
-		else buf = std::invoke(m_func, a...);
+		return std::invoke(m_func, ni.template GetArg<Indices>(args...)...);
 	}
+	template <class NodeImpl, size_t ...Indices, class ...Args>
+	void Exec_nonsc(std::index_sequence<Indices...>, RetType& buf, const NodeImpl& ni, const Args& ...args) const
+	{
+		if constexpr (FuncWithBufApplicable<Func, RetType, ArgTypes...>)
+			std::invoke(m_func, buf, ni.template GetArg<Indices>(args...)...);
+		else
+			buf = std::invoke(m_func, ni.template GetArg<Indices>(args...)...);
+	}
+	template <class NodeImpl, size_t ...Indices, class ...Args>
+	RetType Exec_sc(std::index_sequence<Indices...>, const NodeImpl& ni, const Args& ...args) const
+	{
+		return m_func.ShortCircuit(ni, args...);
+	}
+	template <class NodeImpl, size_t ...Indices, class ...Args>
+	void Exec_sc_with_buf(std::index_sequence<Indices...>, RetType& buf, const NodeImpl& ni, const Args& ...args) const
+	{
+		if constexpr (FuncShortCircuitWithBufApplicable<Func, RetType, NodeImpl, Args...>)
+			m_func.ShortCircuitWithBuf(buf, ni, args...);
+		else
+			buf = m_func.ShortCircuit(ni, args...);
+	}
+public:
+
+	template <class NodeImpl, class ...Args>
+	RetType Exec(const NodeImpl& ni, const Args& ...args) const
+	{
+		using is = std::make_index_sequence<sizeof...(ArgTypes)>;
+		if constexpr (FuncShortCircuitApplicable<Func, NodeImpl, Args...>)
+			return Exec_sc(is{}, ni, args...);
+		else
+			return Exec_nonsc(is{}, ni, args...);
+	}
+	template <class NodeImpl, class ...Args>
+	void ExecWithBuf(RetType& buf, const NodeImpl& ni, const Args& ...args) const
+	{
+		using is = std::make_index_sequence<sizeof...(ArgTypes)>;
+		if constexpr (FuncShortCircuitApplicable<Func, NodeImpl, Args...>)
+		{
+			Exec_sc_with_buf(is{}, ni, args...);
+		}
+		else
+		{
+			Exec_nonsc(is{}, buf, ni, args...);
+		}
+	}
+
 	Func m_func;
 };
 
@@ -442,10 +503,11 @@ struct RttiFuncNode_base
 	virtual FieldType GetType() const = 0;
 };
 
-template <class Container, class Nodes, class Indices>
+template <class Container, class Nodes, class Indices, class ArgTypes>
 struct RttiFuncNode_body;
-template <class Container_, class ...Nodes, size_t ...Indices>
-struct RttiFuncNode_body<Container_, TypeList<Nodes...>, std::index_sequence<Indices...>>
+template <class Container_, class ...Nodes, size_t ...Indices, class ...ArgTypes>
+struct RttiFuncNode_body<Container_, TypeList<Nodes...>,
+						 std::index_sequence<Indices...>, TypeList<ArgTypes...>>
 	: public RttiFuncNode_base<Container_>
 {
 	using Container = Container_;
@@ -456,6 +518,8 @@ struct RttiFuncNode_body<Container_, TypeList<Nodes...>, std::index_sequence<Ind
 
 	template <size_t I>
 	using Node = GetType_t<I, Nodes...>;
+	template <size_t I>
+	static constexpr FieldType ArgType = DFieldInfo::ValueTypeToTagType<GetType_t<I, ArgTypes...>>();
 
 	RttiFuncNode_body() {};
 	template <node_or_placeholder ...Nodes_>
@@ -560,9 +624,10 @@ public:
 		return GetLayerInfo_impl(eli, depth, std::make_index_sequence<sizeof...(Nodes)>());
 	}
 
-	template <size_t Index, FieldType Type, class TravStor>
+	template <size_t Index, class TravStor>
 	decltype(auto) GetArg(const TravStor& t) const
 	{
+		static constexpr FieldType Type = ArgType<Index>;
 		using Node = GetType_t<Index, Nodes...>;
 		if constexpr (rtti_node<Node>)
 			return std::get<Index>(m_nodes).Evaluate(t, Number<Type>());
@@ -583,9 +648,10 @@ public:
 			return std::get<Index>(m_nodes).Evaluate(t);
 		}
 	}
-	template <size_t Index, FieldType Type>
+	template <size_t Index>
 	decltype(auto) GetArg(const Container& s, const Bpos& bpos) const
 	{
+		static constexpr FieldType Type = ArgType<Index>;
 		using Node = GetType_t<Index, Nodes...>;
 		if constexpr (rtti_node<Node>)
 			return std::get<Index>(m_nodes).Evaluate(s, bpos, Number<Type>());

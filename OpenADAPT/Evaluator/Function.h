@@ -224,7 +224,7 @@ auto NAME_ID(NPs&& ...nps)\
 				  ADAPT_TIE_ARGS(!a));
 DEFINE_FUNC1_IMPL(Negate, GET_RET_TYPE_OP1(-),
 				  ADAPT_TIE_ARGS(-a));
- 
+
 //binary operator
 DEFINE_FUNC2_IMPL_WB(Plus, GET_RET_TYPE_OP2(+),
 					 ADAPT_TIE_ARGS(a1 + a2),
@@ -512,19 +512,38 @@ auto operator>=(Arg1&& a, Arg2&& b)
 	auto f = [](const auto& a, const auto& b) -> decltype(a >= b) { return a >= b; };
 	return detail::MakeFunctionNode(f, std::forward<Arg1>(a), std::forward<Arg2>(b));
 }
+
+struct OperatorAnd
+{
+	auto operator()(const auto& a, const auto& b) const -> decltype(a&& b) { return a && b; }
+	template <class NodeImpl, class ...Args>
+	decltype(auto) ShortCircuit(const NodeImpl& nodeimpl, Args&& ...args) const
+	{
+		return nodeimpl.GetArg<0>(args...) && nodeimpl.GetArg<1>(args...);
+	}
+};
 template <class Arg1, class Arg2>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
 auto operator&&(Arg1&& a, Arg2&& b)
 {
-	auto f = [](const auto& a, const auto& b) -> decltype(a && b) { return a && b; };
-	return detail::MakeFunctionNode(f, std::forward<Arg1>(a), std::forward<Arg2>(b));
+	//auto f = [](const auto& a, const auto& b) -> decltype(a && b) { return a && b; };
+	return detail::MakeFunctionNode(OperatorAnd{}, std::forward<Arg1>(a), std::forward<Arg2>(b));
 }
+struct OperatorOr
+{
+	auto operator()(const auto& a, const auto& b) const -> decltype(a || b) { return a || b; }
+	template <class NodeImpl, class ...Args>
+	decltype(auto) ShortCircuit(const NodeImpl& nodeimpl, Args&& ...args) const
+	{
+		return nodeimpl.GetArg<0>(args...) || nodeimpl.GetArg<1>(args...);
+	}
+};
 template <class Arg1, class Arg2>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
 auto operator||(Arg1&& a, Arg2&& b)
 {
-	auto f = [](const auto& a, const auto& b) -> decltype(a || b) { return a || b; };
-	return detail::MakeFunctionNode(f, std::forward<Arg1>(a), std::forward<Arg2>(b));
+	//auto f = [](const auto& a, const auto& b) -> decltype(a || b) { return a || b; };
+	return detail::MakeFunctionNode(OperatorOr{}, std::forward<Arg1>(a), std::forward<Arg2>(b));
 }
 //index operatorはメンバ関数として用意しなければならないので、ここでは定義できない。
 
@@ -679,19 +698,64 @@ auto min(Arg1&& a, Arg2&& b)
 	return detail::MakeFunctionNode(f, std::forward<Arg1>(a), std::forward<Arg2>(b));
 }
 
+namespace detail
+{
+struct IfFunction
+{
+	auto operator()(const auto& a, const auto& b, const auto& c) const -> decltype(a ? b : c)
+	{
+		return a ? b : c;
+	}
+	template <class NodeImpl, class ...Args>
+	decltype(auto) ShortCircuit(const NodeImpl& nodeimpl, Args&& ...args) const
+	{
+		return nodeimpl.template GetArg<0>(args...) ?
+			nodeimpl.template GetArg<1>(args...) :
+			nodeimpl.template GetArg<2>(args...);
+	}
+};
+}
 template <class Arg1, class Arg2, class Arg3>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2> || node_or_placeholder<Arg3>)
 auto if_(Arg1&& a, Arg2&& b, Arg3&& c)
 {
-	auto f = [](const auto& a, const auto& b, const auto& c) -> decltype(a ? b : c) { return a ? b : c; };
-	return detail::MakeFunctionNode(f, std::forward<Arg1>(a), std::forward<Arg2>(b), std::forward<Arg3>(c));
+	return detail::MakeFunctionNode(detail::IfFunction{},
+									std::forward<Arg1>(a), std::forward<Arg2>(b), std::forward<Arg3>(c));
 }
+
+namespace detail
+{
+template <size_t NCase>
+struct SwitchFunction
+{
+private:
+	template <size_t I, std::integral Int, class NodeImpl, class ...Args>
+	decltype(auto) ShortCircuit_rec(Int i, const NodeImpl& nodeimpl, Args&& ...args) const
+	{
+		if (i == I) return nodeimpl.template GetArg<I + 1>(args...);
+		if constexpr (I < NCase) return ShortCircuit_rec<I + 1>(i, nodeimpl, args...);
+		else throw NoElements();
+	}
+public:
+	template <std::integral Int, class ...Args>
+	auto operator()(Int i, Args&& ...args) const -> decltype(Switch(i, std::forward<Args>(args)...))
+	{
+		return Switch(i, std::forward<Args>(args)...);
+	}
+	template <class NodeImpl, class ...Args>
+	decltype(auto) ShortCircuit(const NodeImpl& nodeimpl, Args&& ...args) const
+	{
+		return ShortCircuit_rec<0>(nodeimpl.template GetArg<0>(args...), nodeimpl, args...);
+	}
+};
+}
+//Do NOT use with 4 or more arguments including rtti nodes or placeholders,
+//to avoid excessive compilation time.
 template <class ...Args>
-	requires (node_or_placeholder<Args> || ...)
+	requires (node_or_placeholder<Args> || ...) && (sizeof...(Args) > 1)
 auto switch_(Args&& ...args)
 {
-	auto f = [](const auto& ...as) -> decltype(detail::Switch(as...)) { return detail::Switch(as...); };
-	return detail::MakeFunctionNode(f, std::forward<Args>(args)...);
+	return detail::MakeFunctionNode(detail::SwitchFunction<sizeof...(Args) - 1>{}, std::forward<Args>(args)...);
 }
 
 template <node_or_placeholder Arg>
