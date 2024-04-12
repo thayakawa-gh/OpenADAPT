@@ -815,6 +815,48 @@ private:
 	RetType m_result;
 	int64_t m_count;
 };
+template <class ArgType_, class>
+struct LayerFuncFirst
+{
+	using ArgType = ArgType_;
+	using RetType = ArgType_;
+	static constexpr bool IsRaisingFunc = true;
+	LayerFuncFirst() : m_result(), m_found(false) {}
+	void Init() { m_result = {}; m_found = false; }
+	template <class Trav>
+	void First(const ArgType& v, const Trav&) { m_result = v; m_found = true; }
+	template <class Trav>
+	void Exec(const ArgType& v, const Trav&) {}
+	const RetType& GetResult() const
+	{
+		if (!m_found) throw NoElements{};
+		return m_result;
+	}
+private:
+	RetType m_result;
+	bool m_found;
+};
+template <class ArgType_, class>
+struct LayerFuncLast
+{
+	using ArgType = ArgType_;
+	using RetType = ArgType_;
+	static constexpr bool IsRaisingFunc = true;
+	LayerFuncLast() : m_result(), m_found(false) {}
+	void Init() { m_result = {}; m_found = false; }
+	template <class Trav>
+	void First(const ArgType& v, const Trav&) { m_result = v; m_found = true; }
+	template <class Trav>
+	void Exec(const ArgType& v, const Trav&) { m_result = v; m_found = true; }
+	const RetType& GetResult() const
+	{
+		if (!m_found) throw NoElements{};
+		return m_result;
+	}
+private:
+	RetType m_result;
+	bool m_found;
+};
 template <boolean_testable ArgType_, class>
 struct LayerFuncIndex
 {
@@ -1111,6 +1153,14 @@ DEFINE_LAYER_FUNCTION_10(detail::LayerFuncGreatest, greatest)
 //引数のうち最小値を返す。戻り値型は引数型と同じ。<演算が可能な型に対してのみ呼び出せる。
 //要素が一つもない場合は値取得失敗となる。
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncLeast, least)
+//first
+//引数のうち取得できた最初の値を返す。
+//要素が一つもない場合は値取得失敗となる。
+DEFINE_LAYER_FUNCTION_10(detail::LayerFuncFirst, first)
+//last
+//引数のうち取得できた最後の値を返す。
+//要素が一つもない場合は値取得失敗となる。
+DEFINE_LAYER_FUNCTION_10(detail::LayerFuncLast, last)
 //index
 //引数が真であるような最初の要素が、走査対象要素の中で何番目かを返す。
 //要素が一つもない場合は-1を返す。
