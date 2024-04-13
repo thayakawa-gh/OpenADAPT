@@ -99,12 +99,43 @@ private:
 			return res;
 		}
 	}
+	template <LayerType Layer, class ...Types>
+	static consteval bool JudgeTotallyTrivial_layer(const std::tuple<CttiPlaceholder<Layer, Types>...>&)
+	{
+		return (std::is_trivially_copyable_v<Types> && ...);
+	}
+	static consteval bool JudgeTotallyTrivial_layer(const std::tuple<>&)
+	{
+		return true;
+	}
+	template <LayerType Layer_plus1>
+	static consteval std::array<bool, MaxLayer + 2_layer> JudgeTotallyTrivial()
+	{
+		if constexpr (Layer_plus1 == MaxLayer + 2_layer)
+		{
+			return std::array<bool, MaxLayer + 2_layer>{};
+		}
+		else
+		{
+			std::array<bool, MaxLayer + 2_layer> res = JudgeTotallyTrivial<Layer_plus1 + 1_layer>();
+			constexpr auto phs = std::get<Layer_plus1>(PlaceholderList);
+			constexpr bool is_totally_trivial = JudgeTotallyTrivial_layer(phs);
+			res[Layer_plus1] = is_totally_trivial;
+			return res;
+		}
+	}
+
 	static constexpr std::array<size_t, MaxLayer + 2_layer> ElementSizes = GetElementSizes<0>();
+	static constexpr std::array<bool, MaxLayer + 2_layer> TotallyTrivial = JudgeTotallyTrivial<0>();
 public:
 	//ある層の要素の大きさ。下層のElementBlockは除く。
 	static constexpr size_t GetElementSize(LayerType layer) { return ElementSizes[layer + 1_layer]; }
 	template <LayerType Layer>
 	static consteval size_t GetElementSize(LayerConstant<Layer>) { return ElementSizes[Layer + 1_layer]; }
+
+	static constexpr bool IsTotallyTrivial(LayerType layer) { return TotallyTrivial[layer + 1_layer]; }
+	template <LayerType Layer>
+	static consteval auto IsTotallyTrivial(LayerConstant<Layer>) { return std::bool_constant<TotallyTrivial[Layer + 1_layer]>{}; }
 
 private:
 	template <LayerType Layer, size_t Index>
@@ -435,35 +466,31 @@ public:
 	using CttiPlaceholder = eval::CttiPlaceholder<Layer, Type, Container>;
 
 	DHierarchy()
-	{
-		m_field_infos_by_layer.emplace_back();
-		m_element_sizes.push_back(0);
-	}
+		: m_field_infos_by_layer(1), m_element_sizes(1, 0), m_totally_trivial(1, true)
+	{}
 
 	void SetTopLayer(const std::vector<std::pair<std::string, FieldType>>& mems)
 	{
 		intptr_t offs = 0;
 		LayerType layer = -1;
 		auto& mbl = m_field_infos_by_layer[0];
-		mbl.reserve(mems.size());
-		for (auto& mem : mems)
+		mbl.resize(mems.size());
+		bool totally_trivial = true;
+		for (auto[i, mem, x]: views::Enumerate(mems, mbl))
 		{
 			FieldType tag = mem.second;
-			uint16_t index = (uint16_t)m_field_names.size();
-			m_field_names.emplace_back(mem.first);
+			totally_trivial = totally_trivial && DFieldInfo::IsTrivial(tag);
 			ptrdiff_t size = (ptrdiff_t)DFieldInfo::GetSizeOf(tag);
 			ptrdiff_t align = (ptrdiff_t)DFieldInfo::GetAlignOf(tag);
 			if (ptrdiff_t add = offs % align; add != 0) offs += (align - add);
-			mbl.emplace_back(layer, index, tag, offs);
+			x = RttiPlaceholder(layer, (uint16_t)i, tag, offs);
+			m_field_map.insert(std::make_pair(mem.first, &x));
 			offs += size;
-		}
-		for (auto& m : mbl)
-		{
-			m_field_infos.push_back(&m);
 		}
 		constexpr size_t align = alignof(void*);
 		if (auto a = offs % align; a != 0) offs += (align - a);
 		m_element_sizes[0] = offs;
+		m_totally_trivial[0] = totally_trivial;
 	}
 	void AddLayer(std::vector<std::pair<std::string, FieldType>> mems)
 	{
@@ -472,30 +499,30 @@ public:
 		LayerType layer = (LayerType)m_field_infos_by_layer.size() - 1;
 		m_field_infos_by_layer.emplace_back();
 		auto& mbl = m_field_infos_by_layer.back();
-		mbl.reserve(mems.size());
-		for (auto& mem : mems)
+		mbl.resize(mems.size());
+		bool totally_trivial = true;
+		for (auto[i, mem, x] : views::Enumerate(mems, mbl))
 		{
 			FieldType tag = mem.second;
-			uint16_t index = (uint16_t)m_field_names.size();
-			m_field_names.emplace_back(mem.first);
+			totally_trivial = totally_trivial && DFieldInfo::IsTrivial(tag);
 			ptrdiff_t size = (ptrdiff_t)DFieldInfo::GetSizeOf(tag);
 			ptrdiff_t align = (ptrdiff_t)DFieldInfo::GetAlignOf(tag);
 			if (ptrdiff_t add = offs % align; add != 0) offs += (align - add);
-			mbl.emplace_back(layer, index, tag, offs);
+			x = RttiPlaceholder(layer, (uint16_t)i, tag, offs);
+			m_field_map.insert(std::make_pair(mem.first, &x));
 			offs += size;
-		}
-		for (auto& m : mbl)
-		{
-			m_field_infos.push_back(&m);
 		}
 		constexpr size_t align = alignof(void*);
 		if (auto a = offs % align; a != 0) offs += (align - a);
 		m_element_sizes.push_back(offs);
+		m_totally_trivial.push_back(totally_trivial);
+		++m_max_layer;
 	}
 
+	[[deprecated("no need to call this function in the current version")]]
 	void VerifyStructure()
 	{
-		for (auto [name, mem] : views::Zip(m_field_names, m_field_infos))
+		/*for (auto [name, mem] : views::Zip(m_field_names, m_field_infos))
 		{
 			auto res = m_field_map.insert(std::make_pair(name, mem));
 			if (!res.second)
@@ -504,7 +531,7 @@ public:
 				throw InvalidArg(std::format("The field with name \"{}\" already exists.", name));
 			}
 		}
-		m_max_layer = (LayerType)(m_field_infos_by_layer.size() - 2);
+		m_max_layer = (LayerType)(m_field_infos_by_layer.size() - 2);*/
 	}
 	bool IsValid() const
 	{
@@ -536,10 +563,10 @@ public:
 		return rtti.template AddType<Type>();
 	}
 
-	const RttiPlaceholder& GetPlaceholder(uint16_t index) const
+	/*const RttiPlaceholder& GetPlaceholder(uint16_t index) const
 	{
 		return *m_field_infos[index];
-	}
+	}*/
 	const RttiPlaceholder& GetPlaceholder(LayerType layer, uint16_t arr_index) const
 	{
 		return m_field_infos_by_layer[layer + (LayerType)1][arr_index];
@@ -576,21 +603,30 @@ public:
 	}
 	const std::string& GetFieldName(const RttiPlaceholder& m) const
 	{
-		return m_field_names[m.GetIndex()];
+		for (auto [name, ptr] : m_field_map)
+		{
+			//indexはPlaceholderごと固有の値なので、これが一致すれば良い。
+			if (m.GetIndex() == ptr->GetIndex() && m.GetLayer() == ptr->GetLayer()) return name;
+		}
+		throw InvalidArg("The field does not exist.");
 	}
 	size_t GetElementSize(LayerType layer) const
 	{
 		assert(layer <= m_max_layer);
 		return m_element_sizes[layer + (LayerType)1];
 	}
+	bool IsTotallyTrivial(LayerType layer) const
+	{
+		assert(layer <= m_max_layer);
+		return (bool)m_totally_trivial[layer + (LayerType)1];
+	}
 
 private:
 
 	LayerType m_max_layer = -1;//layerは-1を持つことがあるので、符号付きにする必要がある。
 	std::vector<size_t> m_element_sizes;//レイヤーごとの要素サイズ。
-	std::vector<const RttiPlaceholder*> m_field_infos;
+	std::vector<char> m_totally_trivial;//あるレイヤーのフィールドが全てトリビアルかどうか。
 	std::vector<std::vector<RttiPlaceholder>> m_field_infos_by_layer;//0番目要素は-1層のグローバル変数。
-	std::vector<std::string> m_field_names;
 	std::map<std::string, const RttiPlaceholder*, std::ranges::less> m_field_map;
 };
 
@@ -623,29 +659,29 @@ public:
 		intptr_t offs = 0;
 		assert(layer <= MaxLayer);
 		auto& mbl = m_field_infos_by_layer[layer + 1_layer];
-		mbl.reserve(cols.size());
-		for (auto& mem : cols)
+		mbl.resize(cols.size());
+		bool totally_trivial = true;
+		for (auto[i, mem, x] : views::Enumerate(cols, mbl))
 		{
 			FieldType tag = mem.second;
-			uint16_t index = (uint16_t)m_field_names.size();
-			m_field_names.emplace_back(mem.first);
+			totally_trivial = totally_trivial && DFieldInfo::IsTrivial(tag);
 			ptrdiff_t size = (ptrdiff_t)DFieldInfo::GetSizeOf(tag);
 			ptrdiff_t align = (ptrdiff_t)DFieldInfo::GetAlignOf(tag);
 			if (ptrdiff_t add = offs % align; add != 0) offs += (align - add);
-			mbl.emplace_back(layer, index, tag, offs);
+			x = RttiPlaceholder(layer, (uint16_t)i, tag, offs);
+			m_field_map.insert(std::make_pair(mem.first, &x));
 			offs += size;
-		}
-		for (auto& m : mbl)
-		{
-			m_field_infos.push_back(&m);
 		}
 		constexpr size_t align = alignof(void*);
 		if (auto a = offs % align; a != 0) offs += (align - a);
 		m_element_sizes[layer + 1_layer] = offs;
+		m_totally_trivial[layer + 1_layer] = totally_trivial;
 	}
+
+	[[deprecated("no need to call this function in the current version")]]
 	void VerifyStructure()
 	{
-		for (auto [name, mem] : views::Zip(m_field_names, m_field_infos))
+		/*for (auto [name, mem] : views::Zip(m_field_names, m_field_infos))
 		{
 			auto res = m_field_map.insert(std::make_pair(name, mem));
 			if (!res.second)
@@ -653,7 +689,7 @@ public:
 				m_field_map.clear();
 				throw InvalidArg(std::format("The field with name \"{}\" already exists.", name));
 			}
-		}
+		}*/
 	}
 	bool IsValid() const
 	{
@@ -685,10 +721,6 @@ public:
 		return rtti.template AddType<Type>();
 	}
 
-	const RttiPlaceholder& GetPlaceholder(uint16_t index) const
-	{
-		return *m_field_infos[index];
-	}
 	const RttiPlaceholder& GetPlaceholder(LayerType layer, uint16_t arr_index) const
 	{
 		return m_field_infos_by_layer[layer + 1_layer][arr_index];
@@ -721,19 +753,28 @@ public:
 
 	const std::string& GetFieldName(const RttiPlaceholder& m) const
 	{
-		return m_field_names[m.GetIndex()];
+		for (auto [name, ptr] : m_field_map)
+		{
+			//layer + indexが一致すれば同一のPlaceholderであると同定できる。
+			if (m.GetIndex() == ptr->GetIndex() && m.GetLayer() == ptr->GetLayer()) return name;
+		}
+		throw InvalidArg("The field does not exist.");
 	}
 	size_t GetElementSize(LayerType layer) const
 	{
 		return m_element_sizes[layer + 1_layer];
 	}
+	bool IsTotallyTrivial(LayerType layer) const
+	{
+		assert(layer <= MaxLayer);
+		return (bool)m_totally_trivial[layer + (LayerType)1];
+	}
 
 private:
 
 	std::array<size_t, MaxLayer + 2_layer> m_element_sizes;
-	std::vector<const RttiPlaceholder*> m_field_infos;
+	std::array<char, MaxLayer + 2_layer> m_totally_trivial;//あるレイヤーのフィールドが全てトリビアルかどうか。
 	std::array<std::vector<RttiPlaceholder>, MaxLayer + 2_layer> m_field_infos_by_layer;
-	std::vector<std::string> m_field_names;
 	std::map<std::string, const RttiPlaceholder*, std::ranges::less> m_field_map;
 };
 

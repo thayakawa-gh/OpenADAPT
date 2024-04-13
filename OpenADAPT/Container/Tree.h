@@ -86,7 +86,7 @@ public:
 		if (m_top_element)
 		{
 			const auto& ms = Hierarchy::GetPlaceholdersIn(-1_layer);
-			ElementBlock::Destroy(ms, m_top_element);
+			ElementBlock::Destroy(ms, Hierarchy::IsTotallyTrivial(-1_layer), m_top_element);
 			auto e_ptr = GetBlockOneLayerDown();
 			e_ptr->Destruct(this, 0_layer);
 			e_ptr->~ElementBlock();
@@ -113,7 +113,7 @@ public:
 	void VerifyStructure()
 		requires d_hierarchy<Hierarchy> || f_hierarchy<Hierarchy>
 	{
-		Hierarchy::VerifyStructure();
+		//Hierarchy::VerifyStructure();
 		Construct();
 	}
 

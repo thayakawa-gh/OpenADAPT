@@ -76,10 +76,20 @@ private:
 		}
 	}
 public:
-	template <class ...Placeholders>
-	static void Move(const std::tuple<Placeholders...>& phs, char* from, char* to)
+	template <class ...Placeholders, bool IsTotallyTrivial>
+	static void Move(const std::tuple<Placeholders...>& phs, std::bool_constant<IsTotallyTrivial>, char* from, char* to)
 	{
-		Move_impl<0>(phs, from, to);
+		if constexpr (IsTotallyTrivial)
+		{
+			//全てのフィールドがトリビアルな場合、memcpyでコピーする。
+			const auto& m = std::get<sizeof...(Placeholders) - 1>(phs);
+			//最後の要素のオフセット+サイズが要素全体のサイズとなる。
+			std::memcpy(to, from, m.GetPtrOffset() + m.GetSize());
+		}
+		else
+		{
+			Move_impl<0>(phs, from, to);
+		}
 	}
 
 private:
@@ -99,10 +109,21 @@ private:
 public:
 	//ある要素fromの各フィールドを要素toへと移動した後、fromのフィールドのデストラクタを呼ぶ。
 	//移動先のメモリ領域は未初期化、つまりコンストラクタの呼び出しが起きていないと仮定している。
-	template <class ...Placeholders>
-	static void MoveAndDestroy(const std::tuple<Placeholders...>& phs, char* from, char* to)
+	template <class ...Placeholders, bool IsTotallyTrivial>
+	static void MoveAndDestroy(const std::tuple<Placeholders...>& phs, std::bool_constant<IsTotallyTrivial>, char* from, char* to)
 	{
-		MoveAndDestroy_rec<0>(phs, from, to);
+		if constexpr (IsTotallyTrivial)
+		{
+			//全てのフィールドがトリビアルな場合、memcpyでコピーするだけで十分。
+			//デストラクタを呼ぶ必要もない。
+			const auto& m = std::get<sizeof...(Placeholders) - 1>(phs);
+			//最後の要素のオフセット+サイズが要素全体のサイズとなる。
+			std::memcpy(to, from, m.GetPtrOffset() + m.GetSize());
+		}
+		else
+		{
+			MoveAndDestroy_rec<0>(phs, from, to);
+		}
 	}
 
 private:
@@ -119,10 +140,12 @@ private:
 		}
 	}
 public:
-	template <class ...Placeholders>
-	static void Destroy(const std::tuple<Placeholders...>& phs, char* ptr)
+	template <class ...Placeholders, bool IsTotallyTrivial>
+	static void Destroy(const std::tuple<Placeholders...>& phs, std::bool_constant<IsTotallyTrivial>, char* ptr)
 	{
-		Destroy_rec<0>(phs, ptr);
+		//全てのフィールドを削除する。
+		//ただし、全フィールドがTrivialな場合はデストラクタを呼ぶ必要はない。
+		if (!IsTotallyTrivial) Destroy_rec<0>(phs, ptr);
 	}
 };
 
@@ -248,15 +271,25 @@ public:
 	//こちらはfromのフィールドのデストラクタを呼ばないので、
 	//fromのフィールドはムーブコンストラクタで破壊された後の（初期）状態となる。
 	template <class Container>
-	static void Move(const std::vector<eval::RttiPlaceholder<Container>>& ms, char* from, char* to)
+	static void Move(const std::vector<eval::RttiPlaceholder<Container>>& ms, bool is_totally_trivial, char* from, char* to)
 	{
-		for (const auto& m : ms)
+		if (is_totally_trivial)
 		{
-			FieldType tag = m.GetType();
-			auto offset = m.GetPtrOffset();
-			if (DFieldInfo::IsTrivial(tag)) std::memcpy(to + offset, from + offset, m.GetSize());
-			else if (DFieldInfo::IsStr(tag)) Move_impl<std::string>(from + offset, to + offset);
-			else if (DFieldInfo::IsJbp(tag)) Move_impl<JBpos>(from + offset, to + offset);
+			//全てのフィールドがトリビアルな場合、memcpyでコピーする。
+			const auto& m = ms.back();
+			//最後の要素のオフセット+サイズが要素全体のサイズとなる。
+			std::memcpy(to, from, m.GetPtrOffset() + m.GetSize());
+		}
+		else
+		{
+			for (const auto& m : ms)
+			{
+				FieldType tag = m.GetType();
+				auto offset = m.GetPtrOffset();
+				if (DFieldInfo::IsTrivial(tag)) std::memcpy(to + offset, from + offset, m.GetSize());
+				else if (DFieldInfo::IsStr(tag)) Move_impl<std::string>(from + offset, to + offset);
+				else if (DFieldInfo::IsJbp(tag)) Move_impl<JBpos>(from + offset, to + offset);
+			}
 		}
 	}
 
@@ -272,24 +305,38 @@ public:
 	//ある要素fromの各フィールドを要素toへと移動した後、fromのフィールドのデストラクタを呼ぶ。
 	//移動先のメモリ領域は未初期化、つまりコンストラクタの呼び出しが起きていないと仮定している。
 	template <class Container>
-	static void MoveAndDestroy(const std::vector<eval::RttiPlaceholder<Container>>& ms, char* from, char* to)
+	static void MoveAndDestroy(const std::vector<eval::RttiPlaceholder<Container>>& ms, bool is_totally_trivial, char* from, char* to)
 	{
-		for (const auto& m : ms)
+		if (is_totally_trivial)
 		{
-			FieldType tag = m.GetType();
-			auto offset = m.GetPtrOffset();
-			if (DFieldInfo::IsTrivial(tag)) std::memcpy(to + offset, from + offset, m.GetSize());
-			else if (DFieldInfo::IsStr(tag)) MoveAndDestroy_impl<std::string>(from + offset, to + offset);
-			else if (DFieldInfo::IsJbp(tag)) MoveAndDestroy_impl<JBpos>(from + offset, to + offset);
+			//全てのフィールドがトリビアルな場合、memcpyでコピーするだけで十分。
+			//デストラクタを呼ぶ必要もない。
+			const auto& m = ms.back();
+			//最後の要素のオフセット+サイズが要素全体のサイズとなる。
+			std::memcpy(to, from, m.GetPtrOffset() + m.GetSize());
+		}
+		else
+		{
+			for (const auto& m : ms)
+			{
+				FieldType tag = m.GetType();
+				auto offset = m.GetPtrOffset();
+				if (DFieldInfo::IsTrivial(tag)) std::memcpy(to + offset, from + offset, m.GetSize());
+				else if (DFieldInfo::IsStr(tag)) MoveAndDestroy_impl<std::string>(from + offset, to + offset);
+				else if (DFieldInfo::IsJbp(tag)) MoveAndDestroy_impl<JBpos>(from + offset, to + offset);
+			}
 		}
 	}
 
 	template <class Container>
-	static void Destroy(const std::vector<eval::RttiPlaceholder<Container>>& ms, char* ptr)
+	static void Destroy(const std::vector<eval::RttiPlaceholder<Container>>& ms, bool is_totally_trivial, char* ptr)
 	{
-		//フィールドを全て削除する。
-		//ただし下層のElementBlockはDestroyElementBlockで別途削除すること。
-		for (const auto& m : ms) Destroy(m, ptr);
+		if (!is_totally_trivial)
+		{
+			//フィールドを全て削除する。
+			//ただし下層のElementBlockはDestroyElementBlockで別途削除すること。
+			for (const auto& m : ms) Destroy(m, ptr);
+		}
 	}
 	template <class Container>
 	static void Destroy(const eval::RttiPlaceholder<Container>& ph, char* ptr)

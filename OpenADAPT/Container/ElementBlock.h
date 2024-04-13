@@ -145,6 +145,7 @@ public:
 		auto [ismaxlayer, elmsize, blocksize] = GetBlockTraits(h, layer);
 
 		size_t size = GetSize(h, layer);
+		auto is_totally_trivial = h.value().IsTotallyTrivial(layer);
 		ptrdiff_t end = blocksize * (ptrdiff_t)size;
 
 		const auto& ms = GetPlaceholdersIn(h, layer);
@@ -154,7 +155,7 @@ public:
 		{
 			char* from = oldptr + diff;
 			char* to = m_blocks + diff;
-			Policy::MoveAndDestroy(ms, from, to);
+			Policy::MoveAndDestroy(ms, is_totally_trivial, from, to);
 			//もし最下層でない場合、各ブロック末尾には下層ElementBlockオブジェクトが存在する。
 			//これも移動させなければならない。
 			if (!ismaxlayer) MoveAndDestroyElementBlock(from + elmsize, to + elmsize);
@@ -304,11 +305,12 @@ public:
 		//assert(!IsEmptyBlock());
 		auto [ismaxlayer, elmsize, blocksize] = GetBlockTraits(h, layer);
 		ptrdiff_t end = blocksize * (ptrdiff_t)GetSize(h, layer);
+		auto is_totally_trivial = h.value().IsTotallyTrivial(layer);
 		const auto& ms = GetPlaceholdersIn(h, layer);
 		for (ptrdiff_t diff = 0; diff != end; diff += blocksize)
 		{
 			char* ptr = m_blocks + diff;
-			Destroy(ms, ptr);
+			Destroy(ms, is_totally_trivial, ptr);
 			if (!ismaxlayer) DestroyElementBlock(h, layer, ptr + elmsize);
 		}
 		std::free(m_blocks);
@@ -322,12 +324,13 @@ public:
 		auto [ismaxlayer, elmsize, blocksize] = GetBlockTraits(h, layer);
 		BindexType size = from_.GetSize(h, layer);
 		const auto& phs = GetPlaceholdersIn(h, layer);
+		auto is_totally_trivial = h.value().IsTotallyTrivial(layer);
 		Reserve(h, layer, size);
 		char* from = from_.m_blocks;
 		char* to = m_blocks;
 		for (; from != from_.m_end; from += blocksize, to += blocksize)
 		{
-			Policy::MoveAndDestroy(phs, from, to);
+			Policy::MoveAndDestroy(phs, is_totally_trivial, from, to);
 			if (!ismaxlayer) MoveAndDestroyElementBlock(from + elmsize, to + elmsize);
 		}
 		m_end = to;
@@ -337,10 +340,10 @@ public:
 
 	//----------static methods----------
 
-	template <class Placeholders>
-	static void Destroy(const Placeholders& phs, char* ptr)
+	template <class Placeholders, class Bool>
+	static void Destroy(const Placeholders& phs, Bool b, char* ptr)
 	{
-		Policy::Destroy(phs, ptr);
+		Policy::Destroy(phs, b, ptr);
 	}
 
 	template <class Placeholders, class ...Args>
