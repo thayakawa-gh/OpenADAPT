@@ -120,12 +120,21 @@ public:
 	template <class ...Args>
 	void SetTopFields(Args&& ...args)
 	{
+		Assign(std::forward<Args>(args)...);
+	}
+	template <class ...Args>
+	void Assign(Args&& ...args)
+	{
 		ElementBlock::Create(Hierarchy::GetPlaceholdersIn(-1_layer), m_top_element, std::forward<Args>(args)...);
 	}
 
 	void Reserve(BindexType size)
 	{
 		GetLowerElements().Reserve(size);
+	}
+	void Resize(BindexType size)
+	{
+		GetLowerElements().Resize(size);
 	}
 	template <class ...Args>
 	void Push(Args&& ...args)
@@ -136,6 +145,19 @@ public:
 	void Push_unsafe(Args&& ...args)
 	{
 		GetLowerElements().Push_unsafe(std::forward<Args>(args)...);
+	}
+	void Pop()
+	{
+		GetLowerElements().Pop();
+	}
+	template <class ...Args>
+	void Insert(BindexType index, Args&& ...args)
+	{
+		GetLowerElements().Insert(index, std::forward<Args>(args)...);
+	}
+	void Erase(BindexType index, BindexType size)
+	{
+		GetLowerElements().Erase(index, size);
 	}
 
 	TopElementRef GetTopElement()
@@ -206,6 +228,15 @@ public:
 	size_t GetSize(LayerType layer) const
 	{
 		return GetTopElement().GetSize(layer);
+	}
+
+	size_t GetSize() const
+	{
+		return GetTopElement().GetSize();
+	}
+	size_t GetCapacity() const
+	{
+		return GetLowerElements().GetCapacity();
 	}
 
 	ElementRef_0 operator[](BindexType index)

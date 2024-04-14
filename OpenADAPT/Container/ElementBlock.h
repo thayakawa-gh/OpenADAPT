@@ -52,11 +52,11 @@ class ElementBlock_impl
 {
 public:
 
-//#define CONSTEXPR_ASSERT static_assert(std::is_same_v<LayerSD, LayerType> || std::is_constant_evaluated());
+	//#define CONSTEXPR_ASSERT static_assert(std::is_same_v<LayerSD, LayerType> || std::is_constant_evaluated());
 
-	//Hierarchyはstaticかどうかをここで判断できるが、
-	//Layerに関してはSTreeなどでもRttiPlaceholderを使うことがあるので、
-	//各関数にテンプレートで持たせたほうが良い。
+		//Hierarchyはstaticかどうかをここで判断できるが、
+		//Layerに関してはSTreeなどでもRttiPlaceholderを使うことがあるので、
+		//各関数にテンプレートで持たせたほうが良い。
 	using HierarchySD = HierarchyWrapper<Hierarchy>;
 
 	ElementBlock_impl() = default;
@@ -141,7 +141,8 @@ public:
 	template <class LayerSD>
 	void Reserve(HierarchySD h, LayerSD layer, BindexType newcap)
 	{
-		if (newcap < GetCapacity(h, layer)) return;
+		assert(newcap >= GetSize(h, layer));
+		//if (newcap < GetCapacity(h, layer)) return;
 		auto [ismaxlayer, elmsize, blocksize] = GetBlockTraits(h, layer);
 
 		size_t size = GetSize(h, layer);
@@ -171,29 +172,35 @@ public:
 	{
 		BindexType oldsize = GetSize(h, layer);
 		const auto& phs = GetPlaceholdersIn(h, layer);
+		auto is_totally_trivial = h.value().IsTotallyTrivial(layer);
 		if (newsize > oldsize)
 		{
 			//新たにコンストラクタを呼ばなければならない場合。
 			Reserve(h, layer, newsize);//まず領域を確保する。不要な場合は即時returnされるので無条件に呼べば良い。
 			auto [ismaxlayer, elmsize, blocksize] = GetBlockTraits(h, layer);
 			BindexType newcap = GetCapacity(h, layer);
-			for (ptrdiff_t diff = oldsize; diff < newsize; ++diff)
+			//Reserveでoldsize-1までは既に移動されているので、
+			//oldsizeからnewsize-1までの要素を新たにコンストラクタで構築する。
+			auto* ptr = m_blocks + oldsize * blocksize;
+			const auto* end = m_blocks + newsize * blocksize;
+			for (; ptr != end; ptr += blocksize)
 			{
-				char* ptr = m_blocks + diff;
-				Create_default<Hierarchy>(phs, ptr);
+				Policy::Create_default(phs, ptr);
+				if (!ismaxlayer) CreateElementBlock(ptr + elmsize);
 			}
 			m_end = m_blocks + newsize * blocksize;
 			m_cap_end = m_blocks + newcap * blocksize;
 		}
 		else if (newsize < oldsize)
 		{
-			//BindexType popsize = oldsize - newsize;
 			auto [ismaxlayer, elmsize, blocksize] = GetBlockTraits(h, layer);
-			auto& ms = h.value().GetFieldInfosIn(layer);
-			for (BindexType i = newsize; i < oldsize; ++i)
+			//こちらはサイズを縮小するが、capacityは変更しない。
+			//よって、newsizeからoldsize-1までの要素をデストラクタで破棄する。
+			auto* ptr = m_blocks + newsize * blocksize;
+			const auto* end = m_blocks + oldsize * blocksize;
+			for (; ptr != end; ptr += blocksize)
 			{
-				auto* ptr = m_blocks + i * blocksize;
-				Destroy(ms, ptr);
+				Policy::Destroy(phs, is_totally_trivial, ptr);
 				if (!ismaxlayer) DestroyElementBlock(h, layer, ptr + elmsize);
 			}
 			m_end = m_blocks + newsize * blocksize;
@@ -209,41 +216,18 @@ public:
 		//Empty状態と区別するため。
 		throw Forbidden("");
 	}
-private:
-	template <bool UnsafeFlag, class LayerSD, class ...Args>
-	void Push_impl(HierarchySD h, LayerSD layer, Args&& ...args)
-	{
-		[[maybe_unused]] constexpr auto get_size = [](const auto& arr)
-		{
-			using Type = std::remove_cvref_t<decltype(arr)>;
-			if constexpr (same_as_xt<Type, std::vector>)
-				return arr.size();
-			else if constexpr (same_as_xt<Type, std::tuple>)
-				return std::tuple_size_v<Type>;
-		};
-		assert(GetSize(h, layer) < std::numeric_limits<BindexType>::max());
-		assert(get_size(GetPlaceholdersIn(h, layer)) == sizeof...(Args));
-		//もしキャパシティが不足する場合は再確保する。
-		BindexType size = GetSize(h, layer);
-		if (size == GetCapacity(h, layer)) Reserve(h, layer, size * 2 + 1);
-		auto [ismaxlayer, elmsize, blocksize] = GetBlockTraits(h, layer);
-		const auto& ms = GetPlaceholdersIn(h, layer);
-		char* pos = m_blocks + size * blocksize;
-		if constexpr (UnsafeFlag) Create_static(ms, pos, std::forward<Args>(args)...);
-		else Create(ms, pos, std::forward<Args>(args)...);
-		if (!ismaxlayer) CreateElementBlock(pos + elmsize);
-		m_end += blocksize;
-	}
-public:
+
 	template <class LayerSD, class ...Args>
 	void Push(HierarchySD h, LayerSD layer, Args&& ...args)
 	{
-		return Push_impl<false>(h, layer, std::forward<Args>(args)...);
+		//return Push_impl<false>(h, layer, std::forward<Args>(args)...);
+		return Insert(h, layer, GetSize(h, layer), std::forward<Args>(args)...);
 	}
 	template <class LayerSD, class ...Args>
 	void Push_unsafe(HierarchySD h, LayerSD layer, Args&& ...args)
 	{
-		return Push_impl<true>(h, layer, std::forward<Args>(args)...);
+		//return Push_impl<true>(h, layer, std::forward<Args>(args)...);
+		return Insert_unsafe(h, layer, GetSize(h, layer), std::forward<Args>(args)...);
 	}
 	//必要であれば空の領域を確保し、各フィールドをデフォルトコンストラクタから構築する。
 	//下層のElementBlockも用意される。
@@ -267,11 +251,67 @@ public:
 		assert(GetSize(h, layer) > 0);
 		auto [ismaxlayer, elmsize, blocksize] = GetBlockTraits(h, layer);
 		const auto& ms = GetPlaceholdersIn(h, layer);
+		auto is_totally_trivial = h.value().IsTotallyTrivial(layer);
 		auto* ptr = m_end - blocksize;
-		Destroy(ms, ptr);
+		Policy::Destroy(ms, is_totally_trivial, ptr);
 		if (!ismaxlayer) DestroyElementBlock(h, layer, ptr + elmsize);
 		m_end -= blocksize;
 	}
+
+private:
+	template <bool UnsafeFlag, class LayerSD, class ...Args>
+	void Insert_impl(HierarchySD h, LayerSD layer, BindexType index, Args&& ...args)
+	{
+		[[maybe_unused]] constexpr auto get_size = [](const auto& arr)
+		{
+			using Type = std::remove_cvref_t<decltype(arr)>;
+			if constexpr (same_as_xt<Type, std::vector>)
+				return arr.size();
+			else if constexpr (same_as_xt<Type, std::tuple>)
+				return std::tuple_size_v<Type>;
+		};
+		assert(GetSize(h, layer) < std::numeric_limits<BindexType>::max());
+		assert(get_size(GetPlaceholdersIn(h, layer)) == sizeof...(Args));
+		assert(index <= GetSize(h, layer));
+		//もしキャパシティが不足する場合は再確保する。
+		BindexType size = GetSize(h, layer);
+		if (size == GetCapacity(h, layer)) Reserve(h, layer, size * 2 + 1);
+		auto [ismaxlayer, elmsize, blocksize] = GetBlockTraits(h, layer);
+		const auto& ms = GetPlaceholdersIn(h, layer);
+		if (index != size)
+		{
+			//index != sizeの場合、末尾挿入ではないので、
+			//index~size-1番目の要素を後ろにずらす。
+			char* from = m_blocks + (size - 1) * blocksize;
+			char* to = m_blocks + size * blocksize;
+			const char* end = m_blocks + index * blocksize - blocksize;//index - 1番目。
+			for (; from != end; from -= blocksize, to -= blocksize)
+			{
+				Policy::Move(ms, h.value().IsTotallyTrivial(layer), from, to);
+				//もし最下層でない場合、各ブロック末尾には下層ElementBlockオブジェクトが存在する。
+				//これも移動させなければならない。
+				if (!ismaxlayer) MoveElementBlock(from + elmsize, to + elmsize);
+			}
+		}
+		char* pos = m_blocks + index * blocksize;
+		if constexpr (UnsafeFlag) Create_static(ms, pos, std::forward<Args>(args)...);
+		else Create(ms, pos, std::forward<Args>(args)...);
+		if (!ismaxlayer) CreateElementBlock(pos + elmsize);
+		m_end += blocksize;
+	}
+public:
+	//indexの位置に要素を挿入する。
+	template <class LayerSD, class ...Args>
+	void Insert(HierarchySD h, LayerSD layer, BindexType index, Args&& ...args)
+	{
+		return Insert_impl<false>(h, layer, index, std::forward<Args>(args)...);
+	}
+	template <class LayerSD, class ...Args>
+	void Insert_unsafe(HierarchySD h, LayerSD layer, BindexType index, Args&& ...args)
+	{
+		return Insert_impl<true>(h, layer, index, std::forward<Args>(args)...);
+	}
+
 	//index~index+size-1番目の要素の削除。
 	template <class LayerSD>
 	void Erase(HierarchySD h, LayerSD layer, BindexType index, BindexType size)
@@ -279,21 +319,22 @@ public:
 		//assert(!IsEmptyBlock());
 		auto [ismaxlayer, elmsize, blocksize] = GetBlockTraits(h, layer);
 		const auto& ms = GetPlaceholdersIn(h, layer);
+		auto is_totally_trivial = h.value().IsTotallyTrivial(layer);
 
 		//BindexType oldsize = GetSize(h, layer);
 		char* from = m_blocks + (index + size) * blocksize;
 		char* to = m_blocks + index * blocksize;
 		for (; from != m_end; from += blocksize, to += blocksize)
 		{
-			Move(ms, from, to);
+			Policy::Move(ms, is_totally_trivial, from, to);
 			//もし最下層でない場合、各ブロック末尾には下層ElementBlockオブジェクトが存在する。
 			//これも移動させなければならない。
 			if (!ismaxlayer) MoveElementBlock(from + elmsize, to + elmsize);
 		}
 		for (; to != m_end; to += blocksize)
 		{
-			Destroy(ms, to);
-			if (!ismaxlayer) DestroyElementBlock(h, layer + 1, to + elmsize);
+			Policy::Destroy(ms, is_totally_trivial, to);
+			if (!ismaxlayer) DestroyElementBlock(h, layer, to + elmsize);
 		}
 		m_end -= size * blocksize;
 	}
@@ -366,7 +407,7 @@ public:
 	{
 		new (ptr) ElementBlock_impl();
 	}
-	//fromのElementBlockをtoへと移動する。fromの中の各要素は初期状態となる。
+	//fromのElementBlockをtoへと移動する。fromの中の各要素はデフォルトコンストラクタが呼ばれたときの初期状態となる。
 	//toは初期化済み、コンストラクタが全要素全フィールドに対して呼ばれていると想定している。
 	static void MoveElementBlock(char* from, char* to)
 	{

@@ -298,6 +298,24 @@ public:
 		m_elements->Pop(GetHierarchy(), GetLayer());
 	}
 
+	template <class ...Args>
+		requires IsNonConst
+	void Insert(BindexType index, Args&& ...args) const
+	{
+		m_elements->Insert(GetHierarchy(), GetLayer(), index, std::forward<Args>(args)...);
+	}
+	template <class ...Args>
+		requires IsNonConst
+	void Insert_unsafe(BindexType index, Args&& ...args) const
+	{
+		m_elements->Insert_unsafe(GetHierarchy(), GetLayer(), index, std::forward<Args>(args)...);
+	}
+	void Erase(BindexType index, BindexType size) const
+		requires IsNonConst
+	{
+		m_elements->Erase(GetHierarchy(), GetLayer(), index, size);
+	}
+
 	constexpr LayerType GetLayer() const { return GetLayer(); }
 
 	//下層の最初の要素を得る。
@@ -543,6 +561,11 @@ public:
 	{
 		return GetLowerElements().Reserve(size);
 	}
+	void Resize(BindexType size) const
+		requires IsNonConst
+	{
+		return GetLowerElements().Resize(size);
+	}
 	template <class ...Args>
 		requires IsNonConst
 	void Push(Args&& ...args)
@@ -554,6 +577,28 @@ public:
 	void Push_unsafe(Args&& ...args)
 	{
 		return GetLowerElements().Push_unsafe(std::forward<Args>(args)...);
+	}
+	void Pop() const
+		requires IsNonConst
+	{
+		return GetLowerElements().Pop();
+	}
+
+	template <class ...Args>
+		requires IsNonConst
+	void Assign(Args&& ...args) const
+	{
+		ElementBlockPolicy::Assign(
+			ElementBlock::GetPlaceholdersIn(GetHierarchy(), GetLayer()),
+			m_block, std::forward<Args>(args)...);
+	}
+	template <class ...Args>
+		requires IsNonConst
+	void Assign_unsafe(Args&& ...args) const
+	{
+		ElementBlockPolicy::Assign_unsafe(
+			ElementBlock::GetPlaceholdersIn(GetHierarchy(), GetLayer()),
+			m_block, std::forward<Args>(args)...);
 	}
 
 	//const Hierarchy* GetHierarchy() const { return m_hierarchy.value(); }

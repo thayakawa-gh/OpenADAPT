@@ -62,6 +62,35 @@ public:
 	}
 
 private:
+	template <size_t N, class ...Placeholders, class ...Args>
+	static void Assign_rec(const std::tuple<Placeholders...>& phs, char* ptr, std::tuple<Args...> args)
+	{
+		if constexpr (N < sizeof...(Placeholders))
+		{
+			auto& ph = std::get<N>(phs);
+			using ValueType = std::remove_cvref_t<decltype(ph)>::RetType;
+			static_assert(std::convertible_to<GetType_t<N, Args...>, ValueType>);
+			ValueType* vptr = std::launder(reinterpret_cast<ValueType*>(ptr + ph.GetPtrOffset()));
+			*vptr = std::get<N>(args);
+			Assign_rec<N + 1>(phs, ptr, std::move(args));
+		}
+	}
+public:
+	//ptrは構築済みであるとして、argsを代入する。
+	template <class ...Placeholders, class ...Args>
+	static void Assign(const std::tuple<Placeholders...>& phs, char* ptr, Args&& ...args)
+	{
+		static_assert(sizeof...(Placeholders) == sizeof...(Args));
+		Assign_rec<0>(phs, ptr, std::forward_as_tuple(std::forward<Args>(args)...));
+	}
+	template <class ...Placeholders, class ...Args>
+	static void Assign_static(const std::tuple<Placeholders...>& phs, char* ptr, Args&& ...args)
+	{
+		//SElementの場合、Subst_staticとSubstは全く同等である。
+		Assign(phs, ptr, std::forward<Args>(args)...);
+	}
+
+private:
 	template <size_t N, class ...Placeholders>
 	static void Move_impl(const std::tuple<Placeholders...>& phs, char* from, char* to)
 	{
@@ -202,6 +231,9 @@ private:
 		Create_rec<Container>(++it, ptr, std::forward<Args>(args)...);
 	}
 public:
+	//ptrは未初期化であるとして、argsを引数としてコンストラクタを呼ぶ。
+	//Createは型のチェックを行い、Argsとの一致を確認する。
+	//不一致であった場合、MismatchTypeが投げられる。
 	template <class Container, class ...Args>
 	static void Create(const std::vector<eval::RttiPlaceholder<Container>>& ms, char* ptr, Args&& ...args)
 	{
@@ -221,6 +253,9 @@ private:
 		Create_static_rec<Container>(++it, ptr, std::forward<Args>(args)...);
 	}
 public:
+	//ptrは未初期化であるとして、argsを引数としてコンストラクタを呼ぶ。
+	//Create_staticはCreateと異なり、型のチェックを行わず、Argsが正しい型である前提でその型のコンストラクタを呼ぶ。
+	//よって、与える引数の型が厳密に一致していることを保証する必要がある。
 	template <class Container, class ...Args>
 	static void Create_static(const std::vector<eval::RttiPlaceholder<Container>>& ms, char* ptr, Args&& ...args)
 	{
@@ -234,6 +269,7 @@ public:
 		assert((intptr_t)(pos) % alignof(ValueType) == 0);
 		new (pos) ValueType{};
 	}
+	//全てのフィールドをデフォルト値で構築する。
 	template <class Container>
 	static void Create_default(const std::vector<eval::RttiPlaceholder<Container>>& phs, char* ptr)
 	{
@@ -259,6 +295,87 @@ public:
 	}
 
 private:
+	template <class ValueType, class Arg>
+		requires std::convertible_to<Arg, ValueType>
+	static void AssignValue_impl(Arg&& arg, char* pos, int)
+	{
+		assert((intptr_t)(pos) % alignof(ValueType) == 0);
+		ValueType* vptr = std::launder(reinterpret_cast<ValueType*>(pos));
+		//CreateValueが作る総当り呼び出しの中での余計な型変換による警告を避けるため、
+		//数値型に関しては明示的に変換する。
+		if constexpr (std::is_arithmetic_v<ValueType>)
+			*vptr = ValueType(static_cast<ValueType>(arg));
+		else if constexpr (IsComplex_v<ValueType> && std::is_arithmetic_v<std::decay_t<Arg>>)
+			*vptr = ValueType(static_cast<ValueType::value_type>(arg));
+		else
+			*vptr = ValueType(std::forward<Arg>(arg));
+	}
+	template <class ValueType, class Arg>
+	static void AssignValue_impl(Arg&&, char*, long)
+	{
+		throw MismatchType(std::format("cannot convert argument type \"{}\" to \"{}\"",
+									   typeid(Arg).name(), typeid(ValueType).name()));
+	}
+	template <FieldType Type, class Arg>
+	static void AssignValue(Arg&& arg, char* pos)
+	{
+		AssignValue_impl<DFieldInfo::TagTypeToValueType<Type>>(std::forward<Arg>(arg), pos, 0);
+	}
+	template <class Container>
+	static void Assign_rec(std::vector<eval::RttiPlaceholder<Container>>::const_iterator, char*) {}
+	template <class Container, class Arg, class ...Args>
+	static void Assign_rec(std::vector<eval::RttiPlaceholder<Container>>::const_iterator it, char* ptr, Arg&& arg, Args&& ...args)
+	{
+		using enum FieldType;
+		char* pos = ptr + it->GetPtrOffset();
+		switch (it->GetType())
+		{
+		case I08: AssignValue<I08>(std::forward<Arg>(arg), pos); break;
+		case I16: AssignValue<I16>(std::forward<Arg>(arg), pos); break;
+		case I32: AssignValue<I32>(std::forward<Arg>(arg), pos); break;
+		case I64: AssignValue<I64>(std::forward<Arg>(arg), pos); break;
+		case F32: AssignValue<F32>(std::forward<Arg>(arg), pos); break;
+		case F64: AssignValue<F64>(std::forward<Arg>(arg), pos); break;
+		case C32: AssignValue<C32>(std::forward<Arg>(arg), pos); break;
+		case C64: AssignValue<C64>(std::forward<Arg>(arg), pos); break;
+		case Str: AssignValue<Str>(std::forward<Arg>(arg), pos); break;
+		case Jbp: AssignValue<Jbp>(std::forward<Arg>(arg), pos); break;
+		default: throw MismatchType("");
+		}
+		Assign_rec<Container>(++it, ptr, std::forward<Args>(args)...);
+	}
+public:
+	//ptrは構築済みであることを前提に、argsを代入する。
+	template <class Container, class ...Args>
+	static void Assign(const std::vector<eval::RttiPlaceholder<Container>>& ms, char* ptr, Args&& ...args)
+	{
+		Assign_rec<Container>(ms.begin(), ptr, std::forward<Args>(args)...);
+	}
+
+private:
+	template <class Container>
+	static void Assign_static_rec(std::vector<eval::RttiPlaceholder<Container>>::const_iterator, char*) {}
+	template <class Container, class Arg, class ...Args>
+	static void Assign_static_rec(std::vector<eval::RttiPlaceholder<Container>>::const_iterator it, char* ptr, Arg&& arg, Args&& ...args)
+	{
+		using Type = std::remove_cvref_t<Arg>;
+		assert(it->GetType() == DFieldInfo::ValueTypeToTagType<Type>());
+		assert((intptr_t)(ptr + it->GetPtrOffset()) % alignof(Type) == 0);
+		Type* vptr = std::launder(reinterpret_cast<Type*>(ptr + it->GetPtrOffset()));
+		*vptr = std::forward<Arg>(arg);
+		Assign_static_rec<Container>(++it, ptr, std::forward<Args>(args)...);
+	}
+public:
+	//ptrは構築済みであることを前提に、argsを代入する。
+	//Subst_staticはSubstと異なり、型のチェックを行わず、Argsが正しい型である前提でその型のコンストラクタを呼ぶ。
+	//よって、与える引数の型が厳密に一致していることを保証する必要がある。
+	template <class Container, class ...Args>
+	static void Assign_static(const std::vector<eval::RttiPlaceholder<Container>>& ms, char* ptr, Args&& ...args)
+	{
+		Assign_static_rec<Container>(ms.begin(), ptr, std::forward<Args>(args)...);
+	}
+
+private:
 	template <class Type>
 	static void Move_impl(char* from, char* to)
 	{
@@ -268,6 +385,7 @@ private:
 	}
 public:
 	//ある要素fromの各フィールドを要素toへと移動する。
+	//fromは既に構築されている前提。
 	//こちらはfromのフィールドのデストラクタを呼ばないので、
 	//fromのフィールドはムーブコンストラクタで破壊された後の（初期）状態となる。
 	template <class Container>
