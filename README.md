@@ -28,10 +28,10 @@ and can be incorporated into your project using the find_package command:
 
 ```cmake
 find_package(OpenADAPT REQUIRED)
-target_link_libraries(YOUR_PACKAGE_NAME OpenADAPT::OpenADAPT)
+target_link_libraries(YOUR_PACKAGE_NAME PRIVATE OpenADAPT::OpenADAPT)
 ```
 
-The test and example codes are built by adding `-DBUILD_TEST=ON` and `-DBUILD_EXAMPLES` to the cmake command, respectively. Note that GTest, yaml-cpp and matplot++ are required for these builds.
+The test and example codes are built by adding `-DBUILD_TEST=ON` and `-DBUILD_EXAMPLES=ON` to the cmake command, respectively. Note that GTest, yaml-cpp and matplot++ are required for these builds.
 
 ## Examples
 
