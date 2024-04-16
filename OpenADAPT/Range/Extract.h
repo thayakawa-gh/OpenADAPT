@@ -75,7 +75,7 @@ class CttiExtractor
 		}
 	}
 	template <LayerType Layer, LayerType MaxLayer, class STree_, class Traverser, class ElementBlock, class ElementRef, class ...NamedNPs_>
-	void Exec_rec(STree_& res, Traverser& t, std::vector<ElementBlock>& bufs, ElementRef upref, NamedNPs_&& ...nps)
+	void Exec_rec(STree_& res, Traverser& t, ElementRef upref, std::vector<ElementBlock>& bufs, NamedNPs_&& ...nps)
 	{
 		using ElementListRef = ElementListRef_impl<typename STree_::Hierarchy, std::type_identity_t, LayerConstant<Layer>>;
 		using enum FieldType;
@@ -96,7 +96,7 @@ class CttiExtractor
 				Exec_eval<Layer, STree_>(t, elmref, std::forward<NamedNPs_>(nps)...);
 
 				if constexpr (Layer < MaxLayer)
-					Exec_rec<Layer + 1_layer, MaxLayer>(res, t, bufs, elmref, std::forward<NamedNPs_>(nps)...);
+					Exec_rec<Layer + 1_layer, MaxLayer>(res, t, elmref, bufs, std::forward<NamedNPs_>(nps)...);
 			}
 			catch (JointError)
 			{
@@ -135,7 +135,7 @@ public:
 		auto t = std::forward<Range_>(range).begin();
 		DoNothing(Init(std::get<1>(std::forward<NamedNPs_>(nps)), t)...);
 		auto upref = res.GetTopElement();
-		Exec_rec<0, maxlayer>(res, t, bufs, upref, std::forward<NamedNPs_>(nps)...);
+		Exec_rec<0, maxlayer>(res, t, upref, bufs, std::forward<NamedNPs_>(nps)...);
 		DestructBufs(res, bufs, std::make_integer_sequence<LayerType, maxlayer + 1>{});
 		return res;
 	}
@@ -148,38 +148,47 @@ class RttiExtractor
 	using Container = std::remove_cvref_t<Range>::Container;
 
 	template <size_t N>
-	void Arrange() const {}
+	void Arrange(std::vector<std::vector<std::pair<std::string, FieldType>>>& structure,
+				 std::vector<std::vector<eval::RttiFuncNode<Container>>>& nodes) const
+	{}
 	template <size_t N, class Var, class ...Vars>
-	void Arrange(Var&& var, Vars&& ...vars)
+	void Arrange(std::vector<std::vector<std::pair<std::string, FieldType>>>& structure,
+				 std::vector<std::vector<eval::RttiFuncNode<Container>>>& nodes, 
+				 Var&& var, Vars&& ...vars)
 	{
 		auto&& [name, v] = std::forward<Var>(var);
 		LayerType layer = v.GetLayer();
 		FieldType type = v.GetType();
-		while ((LayerType)m_structure.size() - 1 <= layer)
+		while ((LayerType)structure.size() - 1 <= layer)
 		{
-			m_structure.emplace_back();
-			m_nodes.emplace_back();
+			structure.emplace_back();
+			nodes.emplace_back();
 		}
-		m_structure[layer + 1].emplace_back(name, type);
-		m_nodes[layer + 1].emplace_back(eval::ConvertToRttiFuncNode(std::forward<decltype(v)>(v)));
-		Arrange<N + 1>(std::forward<Vars>(vars)...);
+		structure[layer + 1].emplace_back(name, type);
+		nodes[layer + 1].emplace_back(eval::ConvertToRttiFuncNode(std::forward<decltype(v)>(v)));
+		Arrange<N + 1>(structure, nodes, std::forward<Vars>(vars)...);
 	}
 
 	template <named_node_or_placeholder ...Vars>
-	void Init(Vars&& ...vars)
+	void Init(std::vector<std::vector<std::pair<std::string, FieldType>>>& structure,
+			  std::vector<ElementBlock>& bufs,
+			  std::vector<std::vector<eval::RttiFuncNode<Container>>>& nodes,
+			  Vars&& ...vars)
 	{
-		Arrange<0>(std::forward<Vars>(vars)...);
-		m_bufs.resize(m_structure.size() - 1);
+		Arrange<0>(structure, nodes, std::forward<Vars>(vars)...);
+		bufs.resize(structure.size() - 1);
 	}
 
 	using ElementListRef = ElementListRef_impl<typename DTree::Hierarchy, std::type_identity_t, LayerType>;
 
 	template <class Traverser>
-	void Exec_rec(DTree& res, Traverser& t, LayerType layer, LayerType maxlayer, DTree::ElementRef upref)
+	void Exec_rec(DTree& res, Traverser& t, LayerType layer, LayerType maxlayer, DTree::ElementRef upref,
+				  std::vector<ElementBlock>& bufs,
+				  std::vector<std::vector<eval::RttiFuncNode<Container>>>& nodes)
 	{
 		using enum FieldType;
-		ElementListRef buf{ &res, layer, & m_bufs[layer] };
-		const std::vector<eval::RttiFuncNode<Container>>& nodes = m_nodes[layer + 1];
+		ElementListRef buf{ &res, layer, & bufs[layer] };
+		const std::vector<eval::RttiFuncNode<Container>>& lnodes = nodes[layer + 1];
 		const std::vector<DTree::RttiPlaceholder>& phs = res.GetPlaceholdersIn(layer);
 		bool pushflag = true;
 		for (bool end = true; end; end = t.MoveForward(layer))
@@ -193,7 +202,7 @@ class RttiExtractor
 				//ここ、CreateValueを個々に呼ぶことは難しいかもしれない。
 				//万一SkipOverが投げられた場合、どこまで構築されたかを確認していちいちDestroyしなければならなくなる。
 				//デフォルトコンストラクタを先に呼んでおくのとどちらがいいのか。
-				for (auto [node, ph] : views::Zip(nodes, phs))
+				for (auto [node, ph] : views::Zip(lnodes, phs))
 				{
 					auto field = elmref.GetField(ph);
 					switch (ph.GetType())
@@ -213,7 +222,7 @@ class RttiExtractor
 					//++ifield;
 				}
 
-				if (layer < maxlayer) Exec_rec(res, t, layer + 1, maxlayer, elmref);
+				if (layer < maxlayer) Exec_rec(res, t, layer + 1, maxlayer, elmref, bufs, nodes);
 			}
 			catch (JointError)
 			{
@@ -234,33 +243,29 @@ public:
 	template <traversal_range Range_, named_node_or_placeholder ...NPs_>
 	DTree Exec(Range_&& range, NPs_&& ...nps)
 	{
-		//rangeはSetTravLayerで変更されるのでconstになれない。
-		//なので、rangeは値として受け取る。
-		Init(std::forward<NPs_>(nps)...);
+		std::vector<std::vector<std::pair<std::string, FieldType>>> structure;//m_structure[i]はi-1層のレイヤー構造。
+		std::vector<ElementBlock> bufs;//m_bufs[layer]にlayer層用のバッファがある。
+		//std::vector<std::vector<ElementBlock>> elements;//m_elements[layer]にはlayer層のElementBlockが一時保管されている。
+		std::vector<std::vector<eval::RttiFuncNode<Container>>> nodes;//レイヤーごとに分けられたノード。m_nodes[layer + 1]がlayer層のノード。
+
+		Init(structure, bufs, nodes, std::forward<NPs_>(nps)...);
 		DTree res;
-		if (!m_structure[0].empty()) res.SetTopLayer(m_structure[0]);
-		for (auto it = m_structure.begin() + 1; it != m_structure.end(); ++it) res.AddLayer(*it);
+		if (!structure[0].empty()) res.SetTopLayer(structure[0]);
+		for (auto it = structure.begin() + 1; it != structure.end(); ++it) res.AddLayer(*it);
 		res.VerifyStructure();
 
-		LayerType maxlayer = (LayerType)m_structure.size() - 2;//m_structureは-1, 0, 1, ...と順に階層情報を格納しているので、-2が正しい。
+		LayerType maxlayer = (LayerType)structure.size() - 2;//m_structureは-1, 0, 1, ...と順に階層情報を格納しているので、-2が正しい。
 		if (maxlayer < 0_layer)
 			throw InvalidLayer("Maximum layer of the arguments for Extract must be equal or larger than 0.");
 
 		range.SetTravLayer(maxlayer);
 		auto t = std::forward<Range_>(range).begin();
-		for (auto& n : m_nodes) for (auto& nn : n) nn.Init(t);
+		for (auto& n : nodes) for (auto& nn : n) nn.Init(t);
 		auto ref = res.GetTopElement();
-		Exec_rec(res, t, 0, maxlayer, ref);
-		for (auto[layer, b] : views::Enumerate(m_bufs)) b.Destruct(&res, (LayerType)layer);
+		Exec_rec(res, t, 0, maxlayer, ref, bufs, nodes);
+		for (auto[layer, b] : views::Enumerate(bufs)) b.Destruct(&res, (LayerType)layer);
 		return res;
 	}
-
-private:
-
-	std::vector<std::vector<std::pair<std::string, FieldType>>> m_structure;//m_structure[i]はi-1層のレイヤー構造。
-	std::vector<ElementBlock> m_bufs;//m_bufs[layer]にlayer層用のバッファがある。
-	std::vector<std::vector<ElementBlock>> m_elements;//m_elements[layer]にはlayer層のElementBlockが一時保管されている。
-	std::vector<std::vector<eval::RttiFuncNode<Container>>> m_nodes;//レイヤーごとに分けられたノード。m_nodes[layer + 1]がlayer層のノード。
 };
 
 template <size_t I, named_node_or_placeholder NP>

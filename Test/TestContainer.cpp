@@ -252,9 +252,9 @@ TEST_F(Aggregator, STree_TreeHandling)
 {
 	using enum FieldType;
 	//通常のテストでは中身の確認を行うだけだが、こちらはPushとPop、Insert、Eraseもテストする。
-	using TopLayer = NamedTuple<>;
-	using Layer0 = NamedTuple<Named<"i00", int32_t>, Named<"i01", int32_t>>;
-	using Layer1 = NamedTuple<Named<"i10", int32_t>, Named<"i11", int32_t>>;
-	STree<TopLayer, Layer0, Layer1> tree;
+	using TopLayerTest = NamedTuple<>;
+	using Layer0Test = NamedTuple<Named<"i00", int32_t>, Named<"i01", int32_t>>;
+	using Layer1Test = NamedTuple<Named<"i10", int32_t>, Named<"i11", int32_t>>;
+	STree<TopLayerTest, Layer0Test, Layer1Test> tree;
 	TestTreeHandling(tree);
 }
