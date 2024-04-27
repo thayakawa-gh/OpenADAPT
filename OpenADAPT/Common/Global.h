@@ -7,7 +7,7 @@ namespace adapt
 {
 
 inline int32_t g_num_of_threads = -1;
-inline int32_t g_granularity = 32;
+inline int32_t g_granularity = 128;
 
 inline int32_t GetNumOfThreads()
 {
