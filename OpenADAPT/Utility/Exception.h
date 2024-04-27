@@ -53,6 +53,23 @@ public:
 
 };*/
 
+class BadAlloc : public ExceptionWithMessage
+{
+	//メモリ確保に失敗した場合。
+public:
+	BadAlloc(std::string_view mes)
+		: ExceptionWithMessage(std::format("BAD_ALLOC : {}", mes))
+	{}
+};
+
+class BadFile : public adapt::ExceptionWithMessage
+{
+public:
+	BadFile(std::string_view mes)
+		: adapt::ExceptionWithMessage(std::format("BAD_FILE : {}", mes))
+	{}
+};
+
 class InvalidLayer : public ExceptionWithMessage
 {
 	//階層に問題がある場合。

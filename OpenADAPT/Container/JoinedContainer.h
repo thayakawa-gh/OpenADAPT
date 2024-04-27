@@ -343,6 +343,11 @@ public:
 		return GetBranchProxy<>{ this, {} };
 	}
 
+	BindexType GetSize() const
+	{
+		return GetContainer<0>().GetSize();
+	}
+
 	template <RankType Rank>
 	Qualifier<IContainer<Rank>>& GetContainer() const { return *std::get<Rank>(m_containers); }
 

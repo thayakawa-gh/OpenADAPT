@@ -2,7 +2,7 @@
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
 
   <Type Name="adapt::DHierarchy&lt;*&gt;">
-    <DisplayString>{{num of fields = {m_field_names.size()}, layer = {m_max_layer}}}</DisplayString>
+    <DisplayString>{{maxlayer = {m_max_layer}, num of fields = {m_field_map}}}</DisplayString>
     <Expand>
     </Expand>
   </Type>
@@ -28,28 +28,49 @@
         <Variable Name="size" InitialValue="m_hierarchy.m_hierarchy->m_field_infos_by_layer[m_layer + 1].size()" />
         <Variable Name="index" InitialValue="0" />
         <Variable Name="field_ptr" InitialValue="&amp;m_hierarchy.m_hierarchy->m_field_infos_by_layer[m_layer + 1][0]" />
-        <Variable Name="name_ptr" InitialValue="&amp;m_hierarchy.m_hierarchy->m_field_names[0]" />
         <Variable Name="is_max_layer" InitialValue="m_hierarchy.m_hierarchy->m_max_layer==m_layer" />
         <Variable Name="element_size" InitialValue="m_hierarchy.m_hierarchy->m_element_sizes[m_layer + 1]" />
 
         <Size>size + 1</Size>
         <Loop>
           <If Condition="index&lt;size">
-            <Exec>name_ptr = &amp;m_hierarchy.m_hierarchy->m_field_names[field_ptr->m_index]</Exec>
-            <Item Name="{*name_ptr}, type = {field_ptr->m_type}" Condition="field_ptr->m_type==adapt::FieldType::I08">int(*(char*)(ptr + field_ptr->m_ptr_offset))</Item>
-            <Item Name="{*name_ptr}, type = {field_ptr->m_type}" Condition="field_ptr->m_type==adapt::FieldType::I16">*(short*)(ptr + field_ptr->m_ptr_offset)</Item>
-            <Item Name="{*name_ptr}, type = {field_ptr->m_type}" Condition="field_ptr->m_type==adapt::FieldType::I32">*(int*)(ptr + field_ptr->m_ptr_offset)</Item>
-            <Item Name="{*name_ptr}, type = {field_ptr->m_type}" Condition="field_ptr->m_type==adapt::FieldType::I64">*(long long*)(ptr + field_ptr->m_ptr_offset)</Item>
-            <Item Name="{*name_ptr}, type = {field_ptr->m_type}" Condition="field_ptr->m_type==adapt::FieldType::F32">*(float*)(ptr + field_ptr->m_ptr_offset)</Item>
-            <Item Name="{*name_ptr}, type = {field_ptr->m_type}" Condition="field_ptr->m_type==adapt::FieldType::F64">*(double*)(ptr + field_ptr->m_ptr_offset)</Item>
-            <Item Name="{*name_ptr}, type = {field_ptr->m_type}" Condition="field_ptr->m_type==adapt::FieldType::Str">*(std::string*)(ptr + field_ptr->m_ptr_offset)</Item>
-            <Item Name="{*name_ptr}, type = {field_ptr->m_type}" Condition="field_ptr->m_type==adapt::FieldType::Jbp">*(adapt::JBpos*)(ptr + field_ptr->m_ptr_offset)</Item>
+            <Item Name="type = {field_ptr->m_type}" Condition="field_ptr->m_type==adapt::FieldType::I08">int(*(char*)(ptr + field_ptr->m_ptr_offset))</Item>
+            <Item Name="type = {field_ptr->m_type}" Condition="field_ptr->m_type==adapt::FieldType::I16">*(short*)(ptr + field_ptr->m_ptr_offset)</Item>
+            <Item Name="type = {field_ptr->m_type}" Condition="field_ptr->m_type==adapt::FieldType::I32">*(int*)(ptr + field_ptr->m_ptr_offset)</Item>
+            <Item Name="type = {field_ptr->m_type}" Condition="field_ptr->m_type==adapt::FieldType::I64">*(long long*)(ptr + field_ptr->m_ptr_offset)</Item>
+            <Item Name="type = {field_ptr->m_type}" Condition="field_ptr->m_type==adapt::FieldType::F32">*(float*)(ptr + field_ptr->m_ptr_offset)</Item>
+            <Item Name="type = {field_ptr->m_type}" Condition="field_ptr->m_type==adapt::FieldType::F64">*(double*)(ptr + field_ptr->m_ptr_offset)</Item>
+            <Item Name="type = {field_ptr->m_type}" Condition="field_ptr->m_type==adapt::FieldType::Str">*(std::string*)(ptr + field_ptr->m_ptr_offset)</Item>
+            <Item Name="type = {field_ptr->m_type}" Condition="field_ptr->m_type==adapt::FieldType::Jbp">*(adapt::JBpos*)(ptr + field_ptr->m_ptr_offset)</Item>
             <Exec>field_ptr++</Exec>
             <Exec>index++</Exec>
           </If>
           <If Condition="index==size">
             <Item Name="block">(ElementBlock*)(m_block + element_size)</Item>
           </If>
+        </Loop>
+      </CustomListItems>
+    </Expand>
+  </Type>
+
+  <Type Name="adapt::detail::ElementListRef_impl&lt;*&gt;">
+    <Intrinsic Name="element_size" Expression="m_hierarchy.m_hierarchy->m_element_sizes[m_layer + 1]" />
+    <Intrinsic Name="is_max_layer" Expression="m_hierarchy.m_hierarchy->m_max_layer==m_layer" />
+    <Intrinsic Name="block_size" Expression="element_size() + is_max_layer() * sizeof(ElementBlock)" />
+    <Intrinsic Name="tot_size" Expression="(m_elements->m_end - m_elements->m_blocks) / block_size()" />
+    <Intrinsic Name="tot_cap" Expression="(m_elements->m_cap - m_elements->m_blocks) / block_size()" />
+    <DisplayString>{{size = {size()}, capacity = {cap()} }}</DisplayString>
+    <Expand>
+      <CustomListItems>
+        <Variable Name="ptr" InitialValue="m_elements" />
+        <Variable Name="index" InitialValue="0" />
+        <Variable Name="element" InitialValue="adapt::detail::ElementRef_impl&lt;$T1, $T2, $T3&gt;(GetHierarchy(), GetLayer(), ptr)" />
+
+        <Size>size()</Size>
+        <Loop>
+          <Item Name="block">0</Item>
+          <Exec>ptr+=block_size()</Exec>
+          <Exec>index++</Exec>
         </Loop>
       </CustomListItems>
     </Expand>

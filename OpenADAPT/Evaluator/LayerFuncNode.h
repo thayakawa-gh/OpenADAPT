@@ -105,24 +105,27 @@ struct LayerFuncBase
 		//if (x.m_traverser != nullptr)
 		//	PrintWarning("The copy constructor of the CttiLayerFuncNode has been called, although the node had already been initialized.");
 		m_node = x.m_node;
-		m_sp_func = x.m_sp_func;
+		m_func = x.m_func;
 		if (x.m_traverser)
 		{
 			//この時点でx.m_traverserがnullptrでないことは普通はしないと思うが、一応許す。
-			if (!m_traverser) m_traverser = (*m_sp_func->m_new)();
-			(*m_sp_func->m_copy)(x.m_traverser, m_traverser);
+			if (!m_traverser) m_traverser = (*x.m_sp_func->m_new)();
+			(*x.m_sp_func->m_copy)(x.m_traverser, m_traverser);
 		}
 		m_depth = x.m_depth;
 		m_up = x.m_up;
+		m_has_outer = x.m_has_outer;
+		m_sp_func = x.m_sp_func;
 		return *this;
 	}
 	LayerFuncBase& operator=(LayerFuncBase&& x) noexcept
 	{
 		m_node = std::move(x.m_node);
+		m_func = std::move(x.m_func);
 		if (m_traverser) (*m_sp_func->m_delete)(m_traverser);
 		m_traverser = x.m_traverser; x.m_traverser = nullptr;
 		m_depth = x.m_depth; x.m_depth = {};
-		m_up = x.m_up;
+		m_up = x.m_up; x.m_up = {};
 		m_sp_func = x.m_sp_func; x.m_sp_func = nullptr;
 		return *this;
 	}
@@ -826,7 +829,7 @@ struct LayerFuncFirst
 	template <class Trav>
 	void First(const ArgType& v, const Trav&) { m_result = v; m_found = true; }
 	template <class Trav>
-	void Exec(const ArgType& v, const Trav&) {}
+	void Exec(const ArgType&, const Trav&) {}
 	const RetType& GetResult() const
 	{
 		if (!m_found) throw NoElements{};

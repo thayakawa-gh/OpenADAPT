@@ -281,15 +281,33 @@ void CalculateWithLambda_rtti(const Tree& t)
 	assert(rank(t, bpos).i64() == 3);
 	//将来的には、階層関数にもouterを付与できるようにしたい。これが必要な状況がいくらか考えられる。
 
+
 	//例8 ユーザー定義関数
 	//ラムダ関数中で使う関数をユーザーが定義することもできる。
-	auto average = adapt::UserFunc([](int32_t a, int32_t b, int32_t c) { return (a + b + c) / 3.; });
+	auto average = adapt::UserFunc([](std::integral auto x, std::integral auto y, std::integral auto z) { return (x + y + z) / 3.; });
+	//以下のように、intやdoubleなどを引数に取る関数を与えると、動作上は問題ないが警告が出る可能性がある。
+	//auto average = adapt::UserFunc([](int32_t a, int32_t b, int32_t c) { return (a + b + c) / 3.; });
+
 	auto avg_3_subjs = average(jpn, math, eng);
 	assert(avg_3_subjs(t, bpos).f64() == (48 + 8 + 24) / 3.);
 	//ジェネリックラムダのようなテンプレートを含む関数を使う場合は、必ずconceptやSFINAEを用いて制約しておくこと。
 	//特にRttiの場合、FieldTypeに定義されている全ての型で呼び出しを試みるため、制約のない汎引数関数はコンパイルエラーに繋がる。
-	//また、intやdoubleなどを引数に取る関数を与えると、動作上は問題ないが警告が出る可能性がある。
 	auto constrained = adapt::UserFunc([](const auto& x, const auto& y) -> decltype(x + y) { return x + y; });
+	auto sum_2_subjs = constrained(jpn, math);
+	assert(sum_2_subjs(t, bpos).i32() == (48 + 8));
+
+
+	//例9 型情報の事前付与
+	//プレースホルダやラムダ関数には、あらかじめ静的型情報を与えておくこともできる。
+	auto typed_jpn = jpn.i32();//typed_jpnはTree::TypedPlaceholder<int32_t>型。
+	auto typed_math = math.i32();
+	auto typed_eng = eng.i32();
+	auto typed_sum_3subjs = typed_jpn + typed_math + typed_eng;
+	//すべての引数がtypedであったため、戻り値の型も静的に決定される。
+	static_assert(std::same_as<typename decltype(typed_sum_3subjs)::RetType, int32_t>);
+	assert(typed_sum_3subjs.GetLayer() == 2_layer);
+	bpos = { 0, 0, 2 };
+	assert(typed_sum_3subjs(t, bpos) == 50 + 15 + 44);//型情報は既に持っているので、i32()を呼ぶ必要はない。
 }
 
 //ラムダ関数およびそれに基づくViewを活用した走査。
@@ -306,7 +324,7 @@ void TraverseWithLambda_rtti(const Tree& t)
 	assert(max_math.GetType() == adapt::FieldType::I32);//戻り値の型はgreatestの引数型と同じ。
 
 
-	//1. Filterによって条件を満たす要素だけを走査する方法
+	//例1. Filterによって条件を満たす要素だけを走査する方法
 	//数学の平均点が60点以上の生徒のみ走査する。
 	//このとき、走査層はFilterやTransformなどに与えられたプレースホルダ、ラムダ関数のうちの最下層に設定される。
 	//今回、mean_math >= 60が1層のラムダ関数であるため、1層が走査される。
@@ -352,7 +370,7 @@ void TraverseWithLambda_rtti(const Tree& t)
 	}
 
 
-	//2. Evaluateによるラムダ関数適用結果の取得
+	//例2. Evaluateによるラムダ関数適用結果の取得
 	//Evaluateを通すことで、このTraverserはoperator*によってラムダ関数の戻り値を返すようになる。
 	//このとき、Evaluateに与えるラムダ関数はTypedまたはCttiにしておくことが望ましい。
 	//mean_mathはRttiであるが、mean_math.f64()のように明示的に型を与えてTypedに変換できる。
@@ -407,7 +425,6 @@ void Show_rtti(const Tree& t)
 
 	//4回の試験の3科目合計点が180を超えたことのある生徒の情報を表示する。
 	//Showにplaceholderなどを与えるとそれらの情報だけを表示する。
-	//Show(adapt::except, jpn, math, eng)などとすると、与えたplaceholder以外の全フィールドを表示する。
 	//ただし、表示できるのはFieldTypeに定義されているものに限られる。STreeなどを表示するときは注意。
 	t | Filter(greatest_3subjs >= 180) | Show(number, name, greatest_3subjs, jpn, math, eng);
 }
@@ -484,5 +501,5 @@ void Plot_rtti(const Tree& t)
 
 	//ちなみに以下のようにadapt::flags::combineを与えると、各値を格納したstd::tupleを要素として持つstd::vectorになる。
 	//Matplot++に対しては使えない、ただのtips。
-	//std::vector<std::tuple<int32_t, int32_t>> vec = t | ToVector(math.i32(), sci.i32(), adapt::flags::combine);//戻り値はstd::vector<std::tuple<int32_t, int32_t>>;
+	//std::vector<std::tuple<int32_t, int32_t>> vec = t | ToVector(adapt::flags::combine, math.i32(), sci.i32());//戻り値はstd::vector<std::tuple<int32_t, int32_t>>;
 }

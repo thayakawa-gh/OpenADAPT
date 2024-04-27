@@ -185,6 +185,11 @@ private:
 	FieldType m_type;
 };
 
+template <class Range>
+class CttiExtractor;
+template <class Range>
+class RttiExtractor;
+
 template <class Hierarchy_, template <class> class Qualifier, class LayerSD>
 class ElementListRef_impl
 {
@@ -192,6 +197,9 @@ class ElementListRef_impl
 	using ElementBlockPolicy = std::conditional_t<s_hierarchy<Hierarchy_>, SElementBlockPolicy, DElementBlockPolicy>;
 
 	static constexpr bool HasStaticLayer = same_as_xn<LayerSD, LayerConstant>;
+
+	template <class Range> friend class CttiExtractor;
+	template <class Range> friend class RttiExtractor;
 public:
 
 	using Hierarchy = Hierarchy_;
@@ -340,6 +348,7 @@ public:
 	const_iterator begin() const requires (!IsNonConst) { return cbegin(); }
 	const_iterator end() const requires (!IsNonConst) { return cend(); }
 
+private:
 	//Extractorが使う。ユーザーが使うべきではない。
 	//自身は空のリストであるという前提で、bufの要素を全てmoveしつつ構築する。
 	//下層要素も含めて移動する。
@@ -347,17 +356,26 @@ public:
 		requires IsNonConst
 	{
 		assert(GetSize() == 0);
-		m_elements->MoveElementsFrom(GetHierarchy(), GetLayer(), std::move(*buf.m_elements));
+		m_elements->CreateElementsFrom(GetHierarchy(), GetLayer(), std::move(*buf.m_elements));
+	}
+	//Extractorが使う。ユーザーが使うべきではない。
+	//ExtractorによってReserveされた領域の要素を書き込んだ後、
+	//その時点ではサイズが0のままになっているため、
+	//この関数で強制的にサイズを変更する。
+	//あくまでm_endの値を変更するだけで、中身を一切変更しない。
+	void RewriteSize(BindexType size) const
+	{
+		m_elements->RewriteSize(GetHierarchy(), GetLayer(), size);
 	}
 
 private:
-	HierarchyRef GetHierarchy() const requires !s_hierarchy<Hierarchy> { return m_hierarchy; }
+	HierarchyRef GetHierarchy() const requires (!s_hierarchy<Hierarchy>) { return m_hierarchy; }
 	static consteval HierarchyRef GetHierarchy() requires s_hierarchy<Hierarchy> { return {}; }
 	LayerType GetLayer() const requires (!HasStaticLayer) { return m_layer; }
 	static consteval auto GetLayer() requires HasStaticLayer { return LayerSD{}; }
 
 	Qualifier<ElementBlock>* m_elements;
-	[[no_unique_address]] LayerSD m_layer = {};
+	[[no_unique_address]] LayerSD m_layer = {};//要素と要素の中継を担うクラスだが、階層は下層側（つまりメンバに持つm_elementsの方）に合わせられている。
 	[[no_unique_address]] HierarchyRef m_hierarchy;
 };
 
@@ -372,6 +390,8 @@ class ElementRef_impl
 	friend class ElementIterator_impl<Hierarchy_, Qualifier>;
 	using ElementBlockPolicy = std::conditional_t<s_hierarchy<Hierarchy_>, SElementBlockPolicy, DElementBlockPolicy>;
 
+	template <class Range> friend class CttiExtractor;
+	template <class Range> friend class RttiExtractor;
 public:
 
 	using Hierarchy = Hierarchy_;
@@ -645,6 +665,23 @@ public:
 	const char* GetBlock() const { return m_block; }
 
 private:
+	//Extractorが使う。ユーザーが使うべきではない。
+	//自身はメモリ確保されただけの未初期化状態であるという前提で、bufの要素を全てmoveしつつ構築する。
+	//bufの中身はデストラクタを呼ばれた状態になる。
+	void CreateElementFrom(ElementRef_impl&& e) const
+		requires IsNonConst
+	{
+		//s_hierarchyの場合、構造が一致するのはこの関数を呼び出せている時点で明らかである、
+		//一方d_hierarchyやf_hierarchyの場合は、ポインタの一致を確認しておく必要がある。
+		if constexpr (!s_hierarchy<Hierarchy>)
+		{
+			assert(e.GetHierarchy() == GetHierarchy());
+			assert(GetLayer() == e.GetLayer());
+		}
+		ElementBlock::MoveConstructAndDestroyElementFrom(GetHierarchy(), GetLayer(), e.m_block, m_block);
+	}
+
+private:
 	Qualifier<ElementBlock>* GetLowerBlock() const
 	{
 		if constexpr (HasStaticLayer && HasFixedMaxLayer)
@@ -864,7 +901,7 @@ public:
 
 private:
 
-	HierarchySD GetHierarchy() const requires !s_hierarchy<Hierarchy> { return m_ref.GetHierarchy(); }
+	HierarchySD GetHierarchy() const requires (!s_hierarchy<Hierarchy>) { return m_ref.GetHierarchy(); }
 	static consteval HierarchySD GetHierarchy() requires s_hierarchy<Hierarchy> { return ElementRef::GetHierarchy(); }
 
 	ElementRef m_ref;

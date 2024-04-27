@@ -73,7 +73,7 @@ public:
 
 private:
 	template <LayerType Layer_plus1>
-	static consteval std::array<size_t, MaxLayer + 2_layer> GetElementSizes()
+	static constexpr std::array<size_t, MaxLayer + 2_layer> GetElementSizes()
 	{
 		if constexpr (Layer_plus1 == MaxLayer + 2_layer)
 		{
@@ -91,7 +91,7 @@ private:
 			else
 			{
 				auto lastph = std::get<phssize - 1>(phs);
-				size_t size = lastph.GetPtrOffset() + sizeof(decltype(lastph)::RetType);
+				size_t size = lastph.GetPtrOffset() + sizeof(typename decltype(lastph)::RetType);
 				constexpr size_t align = alignof(void*);
 				if (ptrdiff_t mod = size % align; mod != 0) size += (align - mod);
 				res[Layer_plus1] = size;
@@ -466,7 +466,7 @@ public:
 	using CttiPlaceholder = eval::CttiPlaceholder<Layer, Type, Container>;
 
 	DHierarchy()
-		: m_field_infos_by_layer(1), m_element_sizes(1, 0), m_totally_trivial(1, true)
+		: m_element_sizes(1, 0), m_totally_trivial(1, true), m_field_infos_by_layer(1)
 	{}
 
 	void SetTopLayer(const std::vector<std::pair<std::string, FieldType>>& mems)

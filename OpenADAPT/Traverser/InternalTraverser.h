@@ -120,6 +120,12 @@ public:
 		}
 	}
 
+	template <RankType Rank>
+	bool AssignRow(BindexType row)
+	{
+		static_assert(Rank == 0_rank);
+		return m_is_joined = Base::AssignRow(row);
+	}
 	template <RankType Rank, joint_mode JointMode>
 	bool Assign(const InternalTraverser& ithat, JointMode)
 	{

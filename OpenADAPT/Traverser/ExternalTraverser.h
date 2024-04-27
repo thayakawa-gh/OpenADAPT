@@ -245,6 +245,28 @@ public:
 
 	bool AssignPartially(const Bpos& bpos) { return AssignPartially(bpos, ForwardFlag{}, DelayedJoint{}); }
 
+	//第0位のTraverserの0層のみを引数の値に割り当てる。
+	//それより下の階層は最初の要素。
+	template <direction_flag Flag, joint_mode JointMode>
+	bool AssignRow(BindexType row, Flag, JointMode)
+	{
+		auto& i = std::get<0>(m_internals);
+		assert(i.IsEnabled());
+		if (!i.template AssignRow<0>(row)) return false;
+		if constexpr (std::same_as<JointMode, DelayedJoint>)
+		{
+			Release<1>();
+			return true;
+		}
+		else
+		{
+			return JoinDownward<1>(Flag{}, JointMode{});
+		}
+	}
+	template <direction_flag Flag>
+	bool AssignRow(BindexType row, Flag) { return AssignRow(row, Flag{}, DelayedJoint{}); }
+	bool AssignRow(BindexType row) { return AssignRow(row, ForwardFlag{}, DelayedJoint{}); }
+
 private:
 	template <RankType Rank, joint_mode JointMode>
 	bool MoveToBegin_impl(JointMode)
@@ -697,6 +719,8 @@ protected:
 	}
 
 public:
+
+	BindexType GetRow() const { return std::get<0>(m_internals).GetRow(); }
 	template <direction_flag Flag>
 	BindexType GetPos(LayerType layer, Flag) const { return GetPos_rec<(RankType)0>(layer, Flag{}, DelayedJoint{}); }
 	BindexType GetPos(LayerType layer) const { return GetPos(layer, ForwardFlag{}); }

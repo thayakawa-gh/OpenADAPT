@@ -3,6 +3,8 @@
 
 #include <iomanip>
 #include <string_view>
+#include <fstream>
+#include <OpenADAPT/Utility/Exception.h>
 #include <OpenADAPT/Container/Tree.h>
 #include <OpenADAPT/Range/RangeAdapter.h>
 
@@ -238,20 +240,27 @@ class OutputConsumer
 {
 public:
 
-	template <traversal_range Range_, node_or_placeholder ...NPs_>
+	template <traversal_range Range_, class Stream, node_or_placeholder ...NPs_>
 		requires (std::convertible_to<Range_, Range>)
-	void Exec(Range_&& range, NPs_&& ...args)
+	void Exec(Range_&& range, Stream& ost, NPs_&& ...args)
 	{
-		WriteAsText(std::cout, std::forward<Range_>(range), std::forward<NPs_>(args)...);
+		WriteAsText(ost, std::forward<Range_>(range), std::forward<NPs_>(args)...);
 	}
 };
 
 }
 
 template <node_or_placeholder ...NPs>
-RangeConsumer<detail::OutputConsumer, NPs...> Show(NPs&& ...nps)
+RangeConsumer<detail::OutputConsumer, std::ostream&, NPs...> Show(NPs&& ...nps)
 {
-	return RangeConsumer<detail::OutputConsumer, NPs...>(std::forward<NPs>(nps)...);
+	return RangeConsumer<detail::OutputConsumer, std::ostream&, NPs...>(std::cout, std::forward<NPs>(nps)...);
+}
+template <node_or_placeholder ...NPs>
+RangeConsumer<detail::OutputConsumer, std::ofstream, NPs...> Write(std::string_view filename, NPs&& ...nps)
+{
+	std::ofstream ost(filename.data());
+	if (!ost) throw BadFile("file cannot open.");
+	return RangeConsumer<detail::OutputConsumer, std::ofstream, NPs...>(std::move(ost), std::forward<NPs>(nps)...);
 }
 
 

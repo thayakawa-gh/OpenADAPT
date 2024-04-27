@@ -91,7 +91,7 @@ public:
 	}
 
 private:
-	template <size_t N, class ...Placeholders>
+	template <size_t N, bool ConstructFlag, bool DestroyFlag, class ...Placeholders>
 	static void Move_impl(const std::tuple<Placeholders...>& phs, char* from, char* to)
 	{
 		if constexpr (N < sizeof...(Placeholders))
@@ -100,28 +100,69 @@ private:
 			using ValueType = GetType_t<N, Placeholders...>::RetType;
 			ValueType* t_from = std::launder(reinterpret_cast<ValueType*>(from + offset));
 			ValueType* t_to = std::launder(reinterpret_cast<ValueType*>(to + offset));
-			*t_to = std::move(*t_from);
-			Move_impl<N + 1>(phs, from, to);
+			if constexpr (ConstructFlag) new (t_to) ValueType(std::move(*t_from));
+			else *t_to = std::move(*t_from);
+			if constexpr (DestroyFlag) t_from->~ValueType();
+			Move_impl<N + 1, ConstructFlag, DestroyFlag>(phs, from, to);
 		}
 	}
 public:
-	template <class ...Placeholders, bool IsTotallyTrivial>
-	static void Move(const std::tuple<Placeholders...>& phs, std::bool_constant<IsTotallyTrivial>, char* from, char* to)
+	template <class ...Placeholders, bool IsTotallyTrivial, bool ConstructFlag, bool DestroyFlag>
+	static void Move(const std::tuple<Placeholders...>& phs,
+					 std::bool_constant<IsTotallyTrivial>, char* from, char* to,
+					 std::bool_constant<ConstructFlag>, std::bool_constant<DestroyFlag>)
 	{
 		if constexpr (IsTotallyTrivial)
 		{
-			//全てのフィールドがトリビアルな場合、memcpyでコピーする。
-			const auto& m = std::get<sizeof...(Placeholders) - 1>(phs);
-			//最後の要素のオフセット+サイズが要素全体のサイズとなる。
-			std::memcpy(to, from, m.GetPtrOffset() + m.GetSize());
+			if constexpr (sizeof...(Placeholders) != 0)
+			{
+				//全てのフィールドがトリビアルな場合、memcpyでコピーする。
+				const auto& m = std::get<sizeof...(Placeholders) - 1>(phs);
+				//最後の要素のオフセット+サイズが要素全体のサイズとなる。
+				std::memcpy(to, from, m.GetPtrOffset() + m.GetSize());
+			}
 		}
 		else
 		{
-			Move_impl<0>(phs, from, to);
+			Move_impl<0, ConstructFlag, DestroyFlag>(phs, from, to);
 		}
 	}
 
-private:
+	//fromの各フィールドをtoへとムーブする。
+	//fromのフィールドのデストラクタは呼ばれない。
+	//toはコンストラクタが既に呼ばれた後だと想定している。
+	template <class ...Placeholders, bool IsTotallyTrivial>
+	static void Move(const std::tuple<Placeholders...>& phs, std::bool_constant<IsTotallyTrivial>, char* from, char* to)
+	{
+		Move(phs, std::bool_constant<IsTotallyTrivial>{}, from, to, std::false_type{}, std::false_type{});
+	}
+	//fromの各フィールドをtoへとムーブする。
+	//fromのフィールドはデストラクタによって破壊される。
+	//一方でtoはコンストラクタが呼ばれた後だと想定している。
+	template <class ...Placeholders, bool IsTotallyTrivial>
+	static void MoveAndDestroy(const std::tuple<Placeholders...>& phs, std::bool_constant<IsTotallyTrivial>, char* from, char* to)
+	{
+		Move(phs, std::bool_constant<IsTotallyTrivial>{}, from, to, std::false_type{}, std::true_type{});
+	}
+	//fromの各フィールドをtoへとムーブする。
+	//toのフィールドはfromのフィールドを引数とするムーブコンストラクタによって新たに構築される。
+	//fromのフィールドへのデストラクタは呼ばれず、ムーブ代入によって初期化された状態となる。
+	template <class ...Placeholders, bool IsTotallyTrivial>
+	static void MoveConstruct(const std::tuple<Placeholders...>& phs, std::bool_constant<IsTotallyTrivial>, char* from, char* to)
+	{
+		Move(phs, std::bool_constant<IsTotallyTrivial>{}, from, to, std::true_type{}, std::false_type{});
+	}
+	//fromの各フィールドをtoへとムーブする。
+	//toのフィールドはfromのフィールドを引数とするムーブコンストラクタによって新たに構築され、
+	//fromのフィールドはデストラクタによって破壊される。
+	template <class ...Placeholders, bool IsTotallyTrivial>
+	static void MoveConstructAndDestroy(const std::tuple<Placeholders...>& phs, std::bool_constant<IsTotallyTrivial>, char* from, char* to)
+	{
+		Move(phs, std::bool_constant<IsTotallyTrivial>{}, from, to, std::true_type{}, std::true_type{});
+	}
+
+
+/*private:
 	template <size_t N, class ...Placeholders>
 	static void MoveAndDestroy_rec(const std::tuple<Placeholders...>& phs, char* from, char* to)
 	{
@@ -153,7 +194,7 @@ public:
 		{
 			MoveAndDestroy_rec<0>(phs, from, to);
 		}
-	}
+	}*/
 
 private:
 	template <size_t N, class ...Placeholders>
@@ -214,20 +255,9 @@ private:
 	{
 		using enum FieldType;
 		char* pos = ptr + it->GetPtrOffset();
-		switch (it->GetType())
-		{
-		case I08: CreateValue<I08>(std::forward<Arg>(arg), pos); break;
-		case I16: CreateValue<I16>(std::forward<Arg>(arg), pos); break;
-		case I32: CreateValue<I32>(std::forward<Arg>(arg), pos); break;
-		case I64: CreateValue<I64>(std::forward<Arg>(arg), pos); break;
-		case F32: CreateValue<F32>(std::forward<Arg>(arg), pos); break;
-		case F64: CreateValue<F64>(std::forward<Arg>(arg), pos); break;
-		case C32: CreateValue<C32>(std::forward<Arg>(arg), pos); break;
-		case C64: CreateValue<C64>(std::forward<Arg>(arg), pos); break;
-		case Str: CreateValue<Str>(std::forward<Arg>(arg), pos); break;
-		case Jbp: CreateValue<Jbp>(std::forward<Arg>(arg), pos); break;
-		default: throw MismatchType("");
-		}
+#define CODE(T) CreateValue<T>(std::forward<Arg>(arg), pos);
+		ADAPT_SWITCH_FIELD_TYPE(it->GetType(), CODE, throw MismatchType("");)
+#undef CODE
 		Create_rec<Container>(++it, ptr, std::forward<Args>(args)...);
 	}
 public:
@@ -277,20 +307,9 @@ public:
 		for (const auto& ph : phs)
 		{
 			char* pos = ptr + ph.GetPtrOffset();
-			switch (ph.GetType())
-			{
-			case I08: CreateDefaultValue<I08>(pos); break;
-			case I16: CreateDefaultValue<I16>(pos); break;
-			case I32: CreateDefaultValue<I32>(pos); break;
-			case I64: CreateDefaultValue<I64>(pos); break;
-			case F32: CreateDefaultValue<F32>(pos); break;
-			case F64: CreateDefaultValue<F64>(pos); break;
-			case C32: CreateDefaultValue<C32>(pos); break;
-			case C64: CreateDefaultValue<C64>(pos); break;
-			case Str: CreateDefaultValue<Str>(pos); break;
-			case Jbp: CreateDefaultValue<Jbp>(pos); break;
-			default: throw MismatchType("");
-			}
+#define CODE(T) CreateDefaultValue<T>(pos);
+			ADAPT_SWITCH_FIELD_TYPE(ph.GetType(), CODE, throw MismatchType("");)
+#undef CODE
 		}
 	}
 
@@ -328,20 +347,9 @@ private:
 	{
 		using enum FieldType;
 		char* pos = ptr + it->GetPtrOffset();
-		switch (it->GetType())
-		{
-		case I08: AssignValue<I08>(std::forward<Arg>(arg), pos); break;
-		case I16: AssignValue<I16>(std::forward<Arg>(arg), pos); break;
-		case I32: AssignValue<I32>(std::forward<Arg>(arg), pos); break;
-		case I64: AssignValue<I64>(std::forward<Arg>(arg), pos); break;
-		case F32: AssignValue<F32>(std::forward<Arg>(arg), pos); break;
-		case F64: AssignValue<F64>(std::forward<Arg>(arg), pos); break;
-		case C32: AssignValue<C32>(std::forward<Arg>(arg), pos); break;
-		case C64: AssignValue<C64>(std::forward<Arg>(arg), pos); break;
-		case Str: AssignValue<Str>(std::forward<Arg>(arg), pos); break;
-		case Jbp: AssignValue<Jbp>(std::forward<Arg>(arg), pos); break;
-		default: throw MismatchType("");
-		}
+#define CODE(T) AssignValue<T>(std::forward<Arg>(arg), pos);
+		ADAPT_SWITCH_FIELD_TYPE(it->GetType(), CODE, throw MismatchType("");)
+#undef CODE
 		Assign_rec<Container>(++it, ptr, std::forward<Args>(args)...);
 	}
 public:
@@ -376,23 +384,29 @@ public:
 	}
 
 private:
-	template <class Type>
+	template <class Type, bool ConstructFlag, bool DestroyFlag>
 	static void Move_impl(char* from, char* to)
 	{
 		Type* t_from = std::launder(reinterpret_cast<Type*>(from));
 		Type* t_to = std::launder(reinterpret_cast<Type*>(to));
-		*t_to = std::move(*t_from);
+		if constexpr (ConstructFlag) new (t_to) Type(std::move(*t_from));
+		else *t_to = std::move(*t_from);
+		if constexpr (DestroyFlag) t_from->~Type();
 	}
 public:
 	//ある要素fromの各フィールドを要素toへと移動する。
 	//fromは既に構築されている前提。
 	//こちらはfromのフィールドのデストラクタを呼ばないので、
 	//fromのフィールドはムーブコンストラクタで破壊された後の（初期）状態となる。
-	template <class Container>
-	static void Move(const std::vector<eval::RttiPlaceholder<Container>>& ms, bool is_totally_trivial, char* from, char* to)
+	template <class Container, bool ConstructFlag, bool DestroyFlag>
+	static void Move(const std::vector<eval::RttiPlaceholder<Container>>& ms,
+					 bool is_totally_trivial, char* from, char* to,
+					 std::bool_constant<ConstructFlag>, std::bool_constant<DestroyFlag>)
 	{
 		if (is_totally_trivial)
 		{
+			//フィールドが一つもない場合、何もしない。
+			if (ms.empty()) return;
 			//全てのフィールドがトリビアルな場合、memcpyでコピーする。
 			const auto& m = ms.back();
 			//最後の要素のオフセット+サイズが要素全体のサイズとなる。
@@ -405,13 +419,45 @@ public:
 				FieldType tag = m.GetType();
 				auto offset = m.GetPtrOffset();
 				if (DFieldInfo::IsTrivial(tag)) std::memcpy(to + offset, from + offset, m.GetSize());
-				else if (DFieldInfo::IsStr(tag)) Move_impl<std::string>(from + offset, to + offset);
-				else if (DFieldInfo::IsJbp(tag)) Move_impl<JBpos>(from + offset, to + offset);
+				else if (DFieldInfo::IsStr(tag)) Move_impl<std::string, ConstructFlag, DestroyFlag>(from + offset, to + offset);
+				else if (DFieldInfo::IsJbp(tag)) Move_impl<JBpos, ConstructFlag, DestroyFlag>(from + offset, to + offset);
 			}
 		}
 	}
+	//fromの各フィールドをtoへとムーブする。
+	//fromのフィールドのデストラクタは呼ばれない。
+	//toはコンストラクタが既に呼ばれた後だと想定している。
+	template <class Container>
+	static void Move(const std::vector<eval::RttiPlaceholder<Container>>& ms, bool is_totally_trivial, char* from, char* to)
+	{
+		Move(ms, is_totally_trivial, from, to, std::false_type{}, std::false_type{});
+	}
+	//fromの各フィールドをtoへとムーブする。
+	//fromのフィールドはデストラクタによって破壊される。
+	//一方でtoはコンストラクタが呼ばれた後だと想定している。
+	template <class Container>
+	static void MoveAndDestroy(const std::vector<eval::RttiPlaceholder<Container>>& ms, bool is_totally_trivial, char* from, char* to)
+	{
+		Move(ms, is_totally_trivial, from, to, std::false_type{}, std::true_type{});
+	}
+	//fromの各フィールドをtoへとムーブする。
+	//toのフィールドはfromのフィールドを引数とするムーブコンストラクタによって新たに構築される。
+	//fromのフィールドへのデストラクタは呼ばれず、ムーブ代入によって初期化された状態となる。
+	template <class Container>
+	static void MoveConstruct(const std::vector<eval::RttiPlaceholder<Container>>& ms, bool is_totally_trivial, char* from, char* to)
+	{
+		Move(ms, is_totally_trivial, from, to, std::true_type{}, std::false_type{});
+	}
+	//fromの各フィールドをtoへとムーブする。
+	//toのフィールドはfromのフィールドを引数とするムーブコンストラクタによって新たに構築され、
+	//fromのフィールドはデストラクタによって破壊される。
+	template <class Container>
+	static void MoveConstructAndDestroy(const std::vector<eval::RttiPlaceholder<Container>>& ms, bool is_totally_trivial, char* from, char* to)
+	{
+		Move(ms, is_totally_trivial, from, to, std::true_type{}, std::true_type{});
+	}
 
-private:
+/*private:
 	template <class Type>
 	static void MoveAndDestroy_impl(char* from, char* to)
 	{
@@ -444,7 +490,7 @@ public:
 				else if (DFieldInfo::IsJbp(tag)) MoveAndDestroy_impl<JBpos>(from + offset, to + offset);
 			}
 		}
-	}
+	}*/
 
 	template <class Container>
 	static void Destroy(const std::vector<eval::RttiPlaceholder<Container>>& ms, bool is_totally_trivial, char* ptr)

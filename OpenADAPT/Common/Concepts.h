@@ -49,6 +49,23 @@ enum class FieldType : uint32_t
 	Jbp = FieldTypeFlag::JBP | (sizeof(JBpos) << 16) | (alignof(JBpos) << 24),
 };
 
+#define ADAPT_SWITCH_FIELD_TYPE(FIELD_TYPE, CODE, DEFAULT) \
+	switch (FIELD_TYPE) \
+	{ \
+	case FieldType::I08: CODE(FieldType::I08) break; \
+	case FieldType::I16: CODE(FieldType::I16) break; \
+	case FieldType::I32: CODE(FieldType::I32) break; \
+	case FieldType::I64: CODE(FieldType::I64) break; \
+	case FieldType::F32: CODE(FieldType::F32) break; \
+	case FieldType::F64: CODE(FieldType::F64) break; \
+	case FieldType::C32: CODE(FieldType::C32) break; \
+	case FieldType::C64: CODE(FieldType::C64) break; \
+	case FieldType::Str: CODE(FieldType::Str) break; \
+	case FieldType::Jbp: CODE(FieldType::Jbp) break; \
+	default: DEFAULT \
+	}
+
+
 class FieldVariant;
 
 namespace detail
@@ -344,20 +361,23 @@ concept named_node_or_placeholder = s_named_node_or_placeholder<T> || d_named_no
 
 template <class T>
 struct GetNodeType { using Type = eval::CttiConstNode<T>; };
-template <ctti_placeholder PH>
+template <typed_placeholder PH>
 struct GetNodeType<PH> { using Type = eval::CttiFieldNode<PH>; };
 template <rtti_placeholder PH>
 struct GetNodeType<PH> { using Type = eval::RttiFieldNode<PH>; };
 template <any_node N>
 struct GetNodeType<N> { using Type = N; };
+template <class T>
+using GetNodeType_t = typename GetNodeType<T>::Type;
 
 template <class T>
 concept any_traverser =
 	std::input_iterator<std::remove_cvref_t<T>> &&
-	requires(std::remove_cvref_t<T> t, LayerType layer)
+	requires(std::remove_cvref_t<T> t, LayerType layer, BindexType row)
 {
 	{ t.GetFixedLayer() } -> std::same_as<LayerType>;
 	{ t.GetTravLayer() } -> std::same_as<LayerType>;
+	{ t.AssignRow(row) } -> std::same_as<bool>;
 	{ t.Move(layer, ForwardFlag{}) } -> std::same_as<bool>;
 	{ t.Move(layer, BackwardFlag{}) } -> std::same_as<bool>;
 	{ t.MoveForward(layer) } -> std::same_as<bool>;

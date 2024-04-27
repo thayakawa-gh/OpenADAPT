@@ -27,6 +27,8 @@ struct CttiFieldNode : public detail::CttiMethods<CttiFieldNode<Placeholder_>, s
 	static constexpr RankType Rank = Placeholder::Rank;
 	static constexpr RankType MaxRank = Placeholder::MaxRank;
 
+	static constexpr bool IsCtti = ctti_placeholder<Placeholder>;
+
 	CttiFieldNode() = default;
 
 	CttiFieldNode(const Placeholder& p)
@@ -43,27 +45,53 @@ struct CttiFieldNode : public detail::CttiMethods<CttiFieldNode<Placeholder_>, s
 	void Init(const ConstTraverser& t) { Init(t, {}); }
 	void Init() const {}
 
-	static constexpr JointLayerArray<MaxRank> GetJointLayerArray()
+	static constexpr JointLayerArray<MaxRank> GetJointLayerArray() requires IsCtti
 	{
 		if constexpr (MaxRank > 0) return Placeholder::GetJointLayerArray();
 		else return JointLayerArray<MaxRank>{};
 	}
-	static constexpr LayerInfo<MaxRank> GetLayerInfo()
+	static constexpr LayerInfo<MaxRank> GetLayerInfo() requires IsCtti
 	{
 		return GetLayerInfo(LayerInfo<MaxRank>(GetJointLayerArray()));
 	}
-	static constexpr LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli)
+	static constexpr LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli) requires IsCtti
 	{
 		auto res = eli;
 		res.template Enable<Rank>();
 		res.template SetTravLayer<Rank>(Placeholder::GetInternalLayer());
 		return res;
 	}
-	static constexpr LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli, DepthType)
+	static constexpr LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli, DepthType) requires IsCtti
 	{
 		return eli;
 	}
-	static constexpr LayerType GetLayer()
+	static constexpr LayerType GetLayer() requires IsCtti
+	{
+		return GetLayerInfo().GetTravLayer();
+	}
+
+
+	JointLayerArray<MaxRank> GetJointLayerArray() const requires (!IsCtti)
+	{
+		if constexpr (MaxRank > 0) return m_placeholder.GetJointLayerArray();
+		else return JointLayerArray<MaxRank>{};
+	}
+	LayerInfo<MaxRank> GetLayerInfo() const requires (!IsCtti)
+	{
+		return GetLayerInfo(LayerInfo<MaxRank>(GetJointLayerArray()));
+	}
+	LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli) const requires (!IsCtti)
+	{
+		auto res = eli;
+		res.template Enable<Rank>();
+		res.template SetTravLayer<Rank>(m_placeholder.GetInternalLayer());
+		return res;
+	}
+	LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli, DepthType) const requires (!IsCtti)
+	{
+		return eli;
+	}
+	LayerType GetLayer() const requires (!IsCtti)
 	{
 		return GetLayerInfo().GetTravLayer();
 	}
@@ -139,6 +167,8 @@ struct CttiIndexedFieldNode<Placeholder_, TypeList<Nodes...>, std::index_sequenc
 
 	static constexpr RankType Rank = Placeholder::Rank;
 	static constexpr RankType MaxRank = Placeholder::MaxRank;
+
+	static constexpr bool IsCtti = ctti_placeholder<Placeholder>;
 
 	CttiIndexedFieldNode() = default;
 	template<class ...Nodes_>
@@ -231,16 +261,16 @@ public:
 		m_init_flag = true;
 	}
 
-	static constexpr JointLayerArray<MaxRank> GetJointLayerArray()
+	static constexpr JointLayerArray<MaxRank> GetJointLayerArray() requires IsCtti
 	{
 		if constexpr (MaxRank > 0) return Placeholder::GetJointLayerArray();
 		else return JointLayerArray<MaxRank>();
 	}
-	static constexpr LayerInfo<MaxRank> GetLayerInfo()
+	static constexpr LayerInfo<MaxRank> GetLayerInfo() requires IsCtti
 	{
 		return GetLayerInfo(LayerInfo<MaxRank>(GetJointLayerArray()));
 	}
-	static constexpr LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli)
+	static constexpr LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli) requires IsCtti
 	{
 		auto a = eli;
 		a.template Enable<Rank>();
@@ -248,15 +278,44 @@ public:
 		a.template SetTravLayer<Rank>(l);
 		return std::max({ a, GetType_t<Indices, Nodes...>::GetLayerInfo(eli)... });
 	}
-	static constexpr LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli, DepthType depth)
+	static constexpr LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli, DepthType depth) requires IsCtti
 	{
 		//Indexedの場合、自身がouterでなくても引数がouterの可能性がある。
 		return std::max({ GetType_t<Indices, Nodes...>::GetLayerInfo(eli, depth)... });
 	}
-	static constexpr LayerType GetLayer()
+	static constexpr LayerType GetLayer() requires IsCtti
 	{
 		return GetLayerInfo().GetTravLayer();
 	}
+
+
+	JointLayerArray<MaxRank> GetJointLayerArray() const requires (!IsCtti)
+	{
+		if constexpr (MaxRank > 0) return m_placeholder.GetJointLayerArray();
+		else return JointLayerArray<MaxRank>();
+	}
+	LayerInfo<MaxRank> GetLayerInfo() const requires (!IsCtti)
+	{
+		return GetLayerInfo(LayerInfo<MaxRank>(GetJointLayerArray()));
+	}
+	LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli) const requires (!IsCtti)
+	{
+		auto a = eli;
+		a.template Enable<Rank>();
+		LayerType l = m_placeholder.GetInternalLayer() - (LayerType)sizeof...(Nodes);//indexによる変動の最上層。
+		a.template SetTravLayer<Rank>(l);
+		return std::max({ a, std::get<Indices>(m_nodes).GetLayerInfo(eli)... });
+	}
+	LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli, DepthType depth) const requires (!IsCtti)
+	{
+		//Indexedの場合、自身がouterでなくても引数がouterの可能性がある。
+		return std::max({ std::get<Indices>(m_nodes).GetLayerInfo(eli, depth)... });
+	}
+	LayerType GetLayer() const requires (!IsCtti)
+	{
+		return GetLayerInfo().GetTravLayer();
+	}
+
 
 	//const traverserとは限らないので、戻り値はdelctype(auto)にしておく。
 	decltype(auto) Evaluate(const Traverser& t) const
@@ -361,6 +420,8 @@ struct CttiOuterFieldNode : public Base_
 	static constexpr RankType Rank = Placeholder::Rank;
 	static constexpr RankType MaxRank = Placeholder::MaxRank;
 
+	static constexpr bool IsCtti = ctti_placeholder<Placeholder>;
+
 	CttiOuterFieldNode() = default;
 	template <class ...Args>
 	CttiOuterFieldNode(Args&& ...args)
@@ -415,15 +476,15 @@ public:
 		m_init_flag = true;
 	}
 
-	static constexpr LayerInfo<MaxRank> GetLayerInfo()
+	static constexpr LayerInfo<MaxRank> GetLayerInfo() requires IsCtti
 	{
 		return GetLayerInfo(LayerInfo<MaxRank>(Base::GetJointLayerArray()));
 	}
-	static constexpr LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli)
+	static constexpr LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli) requires IsCtti
 	{
 		return eli;
 	}
-	static constexpr LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli, DepthType depth)
+	static constexpr LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli, DepthType depth) requires IsCtti
 	{
 		if (Depth != depth) return eli;
 		auto res = eli;
@@ -431,7 +492,7 @@ public:
 		res.template SetTravLayer<Rank>(Placeholder::GetInternalLayer());
 		return std::max(res, Base::GetLayerInfo());
 	}
-	static constexpr LayerType GetLayer()
+	static constexpr LayerType GetLayer() requires IsCtti
 	{
 		return GetLayerInfo().GetTravLayer();
 	}
@@ -971,37 +1032,9 @@ auto MakeRttiIndexedFieldNode_switch_ph(const Placeholder& ph, Nodes&& ...indice
 		return i.IsI08() || i.IsI16() || i.IsI32() || i.IsI64();
 	};
 	if (!(isint(indices) && ...)) throw MismatchType("all indices of a filed must be integers.");
-	if (ph.IsI08())
-		return MakeRttiIndexedFieldNode_switch_ind<FieldType::I08>(
-			ph, ValueList<>{}, std::tuple<>{}, std::forward<Nodes>(indices)...);
-	if (ph.IsI16())
-		return MakeRttiIndexedFieldNode_switch_ind<FieldType::I16>(
-			ph, ValueList<>{}, std::tuple<>{}, std::forward<Nodes>(indices)...);
-	if (ph.IsI32())
-		return MakeRttiIndexedFieldNode_switch_ind<FieldType::I32>(
-			ph, ValueList<>{}, std::tuple<>{}, std::forward<Nodes>(indices)...);
-	if (ph.IsI64())
-		return MakeRttiIndexedFieldNode_switch_ind<FieldType::I64>(
-			ph, ValueList<>{}, std::tuple<>{}, std::forward<Nodes>(indices)...);
-	if (ph.IsF32())
-		return MakeRttiIndexedFieldNode_switch_ind<FieldType::F32>(
-			ph, ValueList<>{}, std::tuple<>{}, std::forward<Nodes>(indices)...);
-	if (ph.IsF64())
-		return MakeRttiIndexedFieldNode_switch_ind<FieldType::F64>(
-			ph, ValueList<>{}, std::tuple<>{}, std::forward<Nodes>(indices)...);
-	if (ph.IsC32())
-		return MakeRttiIndexedFieldNode_switch_ind<FieldType::C32>(
-			ph, ValueList<>{}, std::tuple<>{}, std::forward<Nodes>(indices)...);
-	if (ph.IsC64())
-		return MakeRttiIndexedFieldNode_switch_ind<FieldType::C64>(
-			ph, ValueList<>{}, std::tuple<>{}, std::forward<Nodes>(indices)...);
-	if (ph.IsStr())
-		return MakeRttiIndexedFieldNode_switch_ind<FieldType::Str>(
-			ph, ValueList<>{}, std::tuple<>{}, std::forward<Nodes>(indices)...);
-	if (ph.IsJbp())
-		return MakeRttiIndexedFieldNode_switch_ind<FieldType::Jbp>(
-			ph, ValueList<>{}, std::tuple<>{}, std::forward<Nodes>(indices)...);
-	throw MismatchType("");
+#define CODE(T) return MakeRttiIndexedFieldNode_switch_ind<T>(ph, ValueList<>{}, std::tuple<>{}, std::forward<Nodes>(indices)...);
+	ADAPT_SWITCH_FIELD_TYPE(ph.GetType(), CODE, throw MismatchType("");)
+#undef CODE
 }
 template <placeholder Placeholder, any_node ...Nodes>
 auto MakeCttiIndexedFieldNode(const Placeholder& ph, Nodes&& ...nodes)

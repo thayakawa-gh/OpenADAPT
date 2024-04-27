@@ -134,7 +134,7 @@ void AccessAndCalc_jtree(const JTree& jt)
 	bool cannot_access = false;
 	try
 	{
-		const std::string& name = jt.GetBranch(bpos4)[resident_name].str();
+		jt.GetBranch(bpos4)[resident_name].str();
 	}
 	catch (adapt::JointError)
 	{

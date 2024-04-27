@@ -267,20 +267,9 @@ public:
 		const Der2& dthat = static_cast<const Der2&>(that);
 		FieldType type = dthis.GetType();
 		if (type != dthat.GetType()) return false;
-		switch (type)
-		{
-		case FieldType::I08: return dthis.i08() == dthat.i08();
-		case FieldType::I16: return dthis.i16() == dthat.i16();
-		case FieldType::I32: return dthis.i32() == dthat.i32();
-		case FieldType::I64: return dthis.i64() == dthat.i64();
-		case FieldType::F32: return dthis.f32() == dthat.f32();
-		case FieldType::F64: return dthis.f64() == dthat.f64();
-		case FieldType::C32: return dthis.c32() == dthat.c32();
-		case FieldType::C64: return dthis.c64() == dthat.c64();
-		case FieldType::Str: return dthis.str() == dthat.str();
-		case FieldType::Jbp: return dthis.jbp().MatchPerfectly(dthat.jbp());
-		default: throw MismatchType("");
-		}
+#define CODE(T) return dthis.template as<T>() == dthat.template as<T>();
+		ADAPT_SWITCH_FIELD_TYPE(type, CODE, throw MismatchType("");)
+#undef CODE
 	}
 	template <class Der2, template <class> class Qua2>
 	bool operator!=(const RttiMethods<Der2, Qua2>& that) const
@@ -654,20 +643,9 @@ public:
 		requires IsBasedOnRtti<std::decay_t<RttiVar>>::value
 	FieldVariant& operator=(RttiVar&& v)
 	{
-		switch (v.GetType())
-		{
-		case I08: m_var = std::forward<RttiVar>(v).template as_unsafe<I08>(); break;
-		case I16: m_var = std::forward<RttiVar>(v).template as_unsafe<I16>(); break;
-		case I32: m_var = std::forward<RttiVar>(v).template as_unsafe<I32>(); break;
-		case I64: m_var = std::forward<RttiVar>(v).template as_unsafe<I64>(); break;
-		case F32: m_var = std::forward<RttiVar>(v).template as_unsafe<F32>(); break;
-		case F64: m_var = std::forward<RttiVar>(v).template as_unsafe<F64>(); break;
-		case C32: m_var = std::forward<RttiVar>(v).template as_unsafe<C32>(); break;
-		case C64: m_var = std::forward<RttiVar>(v).template as_unsafe<C64>(); break;
-		case Str: m_var = std::forward<RttiVar>(v).template as_unsafe<Str>(); break;
-		case Jbp: m_var = std::forward<RttiVar>(v).template as_unsafe<Jbp>(); break;
-		default: throw MismatchType("");
-		}
+#define CODE(T) m_var = std::forward<RttiVar>(v).template as_unsafe<T>();
+		ADAPT_SWITCH_FIELD_TYPE(v.GetType(), CODE, throw MismatchType("");)
+#undef CODE
 		return *this;
 	}
 	template <class Type>
@@ -844,20 +822,9 @@ public:
 		requires IsBasedOnRtti<std::decay_t<RttiVar>>::value
 	explicit FieldVarRef_impl(RttiVar& v)
 	{
-		switch (v.GetType())
-		{
-		case I08: m_var = &v.template as_unsafe<I08>(); break;
-		case I16: m_var = &v.template as_unsafe<I16>(); break;
-		case I32: m_var = &v.template as_unsafe<I32>(); break;
-		case I64: m_var = &v.template as_unsafe<I64>(); break;
-		case F32: m_var = &v.template as_unsafe<F32>(); break;
-		case F64: m_var = &v.template as_unsafe<F64>(); break;
-		case C32: m_var = &v.template as_unsafe<C32>(); break;
-		case C64: m_var = &v.template as_unsafe<C64>(); break;
-		case Str: m_var = &v.template as_unsafe<Str>(); break;
-		case Jbp: m_var = &v.template as_unsafe<Jbp>(); break;
-		default: throw MismatchType("");
-		}
+#define CODE(T) m_var = &v.template as_unsafe<T>();
+		ADAPT_SWITCH_FIELD_TYPE(v.GetType(), CODE, throw MismatchType("");)
+#undef CODE
 	}
 
 	template <class Type>

@@ -352,12 +352,12 @@ void TestEvaluate(Table& table, const std::vector<Class>& cls, const Layer& l)
 	auto eval1 = [&table, &bpos]<class Node, FieldType Type>(const Node & node, Number<Type>)
 	{
 		if constexpr (typed_node<decltype(node)>) return node.Evaluate(table, bpos);
-		else return node.Evaluate(table, bpos).as<Type>();
+		else return node.Evaluate(table, bpos).template as<Type>();
 	};
 	auto eval0 = [&table]<class Node, FieldType Type>(const Node& node, Number<Type>)
 	{
 		if constexpr (typed_node<decltype(node)>) return node.Evaluate(table);
-		else return node.Evaluate(table).as<Type>();
+		else return node.Evaluate(table).template as<Type>();
 	};
 	const auto& r = cls[i].m_students[j].m_records[k];
 	EXPECT_EQ(eval1(sum5, Number<I32>{}), Sum5Subjs(r));

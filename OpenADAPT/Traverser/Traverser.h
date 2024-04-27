@@ -318,11 +318,19 @@ public:
 		Init(m_fixed_layer, *m_container, trav, Flag{});
 	}*/
 
+	bool AssignRow(BindexType i)
+	{
+		auto& uit = m_iterators[0];
+		if (i >= uit->GetSize()) return false;
+		m_iterators[1] = uit->begin() + i;
+		return Assign_renew(1, ForwardFlag{});
+	}
+
 private:
 	template <size_t N, std::integral ...Indices>
 	bool Assign_rec(const ElementIterator& uit, BindexType i, Indices ...is)
 	{
-		if (i >= uit->size()) return false;
+		if (i >= uit->GetSize()) return false;
 		auto it = uit->begin() + i;
 		if (!Assign_rec<N + 1>(it + i, is...)) return false;
 		m_iterators[N + 1] = it;
@@ -340,7 +348,7 @@ public:
 	template <std::integral ...Indices>
 	bool Assign(BindexType i, Indices ...is)
 	{
-		assert(sizeof...(Indices) == m_trav_layer);
+		//assert(sizeof...(Indices) == m_trav_layer);
 		auto& it = m_iterators[0];
 		return Assign_rec<0>(it, i, is...);
 	}
@@ -757,9 +765,10 @@ public:
 	const Traverser_impl& operator*() const { return *this; }
 	const Traverser_impl* operator->() const { return this; }
 
+	BindexType GetRow() const { return GetPos(0); }
 	BindexType GetPos(LayerType layer) const
 	{
-		return (BindexType)(m_iterators[layer + 1] - m_iterators[layer]->begin());
+		return (BindexType)(m_iterators[layer + 1_layer] - m_iterators[layer]->begin());
 	}
 	//std::min(m_trav_layer, bpos.GetLayer())までを自身のposで初期化する。
 	//もしbpos.GetLayer() > m_trav_layerの場合、余剰分は0で初期化する。
@@ -1207,6 +1216,8 @@ public:
 		return Init_impl(fixed, c, pos, trav, BackwardFlag{});
 	}
 
+	bool AssignRow(BindexType i) { return Assign(i); }
+
 	bool Assign(BindexType i)
 	{
 		auto& it = m_iterators[0];
@@ -1450,6 +1461,7 @@ public:
 	const Traverser_impl& operator*() const { return *this; }
 	const Traverser_impl* operator->() const { return this; }
 
+	BindexType GetRow() const { return GetPos(0_layer); }
 	BindexType GetPos([[maybe_unused]] LayerType layer) const
 	{
 		assert(layer == 0_layer);
@@ -1506,8 +1518,8 @@ public:
 	template <LayerType Layer, class Type>
 	Qualifier<Type>& GetField(const CttiPlaceholder<Layer, Type>& m) const
 	{
-		static_assert(m.GetInternalLayer() <= 0_layer);
-		return (*this->GetIterator(m.GetInternalLayer()))[m];
+		static_assert(Layer <= 0_layer);
+		return (*this->GetIterator(Layer))[m];
 	}
 	template <LayerType Layer, class Type>
 	Qualifier<Type>& GetField(const CttiPlaceholder<Layer, Type>& m, BindexType i) const

@@ -82,25 +82,48 @@ private:
 
 public:
 
-	template <direction_flag Flag>
-	bool Move(LayerType layer, Flag)
+	bool AssignRow(BindexType row)
 	{
-		assert(layer > m_fixed_layer);
-		LayerType move = layer;
+		if (!TraverserBase::AssignRow(row)) return false;
+		LayerType move = CheckConditions<(LayerType)-1>(0_layer);
+		if (move != -2_layer)
+		{
+			//条件を満たさなかったので、rowは固定したまま1層以下に限定して満足する要素まで移動する。
+			return Move_impl(1_layer, move, ForwardFlag{});
+		}
+		return true;
+	}
+
+private:
+	//move層を移動する。
+	//移動に失敗した場合はmove - 1層を移動するが、fix - 1層以上は固定し、移動しない。
+	template <direction_flag Flag>
+	bool Move_impl(LayerType fix, LayerType move, Flag)
+	{
+		assert(fix >= m_fixed_layer);
 		while (true)
 		{
 			if (!TraverserBase::Move(move, Flag{}))
 			{
-				//layer層の移動に失敗したので、layer-1層を移動する。
-				//ただしlayer>move1となることは禁止されているので、その場合はreturn false。
-				if (layer == move) return false;
+				//move層の移動に失敗したので、move-1層を移動する。
+				//ただしfix>moveとなることは禁止されているので、その場合はreturn false。
+				if (fix == move) return false;
 				--move;
 				continue;
 			}
 
 			//move層の移動に成功した場合、次はmove層以下の条件が満足されているかを確認する。
-			if (CheckConditions<(LayerType)-1>(move) == -2_layer) return true;
+			move = CheckConditions<(LayerType)-1>(move);
+			if (move == -2_layer) return true;
+			//fixより上層の移動は許さない。
+			if (move < fix) return false;
 		}
+	}
+public:
+	template <direction_flag Flag>
+	bool Move(LayerType layer, Flag)
+	{
+		return Move_impl(layer, layer, Flag{});
 	}
 
 	//layer層を移動する。
@@ -355,25 +378,49 @@ private:
 
 public:
 
-	template <direction_flag Flag>
-	bool Move(LayerType layer, Flag)
+	bool AssignRow(BindexType row)
 	{
-		assert(layer >= 0_layer);
-		LayerType move = layer;
+		if (!TraverserBase::AssignRow(row)) return false;
+		LayerType move = CheckConditions(0_layer);
+		if (move != -2_layer)
+		{
+			//条件を満たさなかったので、rowは固定したまま1層以下に限定して満足する要素まで移動する。
+			return Move_impl(1_layer, move, ForwardFlag{});
+		}
+		return true;
+	}
+
+private:
+	//move層を移動する。
+	//移動に失敗した場合はmove - 1層を移動するが、fix - 1層以上は固定し、移動しない。
+	template <direction_flag Flag>
+	bool Move_impl(LayerType fix, LayerType move, Flag)
+	{
+		assert(fix >= m_fixed_layer);
 		while (true)
 		{
 			if (!TraverserBase::Move(move, Flag{}))
 			{
-				//layer層の移動に失敗したので、layer-1層を移動する。
-				//ただしlayer>move1となることは禁止されているので、その場合はreturn false。
-				if (layer == move) return false;
+				//move層の移動に失敗したので、move-1層を移動する。
+				//ただしfix>moveとなることは禁止されているので、その場合はreturn false。
+				if (fix == move) return false;
 				--move;
 				continue;
 			}
 
 			//move層の移動に成功した場合、次はmove層以下の条件が満足されているかを確認する。
-			if (CheckConditions(move) == -2_layer) return true;
+			move = CheckConditions(move);
+			if (move == -2_layer) return true;
+			//fixより上層の移動は許さない。
+			if (move < fix) return false;
 		}
+	}
+public:
+
+	template <direction_flag Flag>
+	bool Move(LayerType layer, Flag)
+	{
+		return Move_impl(layer, layer, Flag{});
 	}
 
 	//layer層を移動する。
@@ -447,6 +494,8 @@ public:
 
 private:
 
+	//fix, travの値はメンバとして持っておく。
+	//JoinedTraverserはこれらの値の取得にいちいち計算が必要なため。
 	LayerType m_fixed_layer = -1_layer;
 	LayerType m_trav_layer = -1_layer;
 	//レイヤーごとに分けられたノード。m_nodes[layer + 1]がlayer層のノードリスト。

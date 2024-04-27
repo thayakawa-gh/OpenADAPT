@@ -70,7 +70,7 @@ private:
 		//グローバル変数の準備。
 		size_t elmsize = Hierarchy::GetElementSize(-1_layer);
 		m_top_element = (char*)std::malloc(elmsize + sizeof(ElementBlock));
-		ElementBlock::Create_default(Hierarchy::GetPlaceholdersIn(-1_layer), m_top_element);
+		ElementBlock::Policy::Create_default(Hierarchy::GetPlaceholdersIn(-1_layer), m_top_element);
 		ElementBlock::CreateElementBlock(m_top_element + elmsize);
 	}
 public:
@@ -86,7 +86,7 @@ public:
 		if (m_top_element)
 		{
 			const auto& ms = Hierarchy::GetPlaceholdersIn(-1_layer);
-			ElementBlock::Destroy(ms, Hierarchy::IsTotallyTrivial(-1_layer), m_top_element);
+			ElementBlock::Policy::Destroy(ms, Hierarchy::IsTotallyTrivial(-1_layer), m_top_element);
 			auto e_ptr = GetBlockOneLayerDown();
 			e_ptr->Destruct(this, 0_layer);
 			e_ptr->~ElementBlock();
@@ -125,7 +125,7 @@ public:
 	template <class ...Args>
 	void Assign(Args&& ...args)
 	{
-		ElementBlock::Create(Hierarchy::GetPlaceholdersIn(-1_layer), m_top_element, std::forward<Args>(args)...);
+		ElementBlock::Policy::Create(Hierarchy::GetPlaceholdersIn(-1_layer), m_top_element, std::forward<Args>(args)...);
 	}
 
 	void Reserve(BindexType size)
@@ -230,11 +230,11 @@ public:
 		return GetTopElement().GetSize(layer);
 	}
 
-	size_t GetSize() const
+	BindexType GetSize() const
 	{
 		return GetTopElement().GetSize();
 	}
-	size_t GetCapacity() const
+	BindexType GetCapacity() const
 	{
 		return GetLowerElements().GetCapacity();
 	}

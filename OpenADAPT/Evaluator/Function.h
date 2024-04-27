@@ -203,7 +203,7 @@ struct OperatorAnd
 	template <class NodeImpl, class ...Args>
 	decltype(auto) ShortCircuit(const NodeImpl& nodeimpl, Args&& ...args) const
 	{
-		return nodeimpl.GetArg<0>(args...) && nodeimpl.GetArg<1>(args...);
+		return nodeimpl.template GetArg<0>(args...) && nodeimpl.template GetArg<1>(args...);
 	}
 };
 template <class Arg1, class Arg2>
@@ -218,7 +218,7 @@ struct OperatorOr
 	template <class NodeImpl, class ...Args>
 	decltype(auto) ShortCircuit(const NodeImpl& nodeimpl, Args&& ...args) const
 	{
-		return nodeimpl.GetArg<0>(args...) || nodeimpl.GetArg<1>(args...);
+		return nodeimpl.template GetArg<0>(args...) || nodeimpl.template GetArg<1>(args...);
 	}
 };
 template <class Arg1, class Arg2>
@@ -426,7 +426,10 @@ auto hypot(Arg1&& a, Arg2&& b)
 }
 struct Max
 {
-	auto operator()(const auto& a, const auto& b) const -> decltype(std::max(a, b)) { return std::max(a, b); }
+	//decltype(std::max(a, b))のような書き方だと、gccではエラーになる。
+	template <class T>
+		requires less_than_comparable<T>
+	auto operator()(const T& a, const T& b) const { return std::max(a, b); }
 };
 template <class Arg1, class Arg2>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
@@ -436,7 +439,9 @@ auto max(Arg1&& a, Arg2&& b)
 }
 struct Min
 {
-	auto operator()(const auto& a, const auto& b) const -> decltype(std::min(a, b)) { return std::min(a, b); }
+	template <class T>
+		requires less_than_comparable<T>
+	auto operator()(const T& a, const T& b) const { return std::min(a, b); }
 };
 template <class Arg1, class Arg2>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)

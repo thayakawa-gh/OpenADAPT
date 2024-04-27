@@ -346,13 +346,28 @@ concept greater_than_comparable = requires(ArgType a, ArgType b)
 {
 	{ a > b } -> boolean_testable;
 };
+template <class T, class U>
+concept greater_than_comparable_with = requires(T a, U b)
+{
+	{ a > b } -> boolean_testable;
+};
 template <class ArgType>
 concept less_than_comparable = requires(ArgType a, ArgType b)
 {
 	{ a < b } -> boolean_testable;
 };
+template <class T, class U>
+concept less_than_comparable_with = requires(T a, U b)
+{
+	{ a < b } -> boolean_testable;
+};
 template <class ArgType>
 concept equal_comparable = requires(ArgType a, ArgType b)
+{
+	{ a == b } -> boolean_testable;
+};
+template <class T, class U>
+concept equal_comparable_with = requires(T a, U b)
 {
 	{ a == b } -> boolean_testable;
 };

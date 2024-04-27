@@ -54,6 +54,9 @@ struct CttiFuncNode<Func, TypeList<Nodes...>, Container_, std::index_sequence<In
 	static constexpr RankType MaxRank = Container::MaxRank;
 	static constexpr bool HasBuffer = detail::CttiFuncNodeBuffer<typename Func::RetType>::HasBuffer;
 
+	//CttiFuncNodeがTypedではなくCttiであるためには、引数が全てCttiである必要がある。
+	static constexpr bool IsCtti = (ctti_node_or_placeholder<Nodes> && ...);
+
 	CttiFuncNode() {}
 	template <class Func_, any_node ...Nodes_>
 		requires (sizeof...(Nodes) == sizeof...(Nodes_) && sizeof...(Nodes) > 1)
@@ -124,9 +127,11 @@ public:
 		m_init_flag = true;
 	}
 
+	//Cttiの場合は階層はstaticに決定できる。
 private:
+	//連結情報を持っているJointLayerArrayを探す。
 	template <size_t N>
-	static constexpr JointLayerArray<MaxRank> GetJointLayerArray_impl()
+	static constexpr JointLayerArray<MaxRank> GetJointLayerArray_impl() requires IsCtti
 	{
 		if constexpr (N <= MaxRank)
 		{
@@ -137,24 +142,70 @@ private:
 		else return JointLayerArray<MaxRank>{};
 	}
 public:
-
-	static constexpr JointLayerArray<MaxRank> GetJointLayerArray()
+	static constexpr JointLayerArray<MaxRank> GetJointLayerArray() requires IsCtti
 	{
 		return GetJointLayerArray_impl<0>();
 	}
-	static constexpr LayerInfo<MaxRank> GetLayerInfo()
+	static constexpr LayerInfo<MaxRank> GetLayerInfo() requires IsCtti
 	{
 		return GetLayerInfo(LayerInfo<MaxRank>(GetJointLayerArray()));
 	}
-	static constexpr LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli)
+	static constexpr LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli) requires IsCtti
 	{
 		return std::max({ GetType_t<Indices, Nodes...>::GetLayerInfo(eli)... });
 	}
-	static constexpr LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli, DepthType depth)
+	static constexpr LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli, DepthType depth) requires IsCtti
 	{
 		return std::max({ GetType_t<Indices, Nodes...>::GetLayerInfo(eli, depth)... });
 	}
-	static constexpr LayerType GetLayer()
+	static constexpr LayerType GetLayer() requires IsCtti
+	{
+		return GetLayerInfo().GetTravLayer();
+	}
+
+
+	//Typedの場合、階層はstaticに決定できず、staticメンバ関数にも出来ない。
+private:
+	//連結情報を持っているJointLayerArrayを探す。
+	template <size_t N>
+	JointLayerArray<MaxRank> GetJointLayerArray_impl() const requires (!IsCtti)
+	{
+		if constexpr (N < sizeof...(Nodes))
+		{
+			JointLayerArray<MaxRank> res = std::get<N>(m_nodes).GetJointLayerArray();
+			if (!res.IsNotInitialized()) return res;
+			return GetJointLayerArray_impl<N + 1>();
+		}
+		else return JointLayerArray<MaxRank>{};
+	}
+	template <size_t ...Indices>
+	LayerInfo<MaxRank> GetLayerInfo_impl(LayerInfo<MaxRank> eli, std::index_sequence<Indices...>) const requires (!IsCtti)
+	{
+		return std::max({ std::get<Indices>(m_nodes).GetLayerInfo(eli)... });
+	}
+	template <size_t ...Indices>
+	LayerInfo<MaxRank> GetLayerInfo_impl(LayerInfo<MaxRank> eli, DepthType depth, std::index_sequence<Indices...>) const requires (!IsCtti)
+	{
+		return std::max({ std::get<Indices>(m_nodes).GetLayerInfo(eli, depth)... });
+	}
+public:
+	JointLayerArray<MaxRank> GetJointLayerArray() const requires (!IsCtti)
+	{
+		return GetJointLayerArray_impl<0>();
+	}
+	LayerInfo<MaxRank> GetLayerInfo() const requires (!IsCtti)
+	{
+		return GetLayerInfo(LayerInfo<MaxRank>(GetJointLayerArray()));
+	}
+	LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli) const requires (!IsCtti)
+	{
+		return GetLayerInfo_impl(eli, std::make_index_sequence<sizeof...(Nodes)>{});
+	}
+	LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli, DepthType depth) const requires (!IsCtti)
+	{
+		return GetLayerInfo_impl(eli, depth, std::make_index_sequence<sizeof...(Nodes)>{});
+	}
+	LayerType GetLayer() requires (!IsCtti)
 	{
 		return GetLayerInfo().GetTravLayer();
 	}
@@ -489,19 +540,6 @@ auto MakeRttiFuncNode(Func&& f, ValueList<Types...>, std::tuple<Nodes...> t, Hea
 template <class Func, class ...NPs>
 auto MakeFunctionNode(Func&& f, NPs&& ...nps)
 {
-	/*
-	1. 全てのノード構成要素がCttiNodeである場合
-	Cttiならノードは単にCttiFuncNodeとする。
-
-	2. RttiNodeまたはRttiNodeTmpを1つでも含む場合
-	Rttiの場合、文字列式から認識させている場合も考慮し、RttiFuncNodeTmpへと情報を格納する。
-	その後Traverserを与えての事前処理時にRttiFuncNodeへと構造を修正する。
-
-	3. RttiとCttiが混在している場合
-	RttiFuncNodeとする。
-
-	*/
-	//DCttiPlaceholderはCttiに分類される。
 	constexpr bool has_rtti_type = (rtti_node_or_placeholder<NPs> || ...);
 
 	if constexpr (has_rtti_type)
@@ -511,9 +549,9 @@ auto MakeFunctionNode(Func&& f, NPs&& ...nps)
 	}
 	else
 	{
-		using RetType = std::invoke_result_t<std::decay_t<Func>, typename GetNodeType<std::decay_t<NPs>>::Type::RetType...>;
-		using FuncType = FuncDefinition<std::decay_t<Func>, RetType, typename GetNodeType<std::decay_t<NPs>>::Type::RetType...>;
-		return eval::CttiFuncNode<FuncType, TypeList<typename GetNodeType<std::decay_t<NPs>>::Type...>>
+		using RetType = std::invoke_result_t<std::decay_t<Func>, typename GetNodeType_t<std::decay_t<NPs>>::RetType...>;
+		using FuncType = FuncDefinition<std::decay_t<Func>, RetType, typename GetNodeType_t<std::decay_t<NPs>>::RetType...>;
+		return eval::CttiFuncNode<FuncType, TypeList<GetNodeType_t<std::decay_t<NPs>>...>>
 		(std::forward<Func>(f), ConvertToNode(std::forward<NPs>(nps), std::false_type{})...);
 	}
 }

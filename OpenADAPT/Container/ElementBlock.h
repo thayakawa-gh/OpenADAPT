@@ -47,7 +47,7 @@ struct HierarchyWrapper<FHierarchy<Container, MaxLayer>>
 	const Hierarchy* m_hierarchy = nullptr;
 };
 
-template <class Hierarchy, class Policy>
+template <class Hierarchy, class Policy_>
 class ElementBlock_impl
 {
 public:
@@ -58,6 +58,7 @@ public:
 		//Layerに関してはSTreeなどでもRttiPlaceholderを使うことがあるので、
 		//各関数にテンプレートで持たせたほうが良い。
 	using HierarchySD = HierarchyWrapper<Hierarchy>;
+	using Policy = Policy_;
 
 	ElementBlock_impl() = default;
 	~ElementBlock_impl()
@@ -151,15 +152,17 @@ public:
 
 		const auto& ms = GetPlaceholdersIn(h, layer);
 		char* oldptr = m_blocks;
+		//もしm_blocksがnullptrであった場合、oldptrもnullptrとなるが、
+		//そのときはend==0となっているのでループに入ることはなく、動作に問題は起きない。
 		m_blocks = (char*)std::malloc((ptrdiff_t)newcap * blocksize);
 		for (ptrdiff_t diff = 0; diff != end; diff += blocksize)
 		{
 			char* from = oldptr + diff;
 			char* to = m_blocks + diff;
-			Policy::MoveAndDestroy(ms, is_totally_trivial, from, to);
+			Policy::MoveConstructAndDestroy(ms, is_totally_trivial, from, to);
 			//もし最下層でない場合、各ブロック末尾には下層ElementBlockオブジェクトが存在する。
 			//これも移動させなければならない。
-			if (!ismaxlayer) MoveAndDestroyElementBlock(from + elmsize, to + elmsize);
+			if (!ismaxlayer) MoveConstructAndDestroyElementBlock(from + elmsize, to + elmsize);
 		}
 		std::free(oldptr);
 		m_end = m_blocks + size * blocksize;
@@ -278,25 +281,42 @@ private:
 		if (size == GetCapacity(h, layer)) Reserve(h, layer, size * 2 + 1);
 		auto [ismaxlayer, elmsize, blocksize] = GetBlockTraits(h, layer);
 		const auto& ms = GetPlaceholdersIn(h, layer);
+		auto is_totally_trivial = h.value().IsTotallyTrivial(layer);
 		if (index != size)
 		{
 			//index != sizeの場合、末尾挿入ではないので、
 			//index~size-1番目の要素を後ろにずらす。
+			//注意しなければならないのは、最後の要素だけは未初期化領域へ移動するため、
+			//Policy::MoveではなくMoveConstructを呼ばなければならない点。
 			char* from = m_blocks + (size - 1) * blocksize;
 			char* to = m_blocks + size * blocksize;
 			const char* end = m_blocks + index * blocksize - blocksize;//index - 1番目。
+			Policy::MoveConstruct(ms, is_totally_trivial, from, to);
+			if (!ismaxlayer) MoveElementBlock(from + elmsize, to + elmsize);
+			from -= blocksize;
+			to -= blocksize;
 			for (; from != end; from -= blocksize, to -= blocksize)
 			{
-				Policy::Move(ms, h.value().IsTotallyTrivial(layer), from, to);
+				Policy::Move(ms, is_totally_trivial, from, to);
 				//もし最下層でない場合、各ブロック末尾には下層ElementBlockオブジェクトが存在する。
 				//これも移動させなければならない。
 				if (!ismaxlayer) MoveElementBlock(from + elmsize, to + elmsize);
 			}
+			//ここで末尾挿入でない場合、挿入するメモリ領域は初期化済みなので、
+			//コンストラクタなしのAssign関数を呼ぶ。
+			//また下層のElementBlockも初期化済みなので、何もしなくて良い。
+			char* pos = m_blocks + index * blocksize;
+			if constexpr (UnsafeFlag) Policy::Assign_static(ms, pos, std::forward<Args>(args)...);
+			else Policy::Assign(ms, pos, std::forward<Args>(args)...);
 		}
-		char* pos = m_blocks + index * blocksize;
-		if constexpr (UnsafeFlag) Create_static(ms, pos, std::forward<Args>(args)...);
-		else Create(ms, pos, std::forward<Args>(args)...);
-		if (!ismaxlayer) CreateElementBlock(pos + elmsize);
+		else
+		{
+			char* pos = m_blocks + index * blocksize;
+			//ここで末尾挿入の場合、挿入するメモリ領域は未初期化であるため、Create関数でよい。
+			if constexpr (UnsafeFlag) Policy::Create_static(ms, pos, std::forward<Args>(args)...);
+			else Policy::Create(ms, pos, std::forward<Args>(args)...);
+			if (!ismaxlayer) CreateElementBlock(pos + elmsize);
+		}
 		m_end += blocksize;
 	}
 public:
@@ -351,17 +371,18 @@ public:
 		for (ptrdiff_t diff = 0; diff != end; diff += blocksize)
 		{
 			char* ptr = m_blocks + diff;
-			Destroy(ms, is_totally_trivial, ptr);
+			Policy::Destroy(ms, is_totally_trivial, ptr);
 			if (!ismaxlayer) DestroyElementBlock(h, layer, ptr + elmsize);
 		}
 		std::free(m_blocks);
 		m_blocks = nullptr;
 	}
-	//from_の全要素を自身に移動し、from_の全フィールドに対してデストラクタを呼ぶ。
-	//下層要素も移動する。
+	//自身はメモリ確保されただけの未初期化状態と想定し、from_の全要素を自身に移動する。下層要素も移動する。
+	//fromのフィールドはデフォルト初期化された状態に、下層はnullptrになる。
 	template <class LayerSD>
-	void MoveElementsFrom(HierarchySD h, LayerSD layer, ElementBlock_impl&& from_)
+	void CreateElementsFrom(HierarchySD h, LayerSD layer, ElementBlock_impl&& from_)
 	{
+		assert(GetCapacity(h, layer) == 0);
 		auto [ismaxlayer, elmsize, blocksize] = GetBlockTraits(h, layer);
 		BindexType size = from_.GetSize(h, layer);
 		const auto& phs = GetPlaceholdersIn(h, layer);
@@ -371,16 +392,21 @@ public:
 		char* to = m_blocks;
 		for (; from != from_.m_end; from += blocksize, to += blocksize)
 		{
-			Policy::MoveAndDestroy(phs, is_totally_trivial, from, to);
-			if (!ismaxlayer) MoveAndDestroyElementBlock(from + elmsize, to + elmsize);
+			Policy::MoveConstruct(phs, is_totally_trivial, from, to);
+			if (!ismaxlayer) MoveConstructAndDestroyElementBlock(from + elmsize, to + elmsize);
 		}
 		m_end = to;
 		from_.m_end = from_.m_blocks;
 	}
-
+	template <class LayerSD>
+	void RewriteSize(HierarchySD h, LayerSD layer, BindexType size)
+	{
+		assert(GetCapacity(h, layer) == size);
+		m_end = m_blocks + size * GetBlockSize(h, layer);
+	}
 
 	//----------static methods----------
-
+	/*
 	template <class Placeholders, class Bool>
 	static void Destroy(const Placeholders& phs, Bool b, char* ptr)
 	{
@@ -401,7 +427,7 @@ public:
 	static void Create_default(const Placeholders& phs, char* ptr)
 	{
 		Policy::Create_default(phs, ptr);
-	}
+	}*/
 
 	static void CreateElementBlock(char* ptr)
 	{
@@ -434,19 +460,29 @@ public:
 	{
 		//ptrの先にElementBlockがあるものとして、それを削除する。
 		auto* e_ptr = std::launder(reinterpret_cast<ElementBlock_impl*>(ptr));
-		e_ptr->Destruct(h, (LayerType)(layer + 1));
+		e_ptr->Destruct(h, layer + 1_layer);
 		e_ptr->~ElementBlock_impl();
 	}
 
 	//fromのElementBlockをtoへと移動し、fromに対してデストラクタを呼ぶ。
 	//toはメモリを確保しただけの未初期化領域と想定している。
-	static void MoveAndDestroyElementBlock(char* from, char* to)
+	static void MoveConstructAndDestroyElementBlock(char* from, char* to)
 	{
 		ElementBlock_impl* e_from = std::launder(reinterpret_cast<ElementBlock_impl*>(from));
 		new (to) ElementBlock_impl(std::move(*e_from));
 		e_from->~ElementBlock_impl();
 	}
 
+	//メモリ確保されただけの未初期化領域toにfromの要素を移動し、fromのデストラクタを呼ぶ。
+	template <class LayerSD>
+	static void MoveConstructAndDestroyElementFrom(HierarchySD h, LayerSD layer, char* from, char* to)
+	{
+		auto [ismaxlayer, elmsize, blocksize] = GetBlockTraits(h, layer);
+		const auto& phs = GetPlaceholdersIn(h, layer);
+		auto is_totally_trivial = h.value().IsTotallyTrivial(layer);
+		Policy::MoveConstructAndDestroy(phs, is_totally_trivial, from, to);
+		if (!ismaxlayer) MoveConstructAndDestroyElementBlock(from + elmsize, to + elmsize);
+	}
 
 	template <class Hier, LayerType L>
 		requires s_hierarchy<Hier>

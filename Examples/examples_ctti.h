@@ -290,6 +290,7 @@ void CalculateWithLambda_ctti(const Tree& t)
 	assert(rank(t, bpos) == 3);
 	//将来的には、階層関数にもouterを付与できるようにしたい。これが必要な状況がいくらか考えられる。
 
+
 	//例8 ユーザー定義関数
 	//ラムダ関数中で使う関数をユーザーが定義することもできる。
 	auto average = adapt::UserFunc([](int32_t a, int32_t b, int32_t c) { return (a + b + c) / 3.; });
@@ -298,6 +299,9 @@ void CalculateWithLambda_ctti(const Tree& t)
 	//ジェネリックラムダのようなテンプレートを含む関数を使う場合は、必ずconceptやSFINAEを用いて制約しておくこと。
 	//特にRttiの場合、FieldTypeに定義されている全ての型で呼び出しを試みるため、制約のない汎用引数の関数はコンパイルエラーに繋がる。
 	auto constrained = adapt::UserFunc([](const auto& x, const auto& y) -> decltype(x + y) { return x + y; });
+	auto sum_2_subjs = constrained(jpn, math);
+	assert(sum_2_subjs(t, bpos) == (48 + 8));
+
 
 	//例9 Rttiへの変換
 	//CttiPlaceholderから作られたラムダ関数は実行される関数などの情報をstaticに持っており、
@@ -410,7 +414,6 @@ void Show_ctti(const Tree& t)
 
 	//4回の試験の3科目合計点が180を超えたことのある生徒の情報を表示する。
 	//Showに何の引数も与えない場合、全フィールドを表示するが、placeholderなどを与えるとそれらの情報だけを表示する。
-	//Show(adapt::except, jpn, math, eng)などとすると、与えたplaceholder以外の全フィールドを表示する。
 	//ただし、表示できるのはFieldTypeに定義されているものに限られる。
 	//Cttiのプレースホルダやラムダ関数の場合、FieldTypeに対応する型が存在しない独自の型だと表示できない。
 	t | Filter(greatest_3subjs >= 180) | Show(number, name, greatest_3subjs, jpn, math, eng);
@@ -492,5 +495,5 @@ void Plot_ctti(const Tree& t)
 
 	//ちなみに以下のようにadapt::flags::combineを与えると、各値を格納したstd::tupleを要素として持つstd::vectorになる。
 	//Matplot++に対しては使えない、ただのtips。
-	//std::vector<std::tuple<int32_t, int32_t>> vec = t | ToVector(math, sci, adapt::flags::combine);//戻り値はstd::vector<std::tuple<int32_t, int32_t>>;
+	//std::vector<std::tuple<int32_t, int32_t>> vec = t | ToVector(adapt::flags::combine, math, sci);//戻り値はstd::vector<std::tuple<int32_t, int32_t>>;
 }
