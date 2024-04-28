@@ -98,6 +98,8 @@ public:
 
 	template <RankType Rank>
 	using RttiPlaceholder = eval::RankedRttiPlaceholder<Rank, Container>;
+	template <RankType Rank, class Type>
+	using TypedPlaceholder = eval::RankedTypedPlaceholder<Rank, Type, Container>;
 	template <RankType Rank, LayerType Layer, class Type>
 	using CttiPlaceholder = eval::RankedCttiPlaceholder<Rank, Layer, Type, Container>;
 
@@ -121,8 +123,8 @@ public:
 	struct GetBranchProxy
 	{
 	private:
-		template <RankType Rank, size_t ...Indices>
-		decltype(auto) GetField_impl(const RttiPlaceholder<Rank>& ph, std::index_sequence<Indices...>) const
+		template <class Placeholder, size_t ...Indices>
+		decltype(auto) GetField_impl(const Placeholder& ph, std::index_sequence<Indices...>) const
 		{
 			return m_stor->GetField(ph, std::get<Indices>(std::move(m_args))...);
 		}
@@ -135,6 +137,26 @@ public:
 		}
 		template <RankType Rank>
 		decltype(auto) operator[](const RttiPlaceholder<Rank>& ph) const
+		{
+			return GetField_impl(ph, std::make_index_sequence<sizeof...(Args)>{});
+		}
+		template <RankType Rank, class Type>
+		decltype(auto) GetField(const TypedPlaceholder<Rank, Type>& ph) const
+		{
+			return GetField_impl(ph, std::make_index_sequence<sizeof...(Args)>{});
+		}
+		template <RankType Rank, class Type>
+		decltype(auto) operator[](const TypedPlaceholder<Rank, Type>& ph) const
+		{
+			return GetField_impl(ph, std::make_index_sequence<sizeof...(Args)>{});
+		}
+		template <RankType Rank, LayerType Layer, class Type>
+		decltype(auto) GetField(const CttiPlaceholder<Rank, Layer, Type>& ph) const
+		{
+			return GetField_impl(ph, std::make_index_sequence<sizeof...(Args)>{});
+		}
+		template <RankType Rank, LayerType Layer, class Type>
+		decltype(auto) operator[](const CttiPlaceholder<Rank, Layer, Type>& ph) const
 		{
 			return GetField_impl(ph, std::make_index_sequence<sizeof...(Args)>{});
 		}
@@ -224,8 +246,8 @@ public:
 
 private:
 	//TargetRankの要素を検索する。
-	template <RankType Rank, RankType TargetRank>
-	decltype(auto) Retrieve(const RttiPlaceholder<TargetRank>& ph, const Bpos& bpos) const
+	template <RankType Rank, RankType TargetRank, class Placeholder>
+	decltype(auto) Retrieve(const Placeholder& ph, const Bpos& bpos) const
 	{
 		auto& s = this->GetContainer<Rank>();
 		auto& abuf = m_access_bufs[Rank];
@@ -266,8 +288,8 @@ private:
 			for (LayerType l = ujoint + 1_layer; l <= max; ++l, ++ext) abuf[l] = bpos[ext];
 		}*/
 	}
-	template <RankType TargetRank, LayerType Size, class Iter>
-	decltype(auto) Retrieve(const RttiPlaceholder<TargetRank>& ph, const Bpos& bpos, Iter it, Iter end) const
+	template <RankType TargetRank, LayerType Size, class Placeholder, class Iter>
+	decltype(auto) Retrieve(const Placeholder& ph, const Bpos& bpos, Iter it, Iter end) const
 	{
 		//現在、Traverserの仕様上、インデックス指定は最下位Containerに対して実行される。
 		//望ましい動作ではないが、ここでもその仕様に合わせた実装にしておく。
@@ -328,17 +350,61 @@ public:
 		return std::get<0>(m_containers)->GetBranch()[ph.Derank()];
 	}
 
+	template <RankType Rank, class Type, std::integral ...Indices>
+	decltype(auto) GetField(const TypedPlaceholder<Rank, Type>& ph, const Bpos& bpos, Indices ...indices) const
+	{
+		auto inds = { (BindexType)indices... };
+		return Retrieve<Rank, sizeof...(Indices)>(ph, bpos, inds.begin(), inds.end());
+	}
+	template <RankType Rank, class Type>
+	decltype(auto) GetField(const TypedPlaceholder<Rank, Type>& ph, const Bpos& bpos) const
+	{
+		return Retrieve<Rank, Rank>(ph, bpos);
+	}
+	template <RankType Rank, class Type, std::integral ...Indices>
+	decltype(auto) GetField(const TypedPlaceholder<Rank, Type>& ph, Indices ...indices) const
+	{
+		return GetField(ph, Bpos{}, indices...);
+	}
+	template <class Type>
+	decltype(auto) GetField(const TypedPlaceholder<0_rank, Type>& ph) const
+	{
+		return std::get<0>(m_containers)->GetBranch()[ph.Derank()];
+	}
+
+	template <RankType Rank, LayerType Layer, class Type, std::integral ...Indices>
+	decltype(auto) GetField(const CttiPlaceholder<Rank, Layer, Type>& ph, const Bpos& bpos, Indices ...indices) const
+	{
+		auto inds = { (BindexType)indices... };
+		return Retrieve<Rank, sizeof...(Indices)>(ph, bpos, inds.begin(), inds.end());
+	}
+	template <RankType Rank, LayerType Layer, class Type>
+	decltype(auto) GetField(const CttiPlaceholder<Rank, Layer, Type>& ph, const Bpos& bpos) const
+	{
+		return Retrieve<Rank, Rank>(ph, bpos);
+	}
+	template <RankType Rank, LayerType Layer, class Type, std::integral ...Indices>
+	decltype(auto) GetField(const CttiPlaceholder<Rank, Layer, Type>& ph, Indices ...indices) const
+	{
+		return GetField(ph, Bpos{}, indices...);
+	}
+	template <LayerType Layer, class Type>
+	decltype(auto) GetField(const CttiPlaceholder<0_rank, Layer, Type>& ph) const
+	{
+		return std::get<0>(m_containers)->GetBranch()[ph.Derank()];
+	}
+
 	//JoinedContainerの場合、LayerTypeを与えても意味はない。
-	decltype(auto) GetBranch(const Bpos& bpos, LayerType = -1_layer) const
+	GetBranchProxy<const Bpos&> GetBranch(const Bpos& bpos, LayerType = -1_layer) const
 	{
 		return GetBranchProxy<const Bpos&>{ this, { bpos } };
 	}
 	template <std::integral ...Indices>
-	decltype(auto) GetBranch(BindexType index, Indices ...indices) const
+	GetBranchProxy<BindexType, Indices...> GetBranch(BindexType index, Indices ...indices) const
 	{
 		return GetBranchProxy<BindexType, Indices...>{ this, { index, indices... } };
 	}
-	decltype(auto) GetBranch() const
+	GetBranchProxy<> GetBranch() const
 	{
 		return GetBranchProxy<>{ this, {} };
 	}

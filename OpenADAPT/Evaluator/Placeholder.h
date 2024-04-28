@@ -967,7 +967,7 @@ public:
 	constexpr TypedPlaceholder_impl(LayerType layer, uint16_t index, ptrdiff_t offs,
 								   JointLayerArray<JointInfo::MaxRank> j)
 		requires (joined_container<Container>)
-		: m_layer(layer), m_index(index), m_ptr_offset(offs), JointInfo(j)
+		: JointInfo(j), m_layer(layer), m_index(index), m_ptr_offset(offs)
 	{}
 
 	constexpr LayerType GetInternalLayer() const { return m_layer; }

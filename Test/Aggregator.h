@@ -390,6 +390,23 @@ inline double MeanMath0(const std::vector<Class>& a)
 	}
 	return res / (double)count;
 }
+inline float MeanMax(const Class& c)
+{
+	float res = 0;
+	size_t count = 0;
+	for (auto& s : c.m_students)
+	{
+		int32_t max = 0;
+		for (auto& r : s.m_records)
+		{
+			int32_t sum = (int32_t)r.m_math + (int32_t)r.m_japanese + (int32_t)r.m_english + (int32_t)r.m_science + (int32_t)r.m_social;
+			if (max < sum) max = sum;
+		}
+		res += (float)max;
+		++count;
+	}
+	return res / count;
+}
 inline int32_t Sum5Subjs(const Record& r)
 {
 	return r.m_math + r.m_japanese + r.m_english + r.m_science + r.m_social;

@@ -178,15 +178,15 @@ private:
 		}
 		else return JointLayerArray<MaxRank>{};
 	}
-	template <size_t ...Indices>
-	LayerInfo<MaxRank> GetLayerInfo_impl(LayerInfo<MaxRank> eli, std::index_sequence<Indices...>) const requires (!IsCtti)
+	template <size_t ...Indices_>
+	LayerInfo<MaxRank> GetLayerInfo_impl(LayerInfo<MaxRank> eli, std::index_sequence<Indices_...>) const requires (!IsCtti)
 	{
-		return std::max({ std::get<Indices>(m_nodes).GetLayerInfo(eli)... });
+		return std::max({ std::get<Indices_>(m_nodes).GetLayerInfo(eli)... });
 	}
-	template <size_t ...Indices>
-	LayerInfo<MaxRank> GetLayerInfo_impl(LayerInfo<MaxRank> eli, DepthType depth, std::index_sequence<Indices...>) const requires (!IsCtti)
+	template <size_t ...Indices_>
+	LayerInfo<MaxRank> GetLayerInfo_impl(LayerInfo<MaxRank> eli, DepthType depth, std::index_sequence<Indices_...>) const requires (!IsCtti)
 	{
-		return std::max({ std::get<Indices>(m_nodes).GetLayerInfo(eli, depth)... });
+		return std::max({ std::get<Indices_>(m_nodes).GetLayerInfo(eli, depth)... });
 	}
 public:
 	JointLayerArray<MaxRank> GetJointLayerArray() const requires (!IsCtti)

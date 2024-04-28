@@ -235,6 +235,8 @@ private:
 	Args m_args;
 };
 
+//RttiFuncNodeに事前に型情報を与えておくもの。何らかのRttiFuncNodeに大してi32()などを呼ぶと生成される。
+//これ自体がTypedNodeとして機能する。
 //NPは、non-const refまたは値として与える。
 //もし別所で寿命が管理されているのならNPはnon-const refでよいが、
 //もし寿命が尽きる可能性のある一時オブジェクトならNPは値とする。
@@ -264,10 +266,16 @@ public:
 	using ConstTraverser = Decayed::ConstTraverser;
 	using RetType = DFieldInfo::TagTypeToValueType<Type>;
 
+	static constexpr RankType MaxRank = Decayed::MaxRank;
+
 	RttiTypeProxy(NP&& node)
 		: m_node(std::forward<NP>(node))
 	{}
 
+	auto GetJointLayerArray() const { return GetRef().GetJointLayerArray(); }
+	auto GetLayerInfo() const { return GetRef().GetLayerInfo(); }
+	auto GetLayerInfo(LayerInfo<MaxRank> eli) const { return GetRef().GetLayerInfo(eli); }
+	auto GetLayerInfo(LayerInfo<MaxRank> eli, DepthType depth) const { return GetRef().GetLayerInfo(eli, depth); }
 	LayerType GetLayer() const { return GetRef().GetLayer(); }
 
 	void Init(const Traverser& t, const std::vector<std::tuple<const void*, const Bpos*, bool>>& outer_t)
