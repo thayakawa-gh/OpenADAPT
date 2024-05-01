@@ -20,6 +20,7 @@ class ExceptionWithMessage : public Exception
 public:
 	ExceptionWithMessage(std::string_view mes) : m_message(mes) {}
 	const std::string& GetMessage() const { return m_message; }
+	const char* what() const noexcept { return m_message.c_str(); }
 private:
 	std::string m_message;
 };

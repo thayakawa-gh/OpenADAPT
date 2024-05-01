@@ -86,6 +86,7 @@ public:
 	{
 		if (!TraverserBase::AssignRow(row)) return false;
 		LayerType move = CheckConditions<(LayerType)-1>(0_layer);
+		if (move == 0_layer || move == -1_layer) return false;
 		if (move != -2_layer)
 		{
 			//条件を満たさなかったので、rowは固定したまま1層以下に限定して満足する要素まで移動する。
@@ -101,13 +102,14 @@ private:
 	bool Move_impl(LayerType fix, LayerType move, Flag)
 	{
 		assert(fix >= m_fixed_layer);
+		assert(fix <= move);
 		while (true)
 		{
 			if (!TraverserBase::Move(move, Flag{}))
 			{
 				//move層の移動に失敗したので、move-1層を移動する。
 				//ただしfix>moveとなることは禁止されているので、その場合はreturn false。
-				if (fix == move) return false;
+				if (fix >= move) return false;
 				--move;
 				continue;
 			}
@@ -382,6 +384,7 @@ public:
 	{
 		if (!TraverserBase::AssignRow(row)) return false;
 		LayerType move = CheckConditions(0_layer);
+		if (move == 0_layer || move == -1_layer) return false;//-層または0層の条件を満たさない場合、これ以上移動できないのでfalseを返す。
 		if (move != -2_layer)
 		{
 			//条件を満たさなかったので、rowは固定したまま1層以下に限定して満足する要素まで移動する。
@@ -392,18 +395,20 @@ public:
 
 private:
 	//move層を移動する。
-	//移動に失敗した場合はmove - 1層を移動するが、fix - 1層以上は固定し、移動しない。
+	//移動に失敗した場合は--moveして上の層を移動する。
+	//ただしfix - 1層以上は固定し、移動しない。
 	template <direction_flag Flag>
 	bool Move_impl(LayerType fix, LayerType move, Flag)
 	{
 		assert(fix >= m_fixed_layer);
+		assert(fix <= move);
 		while (true)
 		{
 			if (!TraverserBase::Move(move, Flag{}))
 			{
 				//move層の移動に失敗したので、move-1層を移動する。
 				//ただしfix>moveとなることは禁止されているので、その場合はreturn false。
-				if (fix == move) return false;
+				if (fix >= move) return false;
 				--move;
 				continue;
 			}

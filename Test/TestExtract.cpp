@@ -6,6 +6,22 @@ using namespace adapt::lit;
 template <class Container, class Layer0, class Layer1, class Layer2>
 void TestExtract(Container& s, const std::vector<Class>& clses, Layer0 l0, Layer1 l1, Layer2 l2)
 {
+	auto Evaluate = []<FieldType Type, class Trav, class NP>(Number<Type>, const Trav & t, NP & np)
+	{
+		if constexpr (typed_node_or_placeholder<NP>) return np(t);
+		else return np(t).template as<Type>();
+	};
+	using enum adapt::FieldType;
+	/*auto Evaluate = []<FieldType Type, class Trav, class NP>(Number<Type>, const Trav& t, NP& np)
+	{
+		if constexpr (typed_node_or_placeholder<NP>) return np(t);
+		else return np(t).template as<Type>();
+	};
+	auto Evaluate = []<FieldType Type, class Trav, class NP>(Number<Type>, const Trav& t, NP& np)
+	{
+		if constexpr (typed_node_or_placeholder<NP>) return np.Evaluate(t);
+		else return np.Evaluate(t).template as<Type>();
+	};*/
 	//test 1
 	{
 		//0層要素。学年とクラス。
@@ -38,13 +54,6 @@ void TestExtract(Container& s, const std::vector<Class>& clses, Layer0 l0, Layer
 
 		auto [class__, count_350_, name_, mean_sum_, sum_, isbest_] = res.GetPlaceholders("fld0"_fld, "fld1"_fld, "fld2"_fld, "fld3"_fld, "fld4"_fld, "fld5"_fld);
 
-		using enum FieldType;
-
-		auto Evaluate = []<FieldType Type, class Trav, class NP>(Number<Type>, const Trav & t, NP & np)
-		{
-			if constexpr (typed_node_or_placeholder<NP>) return np(t);
-			else return np(t).template as<Type>();
-		};
 		static_assert(std::ranges::input_range<decltype(s.GetRange(2))>);
 		InitAll(count_350, mean_sum, sum, isbest);
 
@@ -77,12 +86,6 @@ void TestExtract(Container& s, const std::vector<Class>& clses, Layer0 l0, Layer
 		auto range = s | Filter(sum >= 300) | GetRange(2_layer);
 		auto trav = range.begin();
 
-		using enum adapt::FieldType;
-		auto Evaluate = []<FieldType Type, class Trav, class NP>(Number<Type>, const Trav & t, NP & np)
-		{
-			if constexpr (typed_node_or_placeholder<NP>) return np.Evaluate(t);
-			else return np.Evaluate(t).template as<Type>();
-		};
 		for (BindexType i = 0; i < clses.size(); ++i)
 		{
 			auto& c = clses[i];
@@ -135,13 +138,6 @@ void TestExtract(Container& s, const std::vector<Class>& clses, Layer0 l0, Layer
 
 		auto [best, worst] = res.GetPlaceholders("fld0"_fld, "fld1"_fld);
 
-		using enum FieldType;
-
-		auto Evaluate = []<FieldType Type, class Trav, class NP>(Number<Type>, const Trav & t, NP & np)
-		{
-			if constexpr (typed_node_or_placeholder<NP>) return np(t);
-			else return np(t).template as<Type>();
-		};
 		static_assert(std::ranges::input_range<decltype(s.GetRange(2))>);
 		InitAll(sum, bestscore, worstscore);
 
@@ -164,6 +160,27 @@ void TestExtract(Container& s, const std::vector<Class>& clses, Layer0 l0, Layer
 			}
 			EXPECT_EQ(Evaluate(Number<I32>{}, t, bestscore), Evaluate(Number<I32>{}, r, best));
 			EXPECT_EQ(Evaluate(Number<I32>{}, t, worstscore), Evaluate(Number<I32>{}, r, worst));
+		}
+	}
+	//filter3
+	{
+		//AssignRowで0層の条件を満たさなかった時のバグが見つかったため、そのチェック。
+		//0層要素。学年とクラス。
+		auto [grade, class_] = l0;
+		//1層要素。出席番号、名前、生年月日。
+		//auto [number, name, dob] = l1;
+		//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
+		auto [exam, math, jpn, eng, sci, soc] = l2;
+		auto math_1 = math.at(1);
+
+		auto e = s | Filter(class_ == 1) | Extract(math_1);
+		auto [math_1_] = e.GetPlaceholders("fld0"_fld);
+		auto srange = s | Filter(class_ == 1) | GetRange(1);
+		auto erange = e.GetRange(1);
+		for (auto [t, r] : views::Zip(srange, erange))
+		{
+			//EXPECT_EQ(math_1(t).i32(), r[math_1_].i32());
+			EXPECT_EQ(Evaluate(Number<I32>{}, t, math_1), Evaluate(Number<I32>{}, r, math_1_));
 		}
 	}
 }
