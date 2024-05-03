@@ -3,6 +3,7 @@
 
 build/
 CMakeSettings.json
+CMakePresets.json
 vcpkg*.json
 
 # User-specific files
