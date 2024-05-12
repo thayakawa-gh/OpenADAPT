@@ -137,7 +137,7 @@ public:
 		using is = std::make_index_sequence<sizeof...(ArgTypes)>;
 		if constexpr (FuncShortCircuitApplicable<Func, NodeImpl, Args...>)
 		{
-			Exec_sc_with_buf(is{}, ni, args...);
+			Exec_sc_with_buf(is{}, buf, ni, args...);
 		}
 		else
 		{

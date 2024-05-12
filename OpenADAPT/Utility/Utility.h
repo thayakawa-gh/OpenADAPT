@@ -7,7 +7,7 @@ namespace adapt
 struct Default
 {
 	template <class T>
-	operator T() const { return T{}; }
+	constexpr operator T() const { return T{}; }
 };
 
 template <auto I>

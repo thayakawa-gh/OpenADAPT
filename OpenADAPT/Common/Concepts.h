@@ -3,6 +3,7 @@
 
 #include <concepts>
 #include <unordered_map>
+#include <ranges>
 #include <OpenADAPT/Utility/NamedTuple.h>
 #include <OpenADAPT/Common/Definition.h>
 #include <OpenADAPT/Common/Bpos.h>
@@ -49,6 +50,7 @@ enum class FieldType : uint32_t
 	Jbp = FieldTypeFlag::JBP | (sizeof(JBpos) << 16) | (alignof(JBpos) << 24),
 };
 
+//FIELD_TYPEに対応するCODEを呼び出す。
 #define ADAPT_SWITCH_FIELD_TYPE(FIELD_TYPE, CODE, DEFAULT) \
 	switch (FIELD_TYPE) \
 	{ \
@@ -65,6 +67,18 @@ enum class FieldType : uint32_t
 	default: DEFAULT \
 	}
 
+//全てのFieldTypeに対してCODEを実行する。
+#define ADAPT_LOOP_FIELD_TYPE(CODE) \
+	CODE(FieldType::I08) \
+	CODE(FieldType::I16) \
+	CODE(FieldType::I32) \
+	CODE(FieldType::I64) \
+	CODE(FieldType::F32) \
+	CODE(FieldType::F64) \
+	CODE(FieldType::C32) \
+	CODE(FieldType::C64) \
+	CODE(FieldType::Str) \
+	CODE(FieldType::Jbp)
 
 class FieldVariant;
 

@@ -235,6 +235,15 @@ struct IsSame_NT<T, T<X, Y>> : public std::true_type {};
 template <template <auto, class> class T, class U>
 inline constexpr bool IsSame_NT_v = IsSame_NT<T, U>::value;
 
+template <class ...T>
+struct AreAllSame;
+template <class T>
+struct AreAllSame<T> : public std::true_type {};
+template <class T, class U, class ...Ts>
+struct AreAllSame<T, U, Ts...> : public std::bool_constant<std::is_same_v<T, U> && AreAllSame<T, Ts...>::value> {};
+
+template <class ...T>
+inline constexpr bool AreAllSame_v = AreAllSame<T...>::value;
 
 template <class T>
 struct DecayRRef { using Type = T; };
@@ -318,6 +327,8 @@ concept same_as_nt = IsSame_NT<U, T>::value;
 //template <class T, template <auto...> class U>
 //concept not_same_as_xn = !IsSame_XN<U, T>::value;
 
+template <class ...T>
+concept all_same = AreAllSame_v<T...>;
 
 template <class T, class U>
 concept similar_to = std::same_as<std::decay_t<T>, U>;

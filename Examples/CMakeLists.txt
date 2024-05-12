@@ -6,6 +6,10 @@ find_package(Matplot++ REQUIRED)
 
 add_executable(${PROJECT_NAME} "main.cpp")
 
+if(GENERATE_CODE)
+	add_dependencies(${PROJECT_NAME} Generator)
+endif()
+
 target_link_libraries(${PROJECT_NAME} OpenADAPT Matplot++::matplot)
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)

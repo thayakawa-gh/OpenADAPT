@@ -5,7 +5,7 @@
 #include <memory>
 #include <concepts>
 #include <OpenADAPT/Common/Concepts.h>
-#include <OpenADAPT/Evaluator/Function.h>
+#include <OpenADAPT/Evaluator/FuncNode.h>
 #include <OpenADAPT/Joint/JointInterface.h>
 
 namespace adapt

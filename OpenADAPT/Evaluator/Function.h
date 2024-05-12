@@ -26,7 +26,7 @@ Res Switch(Int i, T&& t, U&& ...u)
 	else throw NoElements();
 }
 template <std::integral Int, class ...T>
-	requires (std::is_trivial_v<std::decay_t<T>> &&...)
+	requires (all_same<std::decay_t<T>...>)
 auto Switch(Int i, T&& ...t)
 {
 	using Res = std::common_type_t<T...>;
@@ -347,6 +347,15 @@ auto floor(Arg&& a)
 {
 	return detail::MakeFunctionNode(Floor{}, std::forward<Arg>(a));
 }
+struct Round
+{
+	auto operator()(const auto& a) const -> decltype(std::round(a)) { return std::round(a); }
+};
+template <node_or_placeholder Arg>
+auto round(Arg&& a)
+{
+	return detail::MakeFunctionNode(Round{}, std::forward<Arg>(a));
+}
 struct Log
 {
 	auto operator()(const auto& a) const -> decltype(std::log(a)) { return std::log(a); }
@@ -417,6 +426,7 @@ auto log(Arg1&& a, Arg2&& b)
 struct Hypot
 {
 	auto operator()(const auto& a, const auto& b) const -> decltype(std::hypot(a, b)) { return std::hypot(a, b); }
+	auto operator()(const auto& a, const auto& b, const auto& c) const -> decltype(std::hypot(a, b, c)) { return std::hypot(a, b, c); }
 };
 template <class Arg1, class Arg2>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
@@ -424,35 +434,49 @@ auto hypot(Arg1&& a, Arg2&& b)
 {
 	return detail::MakeFunctionNode(Hypot{}, std::forward<Arg1>(a), std::forward<Arg2>(b));
 }
+template <class Arg1, class Arg2, class Arg3>
+	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2> || node_or_placeholder<Arg3>)
+auto hypot(Arg1&& a, Arg2&& b, Arg3&& c)
+{
+	return detail::MakeFunctionNode(Hypot{}, std::forward<Arg1>(a), std::forward<Arg2>(b), std::forward<Arg3>(c));
+}
 struct Max
 {
 	//decltype(std::max(a, b))のような書き方だと、gccではエラーになる。
 	template <class T>
 		requires less_than_comparable<T>
 	auto operator()(const T& a, const T& b) const { return std::max(a, b); }
+	template <class ...T>
+		requires (less_than_comparable<T> && ...) && all_same<T...> && (sizeof...(T) > 2)
+	auto operator()(const T& ...args) const { return std::max({ args... }); }
+
 };
-template <class Arg1, class Arg2>
-	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
-auto max(Arg1&& a, Arg2&& b)
+template <class ...Args>
+	requires (node_or_placeholder<Args> || ...)
+auto max(Args&& ...a)
 {
-	return detail::MakeFunctionNode(Max{}, std::forward<Arg1>(a), std::forward<Arg2>(b));
+	return detail::MakeFunctionNode(Max{}, std::forward<Args>(a)...);
 }
 struct Min
 {
 	template <class T>
 		requires less_than_comparable<T>
 	auto operator()(const T& a, const T& b) const { return std::min(a, b); }
+	template <class ...T>
+		requires (less_than_comparable<T> && ...) && all_same<T...> && (sizeof...(T) > 2)
+	auto operator()(const T& ...args) const { return std::min({ args... }); }
 };
-template <class Arg1, class Arg2>
-	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
-auto min(Arg1&& a, Arg2&& b)
+template <class ...Args>
+	requires (node_or_placeholder<Args> || ...)
+auto min(Args&& ...a)
 {
-	return detail::MakeFunctionNode(Min{}, std::forward<Arg1>(a), std::forward<Arg2>(b));
+	return detail::MakeFunctionNode(Min{}, std::forward<Args>(a)...);
 }
 
 struct IfFunction
 {
-	auto operator()(const auto& a, const auto& b, const auto& c) const -> decltype(a ? b : c)
+	template <boolean_testable T, class U>
+	auto operator()(const T& a, const U& b, const U& c) const -> decltype(a ? b : c)
 	{
 		return a ? b : c;
 	}
@@ -472,36 +496,59 @@ auto if_(Arg1&& a, Arg2&& b, Arg3&& c)
 									std::forward<Arg1>(a), std::forward<Arg2>(b), std::forward<Arg3>(c));
 }
 
-template <size_t NCase>
+//template <size_t NCase>
 struct SwitchFunction
 {
 private:
-	template <size_t I, std::integral Int, class NodeImpl, class ...Args>
-	decltype(auto) ShortCircuit_rec(Int i, const NodeImpl& nodeimpl, Args&& ...args) const
+	//再帰実装したswitchで戻り値の型を正しく判定するのは面倒なので、
+	//trivially_copyableな場合とそうでない場合をbuf有無で分けることにする。
+	template <size_t I, size_t NCase, std::integral Int, class NodeImpl, class ...Args>
+	auto ShortCircuit_rec(Int i, const NodeImpl& nodeimpl, Args&& ...args) const
 	{
 		if (i == I) return nodeimpl.template GetArg<I + 1>(args...);
-		if constexpr (I < NCase) return ShortCircuit_rec<I + 1>(i, nodeimpl, args...);
+		if constexpr (I < NCase) return ShortCircuit_rec<I + 1, NCase>(i, nodeimpl, args...);
 		else throw NoElements();
+	}
+	template <size_t I, size_t NCase, class Res, std::integral Int, class NodeImpl, class ...Args>
+	void ShortCircuitWithBuf_rec(Res& buf, Int i, const NodeImpl& nodeimpl, Args&& ...args) const
+	{
+		if (i == I)
+		{
+			buf = nodeimpl.template GetArg<I + 1>(args...);
+		}
+		else
+		{
+			if constexpr (I < NCase) ShortCircuitWithBuf_rec<I + 1, NCase>(buf, i, nodeimpl, args...);
+			else throw NoElements();
+		}
 	}
 public:
 	template <std::integral Int, class ...Args>
-	auto operator()(Int i, Args&& ...args) const -> decltype(Switch(i, std::forward<Args>(args)...))
+		requires all_same<std::decay_t<Args>...>
+	auto operator()(Int i, Args&& ...args) const -> decltype(detail::Switch(i, std::forward<Args>(args)...))
 	{
-		return Switch(i, std::forward<Args>(args)...);
+		return detail::Switch(i, std::forward<Args>(args)...);
 	}
 	template <class NodeImpl, class ...Args>
 	decltype(auto) ShortCircuit(const NodeImpl& nodeimpl, Args&& ...args) const
 	{
-		return ShortCircuit_rec<0>(nodeimpl.template GetArg<0>(args...), nodeimpl, args...);
+		static constexpr size_t NCase = sizeof...(Args) - 1;
+		return ShortCircuit_rec<0, NCase>(nodeimpl.template GetArg<0>(args...), nodeimpl, args...);
+	}
+	template <class Res, class NodeImpl, class ...Args>
+	void ShortCircuitWithBuf(Res& buf, const NodeImpl& nodeimpl, Args&& ...args) const
+	{
+		static constexpr size_t NCase = sizeof...(Args) - 1;
+		ShortCircuitWithBuf_rec<0, NCase>(buf, nodeimpl.template GetArg<0>(args...), nodeimpl, args...);
 	}
 };
-//Do NOT use with 4 or more arguments including rtti nodes or placeholders,
+//Do NOT use with 5 or more arguments including rtti nodes or placeholders,
 //to avoid excessive compilation time.
 template <class ...Args>
 	requires (node_or_placeholder<Args> || ...) && (sizeof...(Args) > 1)
 auto switch_(Args&& ...args)
 {
-	return detail::MakeFunctionNode(SwitchFunction<sizeof...(Args) - 1>{}, std::forward<Args>(args)...);
+	return detail::MakeFunctionNode(SwitchFunction{}, std::forward<Args>(args)...);
 }
 
 struct Forward

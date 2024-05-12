@@ -12,13 +12,17 @@ add_executable(${PROJECT_NAME}
 	"TestEvaluate.cpp" "TestExtract.cpp" "TestShow.cpp" "TestFilter.cpp"
 	"TestTraverser.cpp" "TestUserFunc.cpp")
 
+if(GENERATE_CODE)
+	add_dependencies(${PROJECT_NAME} Generator)
+endif()
+
 if(${unordered_dense_FOUND})
 	message("unordered_dense found")
 	target_compile_definitions(${PROJECT_NAME} PRIVATE USE_ANKERL_UNORDERED_DENSE)
 	target_link_libraries(${PROJECT_NAME} OpenADAPT GTest::GTest GTest::Main yaml-cpp Matplot++::matplot unordered_dense::unordered_dense)
 else()
 	message("unordered_dense not found")
-target_link_libraries(${PROJECT_NAME} OpenADAPT GTest::GTest GTest::Main yaml-cpp Matplot++::matplot)
+	target_link_libraries(${PROJECT_NAME} OpenADAPT GTest::GTest GTest::Main yaml-cpp Matplot++::matplot)
 endif()
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)

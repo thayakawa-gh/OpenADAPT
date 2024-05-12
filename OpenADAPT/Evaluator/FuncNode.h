@@ -446,96 +446,8 @@ struct RttiFuncNode_impl<Func, Container, TypeList<Nodes...>, Type, std::index_s
 	mutable DFieldInfo::TagTypeToValueType<Type> m_buf;
 };
 
-}
-
-
-namespace detail
-{
-
-template <class ...ArgTypes, class Func, any_node ...Nodes,
-	class Container = typename ExtractContainer<std::decay_t<Nodes>...>::Container>
-auto MakeRttiFuncNode_construct(int, Func&& f, Nodes&& ...n)
-	-> decltype(f(std::declval<ArgTypes>()...), eval::RttiFuncNode<Container>{})
-{
-	using DecFunc = std::decay_t<Func>;
-	using RetType = std::decay_t<std::invoke_result_t<DecFunc, ArgTypes...>>;
-	using FuncA = FuncDefinition<DecFunc, RetType, ArgTypes...>;
-	using NodeImpl = detail::RttiFuncNode_impl<FuncA, Container, TypeList<std::decay_t<Nodes>...>>;
-	eval::RttiFuncNode<Container> res;
-	res.template Construct<NodeImpl>(std::forward<Func>(f), std::forward<Nodes>(n)...);
-	return res;
-}
-template <class ...ArgTypes, class Func, any_node ...Nodes>
-auto MakeRttiFuncNode_construct(float, Func&&, Nodes&& ...)
-	-> eval::RttiFuncNode<typename ExtractContainer<std::decay_t<Nodes>...>::Container>
-{
-	throw MismatchType("");
-}
-
-template <class Func, FieldType ...Types, any_node ...Nodes, size_t ...Indices>
-auto MakeRttiFuncNode_expand(Func&& f, ValueList<Types...>, std::tuple<Nodes...> t, std::index_sequence<Indices...>)
-{
-	return MakeRttiFuncNode_construct<DFieldInfo::TagTypeToValueType<Types>...>(1, std::forward<Func>(f), std::get<Indices>(t)...);
-}
-
-template <class Func, FieldType ...Types, any_node ...Nodes>
-auto MakeRttiFuncNode(Func&& f, ValueList<Types...> v, std::tuple<Nodes...> t)
-{
-	return MakeRttiFuncNode_expand(std::forward<Func>(f), v, std::move(t), std::make_index_sequence<sizeof...(Nodes)>{});
-}
-
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable: 4702)
-#endif
-template <class Func, FieldType ...Types, any_node ...Nodes, any_node Head, any_node ...Body>
-auto MakeRttiFuncNode(Func&& f, ValueList<Types...>, std::tuple<Nodes...> t, Head&& head, Body&& ...body)
-{
-	if (head.IsI08())
-		return MakeRttiFuncNode(std::forward<Func>(f), ValueList<Types..., FieldType::I08>(),
-			TupleAdd(std::move(t), std::forward<Head>(head)),
-			std::forward<Body>(body)...);
-	else if (head.IsI16())
-		return MakeRttiFuncNode(std::forward<Func>(f), ValueList<Types..., FieldType::I16>(),
-			TupleAdd(std::move(t), std::forward<Head>(head)),
-			std::forward<Body>(body)...);
-	else if (head.IsI32())
-		return MakeRttiFuncNode(std::forward<Func>(f), ValueList<Types..., FieldType::I32>(),
-			TupleAdd(std::move(t), std::forward<Head>(head)),
-			std::forward<Body>(body)...);
-	else if (head.IsI64())
-		return MakeRttiFuncNode(std::forward<Func>(f), ValueList<Types..., FieldType::I64>(),
-			TupleAdd(std::move(t), std::forward<Head>(head)),
-			std::forward<Body>(body)...);
-	else if (head.IsF32())
-		return MakeRttiFuncNode(std::forward<Func>(f), ValueList<Types..., FieldType::F32>(),
-			TupleAdd(std::move(t), std::forward<Head>(head)),
-			std::forward<Body>(body)...);
-	else if (head.IsF64())
-		return MakeRttiFuncNode(std::forward<Func>(f), ValueList<Types..., FieldType::F64>(),
-			TupleAdd(std::move(t), std::forward<Head>(head)),
-			std::forward<Body>(body)...);
-	else if (head.IsC32())
-		return MakeRttiFuncNode(std::forward<Func>(f), ValueList<Types..., FieldType::C32>(),
-			TupleAdd(std::move(t), std::forward<Head>(head)),
-			std::forward<Body>(body)...);
-	else if (head.IsC64())
-		return MakeRttiFuncNode(std::forward<Func>(f), ValueList<Types..., FieldType::C64>(),
-			TupleAdd(std::move(t), std::forward<Head>(head)),
-			std::forward<Body>(body)...);
-	else if (head.IsStr())
-		return MakeRttiFuncNode(std::forward<Func>(f), ValueList<Types..., FieldType::Str>(),
-			TupleAdd(std::move(t), std::forward<Head>(head)),
-			std::forward<Body>(body)...);
-	else if (head.IsJbp())
-		return MakeRttiFuncNode(std::forward<Func>(f), ValueList<Types..., FieldType::Jbp>(),
-			TupleAdd(std::move(t), std::forward<Head>(head)),
-			std::forward<Body>(body)...);
-	throw MismatchType("");
-}
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
+template <class Container, class Func, FieldType ...Types, any_node ...Nodes, any_node Head, any_node ...Body>
+eval::RttiFuncNode<Container> MakeRttiFuncNode(long l, Func&& f, ValueList<Types...>, std::tuple<Nodes...> t, Head&& head, Body&& ...body);
 
 template <class Func, class ...NPs>
 auto MakeFunctionNode(Func&& f, NPs&& ...nps)
@@ -544,24 +456,17 @@ auto MakeFunctionNode(Func&& f, NPs&& ...nps)
 
 	if constexpr (has_rtti_type)
 	{
-		return MakeRttiFuncNode(std::forward<Func>(f), ValueList<>(), std::tuple<>(),
-									  ConvertToNode(std::forward<NPs>(nps), std::true_type{})...);
+		using Container = typename ExtractContainer<std::decay_t<NPs>...>::Container;
+		return MakeRttiFuncNode<Container>(1, std::forward<Func>(f), ValueList<>(), std::tuple<>(),
+										   ConvertToNode(std::forward<NPs>(nps), std::true_type{})...);
 	}
 	else
 	{
 		using RetType = std::invoke_result_t<std::decay_t<Func>, typename GetNodeType_t<std::decay_t<NPs>>::RetType...>;
 		using FuncType = FuncDefinition<std::decay_t<Func>, RetType, typename GetNodeType_t<std::decay_t<NPs>>::RetType...>;
 		return eval::CttiFuncNode<FuncType, TypeList<GetNodeType_t<std::decay_t<NPs>>...>>
-		(std::forward<Func>(f), ConvertToNode(std::forward<NPs>(nps), std::false_type{})...);
+			(std::forward<Func>(f), ConvertToNode(std::forward<NPs>(nps), std::false_type{})...);
 	}
-}
-
-template <class Func, neither_node_nor_placeholder Constant,
-	FieldType Type = DFieldInfo::GetSameSizeTagType<std::remove_cvref_t<Constant>>()>
-	requires (Type != FieldType::Emp)
-auto MakeRttiFuncNodeFromConstant(Func&& f, Constant&& c)
-{
-	return MakeRttiFuncNode(std::forward<Func>(f), ValueList<>(), std::tuple<>(), RttiConstNode(std::forward<Constant>(c)));
 }
 
 }
@@ -569,14 +474,16 @@ auto MakeRttiFuncNodeFromConstant(Func&& f, Constant&& c)
 //任意のノードを強制的にRttiFuncNodeでラップする。
 //ただし、既にRttiFuncNodeであれば何もしなくて良い。
 template <node_or_placeholder NPs>
-auto ConvertToRttiFuncNode(NPs&& nps)
+eval::RttiFuncNode<typename std::decay_t<NPs>::Container>
+	ConvertToRttiFuncNode(NPs&& nps)
 {
 	if constexpr (rtti_func_node<NPs>) return std::forward<NPs>(nps);
 	else
 	{
+		using Container = typename std::decay_t<NPs>::Container;
 		auto f = [](const auto& a) { return a; };
-		return detail::MakeRttiFuncNode(f, ValueList<>(), std::tuple<>(),
-			ConvertToNode(std::forward<NPs>(nps), std::true_type{}));
+		return detail::MakeRttiFuncNode<Container>(1, f, ValueList<>(), std::tuple<>(),
+												   ConvertToNode(std::forward<NPs>(nps), std::true_type{}));
 	}
 }
 

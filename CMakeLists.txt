@@ -21,9 +21,13 @@ install(
 	TARGETS ${PACKAGE_NAME}
 	EXPORT ${PACKAGE_NAME}Config)
 
+option(GENERATE_CODE "generate code" OFF)
 option(BUILD_TEST "build test program" OFF)
 option(BUILD_EXAMPLES "build examples" OFF)
 
+if(GENERATE_CODE)
+	add_subdirectory(Generator)
+endif()
 if(BUILD_TEST)
 	add_subdirectory(Test)
 endif()

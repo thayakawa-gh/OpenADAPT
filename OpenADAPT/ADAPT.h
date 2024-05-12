@@ -13,8 +13,9 @@
 #include <OpenADAPT/Evaluator/ConstNode.h>
 #include <OpenADAPT/Evaluator/FieldNode.h>
 #include <OpenADAPT/Evaluator/FuncNode.h>
-#include <OpenADAPT/Evaluator/LayerFuncNode.h>
 #include <OpenADAPT/Evaluator/Function.h>
+#include <OpenADAPT/Evaluator/MakeRttiFuncNode.h>
+#include <OpenADAPT/Evaluator/LayerFuncNode.h>
 
 #include <OpenADAPT/Range/Evaluate.h>
 #include <OpenADAPT/Range/Filter.h>
