@@ -228,6 +228,43 @@ auto operator||(Arg1&& a, Arg2&& b)
 	return detail::MakeFunctionNode(OperatorOr{}, std::forward<Arg1>(a), std::forward<Arg2>(b));
 }
 
+struct IsFinite
+{
+	auto operator()(const auto& a) const -> decltype(std::isfinite(a)) { return std::isfinite(a); }
+};
+template <node_or_placeholder Arg>
+auto isfinite(Arg&& a)
+{
+	return detail::MakeFunctionNode(IsFinite{}, std::forward<Arg>(a));
+}
+struct IsInf
+{
+	auto operator()(const auto& a) const -> decltype(std::isinf(a)) { return std::isinf(a); }
+};
+template <node_or_placeholder Arg>
+auto isinf(Arg&& a)
+{
+	return detail::MakeFunctionNode(IsInf{}, std::forward<Arg>(a));
+}
+struct IsNan
+{
+	auto operator()(const auto& a) const -> decltype(std::isnan(a)) { return std::isnan(a); }
+};
+template <node_or_placeholder Arg>
+auto isnan(Arg&& a)
+{
+	return detail::MakeFunctionNode(IsNan{}, std::forward<Arg>(a));
+}
+struct IsNormal
+{
+	auto operator()(const auto& a) const -> decltype(std::isnormal(a)) { return std::isnormal(a); }
+};
+template <node_or_placeholder Arg>
+auto isnormal(Arg&& a)
+{
+	return detail::MakeFunctionNode(IsNormal{}, std::forward<Arg>(a));
+}
+
 struct Sin
 {
 	auto operator()(const auto& a) const -> decltype(std::sin(a)) { return std::sin(a); }
@@ -282,6 +319,61 @@ auto atan(Arg&& a)
 {
 	return detail::MakeFunctionNode(ATan{}, std::forward<Arg>(a));
 }
+struct Sinh
+{
+	auto operator()(const auto& a) const -> decltype(std::sinh(a)) { return std::sinh(a); }
+};
+template <node_or_placeholder Arg>
+auto sinh(Arg&& a)
+{
+	return detail::MakeFunctionNode(Sinh{}, std::forward<Arg>(a));
+}
+struct Cosh
+{
+	auto operator()(const auto& a) const -> decltype(std::cosh(a)) { return std::cosh(a); }
+};
+template <node_or_placeholder Arg>
+auto cosh(Arg&& a)
+{
+	return detail::MakeFunctionNode(Cosh{}, std::forward<Arg>(a));
+}
+struct Tanh
+{
+	auto operator()(const auto& a) const -> decltype(std::tanh(a)) { return std::tanh(a); }
+};
+template <node_or_placeholder Arg>
+auto tanh(Arg&& a)
+{
+	return detail::MakeFunctionNode(Tanh{}, std::forward<Arg>(a));
+}
+struct ASinh
+{
+	auto operator()(const auto& a) const -> decltype(std::asinh(a)) { return std::asinh(a); }
+};
+template <node_or_placeholder Arg>
+auto asinh(Arg&& a)
+{
+	return detail::MakeFunctionNode(ASinh{}, std::forward<Arg>(a));
+}
+struct ACosh
+{
+	auto operator()(const auto& a) const -> decltype(std::acosh(a)) { return std::acosh(a); }
+};
+template <node_or_placeholder Arg>
+auto acosh(Arg&& a)
+{
+	return detail::MakeFunctionNode(ACosh{}, std::forward<Arg>(a));
+}
+struct ATanh
+{
+	auto operator()(const auto& a) const -> decltype(std::atanh(a)) { return std::atanh(a); }
+};
+template <node_or_placeholder Arg>
+auto atanh(Arg&& a)
+{
+	return detail::MakeFunctionNode(ATanh{}, std::forward<Arg>(a));
+}
+
 struct Exponential
 {
 	auto operator()(const auto& a) const -> decltype(std::exp(a)) { return std::exp(a); }
@@ -290,6 +382,15 @@ template <node_or_placeholder Arg>
 auto exp(Arg&& a)
 {
 	return detail::MakeFunctionNode(Exponential{}, std::forward<Arg>(a));
+}
+struct Exp2
+{
+	auto operator()(const auto& a) const -> decltype(std::exp2(a)) { return std::exp2(a); }
+};
+template <node_or_placeholder Arg>
+auto exp2(Arg&& a)
+{
+	return detail::MakeFunctionNode(Exp2{}, std::forward<Arg>(a));
 }
 struct Square
 {
@@ -329,6 +430,41 @@ auto cbrt(Arg&& a)
 {
 	return detail::MakeFunctionNode(Cbrt{}, std::forward<Arg>(a));
 }
+struct Log
+{
+	auto operator()(const auto& a) const -> decltype(std::log(a)) { return std::log(a); }
+	auto operator()(const auto& a, const auto& b) const -> decltype(std::log(a) / std::log(b)) { return std::log(a) / std::log(b); }
+};
+template <node_or_placeholder Arg>
+auto log(Arg&& a)
+{
+	return detail::MakeFunctionNode(Log{}, std::forward<Arg>(a));
+}
+template <class Arg1, class Arg2>
+	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
+auto log(Arg1&& a, Arg2&& b)
+{
+	return detail::MakeFunctionNode(Log{}, std::forward<Arg1>(a), std::forward<Arg2>(b));
+}
+struct Log10
+{
+	auto operator()(const auto& a) const -> decltype(std::log10(a)) { return std::log10(a); }
+};
+template <node_or_placeholder Arg>
+auto log10(Arg&& a)
+{
+	return detail::MakeFunctionNode(Log10{}, std::forward<Arg>(a));
+}
+struct Log2
+{
+	auto operator()(const auto& a) const -> decltype(std::log2(a)) { return std::log2(a); }
+};
+template <node_or_placeholder Arg>
+auto log2(Arg&& a)
+{
+	return detail::MakeFunctionNode(Log2{}, std::forward<Arg>(a));
+}
+
 struct Ceil
 {
 	auto operator()(const auto& a) const -> decltype(std::ceil(a)) { return std::ceil(a); }
@@ -347,24 +483,7 @@ auto floor(Arg&& a)
 {
 	return detail::MakeFunctionNode(Floor{}, std::forward<Arg>(a));
 }
-struct Log
-{
-	auto operator()(const auto& a) const -> decltype(std::log(a)) { return std::log(a); }
-};
-template <node_or_placeholder Arg>
-auto log(Arg&& a)
-{
-	return detail::MakeFunctionNode(Log{}, std::forward<Arg>(a));
-}
-struct Log10
-{
-	auto operator()(const auto& a) const -> decltype(std::log10(a)) { return std::log10(a); }
-};
-template <node_or_placeholder Arg>
-auto log10(Arg&& a)
-{
-	return detail::MakeFunctionNode(Log10{}, std::forward<Arg>(a));
-}
+
 struct Abs
 {
 	auto operator()(const auto& a) const -> decltype(std::abs(a)) { return std::abs(a); }
@@ -404,16 +523,7 @@ auto atan2(Arg1&& a, Arg2&& b)
 {
 	return detail::MakeFunctionNode(ATan2{}, std::forward<Arg1>(a), std::forward<Arg2>(b));
 }
-struct Log2
-{
-	auto operator()(const auto& a, const auto& b) const -> decltype(std::log(a) / std::log(b)) { return std::log(a) / std::log(b); }
-};
-template <class Arg1, class Arg2>
-	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
-auto log(Arg1&& a, Arg2&& b)
-{
-	return detail::MakeFunctionNode(Log2{}, std::forward<Arg1>(a), std::forward<Arg2>(b));
-}
+
 struct Hypot
 {
 	auto operator()(const auto& a, const auto& b) const -> decltype(std::hypot(a, b)) { return std::hypot(a, b); }
