@@ -96,7 +96,7 @@ public:
 	char* GetBlock(HierarchySD h, LayerSD layer, BindexType index)
 	{
 		ptrdiff_t ptrpos = GetPtrDiff(h, layer, index);
-		if ((size_t)index >= GetSize(h, layer) * std::get<2>(GetBlockTraits(h, layer))) return nullptr;
+		if ((size_t)index >= GetSize(h, layer)) return nullptr;
 		return m_blocks + ptrpos;
 	}
 	template <class LayerSD>
@@ -110,7 +110,7 @@ public:
 	char* GetBlock_unsafe(HierarchySD h, LayerSD layer, BindexType index)
 	{
 		ptrdiff_t ptrpos = GetPtrDiff(h, layer, index);
-		assert((size_t)index < GetSize(h, layer) * std::get<2>(GetBlockTraits(h, layer)));
+		assert((size_t)index < GetSize(h, layer));
 		return m_blocks + ptrpos;
 	}
 	template <class LayerSD>
@@ -523,12 +523,23 @@ public:
 		size_t blocksize = elmsize + (!ismaxlayer) * sizeof(ElementBlock_impl);
 		return std::make_tuple(ismaxlayer, elmsize, blocksize);
 	}
-	static constexpr std::tuple<bool, size_t, size_t> GetBlockTraits(HierarchySD h, LayerType layer)
+	template <class Hier>
+	static constexpr std::tuple<bool, size_t, size_t> GetBlockTraits(HierarchyWrapper<Hier> h, LayerType layer)
 	{
-		bool ismaxlayer = layer == h.value().GetMaxLayer();
-		size_t elmsize = h.value().GetElementSize(layer);
-		size_t blocksize = elmsize + (!ismaxlayer) * sizeof(ElementBlock_impl);
-		return std::make_tuple(ismaxlayer, elmsize, blocksize);
+		if constexpr (s_hierarchy<Hier>)
+		{
+			bool ismaxlayer = layer == Hier::GetMaxLayer();
+			size_t elmsize = Hier::GetElementSize(layer);
+			size_t blocksize = elmsize + (!ismaxlayer) * sizeof(ElementBlock_impl);
+			return std::make_tuple(ismaxlayer, elmsize, blocksize);
+		}
+		else
+		{
+			bool ismaxlayer = layer == h.value().GetMaxLayer();
+			size_t elmsize = h.value().GetElementSize(layer);
+			size_t blocksize = elmsize + (!ismaxlayer) * sizeof(ElementBlock_impl);
+			return std::make_tuple(ismaxlayer, elmsize, blocksize);
+		}
 	}
 
 	template <class Hier, LayerType L>
