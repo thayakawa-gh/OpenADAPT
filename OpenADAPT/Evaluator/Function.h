@@ -512,6 +512,17 @@ auto tostr(Arg&& a)
 {
 	return detail::MakeFunctionNode(NumToStr{}, std::forward<Arg>(a));
 }
+struct Substr
+{
+	auto operator()(const auto& a, const auto& b, const auto& c) const -> decltype(a.substr((size_t)b, (size_t)c)) { return a.substr((size_t)b, (size_t)c); }
+};
+template <class Arg1, class Arg2, class Arg3>
+	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2> || node_or_placeholder<Arg3>)
+auto substr(Arg1&& a, Arg2&& b, Arg3&& c)
+{
+	return detail::MakeFunctionNode(Substr{}, std::forward<Arg1>(a), std::forward<Arg2>(b), std::forward<Arg3>(c));
+}
+
 
 struct ATan2
 {
