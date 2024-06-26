@@ -6,6 +6,7 @@
 #include <map>
 #include <string>
 #include <cstdint>
+#include <iostream>
 #include <OpenADAPT/Utility/Ranges.h>
 #include <OpenADAPT/Utility/NamedTuple.h>
 #include <OpenADAPT/Utility/Exception.h>
@@ -253,6 +254,35 @@ public:
 	{
 		using Element_ = Element<Layer>;
 		return GetFieldNamesIn_impl(Element_{});
+	}
+
+private:
+	template <LayerType Layer, size_t Index, class PHs, class Names>
+	static void ShowHierarchy_index(std::ostream& o, PHs phs, Names names)
+	{
+		if constexpr (Index < std::tuple_size_v<PHs>)
+		{
+			auto ph = std::get<Index>(phs);
+			auto name = std::get<Index>(names);
+			o << std::format(" {{ \"{}\", {} }}", name.GetChar(), typeid(typename decltype(ph)::RetType).name());
+			ShowHierarchy_index<Layer, Index + 1>(o, phs, names);
+		}
+	}
+	template <LayerType Layer>
+	static void ShowHierarchy_layer(std::ostream& o)
+	{
+		o << std::format("Layer[{:>2}] {{", Layer);
+		auto fields = GetPlaceholdersIn(LayerConstant<Layer>{});
+		auto names = GetFieldNamesIn(LayerConstant<Layer>{});
+		ShowHierarchy_index<Layer, 0>(o, fields, names);
+		o << " }\n";
+		if constexpr (Layer < MaxLayer)
+			ShowHierarchy_layer<Layer + 1_layer>(o);
+	}
+public:
+	static void ShowHierarchy(std::ostream& o = std::cout)
+	{
+		ShowHierarchy_layer<-1_layer>(o);
 	}
 };
 
@@ -538,6 +568,22 @@ public:
 		return !m_field_map.empty();
 	}
 
+	void ShowHierarchy(std::ostream& o = std::cout) const
+	{
+		LayerType layer = -1;
+		for (const auto& fields : m_field_infos_by_layer)
+		{
+			o << std::format("Layer[{:>2}] {{", layer);
+			for (const auto& field : fields)
+			{
+				const std::string& name = GetFieldName(field);
+				o << std::format(" {{ \"{}\", {} }}", name, DFieldInfo::GetTagTypeString(field.GetType()));
+			}
+			o << " }\n";
+			++layer;
+		}
+	}
+
 	template <LayerType Layer, class Type>
 	CttiPlaceholder<Layer, Type> GetPlaceholder(std::string_view name) const
 	{
@@ -603,10 +649,10 @@ public:
 	}
 	const std::string& GetFieldName(const RttiPlaceholder& m) const
 	{
-		for (auto [name, ptr] : m_field_map)
+		for (auto it = m_field_map.begin(); it != m_field_map.end(); ++it)
 		{
 			//indexはPlaceholderごと固有の値なので、これが一致すれば良い。
-			if (m.GetIndex() == ptr->GetIndex() && m.GetLayer() == ptr->GetLayer()) return name;
+			if (m.GetIndex() == it->second->GetIndex() && m.GetLayer() == it->second->GetLayer()) return it->first;
 		}
 		throw InvalidArg("The field does not exist.");
 	}
@@ -694,6 +740,21 @@ public:
 	bool IsValid() const
 	{
 		return !m_field_map.empty();
+	}
+	void ShowHierarchy(std::ostream& o = std::cout) const
+	{
+		LayerType layer = -1;
+		for (const auto& fields : m_field_infos_by_layer)
+		{
+			o << std::format("Layer[{:>2}] {{", layer);
+			for (const auto& field : fields)
+			{
+				const std::string& name = GetFieldName(field);
+				o << std::format(" {{ \"{}\", {} }}", name, DFieldInfo::GetTagTypeString(field.GetType()));
+			}
+			o << " }\n";
+			++layer;
+		}
 	}
 
 	template <LayerType Layer, class Type>

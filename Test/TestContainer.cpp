@@ -9,6 +9,7 @@ template <class Container, class Layer0, class Layer1, class Layer2>
 void TestContainer(Container& tree, const std::vector<Class>& cls,
 				 const Layer0& l0, const Layer1& l1, const Layer2& l2)
 {
+	tree.ShowHierarchy();
 	//0層要素。学年とクラス。
 	auto [grade, class_] = l0;
 	//1層要素。出席番号、名前、生年月日。
