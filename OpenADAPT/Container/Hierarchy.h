@@ -226,6 +226,33 @@ public:
 	}
 
 private:
+
+	template <LayerType Layer>
+	static std::vector<RttiPlaceholder> GetPlaceholdersIn_impl(LayerType layer)
+	{
+		if constexpr (Layer <= MaxLayer)
+		{
+			//自身が該当するLayerでない場合は、下層に任せる。
+			if (Layer < layer)
+				return GetPlaceholdersIn_impl<Layer + 1>(layer);
+			constexpr auto phs = GetPlaceholdersIn(LayerConstant<Layer>{});
+			auto conv = []<class ...CttiPHs>(const CttiPHs& ...phs)
+			{
+				return std::vector<RttiPlaceholder>{
+					RttiPlaceholder(phs.GetInternalLayer(), phs.GetIndex(), phs.GetType(), phs.GetPtrOffset())...
+				};
+			};
+			return std::apply(conv, phs);
+		}
+		else throw InvalidArg("Layer is out of range.");
+	}
+public:
+	static std::vector<RttiPlaceholder> GetPlaceholdersIn(LayerType layer)
+	{
+		return GetPlaceholdersIn_impl<-1_layer>(layer);
+	}
+
+private:
 	template <StaticChar ...Names, class ...Types>
 	static constexpr auto GetFieldNamesIn_impl(NamedTuple<Named<Names, Types>...>)
 	{
@@ -245,15 +272,41 @@ private:
 		}
 	}
 public:
+	//全フィールドの名前をstd::tuple<StaticString<Names>...>で返す。
 	static constexpr auto GetFieldNames()
 	{
 		return GetFieldNamesIn_rec<-1_layer>();
 	}
+	//Layer内の全フィールドの名前をstd::tuple<StaticString<Names>...>で返す。
 	template <LayerType Layer>
 	static consteval auto GetFieldNamesIn(LayerConstant<Layer>)
 	{
 		using Element_ = Element<Layer>;
 		return GetFieldNamesIn_impl(Element_{});
+	}
+
+private:
+	template <LayerType Layer>
+	static std::vector<std::string> GetFieldNamesIn_impl(LayerType layer)
+	{
+		if constexpr (Layer <= MaxLayer)
+		{
+			//自身が該当するLayerでない場合は、下層に任せる。
+			if (Layer < layer)
+				return GetFieldNamesIn_impl<Layer + 1>(layer);
+			constexpr auto names = GetFieldNamesIn(LayerConstant<Layer>{});
+			auto conv = []<class ...Names>(const Names& ...names)
+			{
+				return std::vector<std::string>{ names.GetChar()... };
+			};
+			return std::apply(conv, names);
+		}
+		else throw InvalidArg("Layer is out of range.");
+	}
+public:
+	static std::vector<std::string> GetFieldNamesIn(LayerType layer)
+	{
+		return GetFieldNamesIn_impl<-1_layer>(layer);
 	}
 
 private:
@@ -656,6 +709,17 @@ public:
 		}
 		throw InvalidArg("The field does not exist.");
 	}
+	std::vector<std::string> GetFieldNamesIn(LayerType layer) const
+	{
+		const auto& fields = m_field_infos_by_layer[layer + 1_layer];
+		std::vector<std::string> res;
+		res.reserve(fields.size());
+		for (const auto& field : fields)
+		{
+			res.push_back(GetFieldName(field));
+		}
+		return res;
+	}
 	size_t GetElementSize(LayerType layer) const
 	{
 		assert(layer <= m_max_layer);
@@ -722,6 +786,13 @@ public:
 		if (auto a = offs % align; a != 0) offs += (align - a);
 		m_element_sizes[layer + 1_layer] = offs;
 		m_totally_trivial[layer + 1_layer] = totally_trivial;
+	}
+	void AddLayer(const std::vector<std::pair<std::string, FieldType>>& cols)
+		requires (MaxLayer == 0_layer)
+	{
+		if (!m_field_infos_by_layer[1].empty())
+			throw Forbidden("layer 0 fields have already been set.");
+		SetLayer(0_layer, cols);
 	}
 
 	[[deprecated("no need to call this function in the current version")]]
@@ -820,6 +891,17 @@ public:
 			if (m.GetIndex() == ptr->GetIndex() && m.GetLayer() == ptr->GetLayer()) return name;
 		}
 		throw InvalidArg("The field does not exist.");
+	}
+	std::vector<std::string> GetFieldNamesIn(LayerType layer) const
+	{
+		const auto& fields = m_field_infos_by_layer[layer + 1_layer];
+		std::vector<std::string> res;
+		res.reserve(fields.size());
+		for (const auto& field : fields)
+		{
+			res.push_back(GetFieldName(field));
+		}
+		return res;
 	}
 	size_t GetElementSize(LayerType layer) const
 	{

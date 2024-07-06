@@ -208,7 +208,7 @@ public:
 
 	constexpr LayerType GetMaxLayer() const
 	{
-		return JointLayerInfo::template ConvertIntToExt<MaxRank>(std::get<MaxRank>(m_containers).GetMaxLayer());
+		return JointLayerInfo::template ConvertIntToExt<MaxRank>(std::get<MaxRank>(m_containers)->GetMaxLayer());
 	}
 	template <RankType Rank, StaticChar Name>
 		requires s_hierarchy<IContainer<Rank>>

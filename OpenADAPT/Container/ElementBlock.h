@@ -433,6 +433,17 @@ public:
 	{
 		new (ptr) ElementBlock_impl();
 	}
+	//fromのElementBlockをtoへとコピーする。
+	//toは初期化済み、コンストラクタが全要素全フィールドに対して呼ばれていると想定している。
+	template <class LayerSD>
+	static void CopyFields(HierarchySD h, LayerSD layer, const char* from, char* to)
+	{
+		auto [ismaxlayer, elmsize, blocksize] = GetBlockTraits(h, layer);
+		const auto& phs = GetPlaceholdersIn(h, layer);
+		auto is_totally_trivial = h.value().IsTotallyTrivial(layer);
+		Policy::Copy(phs, is_totally_trivial, from, to);
+	}
+
 	//fromのElementBlockをtoへと移動する。fromの中の各要素はデフォルトコンストラクタが呼ばれたときの初期状態となる。
 	//toは初期化済み、コンストラクタが全要素全フィールドに対して呼ばれていると想定している。
 	static void MoveElementBlock(char* from, char* to)

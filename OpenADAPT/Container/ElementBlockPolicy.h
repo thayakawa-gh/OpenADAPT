@@ -91,6 +91,52 @@ public:
 	}
 
 private:
+	template <size_t N, bool ConstructFlag, class ...Placeholders>
+	static void Copy_impl(const std::tuple<Placeholders...>& phs, const char* from, char* to)
+	{
+		if constexpr (N < sizeof...(Placeholders))
+		{
+			ptrdiff_t offset = std::get<N>(phs).GetPtrOffset();
+			using ValueType = GetType_t<N, Placeholders...>::RetType;
+			const ValueType* t_from = std::launder(reinterpret_cast<const ValueType*>(from + offset));
+			ValueType* t_to = std::launder(reinterpret_cast<ValueType*>(to + offset));
+			if constexpr (ConstructFlag) new (t_to) ValueType(*t_from);
+			else *t_to = *t_from;
+			Copy_impl<N + 1, ConstructFlag>(phs, from, to);
+		}
+	}
+public:
+	template <class ...Placeholders, bool IsTotallyTrivial, bool ConstructFlag>
+	static void Copy(const std::tuple<Placeholders...>& phs,
+					 std::bool_constant<IsTotallyTrivial>, const char* from, char* to, std::bool_constant<ConstructFlag>)
+	{
+		if constexpr (IsTotallyTrivial)
+		{
+			if constexpr (sizeof...(Placeholders) != 0)
+			{
+				//全てのフィールドがトリビアルな場合、memcpyでコピーする。
+				const auto& m = std::get<sizeof...(Placeholders) - 1>(phs);
+				//最後の要素のオフセット+サイズが要素全体のサイズとなる。
+				std::memcpy(to, from, m.GetPtrOffset() + m.GetSize());
+			}
+		}
+		else
+		{
+			Copy_impl<0, ConstructFlag>(phs, from, to);
+		}
+	}
+	//fromの各フィールドをtoへとコピーする。
+	//fromのフィールドのデストラクタは呼ばれない。
+	//toはコンストラクタが既に呼ばれた後だと想定している。
+	template <class ...Placeholders, bool IsTotallyTrivial>
+	static void Copy(const std::tuple<Placeholders...>& phs, std::bool_constant<IsTotallyTrivial>, const char* from, char* to)
+	{
+		Copy(phs, std::bool_constant<IsTotallyTrivial>{}, from, to, std::false_type{});
+	}
+	//CopyAndDestroy他は一旦定義を保留しておく。使うかどうか分からない。
+
+
+private:
 	template <size_t N, bool ConstructFlag, bool DestroyFlag, class ...Placeholders>
 	static void Move_impl(const std::tuple<Placeholders...>& phs, char* from, char* to)
 	{
@@ -383,6 +429,57 @@ public:
 		Assign_static_rec<Container>(ms.begin(), ptr, std::forward<Args>(args)...);
 	}
 
+
+private:
+	template <class Type, bool ConstructFlag>
+	static void Copy_impl(const char* from, char* to)
+	{
+		const Type* t_from = std::launder(reinterpret_cast<const Type*>(from));
+		Type* t_to = std::launder(reinterpret_cast<Type*>(to));
+		if constexpr (ConstructFlag) new (t_to) Type(*t_from);
+		else *t_to = *t_from;
+	}
+public:
+	//ある要素fromの各フィールドを要素toへとコピーする。
+	//fromは既に構築されている前提。
+	//ConstructFlagがtrueの場合、toは未初期化だとしてplacement newでコピーコンストラクタを呼ぶ。
+	//falseなら初期化済みとしてコピー代入する。
+	//DetroyFlagがtrueの場合、fromのフィールドのデストラクタを呼ぶ。
+	template <class Container, bool ConstructFlag>
+	static void Copy(const std::vector<eval::RttiPlaceholder<Container>>& ms,
+					 bool is_totally_trivial, const char* from, char* to, std::bool_constant<ConstructFlag>)
+	{
+		if (is_totally_trivial)
+		{
+			//フィールドが一つもない場合、何もしない。
+			if (ms.empty()) return;
+			//全てのフィールドがトリビアルな場合、memcpyでコピーする。
+			const auto& m = ms.back();
+			//最後の要素のオフセット+サイズが要素全体のサイズとなる。
+			std::memcpy(to, from, m.GetPtrOffset() + m.GetSize());
+		}
+		else
+		{
+			for (const auto& m : ms)
+			{
+				FieldType tag = m.GetType();
+				auto offset = m.GetPtrOffset();
+				if (DFieldInfo::IsTrivial(tag)) std::memcpy(to + offset, from + offset, m.GetSize());
+				else if (DFieldInfo::IsStr(tag)) Copy_impl<std::string, ConstructFlag>(from + offset, to + offset);
+				else if (DFieldInfo::IsJbp(tag)) Copy_impl<JBpos, ConstructFlag>(from + offset, to + offset);
+			}
+		}
+	}
+	//fromの各フィールドをtoへとコピーする。
+	//fromのフィールドのデストラクタは呼ばれない。
+	//toはコンストラクタが既に呼ばれた後だと想定している。
+	template <class Container>
+	static void Copy(const std::vector<eval::RttiPlaceholder<Container>>& ms, bool is_totally_trivial, const char* from, char* to)
+	{
+		Copy(ms, is_totally_trivial, from, to, std::false_type{});
+	}
+	//CopyAndDestroy他は一旦定義を保留しておく。使うかどうか分からない。
+
 private:
 	template <class Type, bool ConstructFlag, bool DestroyFlag>
 	static void Move_impl(char* from, char* to)
@@ -396,8 +493,9 @@ private:
 public:
 	//ある要素fromの各フィールドを要素toへと移動する。
 	//fromは既に構築されている前提。
-	//こちらはfromのフィールドのデストラクタを呼ばないので、
-	//fromのフィールドはムーブコンストラクタで破壊された後の（初期）状態となる。
+	//ConstructFlagがtrueの場合、toは未初期化だとしてplacement newでムーブコンストラクタを呼ぶ。
+	//falseなら初期化済みとしてムーブ代入する。
+	//DetroyFlagがtrueの場合、fromのフィールドのデストラクタを呼ぶ。
 	template <class Container, bool ConstructFlag, bool DestroyFlag>
 	static void Move(const std::vector<eval::RttiPlaceholder<Container>>& ms,
 					 bool is_totally_trivial, char* from, char* to,

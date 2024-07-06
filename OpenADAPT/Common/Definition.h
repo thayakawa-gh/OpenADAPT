@@ -65,6 +65,15 @@ inline constexpr DelayedJoint delayed = {};
 inline constexpr PromptJoint prompt = {};
 }
 
+//Extractにおいて、抽出元の全フィールドを出力するフラグ。
+//現状、container_simplexに対してのみ使用可能。
+struct AllFields {};
+namespace flags
+{
+inline constexpr AllFields all_fields = {};
+}
+
+
 //Evaluateにおいて、戻り値にtraverserを加えるためのフラグ。
 struct WithTraverser {};
 namespace flags
@@ -72,13 +81,13 @@ namespace flags
 inline constexpr WithTraverser with_traverser = {};
 }
 
+
+//ToVectorにおいて、戻り値をstd::tuple<std::vector...>からstd::vector<std::tuple<...>>に変更するためのフラグ。
 struct Combine {};
-struct AsTuple {};
 
 namespace flags
 {
 inline constexpr Combine combine = {};
-inline constexpr AsTuple as_tuple = {};
 }
 
 

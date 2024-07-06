@@ -6,6 +6,7 @@ using namespace adapt::lit;
 template <class Container, class Layer0, class Layer1, class Layer2>
 void TestExtract(Container& s, const std::vector<Class>& clses, Layer0 l0, Layer1 l1, Layer2 l2)
 {
+	SetNumOfThreads(1);
 	auto Evaluate = []<FieldType Type, class Trav, class NP>(Number<Type>, const Trav & t, NP & np)
 	{
 		if constexpr (typed_node_or_placeholder<NP>) return np(t);
@@ -181,6 +182,77 @@ void TestExtract(Container& s, const std::vector<Class>& clses, Layer0 l0, Layer
 		{
 			//EXPECT_EQ(math_1(t).i32(), r[math_1_].i32());
 			EXPECT_EQ(Evaluate(Number<I32>{}, t, math_1), Evaluate(Number<I32>{}, r, math_1_));
+		}
+	}
+	//all_fields
+	if constexpr (adapt::container_simplex<Container>)
+	{
+		//0層要素。学年とクラス。
+		auto [grade, class_] = l0;
+		//1層要素。出席番号、名前、生年月日。
+		auto [number, name, dob] = l1;
+		//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
+		auto [exam, math, jpn, eng, sci, soc] = l2;
+
+		auto e = s | Extract(flags::all_fields, math + jpn + eng + sci + soc);
+		auto [egrade, eclass_] = e.GetPlaceholders("grade"_fld, "class"_fld);
+		auto [enumber, ename, edob] = e.GetPlaceholders("number"_fld, "name"_fld, "date_of_birth"_fld);
+		auto [eexam, emath, ejpn, eeng, esci, esoc, fld0] = e.GetPlaceholders("exam"_fld, "math"_fld, "japanese"_fld, "english"_fld, "science"_fld, "social"_fld, "fld0"_fld);
+
+		auto school = s.GetPlaceholder("school"_fld);
+		auto eschool = e.GetPlaceholder("school"_fld);
+		for (auto [st, et] : views::Zip(s.GetRange(2_layer), e.GetRange(2_layer)))
+		{
+			EXPECT_EQ(Evaluate(Number<Str>{}, st, school), Evaluate(Number<Str>{}, et, eschool));
+			EXPECT_EQ(Evaluate(Number<I08>{}, st, grade), Evaluate(Number<I08>{}, et, egrade));
+			EXPECT_EQ(Evaluate(Number<I08>{}, st, class_), Evaluate(Number<I08>{}, et, eclass_));
+			EXPECT_EQ(Evaluate(Number<I16>{}, st, number), Evaluate(Number<I16>{}, et, enumber));
+			EXPECT_EQ(Evaluate(Number<Str>{}, st, name), Evaluate(Number<Str>{}, et, ename));
+			EXPECT_EQ(Evaluate(Number<I32>{}, st, dob), Evaluate(Number<I32>{}, et, edob));
+			EXPECT_EQ(Evaluate(Number<I08>{}, st, exam), Evaluate(Number<I08>{}, et, eexam));
+			EXPECT_EQ(Evaluate(Number<I32>{}, st, math), Evaluate(Number<I32>{}, et, emath));
+			EXPECT_EQ(Evaluate(Number<I32>{}, st, jpn), Evaluate(Number<I32>{}, et, ejpn));
+			EXPECT_EQ(Evaluate(Number<I32>{}, st, eng), Evaluate(Number<I32>{}, et, eeng));
+			EXPECT_EQ(Evaluate(Number<I32>{}, st, sci), Evaluate(Number<I32>{}, et, esci));
+			EXPECT_EQ(Evaluate(Number<I32>{}, st, soc), Evaluate(Number<I32>{}, et, esoc));
+			auto sum = math + jpn + eng + sci + soc;
+			EXPECT_EQ(Evaluate(Number<I32>{}, st, sum), Evaluate(Number<I32>{}, et, fld0));
+		}
+	}
+	//all_fields + filter
+	if constexpr (adapt::container_simplex<Container>)
+	{
+		//0層要素。学年とクラス。
+		auto [grade, class_] = l0;
+		//1層要素。出席番号、名前、生年月日。
+		auto [number, name, dob] = l1;
+		//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
+		auto [exam, math, jpn, eng, sci, soc] = l2;
+
+		auto e = s | Filter(soc < 60) | Extract(flags::all_fields, math + jpn + eng + sci + soc);
+		auto [egrade, eclass_] = e.GetPlaceholders("grade"_fld, "class"_fld);
+		auto [enumber, ename, edob] = e.GetPlaceholders("number"_fld, "name"_fld, "date_of_birth"_fld);
+		auto [eexam, emath, ejpn, eeng, esci, esoc, fld0] = e.GetPlaceholders("exam"_fld, "math"_fld, "japanese"_fld, "english"_fld, "science"_fld, "social"_fld, "fld0"_fld);
+
+		auto school = s.GetPlaceholder("school"_fld);
+		auto eschool = e.GetPlaceholder("school"_fld);
+		auto srange = s | Filter(soc < 60) | GetRange(2_layer);
+		for (auto [st, et] : views::Zip(srange, e.GetRange(2_layer)))
+		{
+			EXPECT_EQ(Evaluate(Number<Str>{}, st, school), Evaluate(Number<Str>{}, et, eschool));
+			EXPECT_EQ(Evaluate(Number<I08>{}, st, grade), Evaluate(Number<I08>{}, et, egrade));
+			EXPECT_EQ(Evaluate(Number<I08>{}, st, class_), Evaluate(Number<I08>{}, et, eclass_));
+			EXPECT_EQ(Evaluate(Number<I16>{}, st, number), Evaluate(Number<I16>{}, et, enumber));
+			EXPECT_EQ(Evaluate(Number<Str>{}, st, name), Evaluate(Number<Str>{}, et, ename));
+			EXPECT_EQ(Evaluate(Number<I32>{}, st, dob), Evaluate(Number<I32>{}, et, edob));
+			EXPECT_EQ(Evaluate(Number<I08>{}, st, exam), Evaluate(Number<I08>{}, et, eexam));
+			EXPECT_EQ(Evaluate(Number<I32>{}, st, math), Evaluate(Number<I32>{}, et, emath));
+			EXPECT_EQ(Evaluate(Number<I32>{}, st, jpn), Evaluate(Number<I32>{}, et, ejpn));
+			EXPECT_EQ(Evaluate(Number<I32>{}, st, eng), Evaluate(Number<I32>{}, et, eeng));
+			EXPECT_EQ(Evaluate(Number<I32>{}, st, sci), Evaluate(Number<I32>{}, et, esci));
+			EXPECT_EQ(Evaluate(Number<I32>{}, st, soc), Evaluate(Number<I32>{}, et, esoc));
+			auto sum = math + jpn + eng + sci + soc;
+			EXPECT_EQ(Evaluate(Number<I32>{}, st, sum), Evaluate(Number<I32>{}, et, fld0));
 		}
 	}
 }

@@ -680,6 +680,21 @@ private:
 		}
 		ElementBlock::MoveConstructAndDestroyElementFrom(GetHierarchy(), GetLayer(), e.m_block, m_block);
 	}
+	//Extractorが使う。ユーザーが使うべきではない。
+	//srcの全フィールドを自身にコピーする。
+	//srcと自身の構造は基本的に一致しているが、自身の末尾には別のフィールドが付与されている場合がある。
+	template <class LayerSD1, class Hierarchy__, template <class> class Qualifier_, class LayerSD2>
+	void CopyFieldsTo(LayerSD1 layer, ElementRef_impl<Hierarchy__, Qualifier_, LayerSD2>& dst) const
+	{
+		//この関数はExtractorが呼ぶ。つまり、thisはTraverserが保持するElementIteratorから得たものであり、
+		//ElementRef_impl（引数ではなく自身）のLayerSDはLayerTypeである。
+		//ということは、GetLayer()でLayerConstantを得られないため、CppyFields関数をLayerConstantで呼ぶことができない。
+		//これだと、STreeからこの関数を呼ぶときにElementBlock::GetPlaceholdersInを呼ぶことができなくなる。
+		//それではまずいので、外からLayerをテンプレート引数で受け取る。
+		//DTreeなどはLayerはLayerTypeとなるので、LayerSD1はどちらも受け取れるようにしておく。
+		assert(layer == GetLayer());
+		ElementBlock::CopyFields(GetHierarchy(), layer, m_block, dst.m_block);
+	}
 
 private:
 	Qualifier<ElementBlock>* GetLowerBlock() const

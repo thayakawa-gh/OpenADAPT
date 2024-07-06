@@ -25,39 +25,64 @@ namespace detail
 template <class Range>
 class CttiExtractor
 {
+	using Container = typename std::remove_cvref_t<Range>::Container;
+
 	template <LayerType Layer, class ...Cmp>
-	static consteval auto GetStructure(LayerConstant<Layer>, TypeList<Cmp...>, TypeList<>)
+	static consteval auto GetStructure_np(LayerConstant<Layer>, TypeList<Cmp...>, TypeList<>)
 	{
 		return NamedTuple<Cmp...>{};
 	}
 	template <LayerType Layer, StaticChar Name, class NP, class ...Cmp, class ...NPs_>
-	static consteval auto GetStructure(LayerConstant<Layer> layer, TypeList<Cmp...>, TypeList<std::tuple<StaticString<Name>, NP>, NPs_...>)
+	static consteval auto GetStructure_np(LayerConstant<Layer> layer, TypeList<Cmp...>, TypeList<std::tuple<StaticString<Name>, NP>, NPs_...>)
 	{
 		using DecayedNP = std::decay_t<NP>;
 		if constexpr (DecayedNP::GetLayer() == Layer)
-			return GetStructure(layer, TypeList<Cmp..., Named<Name, std::decay_t<typename DecayedNP::RetType>>>{}, TypeList<NPs_...>{});
+			return GetStructure_np(layer, TypeList<Cmp..., Named<Name, std::decay_t<typename DecayedNP::RetType>>>{}, TypeList<NPs_...>{});
 		else
-			return GetStructure(layer, TypeList<Cmp...>{}, TypeList<NPs_...>{});
+			return GetStructure_np(layer, TypeList<Cmp...>{}, TypeList<NPs_...>{});
 	}
-	template <class, class>
-	struct Structure_impl;
-	template <class ...NamedNPs, LayerType ...Layers>
-	struct Structure_impl<TypeList<NamedNPs...>, std::integer_sequence<LayerType, Layers...>>
+	template <class ...Names, class ...CttiPHs>
+	static consteval auto ConvertToNamedType(std::tuple<Names...>, std::tuple<CttiPHs...>)
 	{
-		using Type = STree<decltype(GetStructure(LayerConstant<LayerType(Layers - 1)>{}, TypeList<>{}, TypeList<NamedNPs...>{}))... > ;
+		return TypeList<Named<Names::Chars, typename CttiPHs::RetType>...>{};
+	}
+	template <bool AllFieldsFlag, LayerType Layer, class ...NamedNPs>
+	static consteval auto GetStructure(LayerConstant<Layer>, TypeList<>, TypeList<NamedNPs...>)
+	{
+		constexpr auto layer_const = LayerConstant<Layer>{};
+		if constexpr (AllFieldsFlag)
+		{
+			constexpr auto name_types = ConvertToNamedType(Container::GetFieldNamesIn(layer_const), Container::GetPlaceholdersIn(layer_const));
+			return GetStructure_np(layer_const, name_types, TypeList<NamedNPs...>{});
+		}
+		else
+		{
+			return GetStructure_np(layer_const, TypeList<>{}, TypeList<NamedNPs...>{});
+		}
+	}
+	template <bool, class, class>
+	struct Structure_impl;
+	template <bool AllFieldsFlag, class ...NamedNPs, LayerType ...Layers>
+	struct Structure_impl<AllFieldsFlag, TypeList<NamedNPs...>, std::integer_sequence<LayerType, Layers...>>
+	{
+		using Type = STree<decltype(GetStructure<AllFieldsFlag>(LayerConstant<LayerType(Layers - 1)>{}, TypeList<>{}, TypeList<NamedNPs...>{}))... > ;
 	};
 
-	template <class ...Names, class ...NPs>
+	template <bool AllFieldsFlag, class ...Names, class ...NPs>
 	static consteval LayerType GetLayer(TypeList<std::tuple<Names, NPs>...>)
 	{
-		return std::max({ std::decay_t<NPs>::GetLayer()... });
+		//AllFieldsFlagがtrueの場合、Containerはs_containerであることがExtract_impl2関数内で保証されている。
+		if constexpr (AllFieldsFlag)
+			return Container::MaxLayer;
+		else
+			return std::max({ std::decay_t<NPs>::GetLayer()... });
 	}
 
-	template <class ...NPs>
+	template <bool AllFieldsFlag, class ...NPs>
 	struct RetType
 	{
-		static constexpr LayerType MaxLayer = GetLayer(TypeList<NPs...>{});
-		using Type = Structure_impl<TypeList<NPs...>, std::make_integer_sequence<LayerType, LayerType(MaxLayer + 2)>>::Type;
+		static constexpr LayerType MaxLayer = GetLayer<AllFieldsFlag>(TypeList<NPs...>{});
+		using Type = Structure_impl<AllFieldsFlag, TypeList<NPs...>, std::make_integer_sequence<LayerType, LayerType(MaxLayer + 2)>>::Type;
 	};
 
 	template <LayerType Layer, size_t Index, class STree_, class Trav, class ElementRef, class ...NamedNPs_>
@@ -81,8 +106,20 @@ class CttiExtractor
 			}
 		}
 	}
-	template <LayerType Layer, LayerType MaxLayer, class STree_, class Traverser, class ElementBlock, class ElementRef, class ...NamedNPs_>
-	void Exec_rec(STree_& res, Traverser& t, LayerConstant<Layer> layer, LayerConstant<MaxLayer> maxlayer,
+	template <bool AllFieldsFlag, class STree_, class STreeSrc, class ...NamedNPs_>
+	void Exec_top(std::bool_constant<AllFieldsFlag>, STree_& res, const STreeSrc& src, std::tuple<NamedNPs_...> nps) const
+	{
+		auto elmref = res.GetTopElement();
+		if constexpr (AllFieldsFlag)
+		{
+			//もしAllFieldsFlagがtrueの場合、bufには元のコンテナの全フィールドを代入する必要がある。
+			auto srcref = src.GetTopElement();
+			srcref.CopyFieldsTo(-1_layer, elmref);
+		}
+		Exec_eval<-1_layer, 0, STree_>(src, elmref, nps);
+	}
+	template <bool AllFieldsFlag, LayerType Layer, LayerType MaxLayer, class STree_, class Traverser, class ElementBlock, class ElementRef, class ...NamedNPs_>
+	void Exec_rec(std::bool_constant<AllFieldsFlag> b, STree_& res, Traverser& t, LayerConstant<Layer> layer, LayerConstant<MaxLayer> maxlayer,
 				  ElementRef upref, std::vector<ElementBlock>& bufs, std::tuple<NamedNPs_...> nps) const
 	{
 		using enum FieldType;
@@ -99,13 +136,19 @@ class CttiExtractor
 			try
 			{
 				auto elmref = buf.Back();
+				if constexpr (AllFieldsFlag)
+				{
+					//もしAllFieldsFlagがtrueの場合、bufには元のコンテナの全フィールドを代入する必要がある。
+					auto srcref = *t.GetIterator(Layer);
+					srcref.CopyFieldsTo(LayerConstant<Layer>{}, elmref);
+				}
 				//ここ、CreateValueを個々に呼ぶことは難しいかもしれない。
 				//万一SkipOverが投げられた場合、どこまで構築されたかを確認していちいちDestroyしなければならなくなる。
 				//デフォルトコンストラクタを先に呼んでおくのとどちらがいいのか。
 				Exec_eval<Layer, 0, STree_>(t, elmref, nps);
 
 				if constexpr (Layer < MaxLayer)
-					Exec_rec(res, t, layer + 1_layer, maxlayer, elmref, bufs, nps);
+					Exec_rec(b, res, t, layer + 1_layer, maxlayer, elmref, bufs, nps);
 			}
 			catch (JointError)
 			{
@@ -142,8 +185,8 @@ class CttiExtractor
 		std::tuple<NamedNPs...> nodes;
 	};
 
-	template <LayerType MaxLayer, class STree_, class ThLocal_>
-	void Exec_multi(int32_t th, STree_& res, const std::remove_cvref_t<Range>& range, LayerConstant<MaxLayer> maxlayer,
+	template <bool AllFieldsFlag, LayerType MaxLayer, class STree_, class ThLocal_>
+	void Exec_multi(std::bool_constant<AllFieldsFlag> b, int32_t th, STree_& res, const std::remove_cvref_t<Range>& range, LayerConstant<MaxLayer> maxlayer,
 					ThGlobal& global, ThLocal_& local) const
 	{
 		using enum FieldType;
@@ -193,10 +236,16 @@ class CttiExtractor
 					//ここ、CreateValueを個々に呼ぶことは難しいかもしれない。
 					//万一SkipOverが投げられた場合、どこまで構築されたかを確認していちいちDestroyしなければならなくなる。
 					//デフォルトコンストラクタを先に呼んでおくのとどちらがいいのか。
+					if constexpr (AllFieldsFlag)
+					{
+						//もしAllFieldsFlagがtrueの場合、bufには元のコンテナの全フィールドを代入する必要がある。
+						auto srcref = *t.GetIterator(0_layer);
+						srcref.CopyFieldsTo(0_layer, elmref);
+					}
 					Exec_eval<(LayerType)0, 0, STree_>(t, elmref, local.nodes);
 
 					if constexpr (0_layer < MaxLayer)
-						Exec_rec(res, t, 1_layer, maxlayer, elmref, local.bufs, local.nodes);
+						Exec_rec(b, res, t, 1_layer, maxlayer, elmref, local.bufs, local.nodes);
 					++(*count);
 				}
 				catch (JointError)
@@ -261,10 +310,12 @@ class CttiExtractor
 		DoNothing((bufs[Layers].Destruct(&res, LayerConstant<Layers>{}), 0)...);
 	}
 public:
-	template <traversal_range Range_, class ...NamedNPs_>
-	auto Exec(Range_&& range, NamedNPs_&& ...nps) const
+	template <traversal_range Range_, bool AllFieldsFlag, class ...NamedNPs_>
+	auto Exec(Range_&& range, std::bool_constant<AllFieldsFlag> b, NamedNPs_&& ...nps) const
 	{
-		using RetType_ = RetType<std::decay_t<NamedNPs_>...>;
+		static_assert(container_simplex<typename std::decay_t<Range_>::Container> || !AllFieldsFlag,
+			"all_fields flag is not allowed for joined containers.");
+		using RetType_ = RetType<AllFieldsFlag, std::decay_t<NamedNPs_>...>;
 		using STree_ = RetType_::Type;
 		using ElementBlock = detail::ElementBlock_impl<typename STree_::Hierarchy, SElementBlockPolicy>;
 
@@ -273,6 +324,7 @@ public:
 
 		int32_t nth = GetNumOfThreads();
 		STree_ res;
+		Exec_top(b, res, range.GetContainer(), std::forward_as_tuple(std::forward<NamedNPs_>(nps)...));
 		if (nth == 1)
 		{
 			std::vector<ElementBlock> bufs(maxlayer + 1_layer);
@@ -280,7 +332,7 @@ public:
 			auto t = std::forward<Range_>(range).begin();
 			DoNothing(InitNP(std::get<1>(std::forward<NamedNPs_>(nps)), t)...);
 			auto upref = res.GetTopElement();
-			Exec_rec(res, t, 0_layer, maxlayer, upref, bufs, std::forward_as_tuple(std::forward<NamedNPs_>(nps)...));
+			Exec_rec(b, res, t, 0_layer, maxlayer, upref, bufs, std::forward_as_tuple(std::forward<NamedNPs_>(nps)...));
 			DestructBufs(res, bufs, std::make_integer_sequence<LayerType, (LayerType)(maxlayer + 1_layer)>{});
 		}
 		else
@@ -306,8 +358,8 @@ public:
 			std::vector<std::thread> threads;
 			for (int32_t i = 0; i < nth; ++i)
 			{
-				threads.emplace_back(&CttiExtractor::Exec_multi<RetType_::MaxLayer, STree_, ThLocal_>, this,
-									 i, std::ref(res), std::cref(range), maxlayer,
+				threads.emplace_back(&CttiExtractor::Exec_multi<AllFieldsFlag, RetType_::MaxLayer, STree_, ThLocal_>, this,
+									 b, i, std::ref(res), std::cref(range), maxlayer,
 									 std::ref(global), std::ref(locals[i]));
 			}
 			for (auto& th : threads) th.join();
@@ -344,6 +396,8 @@ class RttiExtractor
 		FieldType type = v.GetType();
 		while ((LayerType)structure.size() - 1 <= layer)
 		{
+			//もし現在のstructureの最下層よりも下層のノードが見つかった場合、
+			//そこまでstructureとnodesの最下層を引き下げる。
 			structure.emplace_back();
 			nodes.emplace_back();
 		}
@@ -352,19 +406,71 @@ class RttiExtractor
 		Arrange<N + 1>(structure, nodes, std::forward<Vars>(vars)...);
 	}
 
-	template <named_node_or_placeholder ...Vars>
-	void Init(std::vector<std::vector<std::pair<std::string, FieldType>>>& structure,
+	template <bool AllFieldsFlag, class TreeSrc, named_node_or_placeholder ...Vars>
+	void Init(std::bool_constant<AllFieldsFlag>, const TreeSrc& src,
+			  std::vector<std::vector<std::pair<std::string, FieldType>>>& structure,
 			  std::vector<ElementBlock>& bufs,
 			  std::vector<std::vector<eval::RttiFuncNode<Container>>>& nodes,
 			  Vars&& ...vars) const
 	{
+		//structureは現在からの状態。ここにnodesから構造を判定し追加していく。
+		//ただし、AllFieldsFlagがtrueの場合は、srcのフィールドも全てコピーする。
+		if constexpr (AllFieldsFlag)
+		{
+			LayerType maxlayer = src.GetMaxLayer();
+			structure.resize(maxlayer + 2_layer);
+			nodes.resize(maxlayer + 2_layer);//Exec関数内でmaxlayerまでアクセスする可能性があるので、事実上使わないが確保はしておく。
+			for (LayerType layer = -1_layer; layer <= maxlayer; ++layer)
+			{
+				const auto& names = src.GetFieldNamesIn(layer);
+				const auto& phs = src.GetPlaceholdersIn(layer);
+				for (auto [name, ph] : views::Zip(names, phs))
+				{
+					structure[layer + 1].emplace_back(name, ph.GetType());
+				}
+			}
+		}
 		Arrange<0>(structure, nodes, std::forward<Vars>(vars)...);
 		bufs.resize(structure.size() - 1);
 	}
 
-
-	template <class Traverser>
-	void Exec_rec(const DTree& res, Traverser& t, LayerType layer, LayerType maxlayer, DTree::ElementRef upref,
+	template <bool AllFieldsFlag, class ElementRefRes, class Traverser>
+	void Exec_eval(std::bool_constant<AllFieldsFlag>, LayerType layer,
+				   ElementRefRes elmref, const Traverser& t,
+				   const std::vector<DTree::RttiPlaceholder>& phs,
+				   const std::vector<eval::RttiFuncNode<Container>>& nodes) const
+	{
+		auto itph = phs.begin();
+		auto itnode = nodes.begin();
+		if constexpr (AllFieldsFlag)
+		{
+			auto get_srcref = [&t, layer]()
+			{
+				//tはContainerの場合とTraverserの場合がある。
+				//Containerの場合、layerは必ず-1である。
+				//なので、srcrefを得るにはGetTopElement()でよい。
+				//一方Traverserの場合は、layerが0以上である。
+				//その場合はGetIteratorを使う必要がある。
+				if constexpr (any_traverser<Traverser>)
+					return *t.GetIterator(layer);
+				else
+					return t.GetTopElement();
+			};
+			auto srcref = get_srcref();
+			srcref.CopyFieldsTo(layer, elmref);
+			itph = phs.end() - nodes.size();
+		}
+		for (; itnode != nodes.end(); ++itph, ++itnode)
+		{
+			auto field = elmref.GetField(*itph);
+#define CASE(T) field.template as_unsafe<T>() = itnode->Evaluate(t, Number<T>{});
+			ADAPT_SWITCH_FIELD_TYPE(itph->GetType(), CASE, throw MismatchType("");)
+#undef CASE
+		}
+	}
+	template <bool AllFieldsFlag, class Traverser>
+	void Exec_rec(std::bool_constant<AllFieldsFlag> b, const DTree& res, Traverser& t,
+				  LayerType layer, LayerType maxlayer, DTree::ElementRef upref,
 				  std::vector<ElementBlock>& bufs,
 				  std::vector<std::vector<eval::RttiFuncNode<Container>>>& nodes) const
 	{
@@ -380,18 +486,9 @@ class RttiExtractor
 			try
 			{
 				auto elmref = buf.Back();
-				//ここ、CreateValueを個々に呼ぶことは難しいかもしれない。
-				//万一SkipOverが投げられた場合、どこまで構築されたかを確認していちいちDestroyしなければならなくなる。
-				//デフォルトコンストラクタを先に呼んでおくのとどちらがいいのか。
-				for (auto [node, ph] : views::Zip(lnodes, phs))
-				{
-					auto field = elmref.GetField(ph);
-#define CASE(T) field.template as_unsafe<T>() = node.Evaluate(t, Number<T>{});
-					ADAPT_SWITCH_FIELD_TYPE(ph.GetType(), CASE, throw MismatchType("");)
-#undef CASE
-				}
+				Exec_eval(b, layer, buf.Back(), t, phs, lnodes);
 
-				if (layer < maxlayer) Exec_rec(res, t, layer + 1_layer, maxlayer, elmref, bufs, nodes);
+				if (layer < maxlayer) Exec_rec(b, res, t, layer + 1_layer, maxlayer, elmref, bufs, nodes);
 			}
 			catch (JointError)
 			{
@@ -427,7 +524,8 @@ class RttiExtractor
 		std::vector<ElementBlock> bufs;
 		std::vector<std::vector<eval::RttiFuncNode<Container>>> nodes;
 	};
-	void Exec_multi(int32_t th, const DTree& res,
+	template <bool AllFieldsFlag>
+	void Exec_multi(std::bool_constant<AllFieldsFlag> b, int32_t th, const DTree& res,
 					const std::remove_cvref_t<Range>& range, LayerType maxlayer,
 					ThGlobal& global, ThLocal& local) const
 	{
@@ -470,17 +568,27 @@ class RttiExtractor
 				try
 				{
 					auto elmref = buf.Back();
+					/*
+					auto itph = phs.begin();
+					auto itnode = lnodes.begin();
+					if constexpr (AllFieldsFlag)
+					{
+						auto srcref = *t.GetIterator(0_layer);
+						srcref.CopyFieldsTo(0_layer, elmref);
+						itph = phs.end() - lnodes.size();
+					}
 					//ここ、CreateValueを個々に呼ぶことは難しいかもしれない。
 					//万一SkipOverが投げられた場合、どこまで構築されたかを確認していちいちDestroyしなければならなくなる。
 					//デフォルトコンストラクタを先に呼んでおくのとどちらがいいのか。
-					for (auto [node, ph] : views::Zip(lnodes, phs))
+					for (; itnode != lnodes.end(); ++itph, ++itnode)
 					{
-						auto field = elmref.GetField(ph);
-#define CASE(T) field.template as_unsafe<T>() = node.Evaluate(t, Number<T>{});
-						ADAPT_SWITCH_FIELD_TYPE(ph.GetType(), CASE, throw MismatchType("");)
+						auto field = elmref.GetField(*itph);
+#define CASE(T) field.template as_unsafe<T>() = itnode->Evaluate(t, Number<T>{});
+						ADAPT_SWITCH_FIELD_TYPE(itph->GetType(), CASE, throw MismatchType("");)
 #undef CASE
-					}
-					if (0_layer < maxlayer) Exec_rec(res, t, 1_layer, maxlayer, elmref, local.bufs, local.nodes);
+					}*/
+					Exec_eval(b, 0_layer, buf.Back(), t, phs, lnodes);
+					if (0_layer < maxlayer) Exec_rec(b, res, t, 1_layer, maxlayer, elmref, local.bufs, local.nodes);
 					++(*count);
 				}
 				catch (JointError)
@@ -528,18 +636,21 @@ class RttiExtractor
 
 public:
 
-	template <traversal_range Range_, named_node_or_placeholder ...NPs_>
-	DTree Exec(Range_&& range, NPs_&& ...nps)
+	template <traversal_range Range_, bool AllFieldsFlag, named_node_or_placeholder ...NPs_>
+	DTree Exec(Range_&& range, std::bool_constant<AllFieldsFlag> b, NPs_&& ...nps)
 	{
+		static_assert(container_simplex<typename std::decay_t<Range_>::Container> || !AllFieldsFlag,
+			"all_fields flag is not allowed for joined containers.");
 		std::vector<std::vector<std::pair<std::string, FieldType>>> structure;//m_structure[i]はi-1層のレイヤー構造。
 		int32_t nth = GetNumOfThreads();
 		DTree res;
+		const auto& src = range.GetContainer();
 		if (nth == 1)
 		{
 			std::vector<ElementBlock> bufs;//m_bufs[layer]にlayer層用のバッファがある。
 			std::vector<std::vector<eval::RttiFuncNode<Container>>> nodes;//レイヤーごとに分けられたノード。m_nodes[layer + 1]がlayer層のノード。
 
-			Init(structure, bufs, nodes, std::forward<NPs_>(nps)...);
+			Init(b, src, structure, bufs, nodes, std::forward<NPs_>(nps)...);
 			if (!structure[0].empty()) res.SetTopLayer(structure[0]);
 			for (auto it = structure.begin() + 1; it != structure.end(); ++it) res.AddLayer(*it);
 			res.VerifyStructure();
@@ -552,21 +663,22 @@ public:
 			auto t = std::forward<Range_>(range).begin();
 			for (auto& n : nodes) for (auto& nn : n) nn.Init(t);
 			auto ref = res.GetTopElement();
-			Exec_rec(res, t, 0, maxlayer, ref, bufs, nodes);
-			for (auto [layer, b] : views::Enumerate(bufs)) b.Destruct(&res, (LayerType)layer);
+			Exec_rec(b, res, t, 0_layer, maxlayer, ref, bufs, nodes);
+			Exec_eval(b, -1_layer, ref, src, res.GetPlaceholdersIn(-1_layer), nodes[0]);
+			for (auto [layer, buf] : views::Enumerate(bufs)) buf.Destruct(&res, (LayerType)layer);
 		}
 		else
 		{
 			ThGlobal global;
 			std::vector<ThLocal> locals(nth);
 
-			Init(structure, locals[0].bufs, locals[0].nodes, std::forward<NPs_>(nps)...);
+			Init(b, src, structure, locals[0].bufs, locals[0].nodes, std::forward<NPs_>(nps)...);
 			for (int i = 1; i < nth; ++i)
 			{
 				locals[i].bufs.resize(locals[0].bufs.size());
 				locals[i].nodes = locals[0].nodes;
 			}
-			if (structure[0].empty()) res.SetTopLayer(structure[0]);
+			if (!structure[0].empty()) res.SetTopLayer(structure[0]);
 			for (auto it = structure.begin() + 1; it != structure.end(); ++it) res.AddLayer(*it);
 			res.VerifyStructure();
 
@@ -587,10 +699,11 @@ public:
 			std::vector<std::thread> threads;
 			for (int32_t i = 0; i < nth; ++i)
 			{
-				threads.emplace_back(&RttiExtractor::Exec_multi, this,
-									 i, std::cref(res), std::cref(range), maxlayer,
+				threads.emplace_back(&RttiExtractor::Exec_multi<AllFieldsFlag>, this,
+									 b, i, std::cref(res), std::cref(range), maxlayer,
 									 std::ref(global), std::ref(locals[i]));
 			}
+			Exec_eval(b, -1_layer, res.GetTopElement(), src, res.GetPlaceholdersIn(-1_layer), locals[0].nodes[0]);
 			for (auto& th : threads) th.join();
 			BindexType total = std::accumulate(global.order.begin(), global.order.end(), 0, [](BindexType sum, const Order& o) { return sum + o.count; });
 			res.Reserve(total);
@@ -604,6 +717,16 @@ public:
 
 };
 
+template <class Range>
+class ExtractorRelay
+{
+	//all_fieldsのオプションを有効にしているとき、他に一切nodeやplaceholderを与えていないと
+	//CttiとRttiのどちらを使うべきかが判定できない。
+	//Extractorクラスからメンバ関数等も一切排除してしまった今、RttiとCttiの実装を別クラスに分ける意味はそれほどないのだが、
+	//
+};
+
+
 template <size_t I, named_node_or_placeholder NP>
 NP&& AddDefaultName(NP&& np) { return std::forward<NP>(np); }
 template <size_t I, node_or_placeholder NP, StaticString Name = StaticString<"fld">{} + ToStr(Number<I>{}) >
@@ -612,21 +735,23 @@ auto AddDefaultName(NP&& np)
 	return std::forward<NP>(np).named(Name);
 }
 
-template <class ...Vars>
-auto Extract_impl2(Vars&& ...named_vars)
+template <bool AllFieldsFlag, class ...Vars>
+auto Extract_impl2(std::bool_constant<AllFieldsFlag> b, Vars&& ...named_vars)
 {
+	using Container = eval::detail::ExtractContainer<std::remove_cvref_t<decltype(std::get<1>(named_vars))>...>::Container;
 	constexpr bool all_stat =
 		(s_named_node_or_placeholder<Vars> && ...) &&
-		(ctti_node_or_placeholder<std::tuple_element_t<1, std::decay_t<Vars>>> && ...);
+		(ctti_node_or_placeholder<std::tuple_element_t<1, std::decay_t<Vars>>> && ...) &&
+		(!AllFieldsFlag || s_container<Container>);//全フィールド出力の場合、コンテナがstaticでないとstaticに構造決定できない。
 	if constexpr (all_stat)
-		return RangeConsumer<CttiExtractor, Vars...>(std::forward<Vars>(named_vars)...);
+		return RangeConsumer<CttiExtractor, std::bool_constant<AllFieldsFlag>, Vars...>(b, std::forward<Vars>(named_vars)...);
 	else
-		return RangeConsumer<RttiExtractor, Vars...>(std::forward<Vars>(named_vars)...);
+		return RangeConsumer<RttiExtractor, std::bool_constant<AllFieldsFlag>, Vars...>(b, std::forward<Vars>(named_vars)...);
 }
-template <size_t ...Is, class ...Vars>
-auto Extract_impl(std::index_sequence<Is...>, Vars&& ...named_vars)
+template <bool AllFieldsFlag, size_t ...Is, class ...Vars>
+auto Extract_impl(std::bool_constant<AllFieldsFlag> b, std::index_sequence<Is...>, Vars&& ...named_vars)
 {
-	return Extract_impl2(AddDefaultName<Is>(std::forward<Vars>(named_vars))...);
+	return Extract_impl2(b, AddDefaultName<Is>(std::forward<Vars>(named_vars))...);
 }
 }
 
@@ -634,7 +759,13 @@ template <class ...Vars>
 	requires ((node_or_placeholder<Vars> || named_node_or_placeholder<Vars>) && ...)
 auto Extract(Vars&& ...vars)
 {
-	return detail::Extract_impl(std::make_index_sequence<sizeof...(Vars)>{}, std::forward<Vars>(vars)...);
+	return detail::Extract_impl(std::false_type{}, std::make_index_sequence<sizeof...(Vars)>{}, std::forward<Vars>(vars)...);
+}
+template <class ...Vars>
+	requires ((node_or_placeholder<Vars> || named_node_or_placeholder<Vars>) && ...)
+auto Extract(AllFields, Vars&& ...vars)
+{
+	return detail::Extract_impl(std::true_type{}, std::make_index_sequence<sizeof...(Vars)>{}, std::forward<Vars>(vars)...);
 }
 
 }
