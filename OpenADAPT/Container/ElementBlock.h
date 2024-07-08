@@ -60,6 +60,7 @@ public:
 	using HierarchySD = HierarchyWrapper<Hierarchy>;
 	using Policy = Policy_;
 
+	/*
 	ElementBlock_impl() = default;
 	~ElementBlock_impl()
 	{
@@ -79,7 +80,7 @@ public:
 		m_end = e.m_end; e.m_end = nullptr;
 		m_cap_end = e.m_cap_end; e.m_cap_end = nullptr;
 		return *this;
-	}
+	}*/
 
 	template <class LayerSD>
 	BindexType GetSize(HierarchySD h, LayerSD layer) const
@@ -375,7 +376,13 @@ public:
 			if (!ismaxlayer) DestroyElementBlock(h, layer, ptr + elmsize);
 		}
 		std::free(m_blocks);
+		Init();
+	}
+	void Init()
+	{
 		m_blocks = nullptr;
+		m_end = nullptr;
+		m_cap_end = nullptr;
 	}
 	//自身はメモリ確保されただけの未初期化状態と想定し、from_の全要素を自身に移動する。下層要素も移動する。
 	//fromのフィールドはデフォルト初期化された状態に、下層はnullptrになる。
@@ -431,7 +438,7 @@ public:
 
 	static void CreateElementBlock(char* ptr)
 	{
-		new (ptr) ElementBlock_impl();
+		new (ptr) ElementBlock_impl{};
 	}
 	//fromのElementBlockをtoへとコピーする。
 	//toは初期化済み、コンストラクタが全要素全フィールドに対して呼ばれていると想定している。
@@ -444,13 +451,14 @@ public:
 		Policy::Copy(phs, is_totally_trivial, from, to);
 	}
 
-	//fromのElementBlockをtoへと移動する。fromの中の各要素はデフォルトコンストラクタが呼ばれたときの初期状態となる。
+	//fromのElementBlockをtoへと移動する。fromは全てnullptrの状態になる。
 	//toは初期化済み、コンストラクタが全要素全フィールドに対して呼ばれていると想定している。
 	static void MoveElementBlock(char* from, char* to)
 	{
 		ElementBlock_impl* e_from = std::launder(reinterpret_cast<ElementBlock_impl*>(from));
 		ElementBlock_impl* e_to = std::launder(reinterpret_cast<ElementBlock_impl*>(to));
-		*e_to = std::move(*e_from);
+		*e_to = *e_from;
+		e_from->Init();
 	}
 	template <class Hier, LayerType L>
 		requires s_hierarchy<Hier> || f_hierarchy<Hier>
@@ -464,7 +472,6 @@ public:
 		{
 			auto* e_ptr = std::launder(reinterpret_cast<ElementBlock_impl*>(ptr));
 			e_ptr->Destruct(h, LayerConstant<LayerType(L + 1)>{});
-			e_ptr->~ElementBlock_impl();
 		}
 	}
 	static void DestroyElementBlock(HierarchySD h, LayerType layer, char* ptr)
@@ -472,7 +479,6 @@ public:
 		//ptrの先にElementBlockがあるものとして、それを削除する。
 		auto* e_ptr = std::launder(reinterpret_cast<ElementBlock_impl*>(ptr));
 		e_ptr->Destruct(h, layer + 1_layer);
-		e_ptr->~ElementBlock_impl();
 	}
 
 	//fromのElementBlockをtoへと移動し、fromに対してデストラクタを呼ぶ。
@@ -480,8 +486,8 @@ public:
 	static void MoveConstructAndDestroyElementBlock(char* from, char* to)
 	{
 		ElementBlock_impl* e_from = std::launder(reinterpret_cast<ElementBlock_impl*>(from));
-		new (to) ElementBlock_impl(std::move(*e_from));
-		e_from->~ElementBlock_impl();
+		new (to) ElementBlock_impl(*e_from);
+		e_from->Init();
 	}
 
 	//メモリ確保されただけの未初期化領域toにfromの要素を移動し、fromのデストラクタを呼ぶ。
@@ -521,9 +527,6 @@ public:
 		constexpr auto ismaxlayer = std::bool_constant<(L == Hier::GetMaxLayer())>{};
 		constexpr auto elmsize = SizeConstant<Hier::GetElementSize(LayerConstant<L>{})>{};
 		constexpr auto blocksize = SizeConstant<(elmsize + (!ismaxlayer) * sizeof(ElementBlock_impl))>{};
-		//constexpr bool ismaxlayer = L == Hier::GetMaxLayer();
-		//constexpr size_t elmsize = Hier::GetElementSize(LayerConstant<L>{});
-		//constexpr size_t blocksize = elmsize + (!ismaxlayer) * sizeof(ElementBlock_impl);
 		return std::make_tuple(ismaxlayer, elmsize, blocksize);
 	}
 	template <f_hierarchy Hier, LayerType L>
