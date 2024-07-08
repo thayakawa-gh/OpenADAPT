@@ -19,7 +19,7 @@ namespace detail
 //const Node1& ConvertToNode(const Node1& node) { return node; }
 template <any_node Node1>
 Node1&& ConvertToNode(Node1&& node) { return std::forward<Node1>(node); }
-template <typed_placeholder PH>
+template <stat_type_placeholder PH>
 auto ConvertToNode(PH ph) { return eval::CttiFieldNode{ ph }; }
 template <rtti_placeholder PH>
 auto ConvertToNode(PH ph) { return eval::RttiFieldNode{ ph }; }
@@ -28,7 +28,7 @@ auto ConvertToNode(PH ph) { return eval::RttiFieldNode{ ph }; }
 //Node/Placeholderの場合には不要だが、同一の関数定義にするために受け取っている。
 template <bool Rtti, any_node Node1>
 Node1&& ConvertToNode(Node1&& node, std::bool_constant<Rtti>) { return std::forward<Node1>(node); }
-template <bool Rtti, typed_placeholder PH>
+template <bool Rtti, stat_type_placeholder PH>
 auto ConvertToNode(PH ph, std::bool_constant<Rtti>) { return eval::CttiFieldNode{ ph }; }
 template <bool Rtti, rtti_placeholder PH>
 auto ConvertToNode(PH ph, std::bool_constant<Rtti>) { return eval::RttiFieldNode{ ph }; }

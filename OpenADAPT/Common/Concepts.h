@@ -238,9 +238,8 @@ concept rtti_placeholder =
 };
 template <class T>
 concept typed_placeholder = placeholder<T> &&
-	statistically_typed<T> && anything_layered<T> &&
+	statistically_typed<T> && dynamically_layered<T> &&
 	derived_from_xt<std::remove_cvref_t<T>, eval::detail::CttiFieldMethods>;
-
 template <class T>
 concept ctti_placeholder = placeholder<T> &&
 	statistically_typed<T> && statistically_layered<T> &&
@@ -249,6 +248,8 @@ concept ctti_placeholder = placeholder<T> &&
 template <class T>
 concept ranked_placeholder = placeholder<T> && std::remove_cvref_t<T>::MaxRank != 0;
 
+template <class T>
+concept stat_type_placeholder = typed_placeholder<T> || ctti_placeholder<T>;
 
 namespace detail
 {
@@ -295,11 +296,14 @@ concept rtti_func_node = rtti_node<T> && same_as_xt<std::remove_cvref_t<T>, eval
 
 template <class T>
 concept typed_node =
-	any_node<T> && statistically_typed<T> && anything_layered<T>;
+	any_node<T> && statistically_typed<T> && dynamically_layered<T>;
 
 template <class T>
 concept ctti_node =
-	ctti_const_node<T> || (typed_node<T> && statistically_layered<T>);
+	ctti_const_node<T> || (any_node<T> && statistically_typed<T> && statistically_layered<T>);
+
+template <class T>
+concept stat_type_node = typed_node<T> || ctti_node<T>;
 
 /*template <class T>
 concept ctti_field_node = same_as_xt<std::remove_cvref_t<T>, eval::CttiFieldNode>;
@@ -329,6 +333,9 @@ template <class T>
 concept rtti_node_or_placeholder = rtti_placeholder<T> || rtti_node<T>;
 template <class T>
 concept typed_node_or_placeholder = typed_placeholder<T> || typed_node<T>;
+
+template <class T>
+concept stat_type_node_or_placeholder = typed_node_or_placeholder<T> || ctti_node_or_placeholder<T>;
 
 namespace detail
 {
@@ -361,7 +368,7 @@ concept named_node_or_placeholder = s_named_node_or_placeholder<T> || d_named_no
 
 template <class T>
 struct GetNodeType { using Type = eval::CttiConstNode<T>; };
-template <typed_placeholder PH>
+template <stat_type_placeholder PH>
 struct GetNodeType<PH> { using Type = eval::CttiFieldNode<PH>; };
 template <rtti_placeholder PH>
 struct GetNodeType<PH> { using Type = eval::RttiFieldNode<PH>; };

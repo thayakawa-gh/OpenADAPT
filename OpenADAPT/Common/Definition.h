@@ -26,6 +26,8 @@ template <size_t Size>
 struct SizeConstant : IntegralConstant<size_t, Size, SizeConstant> {};
 
 
+inline constexpr size_t MultiSize = 8;
+
 namespace detail
 {
 template <class Constant, auto Diff>

@@ -15,7 +15,7 @@ class HashingConsumer
 {
 	template <class ...NPs>
 	struct HashtableType { using Type = Hashtable<FirstType<FieldVariant, NPs>...>; };
-	template <typed_node_or_placeholder ...NPs>
+	template <stat_type_node_or_placeholder ...NPs>
 	struct HashtableType<NPs...> { using Type = Hashtable<typename std::decay_t<NPs>::RetType...>; };
 
 public:

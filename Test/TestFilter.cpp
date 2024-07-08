@@ -21,7 +21,7 @@ void TestFilter(Container& tree, const std::vector<Class>& clses,
 	using enum adapt::FieldType;
 	auto Evaluate = []<FieldType Type, class Trav, class NP>(Number<Type>, const Trav & t, NP & np)
 	{
-		if constexpr (typed_node_or_placeholder<NP>) return np.Evaluate(t);
+		if constexpr (stat_type_node_or_placeholder<NP>) return np.Evaluate(t);
 		else return np.Evaluate(t).template as<Type>();
 	};
 	for (BindexType i = 0; i < clses.size(); ++i)
@@ -121,7 +121,7 @@ void TestFilter(Container& table, const std::vector<Class>& clses, const Layer& 
 	using enum adapt::FieldType;
 	auto Evaluate = []<FieldType Type, class Trav, class NP>(Number<Type>, const Trav & t, NP & np)
 	{
-		if constexpr (typed_node_or_placeholder<NP>) return np.Evaluate(t);
+		if constexpr (stat_type_node_or_placeholder<NP>) return np.Evaluate(t);
 		else return np.Evaluate(t).template as<Type>();
 	};
 	for (BindexType i = 0; i < clses.size(); ++i)

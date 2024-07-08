@@ -45,7 +45,7 @@ class EvaluatingTraverser : public Traverser_
 	};
 	template <class NP>
 	struct NPResult;
-	template <typed_node_or_placeholder NP>
+	template <stat_type_node_or_placeholder NP>
 	struct NPResult<NP>
 	{
 		using RetType = NP::RetType;
@@ -230,7 +230,8 @@ class EvaluatingTraverser<Traverser_, WithTrav, NP> : public Traverser_
 	{
 		using Type = FieldVariant;
 	};
-	template <typed_node_or_placeholder NP_> struct RetType<NP_>
+	template <stat_type_node_or_placeholder NP_>
+	struct RetType<NP_>
 	{
 		using Ret = std::decay_t<typename NP_::RetType>;
 		using Type = std::conditional_t<std::is_trivially_copyable_v<Ret>, Ret, const Ret&>;

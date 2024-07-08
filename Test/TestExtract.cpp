@@ -9,20 +9,10 @@ void TestExtract(Container& s, const std::vector<Class>& clses, Layer0 l0, Layer
 	SetNumOfThreads(1);
 	auto Evaluate = []<FieldType Type, class Trav, class NP>(Number<Type>, const Trav & t, NP & np)
 	{
-		if constexpr (typed_node_or_placeholder<NP>) return np(t);
+		if constexpr (stat_type_node_or_placeholder<NP>) return np(t);
 		else return np(t).template as<Type>();
 	};
 	using enum adapt::FieldType;
-	/*auto Evaluate = []<FieldType Type, class Trav, class NP>(Number<Type>, const Trav& t, NP& np)
-	{
-		if constexpr (typed_node_or_placeholder<NP>) return np(t);
-		else return np(t).template as<Type>();
-	};
-	auto Evaluate = []<FieldType Type, class Trav, class NP>(Number<Type>, const Trav& t, NP& np)
-	{
-		if constexpr (typed_node_or_placeholder<NP>) return np.Evaluate(t);
-		else return np.Evaluate(t).template as<Type>();
-	};*/
 	//test 1
 	{
 		//0層要素。学年とクラス。
@@ -337,7 +327,7 @@ void TestExtract(Container& s, Layer l)
 
 	auto Evaluate = []<FieldType Type, class Trav, class NP>(Number<Type>, const Trav & t, NP & np)
 	{
-		if constexpr (typed_node_or_placeholder<NP>) return np(t);
+		if constexpr (stat_type_node_or_placeholder<NP>) return np(t);
 		else return np(t).template as<Type>();
 	};
 	static_assert(std::ranges::input_range<decltype(s.GetRange(0))>);

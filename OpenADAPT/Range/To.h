@@ -23,7 +23,7 @@ class ConvertingConsumer
 		}
 	}
 
-	template <traversal_range Range_, typed_node_or_placeholder ...NPs_>
+	template <traversal_range Range_, stat_type_node_or_placeholder ...NPs_>
 	auto Exec_complex(Range_&& range, NPs_&& ...nps)
 	{
 		auto erange = std::forward<Range_>(range) | Evaluate(std::forward<NPs_>(nps)...);
@@ -31,7 +31,7 @@ class ConvertingConsumer
 		for (auto&& t : erange) PushBack<0>(t, res);
 		return res;
 	}
-	template <traversal_range Range_, typed_node_or_placeholder ...NPs_>
+	template <traversal_range Range_, stat_type_node_or_placeholder ...NPs_>
 	auto Exec_complex(Range_&& range, Combine, NPs_&& ...nps)
 	{
 		auto erange = std::forward<Range_>(range) | Evaluate(std::forward<NPs_>(nps)...);
@@ -41,7 +41,7 @@ class ConvertingConsumer
 		return res;
 	}
 
-	template <traversal_range Range_, typed_node_or_placeholder NP>
+	template <traversal_range Range_, stat_type_node_or_placeholder NP>
 	auto Exec_simplex(Range_&& range, NP&& np)
 	{
 		auto erange = std::forward<Range_>(range) | Evaluate(std::forward<NP>(np));
@@ -52,24 +52,24 @@ class ConvertingConsumer
 
 public:
 
-	template <traversal_range Range_, typed_node_or_placeholder NP>
+	template <traversal_range Range_, stat_type_node_or_placeholder NP>
 	auto Exec(Range_&& range, NP&& np)
 	{
 		return Exec_simplex(std::forward<Range_>(range), std::forward<NP>(np));
 	}
-	template <traversal_range Range_, typed_node_or_placeholder NP>
+	template <traversal_range Range_, stat_type_node_or_placeholder NP>
 	auto Exec(Range_&& range, Combine, NP&& np)
 	{
 		//simplex、つまりNP1個だけの場合、Combineの有無は関係ない。
 		return Exec_simplex(std::forward<Range_>(range), std::forward<NP>(np));
 	}
 
-	template <traversal_range Range_, typed_node_or_placeholder ...NPs>
+	template <traversal_range Range_, stat_type_node_or_placeholder ...NPs>
 	auto Exec(Range_&& range, NPs&& ...nps)
 	{
 		return Exec_complex(std::forward<Range_>(range), std::forward<NPs>(nps)...);
 	}
-	template <traversal_range Range_, typed_node_or_placeholder ...NPs>
+	template <traversal_range Range_, stat_type_node_or_placeholder ...NPs>
 	auto Exec(Range_&& range, Combine c, NPs&& ...nps)
 	{
 		return Exec_complex(std::forward<Range_>(range), c, std::forward<NPs>(nps)...);
@@ -82,12 +82,12 @@ using ToVectorConsumer = ConvertingConsumer<std::vector, Range>;
 
 }
 
-template <typed_node_or_placeholder ...NPs>
+template <stat_type_node_or_placeholder ...NPs>
 auto ToVector(Combine, NPs&& ...nps)
 {
 	return RangeConsumer<detail::ToVectorConsumer, NPs...>(std::forward<NPs>(nps)...);
 }
-template <typed_node_or_placeholder ...NPs>
+template <stat_type_node_or_placeholder ...NPs>
 auto ToVector(NPs&& ...nps)
 {
 	return RangeConsumer<detail::ToVectorConsumer, NPs...>(std::forward<NPs>(nps)...);

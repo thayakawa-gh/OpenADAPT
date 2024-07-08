@@ -140,7 +140,7 @@ inline void WriteAsText_print(std::ostream& out, const JBpos& jbp, int width = 1
 	}
 }
 
-template <class Trav, typed_node_or_placeholder NP>
+template <class Trav, stat_type_node_or_placeholder NP>
 void WriteAsText_print(std::ostream& out, const Trav& trav, NP&& np, [[maybe_unused]] int name_len = 0)
 {
 	++name_len;

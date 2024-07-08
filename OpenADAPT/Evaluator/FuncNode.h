@@ -545,14 +545,14 @@ auto MakeFunctionNode(Func&& f, NPs&& ...nps)
 	if constexpr (has_rtti_type)
 	{
 		return MakeRttiFuncNode(std::forward<Func>(f), ValueList<>(), std::tuple<>(),
-									  ConvertToNode(std::forward<NPs>(nps), std::true_type{})...);
+								ConvertToNode(std::forward<NPs>(nps), std::true_type{})...);
 	}
 	else
 	{
 		using RetType = std::invoke_result_t<std::decay_t<Func>, typename GetNodeType_t<std::decay_t<NPs>>::RetType...>;
 		using FuncType = FuncDefinition<std::decay_t<Func>, RetType, typename GetNodeType_t<std::decay_t<NPs>>::RetType...>;
 		return eval::CttiFuncNode<FuncType, TypeList<GetNodeType_t<std::decay_t<NPs>>...>>
-		(std::forward<Func>(f), ConvertToNode(std::forward<NPs>(nps), std::false_type{})...);
+			(std::forward<Func>(f), ConvertToNode(std::forward<NPs>(nps), std::false_type{})...);
 	}
 }
 

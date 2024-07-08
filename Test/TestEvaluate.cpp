@@ -147,9 +147,9 @@ void TestEvaluate(Container& tree, const std::vector<Class>& cls,
 		EXPECT_EQ(rank_math_class.GetType(), FieldType::I64);
 		EXPECT_EQ(rank_math_all.GetType(), FieldType::I64);
 		EXPECT_EQ(mean_max.GetType(), FieldType::F32);
-		static_assert(typed_node<decltype(type_test1_total_score)>);
+		static_assert(stat_type_node<decltype(type_test1_total_score)>);
 		static_assert(!ctti_node<decltype(type_test1_total_score)>);
-		static_assert(typed_node<decltype(type_test2_total_score)>);
+		static_assert(stat_type_node<decltype(type_test2_total_score)>);
 		static_assert(!ctti_node<decltype(type_test2_total_score)>);
 		static_assert(std::is_same_v<typename decltype(type_test1_total_score)::RetType, int32_t>);
 		static_assert(std::is_same_v<typename decltype(type_test2_total_score)::RetType, int32_t>);
@@ -172,12 +172,12 @@ void TestEvaluate(Container& tree, const std::vector<Class>& cls,
 
 				auto Evaluate_trav = []<FieldType Type, class Trav, class Node>(Number<Type>, const Trav & t, const Node& node)
 				{
-					if constexpr (typed_node<Node>) return node.Evaluate(t);
+					if constexpr (stat_type_node<Node>) return node.Evaluate(t);
 					else return node.Evaluate(t).template as<Type>();
 				};
 				auto Evaluate_cnt = []<FieldType Type, class Node>(Number<Type>, const Container& t, const Bpos& bpos, const Node& node)
 				{
-					if constexpr (typed_node<Node>) return node.Evaluate(t, bpos);
+					if constexpr (stat_type_node<Node>) return node.Evaluate(t, bpos);
 					else return node.Evaluate(t, bpos).template as<Type>();
 				};
 
@@ -403,12 +403,12 @@ void TestEvaluate(Table& table, const std::vector<Class>& cls, const Layer& l)
 	Bpos bpos{ i * 4 * 30 + j * 4 + k };
 	auto eval1 = [&table, &bpos]<class Node, FieldType Type>(const Node & node, Number<Type>)
 	{
-		if constexpr (typed_node<decltype(node)>) return node.Evaluate(table, bpos);
+		if constexpr (stat_type_node<decltype(node)>) return node.Evaluate(table, bpos);
 		else return node.Evaluate(table, bpos).template as<Type>();
 	};
 	auto eval0 = [&table]<class Node, FieldType Type>(const Node& node, Number<Type>)
 	{
-		if constexpr (typed_node<decltype(node)>) return node.Evaluate(table);
+		if constexpr (stat_type_node<decltype(node)>) return node.Evaluate(table);
 		else return node.Evaluate(table).template as<Type>();
 	};
 	const auto& r = cls[i].m_students[j].m_records[k];

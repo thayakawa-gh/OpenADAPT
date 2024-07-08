@@ -651,29 +651,10 @@ public:
 		else
 		{
 			assert(!m_container_mode);
-			//if (!m_container_mode)
-			{
-				const Traverser* ptr = static_cast<const Traverser*>(m_outer_traverser);
-				return (*ptr)[this->m_placeholder].template as_unsafe<Type>();
-			}
-			//else
-			{
-				/*
-				Container modeのとき、Evaluateの引数はConstTraverserのはず。
-				ということは、このスコープの処理は呼ばれない。
-				仮にコメントアウトを外すと、
-				上のTraverserからの戻り値がnon-constなのにこのContainerからの戻り値はconstになり、
-				戻り値推論ができずコンパイルエラーになる。
-				const Container* ptr = static_cast<const Container*>(m_outer_traverser);
-				if (m_outer_bpos == nullptr)
-					return ptr->GetBranch().GetField(m_placeholder).as_unsafe<Type>();
-				else
-				{
-					const Bpos* bpos = static_cast<const Bpos*>(m_outer_bpos);
-					return ptr->GetBranch(*bpos, m_placeholder.GetLayer()).GetField(m_placeholder).as_unsafe<Type>();
-				}
-				*/
-			}
+			//Container modeのとき、Evaluateの引数はConstTraverserのはず。
+			//なので、container modeかどうかの判定は必要ない。
+			const Traverser* ptr = static_cast<const Traverser*>(m_outer_traverser);
+			return (*ptr)[this->m_placeholder].template as_unsafe<Type>();
 		}
 	}
 	template <FieldType Type>
