@@ -82,6 +82,13 @@ public:
 		return *this;
 	}*/
 
+	void Swap(ElementBlock_impl& e) noexcept
+	{
+		std::swap(m_blocks, e.m_blocks);
+		std::swap(m_end, e.m_end);
+		std::swap(m_cap_end, e.m_cap_end);
+	}
+
 	template <class LayerSD>
 	BindexType GetSize(HierarchySD h, LayerSD layer) const
 	{
@@ -148,22 +155,31 @@ public:
 		auto [ismaxlayer, elmsize, blocksize] = GetBlockTraits(h, layer);
 
 		size_t size = GetSize(h, layer);
-		auto is_totally_trivial = h.value().IsTotallyTrivial(layer);
-		ptrdiff_t end = blocksize * (ptrdiff_t)size;
+		size_t end = blocksize * size;
 
 		const auto& ms = GetPlaceholdersIn(h, layer);
 		char* oldptr = m_blocks;
 		//もしm_blocksがnullptrであった場合、oldptrもnullptrとなるが、
 		//そのときはend==0となっているのでループに入ることはなく、動作に問題は起きない。
-		m_blocks = (char*)std::malloc((ptrdiff_t)newcap * blocksize);
-		for (ptrdiff_t diff = 0; diff != end; diff += blocksize)
+		m_blocks = (char*)std::malloc((size_t)newcap * blocksize);
+
+
+		auto is_totally_trivial = h.value().IsTotallyTrivial(layer);
+		if (is_totally_trivial)
 		{
-			char* from = oldptr + diff;
-			char* to = m_blocks + diff;
-			Policy::MoveConstructAndDestroy(ms, is_totally_trivial, from, to);
-			//もし最下層でない場合、各ブロック末尾には下層ElementBlockオブジェクトが存在する。
-			//これも移動させなければならない。
-			if (!ismaxlayer) MoveConstructAndDestroyElementBlock(from + elmsize, to + elmsize);
+			std::memcpy(m_blocks, oldptr, end);
+		}
+		else
+		{
+			for (size_t diff = 0; diff != end; diff += blocksize)
+			{
+				char* from = oldptr + diff;
+				char* to = m_blocks + diff;
+				Policy::MoveConstructAndDestroy(ms, is_totally_trivial, from, to);
+				//もし最下層でない場合、各ブロック末尾には下層ElementBlockオブジェクトが存在する。
+				//これも移動させなければならない。
+				if (!ismaxlayer) MoveConstructAndDestroyElementBlock(from + elmsize, to + elmsize);
+			}
 		}
 		std::free(oldptr);
 		m_end = m_blocks + size * blocksize;
@@ -247,6 +263,16 @@ public:
 		char* pos = m_blocks + size * blocksize;
 		Policy::Create_default(ms, pos);
 		if (!ismaxlayer) CreateElementBlock(pos + elmsize);
+		m_end += blocksize;
+	}
+	template <class LayerSD>
+	void PseudoPush(HierarchySD h, LayerSD layer)
+	{
+		BindexType size = GetSize(h, layer);
+		if (size == GetCapacity(h, layer)) Reserve(h, layer, size * 2 + 1);
+		auto [ismaxlayer, elmsize, blocksize] = GetBlockTraits(h, layer);
+		char* pos = m_blocks + size * blocksize + elmsize;
+		if (!ismaxlayer) CreateElementBlock(pos);
 		m_end += blocksize;
 	}
 	template <class LayerSD>
@@ -397,18 +423,27 @@ public:
 		Reserve(h, layer, size);
 		char* from = from_.m_blocks;
 		char* to = m_blocks;
-		for (; from != from_.m_end; from += blocksize, to += blocksize)
+		if (is_totally_trivial)
 		{
-			Policy::MoveConstruct(phs, is_totally_trivial, from, to);
-			if (!ismaxlayer) MoveConstructAndDestroyElementBlock(from + elmsize, to + elmsize);
+			std::memcpy(to, from, (size_t)size * blocksize);
+			m_end = to + size * blocksize;
 		}
-		m_end = to;
+		else
+		{
+			for (; from != from_.m_end; from += blocksize, to += blocksize)
+			{
+				Policy::MoveConstruct(phs, is_totally_trivial, from, to);
+				if (!ismaxlayer) MoveConstructAndDestroyElementBlock(from + elmsize, to + elmsize);
+			}
+			//こちらはループによってtoが末尾要素をさしているので、toを代入すればよい。
+			m_end = to;
+		}
 		from_.m_end = from_.m_blocks;
 	}
 	template <class LayerSD>
 	void RewriteSize(HierarchySD h, LayerSD layer, BindexType size)
 	{
-		assert(GetCapacity(h, layer) == size);
+		assert(GetCapacity(h, layer) >= size);
 		m_end = m_blocks + size * GetBlockSize(h, layer);
 	}
 
@@ -439,6 +474,16 @@ public:
 	static void CreateElementBlock(char* ptr)
 	{
 		new (ptr) ElementBlock_impl{};
+	}
+	//fromのElementBlockをtoへとコピーする。
+	//toはメモリ確保されただけの未初期化状態と想定している。
+	template <class LayerSD>
+	static void CopyConstructFields(HierarchySD h, LayerSD layer, const char* from, char* to)
+	{
+		auto [ismaxlayer, elmsize, blocksize] = GetBlockTraits(h, layer);
+		const auto& phs = GetPlaceholdersIn(h, layer);
+		auto is_totally_trivial = h.value().IsTotallyTrivial(layer);
+		Policy::CopyConstruct(phs, is_totally_trivial, from, to);
 	}
 	//fromのElementBlockをtoへとコピーする。
 	//toは初期化済み、コンストラクタが全要素全フィールドに対して呼ばれていると想定している。

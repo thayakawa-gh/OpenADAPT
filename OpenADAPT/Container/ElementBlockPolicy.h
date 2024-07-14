@@ -133,6 +133,12 @@ public:
 	{
 		Copy(phs, std::bool_constant<IsTotallyTrivial>{}, from, to, std::false_type{});
 	}
+	template <class ...Placeholders, bool IsTotallyTrivial>
+	static void CopyConstruct(const std::tuple<Placeholders...>& phs, std::bool_constant<IsTotallyTrivial>, const char* from, char* to)
+	{
+		//SElementの場合、Copy_staticとCopyは全く同等である。
+		Copy(phs, std::bool_constant<IsTotallyTrivial>{}, from, to, std::true_type{});
+	}
 	//CopyAndDestroy他は一旦定義を保留しておく。使うかどうか分からない。
 
 
@@ -477,6 +483,12 @@ public:
 	static void Copy(const std::vector<eval::RttiPlaceholder<Container>>& ms, bool is_totally_trivial, const char* from, char* to)
 	{
 		Copy(ms, is_totally_trivial, from, to, std::false_type{});
+	}
+	template <class Container>
+	static void CopyConstruct(const std::vector<eval::RttiPlaceholder<Container>>& ms, bool is_totally_trivial, const char* from, char* to)
+	{
+		//DElementの場合、Copy_staticとCopyは全く同等である。
+		Copy(ms, is_totally_trivial, from, to, std::true_type{});
 	}
 	//CopyAndDestroy他は一旦定義を保留しておく。使うかどうか分からない。
 

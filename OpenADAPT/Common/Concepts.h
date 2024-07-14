@@ -416,6 +416,13 @@ std::ranges::viewable_range<T> && requires (T t)
 };
 
 template <class T>
+concept sized_traversal_range = traversal_range<T> &&
+	requires (T r, LayerType layer)
+{
+	{ r.GetSize(layer) } -> std::same_as<size_t>;
+};
+
+template <class T>
 concept any_hierarchy = requires(std::remove_cvref_t<T> h, LayerType layer, const std::string & name)
 {
 	//typename std::remove_cvref_t<T>::RttiPlaceholder;

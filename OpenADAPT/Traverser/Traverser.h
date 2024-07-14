@@ -1034,6 +1034,12 @@ public:
 		return {};
 	}
 
+	size_t GetSize(LayerType layer) const
+	{
+		//1層以上を与えた場合、BindexTypeの最大値を超える可能性があるので、size_tで返す。
+		return m_tree->GetSize(layer);
+	}
+
 	const Container& GetContainer() const { return *m_tree; }
 
 private:
@@ -1670,6 +1676,12 @@ public:
 	ConstSentinel cend() const
 	{
 		return {};
+	}
+
+	size_t GetSize(LayerType layer) const
+	{
+		//1層以上を与えた場合、BindexTypeの最大値を超える可能性があるので、size_tで返す。
+		return m_table->GetSize(layer);
 	}
 
 	const Container& GetContainer() const { return *m_table; }

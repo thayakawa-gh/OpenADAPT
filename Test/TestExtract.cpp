@@ -6,7 +6,7 @@ using namespace adapt::lit;
 template <class Container, class Layer0, class Layer1, class Layer2>
 void TestExtract(Container& s, const std::vector<Class>& clses, Layer0 l0, Layer1 l1, Layer2 l2)
 {
-	SetNumOfThreads(1);
+	SetNumOfThreads(16);
 	auto Evaluate = []<FieldType Type, class Trav, class NP>(Number<Type>, const Trav & t, NP & np)
 	{
 		if constexpr (stat_type_node_or_placeholder<NP>) return np(t);

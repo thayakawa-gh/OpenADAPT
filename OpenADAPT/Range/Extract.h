@@ -162,7 +162,10 @@ class CttiExtractor
 			}
 		}
 		auto list = upref.GetLowerElements();
-		list.CreateElementsFrom(std::move(buf));
+		if constexpr (sized_traversal_range<Range> && Layer == 0_layer)
+			list.SwapElementBlock(buf);
+		else
+			list.CreateElementsFrom(std::move(buf));
 	}
 
 	struct Order
@@ -318,6 +321,7 @@ public:
 		using RetType_ = RetType<AllFieldsFlag, std::decay_t<NamedNPs_>...>;
 		using STree_ = RetType_::Type;
 		using ElementBlock = detail::ElementBlock_impl<typename STree_::Hierarchy, SElementBlockPolicy>;
+		using ElementListRef = ElementListRef_impl<typename STree_::Hierarchy, std::type_identity_t, LayerConstant<(LayerType)0>>;
 
 		constexpr auto maxlayer = LayerConstant<RetType_::MaxLayer>{};
 		static_assert(maxlayer >= 0_layer);
@@ -328,6 +332,14 @@ public:
 		if (nth == 1)
 		{
 			std::vector<ElementBlock> bufs(maxlayer + 1_layer);
+			if constexpr (sized_traversal_range<Range_>)
+			{
+				//sizedの場合、0層要素数は固定値で得られる。
+				//まあ極めて稀に要素取得失敗などで変動する可能性はあるが、まずありえないので、
+				//ここでバッファを予め確保しておく。
+				ElementListRef buf{ &res, 0_layer, &bufs[0_layer] };
+				buf.Reserve((BindexType)range.GetSize(0_layer));
+			}
 			range.SetTravLayer(maxlayer);
 			auto t = std::forward<Range_>(range).begin();
 			DoNothing(InitNP(std::get<1>(std::forward<NamedNPs_>(nps)), t)...);
@@ -340,11 +352,12 @@ public:
 			using ThLocal_ = ThLocal<ElementBlock, std::remove_cvref_t<NamedNPs_>...>;
 			ThGlobal global;
 			std::vector<ThLocal_> locals;
-			locals.reserve(1);
+			locals.reserve(nth);
 			locals.emplace_back(ThLocal_{ {}, std::vector<ElementBlock>(maxlayer + 1_layer), std::make_tuple(nps...) });
 			for (int32_t i = 1; i < nth; ++i)
-				locals.emplace_back(ThLocal_{ {}, std::vector<ElementBlock>(maxlayer + 1_layer), locals[0].nodes});
-
+			{
+				locals.emplace_back(ThLocal_{ {}, std::vector<ElementBlock>(maxlayer + 1_layer), locals[0].nodes });
+			}
 			range.SetTravLayer(maxlayer);
 			{
 				const BindexType size = (BindexType)range.GetContainer().GetSize();
@@ -354,6 +367,7 @@ public:
 				global.order.resize(size_);
 				global.end = size;
 			}
+			//multi threadの場合、予めバッファをReserveしても効果がないか、下手すると悪化傾向にあったので、やめる。
 
 			std::vector<std::thread> threads;
 			for (int32_t i = 0; i < nth; ++i)
@@ -468,8 +482,8 @@ class RttiExtractor
 #undef CASE
 		}
 	}
-	template <bool AllFieldsFlag, class Traverser>
-	void Exec_rec(std::bool_constant<AllFieldsFlag> b, const DTree& res, Traverser& t,
+	template <bool AllFieldsFlag, bool IsTopLayer, class Traverser>
+	void Exec_rec(std::bool_constant<AllFieldsFlag> b, std::bool_constant<IsTopLayer>, const DTree& res, Traverser& t,
 				  LayerType layer, LayerType maxlayer, DTree::ElementRef upref,
 				  std::vector<ElementBlock>& bufs,
 				  std::vector<std::vector<eval::RttiFuncNode<Container>>>& nodes) const
@@ -481,6 +495,8 @@ class RttiExtractor
 		bool pushflag = true;
 		for (bool end = true; end; end = t.MoveForward(layer))
 		{
+			//PushDefaultElementをやめてExec_evalで計算しつつコンストラクタを呼ぶ方法も試したが、
+			//結果的に遅くなってしまったので、PushDefaultElementのほうが良さそうである。
 			if (pushflag) buf.PushDefaultElement();
 			pushflag = true;
 			try
@@ -488,7 +504,7 @@ class RttiExtractor
 				auto elmref = buf.Back();
 				Exec_eval(b, layer, buf.Back(), t, phs, lnodes);
 
-				if (layer < maxlayer) Exec_rec(b, res, t, layer + 1_layer, maxlayer, elmref, bufs, nodes);
+				if (layer < maxlayer) Exec_rec(b, std::false_type{}, res, t, layer + 1_layer, maxlayer, elmref, bufs, nodes);
 			}
 			catch (JointError)
 			{
@@ -502,7 +518,10 @@ class RttiExtractor
 			}
 		}
 		auto list = upref.GetLowerElements();
-		list.CreateElementsFrom(std::move(buf));
+		if constexpr (sized_traversal_range<Range> && IsTopLayer)
+			list.SwapElementBlock(buf);
+		else
+			list.CreateElementsFrom(std::move(buf));
 	}
 
 	struct Order
@@ -568,27 +587,8 @@ class RttiExtractor
 				try
 				{
 					auto elmref = buf.Back();
-					/*
-					auto itph = phs.begin();
-					auto itnode = lnodes.begin();
-					if constexpr (AllFieldsFlag)
-					{
-						auto srcref = *t.GetIterator(0_layer);
-						srcref.CopyFieldsTo(0_layer, elmref);
-						itph = phs.end() - lnodes.size();
-					}
-					//ここ、CreateValueを個々に呼ぶことは難しいかもしれない。
-					//万一SkipOverが投げられた場合、どこまで構築されたかを確認していちいちDestroyしなければならなくなる。
-					//デフォルトコンストラクタを先に呼んでおくのとどちらがいいのか。
-					for (; itnode != lnodes.end(); ++itph, ++itnode)
-					{
-						auto field = elmref.GetField(*itph);
-#define CASE(T) field.template as_unsafe<T>() = itnode->Evaluate(t, Number<T>{});
-						ADAPT_SWITCH_FIELD_TYPE(itph->GetType(), CASE, throw MismatchType("");)
-#undef CASE
-					}*/
 					Exec_eval(b, 0_layer, buf.Back(), t, phs, lnodes);
-					if (0_layer < maxlayer) Exec_rec(b, res, t, 1_layer, maxlayer, elmref, local.bufs, local.nodes);
+					if (0_layer < maxlayer) Exec_rec(b, std::false_type{}, res, t, 1_layer, maxlayer, elmref, local.bufs, local.nodes);
 					++(*count);
 				}
 				catch (JointError)
@@ -659,11 +659,19 @@ public:
 			if (maxlayer < 0_layer)
 				throw InvalidLayer("Maximum layer of the arguments for Extract must be equal or larger than 0.");
 
+			if constexpr (sized_traversal_range<Range_>)
+			{
+				//sizedの場合、0層要素数は固定値で得られる。
+				//まあ極めて稀に要素取得失敗などで変動する可能性はあるが、まずありえないので、
+				//ここでバッファを予め確保しておく。
+				ElementListRef buf{ &res, 0_layer, &bufs[0_layer] };
+				buf.Reserve((BindexType)range.GetSize(0_layer));
+			}
 			range.SetTravLayer(maxlayer);
 			auto t = std::forward<Range_>(range).begin();
 			for (auto& n : nodes) for (auto& nn : n) nn.Init(t);
 			auto ref = res.GetTopElement();
-			Exec_rec(b, res, t, 0_layer, maxlayer, ref, bufs, nodes);
+			Exec_rec(b, std::true_type{}, res, t, 0_layer, maxlayer, ref, bufs, nodes);
 			Exec_eval(b, -1_layer, ref, src, res.GetPlaceholdersIn(-1_layer), nodes[0]);
 			for (auto [layer, buf] : views::Enumerate(bufs)) buf.Destruct(&res, (LayerType)layer);
 		}
@@ -695,6 +703,7 @@ public:
 				global.order.resize(size_);
 				global.end = size;
 			}
+			//multi threadの場合、予めバッファをReserveしても効果がないか、下手すると悪化傾向にあったので、やめる。
 
 			std::vector<std::thread> threads;
 			for (int32_t i = 0; i < nth; ++i)

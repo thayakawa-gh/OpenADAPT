@@ -349,6 +349,14 @@ public:
 	const_iterator end() const requires (!IsNonConst) { return cend(); }
 
 private:
+	//Extractorが使う。
+	//未初期化の要素1個分を確保する。
+	//下層要素分のElementBlockだけはちゃんと初期化される。
+	void PseudoPush()
+	{
+		m_elements->PseudoPush(GetHierarchy(), GetLayer());
+	}
+
 	//Extractorが使う。ユーザーが使うべきではない。
 	//自身は空のリストであるという前提で、bufの要素を全てmoveしつつ構築する。
 	//下層要素も含めて移動する。
@@ -358,6 +366,11 @@ private:
 		assert(GetSize() == 0);
 		m_elements->CreateElementsFrom(GetHierarchy(), GetLayer(), std::move(*buf.m_elements));
 	}
+	void SwapElementBlock(ElementListRef_impl& buf) const
+	{
+		assert(GetSize() == 0);
+		m_elements->Swap(*buf.m_elements);
+	}
 	//Extractorが使う。ユーザーが使うべきではない。
 	//ExtractorによってReserveされた領域の要素を書き込んだ後、
 	//その時点ではサイズが0のままになっているため、
@@ -366,6 +379,12 @@ private:
 	void RewriteSize(BindexType size) const
 	{
 		m_elements->RewriteSize(GetHierarchy(), GetLayer(), size);
+	}
+	//emptyでも呼べる。
+	ElementRef Back_unsafe() const
+	{
+		Qualifier<char>* ptr = m_elements->End() - ElementBlock::GetBlockSize(GetHierarchy(), GetLayer());
+		return ElementRef(GetHierarchy(), GetLayer(), ptr);
 	}
 
 private:
@@ -695,8 +714,18 @@ private:
 		assert(layer == GetLayer());
 		ElementBlock::CopyFields(GetHierarchy(), layer, m_block, dst.m_block);
 	}
+	//Extractorが使う。ユーザーが使うべきではない。
+	//受け取った値を用いて、特定のフィールドをコピーコンストラクタを呼びつつ初期化する。
+	template <FieldType Type, class T>
+	void ConstructFieldFrom(const RttiPlaceholder& ph, const T& v) const
+		requires IsNonConst
+	{
+		using ValueType = typename DFieldInfo::template TagTypeToValueType<Type>;
+		auto* ptr = std::launder(reinterpret_cast<Qualifier<ValueType>*>(m_block + ph.GetPtrOffset()));
+		new (ptr) ValueType(v);
+	}
 
-private:
+
 	Qualifier<ElementBlock>* GetLowerBlock() const
 	{
 		if constexpr (HasStaticLayer && HasFixedMaxLayer)
