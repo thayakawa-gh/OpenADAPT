@@ -137,7 +137,7 @@ public:
 		using is = std::make_index_sequence<sizeof...(ArgTypes)>;
 		if constexpr (FuncShortCircuitApplicable<Func, NodeImpl, Args...>)
 		{
-			Exec_sc_with_buf(is{}, ni, args...);
+			Exec_sc_with_buf(is{}, buf, ni, args...);
 		}
 		else
 		{
@@ -558,7 +558,7 @@ struct RttiFuncNode_body<Container_, TypeList<Nodes...>,
 
 private:
 	template <size_t N, class ...Args>
-	void Init_impl(Args&& ...args)
+	void Init_impl([[maybe_unused]] Args&& ...args)
 	{
 		if constexpr (N < sizeof...(Nodes))
 		{
@@ -707,7 +707,7 @@ struct RttiFuncNode : public detail::RttiMethods<RttiFuncNode<Container_>, std::
 	{
 		m_impl = std::unique_ptr<detail::RttiFuncNode_base<Container_>>(x.m_impl->Clone());
 	}
-	RttiFuncNode(RttiFuncNode&& x)//RttiFuncNodeの中身が一致するとは限らないので、noexceptにできない。
+	RttiFuncNode(RttiFuncNode&& x) noexcept
 	{
 		m_impl = std::move(x.m_impl);
 	}
@@ -718,9 +718,10 @@ struct RttiFuncNode : public detail::RttiMethods<RttiFuncNode<Container_>, std::
 		else m_impl = std::unique_ptr<detail::RttiFuncNode_base<Container_>>(x.m_impl->Clone());
 		return *this;
 	}
-	RttiFuncNode& operator=(RttiFuncNode&& x)
+	RttiFuncNode& operator=(RttiFuncNode&& x) noexcept
 	{
 		m_impl = std::move(x.m_impl);
+		m_init_flag = x.m_init_flag;
 		return *this;
 	}
 

@@ -59,7 +59,7 @@ public:
 
 private:
 	template <size_t I, class ...Args>
-	void Init_impl(const Args& ...args)
+	void Init_impl([[maybe_unused]] const Args& ...args)
 	{
 		if constexpr (any_node<GetType_t<I, Nodes...>>)
 			std::get<I>(m_keys).Init(args...);

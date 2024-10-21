@@ -84,7 +84,7 @@ struct CttiFuncNode<Func, TypeList<Nodes...>, Container_, std::index_sequence<In
 
 private:
 	template <size_t N, class ...Args>
-	void Init_impl(Args&& ...args)
+	void Init_impl([[maybe_unused]] Args&& ...args)
 	{
 		if constexpr (N < sizeof...(Nodes))
 		{
@@ -567,7 +567,7 @@ auto MakeRttiFuncNodeFromConstant(Func&& f, Constant&& c)
 }
 
 //任意のノードを強制的にRttiFuncNodeでラップする。
-//ただし、既にRttiFuncNodeであれば何もしなくて良い。
+//ただし、既にRttiFuncNodeであれば何もせず引数をそのまま返す。
 template <node_or_placeholder NPs>
 auto ConvertToRttiFuncNode(NPs&& nps)
 {

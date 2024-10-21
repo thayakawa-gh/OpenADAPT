@@ -14,6 +14,7 @@
 #include <OpenADAPT/Evaluator/FieldNode.h>
 #include <OpenADAPT/Evaluator/FuncNode.h>
 #include <OpenADAPT/Evaluator/LayerFuncNode.h>
+#include <OpenADAPT/Evaluator/TryJoinNode.h>
 #include <OpenADAPT/Evaluator/Function.h>
 
 #include <OpenADAPT/Range/Evaluate.h>

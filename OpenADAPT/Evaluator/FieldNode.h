@@ -572,6 +572,7 @@ struct RttiFieldNode : public detail::RttiMethods<RttiFieldNode<Placeholder_>, s
 
 	RttiFieldNode()
 	{}
+	//depthはph.outer(0)のようにouter指定する場合に、その深度が与えられる。
 	RttiFieldNode(const Placeholder& ph, DepthType depth = -1)
 		: m_placeholder(ph), m_outer_traverser(nullptr), m_depth(depth)
 	{}
@@ -624,6 +625,8 @@ public:
 	}
 	LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli) const
 	{
+		//depthが-1ということは、これはouter fieldではない。
+		//この関数は
 		if (m_depth != -1) return eli;
 		auto res = eli;
 		res.template Enable<Rank>();

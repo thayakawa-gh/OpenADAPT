@@ -23,13 +23,13 @@ endif()
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 
-add_custom_target(COPY_FILES ALL DEPENDS ${PROJECT_NAME})
-add_custom_command(
-	TARGET COPY_FILES POST_BUILD
+add_custom_target(COPY_FILES
 	COMMAND ${CMAKE_COMMAND} -E copy
-	${CMAKE_CURRENT_SOURCE_DIR}/OpenADAPT-student_list.txt
-	${CMAKE_CURRENT_BINARY_DIR}/)
-	
+	"${CMAKE_CURRENT_SOURCE_DIR}/OpenADAPT-student_list.txt"
+	"${CMAKE_CURRENT_BINARY_DIR}/")
+add_dependencies(${PROJECT_NAME} COPY_FILES)
+
+
 set_target_properties(
 	${PROJECT_NAME}
 	PROPERTIES

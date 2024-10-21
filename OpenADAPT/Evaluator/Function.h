@@ -578,11 +578,21 @@ struct IfFunction
 		return a ? b : c;
 	}
 	template <class NodeImpl, class ...Args>
-	decltype(auto) ShortCircuit(const NodeImpl& nodeimpl, Args&& ...args) const
+	decltype(auto) ShortCircuit(const NodeImpl& n, Args&& ...args) const
 	{
-		return nodeimpl.template GetArg<0>(args...) ?
-			nodeimpl.template GetArg<1>(args...) :
-			nodeimpl.template GetArg<2>(args...);
+		//Rttiで実行するとき、complex+arithmeticの組み合わせで型変換に関する警告が出て鬱陶しいので、
+		//回避するために明示的なキャストを行う。
+		using T1 = std::remove_cvref_t<decltype(n.template GetArg<1>(args...))>;
+		using T2 = std::remove_cvref_t<decltype(n.template GetArg<2>(args...))>;
+		if constexpr (IsComplex_v<T1> && std::is_arithmetic_v<T2>)
+			return n.template GetArg<0>(args...) ? n.template GetArg<1>(args...) :
+												   T1(static_cast<typename T1::value_type>(n.template GetArg<2>(args...)));
+		else if constexpr (std::is_arithmetic_v<T1> && IsComplex_v<T2>)
+			return n.template GetArg<0>(args...) ? T2(static_cast<typename T2::value_type>(n.template GetArg<1>(args...))) :
+												   n.template GetArg<2>(args...);
+		else
+			return n.template GetArg<0>(args...) ? n.template GetArg<1>(args...) :
+												   n.template GetArg<2>(args...);
 	}
 };
 template <class Arg1, class Arg2, class Arg3>

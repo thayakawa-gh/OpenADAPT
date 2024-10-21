@@ -22,6 +22,14 @@ class DJoinedRange;
 template <template <class> class Qualifier, container_simplex ...IContainers>
 class DJoinedRange_prompt;
 
+namespace eval::detail
+{
+template <RankType Rank, class Container_>
+class CttiTryJoinNode;
+template <RankType Rank, joined_container Container>
+CttiTryJoinNode<Rank, Container> MakeTryJoinNode(const Container& c);
+}
+
 template <RankType MaxRank>
 class DJointLayerInfo
 {
@@ -244,6 +252,29 @@ public:
 		return std::get<Rank>(m_containers)->GetFieldName(ph.Derank());
 	}
 
+	template <RankType Rank>
+	bool TryJoin(const Bpos& bpos) const
+	{
+		//auto& s = this->GetContainer<Rank>();
+		//auto& abuf = m_access_bufs[Rank];
+		LayerType ujoint = this->template GetUJointLayer<Rank>();
+		if constexpr (Rank == 0_rank) return true;
+		else
+		{
+			if (!TryJoin<Rank - 1_rank>(bpos)) return false;
+			//ujointが-1の場合、総当たり連結なので、joinする必要はない。
+			if (ujoint == -1_layer) return true;
+			else
+			{
+				auto& j = this->template GetJoint<Rank>();
+				auto& res = m_find_bufs[Rank];
+				return j->Find(*this, bpos, res);
+			}
+		}
+	}
+	template <RankType Rank>
+	bool TryJoin(RankConstant<Rank>, const Bpos& bpos) const { return TryJoin<Rank>(bpos); }
+
 private:
 	//TargetRankの要素を検索する。
 	template <RankType Rank, RankType TargetRank, class Placeholder>
@@ -412,6 +443,13 @@ public:
 	BindexType GetSize() const
 	{
 		return GetContainer<0>().GetSize();
+	}
+
+
+	template <RankType Rank>
+	auto tryjoin(RankConstant<Rank>) const
+	{
+		return eval::detail::MakeTryJoinNode<Rank>(*this);
 	}
 
 	template <RankType Rank>

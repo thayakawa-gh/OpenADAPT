@@ -370,3 +370,55 @@ TEST_F(Aggregator, DJoinedTable_Extract)
 
 	TestExtract(jt, std::make_tuple(grade, class_, number, name, exam1, math, jpn, eng, sci, soc));
 }
+
+
+
+TEST_F(Aggregator, TryJoinInEvaluator)
+{
+	auto [number, name, dob] = m_dtree.GetPlaceholders("number", "name", "date_of_birth");
+	auto dtree_even = [this]()
+	{
+		//0層要素。学年とクラス。
+		auto [grade, class_] = m_dtree.GetPlaceholders("grade", "class");
+		//1層要素。出席番号、名前、生年月日。
+		auto [number, name, dob] = m_dtree.GetPlaceholders("number", "name", "date_of_birth");
+		//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
+		auto [exam, math, jpn, eng, sci, soc] = m_dtree.GetPlaceholders("exam", "math", "japanese", "english", "science", "social");
+
+		return m_dtree | Filter(number % 2 == 0) | Extract(grade.named("grade"), class_.named("class"),
+														   number.named("number"), name.named("name"),
+														   math.named("math"), jpn.named("jpn"), eng.named("eng"));
+	}();
+	auto hash = [&dtree_even]()
+	{
+		auto [number, name] = dtree_even.GetPlaceholders("number", "name");
+		return dtree_even | MakeHashtable(number.i16(), name.str());
+	}();
+	auto jt = Join(m_dtree, 1_layer, 1_layer, dtree_even);
+	auto [jgrade, jclass, jnumber, jname] = jt.GetPlaceholders<0>("grade", "class", "number", "name");
+	auto jnumber2 = jt.GetPlaceholder<1>("number");
+	jt.SetKeyJoint<1>(std::move(hash), jnumber, jname);
+	auto extr = jt | Extract(jnumber, if_(jt.tryjoin(1_rank), jnumber2, (int16_t)-1));
+
+	auto [orgnumber, ifnumber] = extr.GetPlaceholders("fld0", "fld1");
+	auto range = extr.GetRange(1);
+	EXPECT_EQ(extr.GetSize(0_layer), 4);
+	EXPECT_EQ(extr.GetSize(1_layer), 120);
+	size_t oddcount = 0;
+	size_t evencount = 0;
+	for (const auto& trav : range)
+	{
+		if (trav[orgnumber].i16() % 2 == 0)
+		{
+			EXPECT_EQ(trav[orgnumber].i16(), trav[ifnumber].i16());
+			++evencount;
+		}
+		else
+		{
+			EXPECT_EQ(trav[ifnumber].i16(), -1);
+			++oddcount;
+		}
+	}
+	EXPECT_EQ(oddcount, 60);
+	EXPECT_EQ(evencount, 60);
+}
