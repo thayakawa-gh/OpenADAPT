@@ -9,12 +9,9 @@ namespace adapt
 namespace eval
 {
 
-namespace detail
-{
-
 //
 template <RankType Rank, class Container_>
-class CttiTryJoinNode : public CttiMethods<CttiTryJoinNode<Rank, Container_>, std::add_const_t>
+class CttiTryJoinNode : public detail::CttiMethods<CttiTryJoinNode<Rank, Container_>, std::add_const_t>
 {
 public:
 
@@ -88,6 +85,9 @@ private:
 
 	const Container* m_container;
 };
+
+namespace detail
+{
 
 template <RankType Rank, joined_container Container>
 CttiTryJoinNode<Rank, Container> MakeTryJoinNode(const Container& c)
