@@ -47,7 +47,7 @@ struct Class
 class Aggregator : public ::testing::Test
 {
 	using TopLayer = NamedTuple<Named<"school", std::string>>;
-	using Layer0 = NamedTuple<Named<"grade", int8_t>, Named<"class", int8_t>>;
+	using Layer0 = NamedTuple<Named<"grade", int8_t>, Named<"class_", int8_t>>;
 	using Layer1 = NamedTuple<Named<"number", int16_t>, Named<"name", std::string>, Named<"date_of_birth", int32_t>, Named<"phone", std::string>, Named<"email", std::string>>;
 	using Layer2 = NamedTuple<Named<"exam", int8_t>, Named<"math", int32_t>, Named<"japanese", int32_t>, Named<"english", int32_t>, Named<"science", int32_t>, Named<"social", int32_t>>;
 
@@ -123,7 +123,7 @@ class Aggregator : public ::testing::Test
 		{
 			YAML::Node nc;
 			nc["grade"] = (int32_t)c.m_grade;
-			nc["class"] = (int32_t)c.m_class;
+			nc["class_"] = (int32_t)c.m_class;
 			auto nslist = nc["students"];
 			for (auto& s : c.m_students)
 			{
@@ -162,7 +162,7 @@ class Aggregator : public ::testing::Test
 		for (auto [class_, c] : views::Zip(m_class, cs))
 		{
 			class_.m_grade = c["grade"].as<int8_t>();
-			class_.m_class = c["class"].as<int8_t>();
+			class_.m_class = c["class_"].as<int8_t>();
 			YAML::Node ss = c["students"];
 			class_.m_students.resize(ss.size());
 			for (auto [stu, s] : views::Zip(class_.m_students, ss))
@@ -196,7 +196,7 @@ class Aggregator : public ::testing::Test
 		using enum FieldType;
 		if constexpr (d_tree<Tree>)
 		{
-			t.AddLayer({ { "grade", I08 }, { "class", I08 } });
+			t.AddLayer({ { "grade", I08 }, { "class_", I08 } });
 			t.AddLayer({ { "number", I16 }, { "name", Str }, { "date_of_birth", I32 },
 					     { "phone", Str }, { "email", Str } });
 			t.AddLayer({ { "exam", I08 },  {"math", I32}, {"japanese", I32}, {"english", I32}, {"science", I32}, {"social", I32}});
@@ -230,7 +230,7 @@ class Aggregator : public ::testing::Test
 		using enum FieldType;
 		if constexpr (d_table<Table>)
 		{
-			t.SetLayer(0, { { "grade", I08 }, { "class", I08 },
+			t.SetLayer(0, { { "grade", I08 }, { "class_", I08 },
 						 { "number", I16 }, { "name", Str }, { "date_of_birth", I32 },
 						 { "phone", Str }, { "email", Str },
 						 { "exam", I08 },  {"math", I32}, {"japanese", I32}, {"english", I32}, {"science", I32}, {"social", I32} });

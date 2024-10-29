@@ -11,7 +11,7 @@ TEST_F(Aggregator, UserFunc_dtree)
 	//auto hypot2 = UserFunc(my_hypot);
 
 	//0層要素。学年とクラス。
-	//auto [grade, class_] = m_dtree.GetPlaceholders("grade", "class");
+	//auto [grade, class_] = m_dtree.GetPlaceholders("grade", "class_");
 	//1層要素。出席番号、名前、生年月日。
 	//auto [number, name, dob] = m_dtree.GetPlaceholders("number", "name", "date_of_birth");
 	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
@@ -28,7 +28,7 @@ TEST_F(Aggregator, UserFunc_stree)
 	auto hypot2 = UserFunc(my_hypot);
 
 	//0層要素。学年とクラス。
-	//auto [grade, class_] = m_stree.GetPlaceholders("grade"_fld, "class"_fld);
+	//auto [grade, class_] = m_stree.GetPlaceholders("grade"_fld, "class_"_fld);
 	//1層要素。出席番号、名前、生年月日。
 	//auto [number, name, dob] = m_stree.GetPlaceholders("number"_fld, "name"_fld, "date_of_birth"_fld);
 	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。

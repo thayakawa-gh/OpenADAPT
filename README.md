@@ -40,7 +40,7 @@ The test and example codes are built by adding `-DBUILD_TEST=ON` and `-DBUILD_EX
 	using enum adapt::FieldType;
 	adapt::DTree t;
 	t.SetTopLayer({ { "school", Str } });
-	t.AddLayer({ { "grade", I08 }, { "class", I08 } });
+	t.AddLayer({ { "grade", I08 }, { "class_", I08 } });
 	t.AddLayer({ { "number", I16 }, { "name", Str } });
 	t.AddLayer({ { "exam", I08 },  {"jpn", I32}, {"math", I32}, {"eng", I32}, {"sci", I32}, {"soc", I32 } });
 	t.VerifyStructure();

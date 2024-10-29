@@ -94,7 +94,7 @@ void TestContainer(Container& tree, const std::vector<Class>& cls,
 TEST_F(Aggregator, DTree_Container)
 {
 	//0層要素。学年とクラス。
-	auto [grade, class_] = m_dtree.GetPlaceholders("grade", "class");
+	auto [grade, class_] = m_dtree.GetPlaceholders("grade", "class_");
 	//1層要素。出席番号、名前、生年月日。
 	auto [number, name, dob] = m_dtree.GetPlaceholders("number", "name", "date_of_birth");
 	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
@@ -108,7 +108,7 @@ TEST_F(Aggregator, DTree_Container)
 TEST_F(Aggregator, STree_Container)
 {
 	//0層要素。学年とクラス。
-	auto [grade, class_] = m_stree.GetPlaceholders<"grade", "class">();
+	auto [grade, class_] = m_stree.GetPlaceholders<"grade", "class_">();
 	//1層要素。出席番号、名前、生年月日。
 	auto [number, name, dob] = m_stree.GetPlaceholders<"number", "name", "date_of_birth">();
 	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。

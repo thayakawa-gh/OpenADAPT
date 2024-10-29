@@ -224,7 +224,7 @@ void TestEvaluate(Container& tree, const std::vector<Class>& cls,
 TEST_F(Aggregator, DTree_Evaluate)
 {
 	//0層要素。学年とクラス。
-	auto [grade, class_] = m_dtree.GetPlaceholders("grade", "class");
+	auto [grade, class_] = m_dtree.GetPlaceholders("grade", "class_");
 	//1層要素。出席番号、名前、生年月日。
 	auto [number, name, dob] = m_dtree.GetPlaceholders("number", "name", "date_of_birth");
 	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
@@ -240,7 +240,7 @@ TEST_F(Aggregator, STree_Evaluate)
 {
 	//0層要素。学年とクラス。
 	//auto g = m_stree.GetPlaceholder<0, 0>();
-	auto [grade, class_] = m_stree.GetPlaceholders<"grade", "class">();
+	auto [grade, class_] = m_stree.GetPlaceholders<"grade", "class_">();
 	//1層要素。出席番号、名前、生年月日。
 	auto [number, name, dob] = m_stree.GetPlaceholders<"number", "name", "date_of_birth">();
 	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
@@ -259,14 +259,14 @@ TEST_F(Aggregator, STree_Evaluate)
 
 TEST_F(Aggregator, DJoinedContainer_Evaluate_0)
 {
-	auto a = m_dtree.GetPlaceholder("class");//MakeHashmapはキーの型を特定する必要があるため、
+	auto a = m_dtree.GetPlaceholder("class_");//MakeHashmapはキーの型を特定する必要があるため、
 	auto b = m_dtree.GetPlaceholder("grade");//これらのPlaceholderは予め型情報を与えなければならない。
 	auto hash = m_dtree | MakeHashtable(a.i08(), b.i08());
 
 	auto jtree = Join(m_dtree, 0_layer, 0_layer, m_dtree);
 	//0層要素。学年とクラス。
-	auto [gg, cc] = jtree.GetPlaceholders<0>("grade"_fld, "class"_fld);
-	auto [grade, class_] = jtree.GetPlaceholders<1>("grade"_fld, "class"_fld);
+	auto [gg, cc] = jtree.GetPlaceholders<0>("grade"_fld, "class_"_fld);
+	auto [grade, class_] = jtree.GetPlaceholders<1>("grade"_fld, "class_"_fld);
 	//1層要素。出席番号、名前、生年月日。
 	auto [number, name, dob] = jtree.GetPlaceholders<1>("number"_fld, "name"_fld, "date_of_birth"_fld);
 	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
@@ -289,7 +289,7 @@ TEST_F(Aggregator, DJoinedContainer_Evaluate_1)
 
 	auto jtree = Join(m_dtree, 1_layer, 1_layer, m_dtree);
 	//0層要素。学年とクラス。
-	auto [grade, class_] = jtree.GetPlaceholders<0>("grade"_fld, "class"_fld);
+	auto [grade, class_] = jtree.GetPlaceholders<0>("grade"_fld, "class_"_fld);
 	//1層要素。出席番号、名前、生年月日。
 	auto [nu, na] = jtree.GetPlaceholders<0>("number"_fld, "name"_fld);
 	auto [number, name, dob] = jtree.GetPlaceholders<1>("number"_fld, "name"_fld, "date_of_birth"_fld);
@@ -314,7 +314,7 @@ TEST_F(Aggregator, DJoinedContainer_Evaluate_2)
 
 	auto jtree = Join(m_dtree, 2_layer, 2_layer, m_dtree);
 	//0層要素。学年とクラス。
-	auto [grade, class_] = jtree.GetPlaceholders<0>("grade"_fld, "class"_fld);
+	auto [grade, class_] = jtree.GetPlaceholders<0>("grade"_fld, "class_"_fld);
 	//1層要素。出席番号、名前、生年月日。
 	auto [nu, na] = jtree.GetPlaceholders<0>("number"_fld, "name"_fld);
 	auto [number, name, dob] = jtree.GetPlaceholders<1>("number"_fld, "name"_fld, "date_of_birth"_fld);
@@ -333,7 +333,7 @@ TEST_F(Aggregator, DJoinedContainer_Evaluate_2)
 
 TEST_F(Aggregator, DJoinedContainer_Evaluate_0_1)
 {
-	auto c = m_dtree.GetPlaceholder("class").i08();//MakeHashmapはキーの型を特定する必要があるため、
+	auto c = m_dtree.GetPlaceholder("class_").i08();//MakeHashmapはキーの型を特定する必要があるため、
 	auto g = m_dtree.GetPlaceholder("grade").i08();//これらのPlaceholderは予め型情報を与えなければならない。
 	auto hash1 = m_dtree | MakeHashtable(c, g);
 
@@ -343,7 +343,7 @@ TEST_F(Aggregator, DJoinedContainer_Evaluate_0_1)
 
 	auto jtree = Join(m_dtree, 0_layer, 0_layer, m_dtree, 1_layer, 1_layer, m_dtree);
 	//0層要素。学年とクラス。
-	auto [grade, class_] = jtree.GetPlaceholders<0>("grade"_fld, "class"_fld);
+	auto [grade, class_] = jtree.GetPlaceholders<0>("grade"_fld, "class_"_fld);
 	//1層要素。出席番号、名前、生年月日。
 	auto [number, name, dob] = jtree.GetPlaceholders<1>("number"_fld, "name"_fld, "date_of_birth"_fld);
 	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
@@ -370,7 +370,7 @@ TEST_F(Aggregator, DJoinedContainer_Evaluate_1_2)
 
 	auto jtree = Join(m_dtree, 1_layer, 1_layer, m_dtree, 2_layer, 2_layer, m_dtree);
 	//0層要素。学年とクラス。
-	auto [grade, class_] = jtree.GetPlaceholders<0>("grade"_fld, "class"_fld);
+	auto [grade, class_] = jtree.GetPlaceholders<0>("grade"_fld, "class_"_fld);
 	//1層要素。出席番号、名前、生年月日。
 	auto [nu, na] = jtree.GetPlaceholders<0>("number"_fld, "name"_fld);
 	auto [number, name, dob] = jtree.GetPlaceholders<1>("number"_fld, "name"_fld, "date_of_birth"_fld);
@@ -419,7 +419,7 @@ TEST_F(Aggregator, STable_Evaluate)
 {
 	const auto& t = m_stable;
 	auto [class_, name, number, exam, math, jpn, eng, sci, soc] =
-		t.GetPlaceholders("class"_fld, "name"_fld, "number"_fld,
+		t.GetPlaceholders("class_"_fld, "name"_fld, "number"_fld,
 			"exam"_fld, "math"_fld, "japanese"_fld, "english"_fld, "science"_fld, "social"_fld);
 	TestEvaluate(t, m_class, std::make_tuple(class_, name, number, exam, math, jpn, eng, sci, soc));
 }
@@ -427,7 +427,7 @@ TEST_F(Aggregator, DTable_Evaluate)
 {
 	const auto& t = m_dtable;
 	auto [class_, name, number, exam, math, jpn, eng, sci, soc] =
-		t.GetPlaceholders("class", "name", "number",
+		t.GetPlaceholders("class_", "name", "number",
 			"exam", "math", "japanese", "english", "science", "social");
 	TestEvaluate(t, m_class, std::make_tuple(class_, name, number, exam, math, jpn, eng, sci, soc));
 }
@@ -443,7 +443,7 @@ TEST_F(Aggregator, DJoinedTable_Evaluate)
 	}();
 
 	auto jtree = Join(t, 0_layer, 0_layer, t);
-	auto [grade, class_, number, name, exam0] = jtree.GetPlaceholders<0>("grade"_fld, "class"_fld, "number"_fld, "name"_fld, "exam"_fld);
+	auto [grade, class_, number, name, exam0] = jtree.GetPlaceholders<0>("grade"_fld, "class_"_fld, "number"_fld, "name"_fld, "exam"_fld);
 	auto [exam1, math, jpn, eng, sci, soc] = jtree.GetPlaceholders<1>("exam"_fld, "math"_fld, "japanese"_fld, "english"_fld, "science"_fld, "social"_fld);
 
 	jtree.SetKeyJoint<1>(std::move(hash), number, name, exam0);

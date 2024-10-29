@@ -167,7 +167,7 @@ void TestTraverser(Container& tree, const std::vector<Class>& cls,
 
 TEST_F(Aggregator, DTree_Traverser)
 {
-	auto class_ = m_dtree.GetPlaceholder("class");
+	auto class_ = m_dtree.GetPlaceholder("class_");
 	auto name = m_dtree.GetPlaceholder("name");
 	auto math = m_dtree.GetPlaceholder("math");
 
@@ -178,7 +178,7 @@ TEST_F(Aggregator, DTree_Traverser)
 }
 TEST_F(Aggregator, STree_Traverser)
 {
-	auto class_ = m_stree.GetPlaceholder("class"_fld);
+	auto class_ = m_stree.GetPlaceholder("class_"_fld);
 	auto name = m_stree.GetPlaceholder("name"_fld);
 	auto math = m_stree.GetPlaceholder("math"_fld);
 	static_assert(ctti_placeholder<decltype(class_)>);
@@ -199,7 +199,7 @@ TEST_F(Aggregator, DJoinedContainer_Traverser)
 	auto jtree = Join(m_dtree, 1_layer, 1_layer, m_dtree);
 	//0層要素。学年とクラス。
 	auto [nu, na] = jtree.GetPlaceholders<0>("number"_fld, "name"_fld);//検索用
-	auto class_ = jtree.GetPlaceholder<1>("class"_fld);//値取得用。
+	auto class_ = jtree.GetPlaceholder<1>("class_"_fld);//値取得用。
 	//1層要素。出席番号、名前、生年月日。
 	auto name = jtree.GetPlaceholder<1>("name"_fld);
 	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
@@ -293,7 +293,7 @@ TEST_F(Aggregator, Traverse_dtable)
 {
 	auto& t = m_dtable;
 
-	auto [class_, name, math] = t.GetPlaceholders("class", "name", "math");
+	auto [class_, name, math] = t.GetPlaceholders("class_", "name", "math");
 	static_assert(adapt::container_simplex<adapt::DTable>);
 	TestTraverser(t, m_class,
 		std::make_tuple(class_, name, math));
@@ -302,7 +302,7 @@ TEST_F(Aggregator, Traverse_stable)
 {
 	auto& t = m_stable;
 
-	auto [class_, name, math] = t.GetPlaceholders("class"_fld, "name"_fld, "math"_fld);
+	auto [class_, name, math] = t.GetPlaceholders("class_"_fld, "name"_fld, "math"_fld);
 	TestTraverser(t, m_class,
 		std::make_tuple(class_, name, math));
 }

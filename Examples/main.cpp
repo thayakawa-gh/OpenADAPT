@@ -20,7 +20,7 @@ adapt::DTree MakeDTree()
 	using enum adapt::FieldType;
 	adapt::DTree t;
 	t.SetTopLayer({ { "school", Str } });//-1層のフィールド。学校名。-1層は不要なら設定しなくても良い。
-	t.AddLayer({ { "grade", I08 }, { "class", I08 } });//0層のフィールド。学年とクラス（注1）。
+	t.AddLayer({ { "grade", I08 }, { "class_", I08 } });//0層のフィールド。学年とクラス（注1）。
 	t.AddLayer({ { "number", I16 }, { "name", Str } });//1層のフィールド。生徒の出席番号と名前（注1）。
 	t.AddLayer({ { "exam", I08 },  {"jpn", I32}, {"math", I32}, {"eng", I32}, {"sci", I32}, {"soc", I32 } });//2層のフィールド。五教科の試験成績（注1）。
 	t.VerifyStructure();
@@ -38,7 +38,7 @@ auto MakeSTree()
 	using adapt::NamedTuple;
 	using adapt::Named;
 	using TopLayer = NamedTuple<Named<"school", std::string>>;
-	using Layer0 = NamedTuple<Named<"grade", int8_t>, Named<"class", int8_t>>;
+	using Layer0 = NamedTuple<Named<"grade", int8_t>, Named<"class_", int8_t>>;
 	using Layer1 = NamedTuple<Named<"number", int16_t>, Named<"name", std::string>>;
 	using Layer2 = NamedTuple<Named<"exam", int8_t>, Named<"jpn", int32_t>, Named<"math", int32_t>, Named<"eng", int32_t>, Named<"sci", int32_t>, Named<"soc", int32_t>>;
 	using STree_ = adapt::STree<TopLayer, Layer0, Layer1, Layer2>;
@@ -54,7 +54,7 @@ void StoreData(Tree& t)
 	t.SetTopFields("胴差県立散布流中学校");//-1層のフィールドを代入する。
 
 	t.Reserve(1);//1クラス分のスペースを用意（注2）。std::vector::reserveみたいなもの。
-	t.Push((int8_t)3, (int8_t)1);//3年1組。それぞれ"grade"と"class"の値として収まる。std::vector::push_backみたいなもの。
+	t.Push((int8_t)3, (int8_t)1);//3年1組。それぞれ"grade"と"class_"の値として収まる。std::vector::push_backみたいなもの。
 
 	//DTreeの場合、Push_unsafeを使うと型のチェックや分岐をしなくなるため、Pushよりも動作が高速になる。
 	//ただし、DTreeの保持する型と厳密に一致している必要がある。例えばI16のフィールドに代入するときは正しくint16_t型で与えなければならない。
