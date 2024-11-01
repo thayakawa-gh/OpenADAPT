@@ -42,6 +42,8 @@ void TestEvaluate(Container& tree, const std::vector<Class>& cls,
 	auto rank_math_class = count2(exam == exam.o(0_depth) && math > math.o(0_depth));//各試験の数学クラス内順位。自分より好成績な生徒の人数を数えている。o(0)はouter(0)の短縮表記。
 	auto rank_math_all = count3(exam == exam.o(0_depth) && math > math.o(0_depth));//各試験の学年順位。数える範囲がクラス内ではなく学年全体になる。
 	auto mean_max = mean(cast_f32(greatest(total_score)));
+	auto sum_math_over60 = sum_if(math, math > 60);
+	auto mean_math_engover60_2 = mean_if2(cast_f32(math), sum(eng) >=240);
 	//Cttiの場合はRttiへの変換テスト。Rttiの場合はTypedへの変換テスト。
 	auto type_test1_total_score = [&math, &jpn, &eng, &sci, &soc]()
 	{
@@ -67,6 +69,8 @@ void TestEvaluate(Container& tree, const std::vector<Class>& cls,
 	auto rank_math_class_s = rank_math_class;//各試験の数学クラス内順位。自分より好成績な生徒の人数を数えている。o(0)はouter(0)の短縮表記。
 	auto rank_math_all_s = rank_math_all;//各試験の学年順位。数える範囲がクラス内ではなく学年全体になる。
 	auto mean_max_s = mean_max;
+	auto sum_math_over60_s = sum_math_over60;
+	auto mean_math_engover60_2_s = mean_math_engover60_2;
 	auto type_test1_total_score_s = type_test1_total_score;
 	auto type_test2_total_score_s = type_test2_total_score;
 
@@ -77,10 +81,12 @@ void TestEvaluate(Container& tree, const std::vector<Class>& cls,
 	InitAll(t, num_name, total_score, all_400,
 			mean_math, mean_math_in_class, dev_math_in_class, dev_math,
 			is_best, num_stu_200, rank_math_class, rank_math_all, mean_max,
+			sum_math_over60, mean_math_engover60_2,
 			type_test1_total_score, type_test2_total_score);
 	InitAll(tree, bpos, num_name_s, total_score_s, all_400_s,
 			mean_math_s, mean_math_in_class_s, dev_math_in_class_s, dev_math_s,
 			is_best_s, num_stu_200_s, rank_math_class_s, rank_math_all_s, mean_max_s,
+			sum_math_over60_s, mean_math_engover60_2_s,
 			type_test1_total_score_s, type_test2_total_score_s);
 
 	if constexpr (IsAllCtti)
@@ -98,6 +104,8 @@ void TestEvaluate(Container& tree, const std::vector<Class>& cls,
 		static_assert(rank_math_class.GetLayer() == 2);
 		static_assert(rank_math_all.GetLayer() == 2);
 		static_assert(mean_max.GetLayer() == 0);
+		static_assert(sum_math_over60.GetLayer() == 1);
+		static_assert(mean_math_engover60_2.GetLayer() == 0);
 		EXPECT_EQ(type_test1_total_score.GetLayer(), 2);
 		EXPECT_EQ(type_test2_total_score.GetLayer(), 2);
 
@@ -113,6 +121,8 @@ void TestEvaluate(Container& tree, const std::vector<Class>& cls,
 		static_assert(std::is_same_v<typename decltype(rank_math_class)::RetType, int64_t>);
 		static_assert(std::is_same_v<typename decltype(rank_math_all)::RetType, int64_t>);
 		static_assert(std::is_same_v<typename decltype(mean_max)::RetType, float>);
+		static_assert(std::is_same_v<typename decltype(sum_math_over60)::RetType, int32_t>);
+		static_assert(std::is_same_v<typename decltype(mean_math_engover60_2)::RetType, float>);
 		static_assert(rtti_node<decltype(type_test1_total_score)>);
 		static_assert(rtti_node<decltype(type_test2_total_score)>);
 		EXPECT_EQ(type_test1_total_score.GetType(), FieldType::I32);
@@ -132,6 +142,8 @@ void TestEvaluate(Container& tree, const std::vector<Class>& cls,
 		EXPECT_EQ(rank_math_class.GetLayer(), 2);
 		EXPECT_EQ(rank_math_all.GetLayer(), 2);
 		EXPECT_EQ(mean_max.GetLayer(), 0);
+		EXPECT_EQ(sum_math_over60.GetLayer(), 1);
+		EXPECT_EQ(mean_math_engover60_2.GetLayer(), 0);
 		EXPECT_EQ(type_test1_total_score.GetLayer(), 2);
 		EXPECT_EQ(type_test2_total_score.GetLayer(), 2);
 
@@ -147,6 +159,8 @@ void TestEvaluate(Container& tree, const std::vector<Class>& cls,
 		EXPECT_EQ(rank_math_class.GetType(), FieldType::I64);
 		EXPECT_EQ(rank_math_all.GetType(), FieldType::I64);
 		EXPECT_EQ(mean_max.GetType(), FieldType::F32);
+		EXPECT_EQ(sum_math_over60.GetType(), FieldType::I32);
+		EXPECT_EQ(mean_math_engover60_2.GetType(), FieldType::F32);
 		static_assert(stat_type_node<decltype(type_test1_total_score)>);
 		static_assert(!ctti_node<decltype(type_test1_total_score)>);
 		static_assert(stat_type_node<decltype(type_test2_total_score)>);
@@ -194,6 +208,8 @@ void TestEvaluate(Container& tree, const std::vector<Class>& cls,
 				EXPECT_EQ(Evaluate_trav(Number<FieldType::I64>{}, t, rank_math_class), RankMathClass(c, r));
 				EXPECT_EQ(Evaluate_trav(Number<FieldType::I64>{}, t, rank_math_all), RankMathAll(cls, r));
 				EXPECT_EQ(Evaluate_trav(Number<FieldType::F32>{}, t, mean_max), MeanMax(c));
+				EXPECT_EQ(Evaluate_trav(Number<FieldType::I32>{}, t, sum_math_over60), SumMathOver60(s));
+				EXPECT_EQ(Evaluate_trav(Number<FieldType::F32>{}, t, mean_math_engover60_2), MeanMathEngOver60(c));
 				EXPECT_EQ(Evaluate_trav(Number<FieldType::I32>{}, t, type_test1_total_score), r.m_math + r.m_japanese + r.m_english + r.m_science + r.m_social);
 				EXPECT_EQ(Evaluate_trav(Number<FieldType::I32>{}, t, type_test2_total_score), r.m_math + r.m_japanese + r.m_english + r.m_science + r.m_social);
 
@@ -209,6 +225,8 @@ void TestEvaluate(Container& tree, const std::vector<Class>& cls,
 				EXPECT_EQ(Evaluate_cnt(Number<FieldType::I64>{}, tree, bpos, rank_math_class_s), RankMathClass(c, r));
 				EXPECT_EQ(Evaluate_cnt(Number<FieldType::I64>{}, tree, bpos, rank_math_all_s), RankMathAll(cls, r));
 				EXPECT_EQ(Evaluate_cnt(Number<FieldType::F32>{}, tree, bpos, mean_max_s), MeanMax(c));
+				EXPECT_EQ(Evaluate_cnt(Number<FieldType::I32>{}, tree, bpos, sum_math_over60_s), SumMathOver60(s));
+				EXPECT_EQ(Evaluate_cnt(Number<FieldType::F32>{}, tree, bpos, mean_math_engover60_2_s), MeanMathEngOver60(c));
 				EXPECT_EQ(Evaluate_cnt(Number<FieldType::I32>{}, tree, bpos, type_test1_total_score_s), r.m_math + r.m_japanese + r.m_english + r.m_science + r.m_social);
 				EXPECT_EQ(Evaluate_cnt(Number<FieldType::I32>{}, tree, bpos, type_test2_total_score_s), r.m_math + r.m_japanese + r.m_english + r.m_science + r.m_social);
 

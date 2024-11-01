@@ -160,7 +160,7 @@ struct CttiFuncNode;
 template <class Components>
 struct RttiFuncNode;
 
-template <class Func_, class Node_, RankType FixRank, class Depth, class Up>
+template <class Func_, class Node_, RankType FixRank, class Depth, class Up, class Cond = EmptyClass>
 struct CttiLayerFuncNode;
 
 }

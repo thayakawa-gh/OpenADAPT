@@ -411,4 +411,33 @@ inline int32_t Sum5Subjs(const Record& r)
 {
 	return r.m_math + r.m_japanese + r.m_english + r.m_science + r.m_social;
 }
+inline int32_t SumMathOver60(const Student& s)
+{
+	int32_t res = 0;
+	for (auto& r : s.m_records)
+	{
+		if (r.m_math > 60) res += r.m_math;
+	}
+	return res;
+}
+inline float MeanMathEngOver60(const Class& c)
+{
+	float res = 0;
+	size_t count = 0;
+	for (auto& s : c.m_students)
+	{
+		int32_t sum_eng = 0;
+		for (auto& r : s.m_records) sum_eng += r.m_english;
+		if (sum_eng >= 240)
+		{
+			for (auto& r : s.m_records)
+			{
+				res += (float)r.m_math;
+				++count;
+			}
+		}
+	}
+	return res / count;
+}
+
 #endif

@@ -17,6 +17,8 @@ struct Number
 	static constexpr Type value = I;
 };
 
+class EmptyClass {};
+
 //tuple_catは要素にrvalue referenceを含む場合に使えないらしい。
 //ので、代用品を用意しておく。
 namespace detail

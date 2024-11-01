@@ -57,15 +57,15 @@ struct SpMemFuncs
 	DeleteFunc m_delete = nullptr;
 };
 
-
-template <class DerivedNode, class Func, class Node, class Depth, class Up>
+template <class DerivedNode, class Func, class Node, class Depth, class Up, class Cond = EmptyClass>
 struct LayerFuncBase
 {
 	using Container = Node::Container;
 	using Traverser = Container::Traverser;
 	using ConstTraverser = Container::ConstTraverser;
 	using RetType = Func::RetType;
-	static constexpr bool IsRtti = rtti_node<Node>;
+	static constexpr bool HasCondition = !std::is_same_v<Cond, EmptyClass>;
+	static constexpr bool IsRtti = rtti_node<Node> || (HasCondition && rtti_node<Cond>);
 	static constexpr RankType MaxRank = Container::MaxRank;
 	static constexpr bool IsJoinedContainer = MaxRank > 0;
 
@@ -85,6 +85,11 @@ struct LayerFuncBase
 		//m_traverser = std::make_unique<Traverser>();
 		//->Rttiの方はここで確保するのが非常に難しいので、やっぱりmutableにして対処する。
 	}
+	template <class Node_, class Cond_>
+		requires std::is_same_v<std::remove_cvref_t<Node_>, Node>
+	LayerFuncBase(Node_&& node, Cond_&& cond, Up up)
+		: m_cond(std::forward<Cond_>(cond)), m_node(std::forward<Node_>(node)), m_up(up)
+	{}
 	~LayerFuncBase()
 	{
 		if (m_traverser) (*m_sp_func->m_delete)(m_traverser);
@@ -104,6 +109,7 @@ struct LayerFuncBase
 	{
 		//if (x.m_traverser != nullptr)
 		//	PrintWarning("The copy constructor of the CttiLayerFuncNode has been called, although the node had already been initialized.");
+		m_cond = x.m_cond;
 		m_node = x.m_node;
 		m_func = x.m_func;
 		if (x.m_traverser)
@@ -120,6 +126,7 @@ struct LayerFuncBase
 	}
 	LayerFuncBase& operator=(LayerFuncBase&& x) noexcept
 	{
+		m_cond = std::move(x.m_cond);
 		m_node = std::move(x.m_node);
 		m_func = std::move(x.m_func);
 		if (m_traverser) (*m_sp_func->m_delete)(m_traverser);
@@ -148,12 +155,21 @@ private:
 			LayerInfo<MaxRank> dflt(m_node.GetJointLayerArray());
 			for (DepthType d = 0; d <= m_depth; ++d)
 				if (dflt != m_node.GetLayerInfo(m_node.GetJointLayerArray(), d)) has_outer = true;
+			if constexpr (HasCondition)
+			{
+				//条件がある場合は、条件の深度も考慮する。
+				if (!has_outer)
+				{
+					for (DepthType d = 0; d <= m_depth; ++d)
+						if (dflt != m_cond.GetLayerInfo(m_cond.GetJointLayerArray(), d)) has_outer = true;
+				}
+			}
 			m_has_outer = has_outer;
 		}
-		auto trav = m_node.GetLayerInfo();
-		auto& cand = m_func.GetCand();
 		if (!m_has_outer)
 		{
+			auto trav = m_node.GetLayerInfo();
+			auto& cand = m_func.GetCand();
 			if constexpr (IsJoinedContainer)
 			{
 				//t.ResetJBpos(cand, trav);
@@ -213,6 +229,12 @@ private:
 			o.insert(o.end(), outer_t.begin(), outer_t.end());
 			o.push_back(std::tuple<const void*, const Bpos*, bool>{ &t, nullptr, false });
 			m_node.Init(*ptr, o);
+			if constexpr (HasCondition)
+			{
+				m_cond.Init(*ptr, o);
+				if (m_node.GetLayerInfo() < m_cond.GetLayerInfo())
+					throw InvalidArg("The condition layer is lower than the node layer.");
+			}
 		}
 
 		if constexpr (!Func::IsRaisingFunc) InitISFunc();
@@ -241,7 +263,14 @@ private:
 			o.reserve(1);
 			o.push_back(std::tuple<const void*, const Bpos*, bool>{ &s, bpos, true });
 			m_node.Init(*ptr, o);
+			if constexpr (HasCondition)
+			{
+				m_cond.Init(*ptr, o);
+				if (m_node.GetLayerInfo() < m_cond.GetLayerInfo())
+					throw InvalidArg("The condition layer is lower than the node layer.");
+			}
 		}
+
 
 		if constexpr (!Func::IsRaisingFunc) InitISFunc();
 	}
@@ -277,6 +306,7 @@ public:
 		m_sp_func = nullptr;
 		m_has_outer = {};
 		m_node.Init();
+		if constexpr (HasCondition) m_cond.Init();
 		m_func = {};
 	}
 
@@ -292,6 +322,7 @@ public:
 		auto no_outer = Node::GetLayerInfo(eli);
 		//inner scopeの中から、depthの一致するfieldの情報を取り出す。
 		auto outer = Node::GetLayerInfo(eli, GetDepth());
+		if constexpr (HasCondition) outer = std::max(outer, Cond::GetLayerInfo(eli, GetDepth()));
 		//上昇関数の上昇分。
 		if constexpr (Func::IsRaisingFunc) no_outer.Raise(Up{});
 		//これと通常のlayerを比較し、大きい方を返す。
@@ -302,6 +333,7 @@ public:
 		auto no_outer = m_node.GetLayerInfo(eli);
 		//inner scopeの中から、depthの一致するfieldの情報を取り出す。
 		auto outer = m_node.GetLayerInfo(eli, GetDepth());
+		if constexpr (HasCondition) outer = std::max(outer, m_cond.GetLayerInfo(eli, GetDepth()));
 		//上昇関数の上昇分。
 		if constexpr (Func::IsRaisingFunc) no_outer.Raise(m_up);
 		//これと通常のlayerを比較し、大きい方を返す。
@@ -309,11 +341,15 @@ public:
 	}
 	static constexpr LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli, DepthType depth) requires (!IsRtti)
 	{
-		return Node::GetLayerInfo(eli, depth);
+		auto outer = Node::GetLayerInfo(eli, depth);
+		if constexpr (HasCondition) outer = std::max(outer, Cond::GetLayerInfo(eli, depth));
+		return outer;
 	}
 	LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli, DepthType depth) const requires IsRtti
 	{
-		return m_node.GetLayerInfo(eli, depth);
+		auto outer = m_node.GetLayerInfo(eli, depth);
+		if constexpr (HasCondition) outer = std::max(outer, m_cond.GetLayerInfo(eli, depth));
+		return outer;
 	}
 
 	static constexpr LayerType GetLayer() requires (!IsRtti) { return GetLayerInfo().GetTravLayer(); }
@@ -365,20 +401,36 @@ protected:
 		//この場合、この階層関数そのものの処理をキャンセルする。
 		if (!b) throw NoElements();
 
+		[[maybe_unused]] auto eval_cond = []([[maybe_unused]] const Cond& cond, [[maybe_unused]] const Trav* trav)
+		{
+			if constexpr (HasCondition)
+			{
+				if constexpr (rtti_node<Cond>) return cond.Evaluate(*trav, Number<DFieldInfo::I08>{});
+				else return cond.Evaluate(*trav);
+			}
+		};
+		auto eval_node = [](const Node& node, const Trav* trav)
+		{
+			if constexpr (rtti_node<Node>) return node.Evaluate(*trav, Number<DFieldInfo::GetSameSizeTagType<typename Func::ArgType>()>{});
+			else return node.Evaluate(*trav);
+		};
 		if (!trav->IsEnd())
 		{
-			if constexpr (IsRtti)
-				m_func.First(m_node.Evaluate(*trav, Number<DFieldInfo::GetSameSizeTagType<typename Func::ArgType>()>{}), *trav);
+			if constexpr (HasCondition)
+			{
+				if (eval_cond(m_cond, trav))
+					m_func.First(eval_node(m_node, trav), *trav);
+			}
 			else
-				m_func.First(m_node.Evaluate(*trav), *trav);
+			{
+				m_func.First(eval_node(m_node, trav), *trav);
+			}
 			++(*trav);
 		}
 		for (; !trav->IsEnd(); ++(*trav))
 		{
-			if constexpr (IsRtti)
-				m_func.Exec(m_node.Evaluate(*trav, Number<DFieldInfo::GetSameSizeTagType<typename Func::ArgType>()>{}), *trav);
-			else
-				m_func.Exec(m_node.Evaluate(*trav), *trav);
+			if constexpr (HasCondition) if (!eval_cond(m_cond, trav)) continue;
+			m_func.Exec(eval_node(m_node, trav), *trav);
 		}
 		if constexpr (Func::IsRaisingFunc) return m_func.GetResult();
 		else
@@ -401,13 +453,22 @@ protected:
 			if constexpr (d > Depth{}) return std::false_type{};
 			else
 			{
+				//もしNodeがouterを持っている場合、初期化済みのLayerInfoが帰ってくるはずである。
+				//outerを持たないのなら、返されるLayerInfoは未初期化の空状態。
 				constexpr bool t = Node::GetLayerInfo(Node::GetJointLayerArray(), d).IsNotInitialized();
 				if constexpr (!t) return std::true_type{};
-				else return FindOuter(d + DepthConstant<1>{});
+				else if constexpr (HasCondition)
+				{
+					constexpr bool tt = Cond::GetLayerInfo(Cond::GetJointLayerArray(), d).IsNotInitialized();
+					if constexpr (!tt) return std::true_type{};
+					else return FindOuter(d + 1_depth);
+				}
+				else return FindOuter(d + 1_depth);
 			}
 		}
 	}
 
+	[[no_unique_address]] Cond m_cond;//Condは何らかのNodeもしくはEmptyClass。EmptyClassのときは条件未指定なので考慮しなくてよい。
 	Node m_node;
 	mutable Func m_func;//Funcはメンバ変数として持っておく必要がある。例えばFuncの結果がstd::stringのようなnon-trivialな型であった場合、バッファの代わりになる。
 
@@ -430,16 +491,16 @@ protected:
 
 //--------Ctti--------
 
-template <class Func_, class Node_, RankType FixRank, DepthType Depth, LayerType Up>
-struct CttiLayerFuncNode<Func_, Node_, FixRank, DepthConstant<Depth>, LayerConstant<Up>>
-	: public detail::LayerFuncBase<CttiLayerFuncNode<Func_, Node_, FixRank, DepthConstant<Depth>, LayerConstant<Up>>,
-								   Func_, Node_, DepthConstant<Depth>, LayerConstant<Up>>,
-	  public detail::CttiMethods<CttiLayerFuncNode<Func_, Node_, FixRank, DepthConstant<Depth>, LayerConstant<Up>>, std::add_const_t>
+template <class Func_, class Node_, RankType FixRank, DepthType Depth, LayerType Up, class Cond_>
+struct CttiLayerFuncNode<Func_, Node_, FixRank, DepthConstant<Depth>, LayerConstant<Up>, Cond_>
+	: public detail::LayerFuncBase<CttiLayerFuncNode<Func_, Node_, FixRank, DepthConstant<Depth>, LayerConstant<Up>, Cond_>,
+								   Func_, Node_, DepthConstant<Depth>, LayerConstant<Up>, Cond_>,
+	  public detail::CttiMethods<CttiLayerFuncNode<Func_, Node_, FixRank, DepthConstant<Depth>, LayerConstant<Up>, Cond_>, std::add_const_t>
 {
 	using Func = Func_;
 	using Node = Node_;
-	using Base = detail::LayerFuncBase<CttiLayerFuncNode<Func_, Node_, FixRank, DepthConstant<Depth>, LayerConstant<Up>>,
-									   Func_, Node_, DepthConstant<Depth>, LayerConstant<Up>>;
+	using Base = detail::LayerFuncBase<CttiLayerFuncNode<Func_, Node_, FixRank, DepthConstant<Depth>, LayerConstant<Up>, Cond_>,
+									   Func_, Node_, DepthConstant<Depth>, LayerConstant<Up>, Cond_>;
 	using RetType = typename Func::RetType;
 	using Container = typename Node::Container;
 	using Traverser = Container::Traverser;
@@ -512,18 +573,18 @@ namespace detail
 
 //--------Rtti--------
 
-template <class Func, class Container, class Node,
+template <class Func, class Container, class Node, class Cond = EmptyClass,
 		  FieldType Type = DFieldInfo::GetSameSizeTagType<typename Func::RetType>(),
 		  class Indices = std::make_index_sequence<Container::MaxRank + 1>>
 struct RttiLayerFuncNode_impl;
-template <class Func_, class Container_, class Node_, FieldType Type, size_t ...Indices>
-struct RttiLayerFuncNode_impl<Func_, Container_, Node_, Type, std::index_sequence<Indices...>>
+template <class Func_, class Container_, class Node_, class Cond_, FieldType Type, size_t ...Indices>
+struct RttiLayerFuncNode_impl<Func_, Container_, Node_, Cond_, Type, std::index_sequence<Indices...>>
 	: public RttiFuncNode_base<Container_>,
-	  public detail::LayerFuncBase<RttiLayerFuncNode_impl<Func_, Container_, Node_, Type, std::index_sequence<Indices...>>, Func_, Node_, DepthType, LayerType>
+	  public detail::LayerFuncBase<RttiLayerFuncNode_impl<Func_, Container_, Node_, Cond_, Type, std::index_sequence<Indices...>>, Func_, Node_, DepthType, LayerType, Cond_>
 {
 	using Func = Func_;
 	using Node = Node_;
-	using Base = detail::LayerFuncBase<RttiLayerFuncNode_impl<Func_, Container_, Node_, Type, std::index_sequence<Indices...>>, Func_, Node_, DepthType, LayerType>;
+	using Base = detail::LayerFuncBase<RttiLayerFuncNode_impl<Func_, Container_, Node_, Cond_, Type, std::index_sequence<Indices...>>, Func_, Node_, DepthType, LayerType, Cond_>;
 	using RetType = DFieldInfo::TagTypeToValueType<Type>;
 	using Container = Container_;
 	using Traverser = Container::Traverser;
@@ -1084,6 +1145,59 @@ auto MakeRttiLayerFuncNode(Node&& node, LayerType up)
 #pragma warning(pop)
 #endif
 
+template <template <class, class> class Func, FieldType Type, any_node Node, any_node Cond,
+	class Container = typename std::decay_t<Node>::Container,
+	class FuncA = Func<DFieldInfo::TagTypeToValueType<Type>, Container>>
+auto MakeRttiLayerFuncNode_impl(int, Node&& node, Cond&& cond, LayerType up)
+	-> RttiFuncNode<Container>
+{
+	using NodeImpl = detail::RttiLayerFuncNode_impl<FuncA, Container, std::decay_t<Node>, std::decay_t<Cond>>;
+	RttiFuncNode<Container> res;
+	res.template Construct<NodeImpl>(std::forward<Node>(node).IncreaseDepth(), std::forward<Cond>(cond).IncreaseDepth(), up);
+	return res;
+}
+
+//テンプレート引数Funcのを引数型Typeが満たさない場合、FuncAの推定に失敗しSFINAEによってこちらが呼ばれる。
+template <template <class, class> class Func, FieldType Type, any_node Node, any_node Cond>
+auto MakeRttiLayerFuncNode_impl(long, Node&&, Cond&&, LayerType)
+-> RttiFuncNode<typename std::decay_t<Node>::Container>
+{
+	throw MismatchType(DFieldInfo::GetTagTypeString<Type>().GetChar());
+}
+
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4702)
+#endif
+template <template <class, class> class Func, any_node Node, any_node Cond>
+auto MakeRttiLayerFuncNode(Node&& node, Cond&& cond, LayerType up)
+{
+	if (!cond.IsI08()) throw MismatchType(DFieldInfo::GetTagTypeString(cond.GetType()));
+	if (node.IsI08())
+		return MakeRttiLayerFuncNode_impl<Func, FieldType::I08>(1, std::forward<Node>(node), std::forward<Cond>(cond), up);
+	else if (node.IsI16())
+		return MakeRttiLayerFuncNode_impl<Func, FieldType::I16>(1, std::forward<Node>(node), std::forward<Cond>(cond), up);
+	else if (node.IsI32())
+		return MakeRttiLayerFuncNode_impl<Func, FieldType::I32>(1, std::forward<Node>(node), std::forward<Cond>(cond), up);
+	else if (node.IsI64())
+		return MakeRttiLayerFuncNode_impl<Func, FieldType::I64>(1, std::forward<Node>(node), std::forward<Cond>(cond), up);
+	else if (node.IsF32())
+		return MakeRttiLayerFuncNode_impl<Func, FieldType::F32>(1, std::forward<Node>(node), std::forward<Cond>(cond), up);
+	else if (node.IsF64())
+		return MakeRttiLayerFuncNode_impl<Func, FieldType::F64>(1, std::forward<Node>(node), std::forward<Cond>(cond), up);
+	else if (node.IsC32())
+		return MakeRttiLayerFuncNode_impl<Func, FieldType::C32>(1, std::forward<Node>(node), std::forward<Cond>(cond), up);
+	else if (node.IsC64())
+		return MakeRttiLayerFuncNode_impl<Func, FieldType::C64>(1, std::forward<Node>(node), std::forward<Cond>(cond), up);
+	else if (node.IsStr())
+		return MakeRttiLayerFuncNode_impl<Func, FieldType::Str>(1, std::forward<Node>(node), std::forward<Cond>(cond), up);
+	else if (node.IsJbp())
+		return MakeRttiLayerFuncNode_impl<Func, FieldType::Jbp>(1, std::forward<Node>(node), std::forward<Cond>(cond), up);
+	throw MismatchType(DFieldInfo::GetTagTypeString<FieldType::Emp>().GetChar());
+}
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 }
 
 #define DEFINE_LAYER_FUNCTION(NAME, NAME_ID, UP)\
@@ -1111,7 +1225,6 @@ auto NAME_ID(NP&& np)\
 		return CttiLayerFuncNode<NAME<ArgType, typename Node::Container>, Node, 0, DepthConstant<0>, LayerConstant<UP>>(std::move(n), LayerConstant<UP>{});\
 	}\
 }
-
 #define DEFINE_LAYER_FUNCTION_10(NAME, NAME_ID)\
 DEFINE_LAYER_FUNCTION(NAME, NAME_ID, 1)\
 DEFINE_LAYER_FUNCTION(NAME, NAME_ID##1, 1)\
@@ -1124,6 +1237,47 @@ DEFINE_LAYER_FUNCTION(NAME, NAME_ID##7, 7)\
 DEFINE_LAYER_FUNCTION(NAME, NAME_ID##8, 8)\
 DEFINE_LAYER_FUNCTION(NAME, NAME_ID##9, 9)\
 DEFINE_LAYER_FUNCTION(NAME, NAME_ID##10, 10)
+
+#define DEFINE_LAYER_FUNCTION_IF(NAME, NAME_ID, UP)\
+template <node_or_placeholder NP, node_or_placeholder Cond>\
+auto NAME_ID(NP&& np, Cond&& cond)\
+{\
+	constexpr bool is_rtti_type = (rtti_node_or_placeholder<NP>) || (rtti_node_or_placeholder<Cond>);\
+	if constexpr (is_rtti_type)\
+	{\
+		try\
+		{\
+			return detail::MakeRttiLayerFuncNode<NAME>(detail::ConvertToNode(std::forward<NP>(np), std::true_type{}),\
+													   detail::ConvertToNode(std::forward<Cond>(cond), std::true_type{}), UP);\
+		}\
+		catch (const MismatchType& e)\
+		{\
+			std::string message = std::format("No matching " #NAME_ID " functions for argument type {}.", e.GetMessage());\
+			throw MismatchType(message);\
+		}\
+	}\
+	else\
+	{\
+		auto n = detail::ConvertToNode(std::forward<NP>(np), std::false_type{}).IncreaseDepth();\
+		auto c = detail::ConvertToNode(std::forward<Cond>(cond), std::false_type{}).IncreaseDepth();\
+		using Node = decltype(n);\
+		using CondNode = decltype(c);\
+		using ArgType = typename Node::RetType;\
+		return CttiLayerFuncNode<NAME<ArgType, typename Node::Container>, Node, 0, DepthConstant<0>, LayerConstant<UP>, CondNode>(std::move(n), std::move(c), LayerConstant<UP>{});\
+	}\
+}
+#define DEFINE_LAYER_FUNCTION_IF_10(NAME, NAME_ID)\
+DEFINE_LAYER_FUNCTION_IF(NAME, NAME_ID, 1)\
+DEFINE_LAYER_FUNCTION_IF(NAME, NAME_ID##1, 1)\
+DEFINE_LAYER_FUNCTION_IF(NAME, NAME_ID##2, 2)\
+DEFINE_LAYER_FUNCTION_IF(NAME, NAME_ID##3, 3)\
+DEFINE_LAYER_FUNCTION_IF(NAME, NAME_ID##4, 4)\
+DEFINE_LAYER_FUNCTION_IF(NAME, NAME_ID##5, 5)\
+DEFINE_LAYER_FUNCTION_IF(NAME, NAME_ID##6, 6)\
+DEFINE_LAYER_FUNCTION_IF(NAME, NAME_ID##7, 7)\
+DEFINE_LAYER_FUNCTION_IF(NAME, NAME_ID##8, 8)\
+DEFINE_LAYER_FUNCTION_IF(NAME, NAME_ID##9, 9)\
+DEFINE_LAYER_FUNCTION_IF(NAME, NAME_ID##10, 10)
 
 
 //上昇関数
@@ -1140,30 +1294,37 @@ DEFINE_LAYER_FUNCTION_10(detail::LayerFuncCount, count)
 //引数の合計値。戻り値型は引数型と同じ。+=演算が可能な型に対してのみ呼び出せる。
 //要素が一つもない場合は値初期化によるデフォルト値が返る。
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncSum, sum)
+DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncSum, sum_if)
 //mean
 //引数の平均値。戻り値型は引数型と同じ。+=および/=演算が可能な型に対してのみ呼び出せる。
 //要素が一つもない場合は値取得失敗となる。
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncMean, mean)
+DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncMean, mean_if)
 //dev
 //引数の標準偏差。戻り値型はdouble。整数または浮動小数点に対して飲み呼び出せる。
 //要素が一つもない場合は値取得失敗となる。
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncDev, dev)
+DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncDev, dev_if)
 //greatest
 //引数のうち最大値を返す。戻り値型は引数型と同じ。<演算が可能な型に対してのみ呼び出せる。
 //要素が一つもない場合は値取得失敗となる。
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncGreatest, greatest)
+DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncGreatest, greatest_if)
 //least
 //引数のうち最小値を返す。戻り値型は引数型と同じ。<演算が可能な型に対してのみ呼び出せる。
 //要素が一つもない場合は値取得失敗となる。
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncLeast, least)
+DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncLeast, least_if)
 //first
 //引数のうち取得できた最初の値を返す。
 //要素が一つもない場合は値取得失敗となる。
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncFirst, first)
+DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncFirst, first_if)
 //last
 //引数のうち取得できた最後の値を返す。
 //要素が一つもない場合は値取得失敗となる。
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncLast, last)
+DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncLast, last_if)
 //index
 //引数が真であるような最初の要素が、走査対象要素の中で何番目かを返す。
 //要素が一つもない場合は-1を返す。
