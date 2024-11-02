@@ -414,18 +414,29 @@ protected:
 			if constexpr (rtti_node<Node>) return node.Evaluate(*trav, Number<DFieldInfo::GetSameSizeTagType<typename Func::ArgType>()>{});
 			else return node.Evaluate(*trav);
 		};
-		if (!trav->IsEnd())
+
+		if constexpr (HasCondition)
 		{
-			if constexpr (HasCondition)
+			//条件指定がある場合、最初の要素が条件を満たすとは限らないので、
+			//条件を満たす要素が見つかるまでループする必要がある。
+			for (; !trav->IsEnd(); ++(*trav))
 			{
 				if (eval_cond(m_cond, trav))
+				{
 					m_func.First(eval_node(m_node, trav), *trav);
+					++(*trav);
+					break;
+				}
 			}
-			else
+		}
+		else
+		{
+			//条件指定がなければ最初の要素で必ずFirstを呼び出せる。
+			if (!trav->IsEnd())
 			{
 				m_func.First(eval_node(m_node, trav), *trav);
+				++(*trav);
 			}
-			++(*trav);
 		}
 		for (; !trav->IsEnd(); ++(*trav))
 		{
@@ -1338,15 +1349,19 @@ DEFINE_LAYER_FUNCTION_10(detail::LayerFuncLastIndex, lastindex)
 //isfirst
 //現在の計算対象が、引数の値を取得できた最初の要素を指している時、trueを返す。
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncIsFirst, isfirst)
+DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncIsFirst, isfirst_if)
 //islast
 //現在の計算対象が、引数の値を取得できた最後の要素を指している時、trueを返す。
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncIsLast, islast)
+DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncIsLast, islast_if)
 //islast
 //現在の計算対象が、走査対象のうち引数が最大となるような要素を指している時、trueを返す。
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncIsGreatest, isgreatest)
+DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncIsGreatest, isgreatest_if)
 //islast
 //現在の計算対象が、走査対象のうち引数が最小となるような要素を指している時、trueを返す。
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncIsLeast, isleast)
+DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncIsLeast, isleast_if)
 
 }
 
