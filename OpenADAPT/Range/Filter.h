@@ -361,7 +361,7 @@ private:
 	{
 		LayerType l = moved;
 		//m_nodes.begin()+moveがmove層の条件。
-		if (moved + 1 >= m_nodes.size()) return -2_layer;
+		if (std::cmp_greater_equal(moved + 1, m_nodes.size())) return -2_layer;
 		for (auto conds = m_nodes.begin() + (moved + 1); conds != m_nodes.end(); ++conds, ++l)
 		{
 			for (auto cit = conds->begin(); cit != conds->end(); ++cit)

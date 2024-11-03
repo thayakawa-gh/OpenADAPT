@@ -59,11 +59,11 @@ public:
 
 	bool Evaluate(const Traverser& t) const
 	{
-		return t.TryJoin<Rank>();
+		return t.template TryJoin<Rank>();
 	}
 	bool Evaluate(const ConstTraverser& t) const
 	{
-		return t.TryJoin<Rank>();
+		return t.template TryJoin<Rank>();
 	}
 
 	bool Evaluate(const Container&) const
@@ -73,7 +73,7 @@ public:
 	}
 	bool Evaluate(const Container& c, const Bpos& bpos) const
 	{
-		return c.TryJoin<Rank>(bpos);
+		return c.template TryJoin<Rank>(bpos);
 	}
 
 	bool operator()(const Traverser& t) const { return Evaluate(t); }

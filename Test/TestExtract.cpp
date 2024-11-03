@@ -375,7 +375,7 @@ TEST_F(Aggregator, DJoinedTable_Extract)
 
 TEST_F(Aggregator, TryJoinInEvaluator)
 {
-	auto [number, name, dob] = m_dtree.GetPlaceholders("number", "name", "date_of_birth");
+	//auto [number, name, dob] = m_dtree.GetPlaceholders("number", "name", "date_of_birth");
 	auto dtree_even = [this]()
 	{
 		//0層要素。学年とクラス。

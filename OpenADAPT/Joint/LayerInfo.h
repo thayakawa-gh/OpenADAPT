@@ -287,6 +287,7 @@ public:
 		Init(j);
 	}
 	constexpr LayerInfo(const LayerInfo&) = default;
+	constexpr LayerInfo& operator=(const LayerInfo&) = default;
 
 	constexpr void Init(JointLayerArray<MaxRank> j)
 	{
