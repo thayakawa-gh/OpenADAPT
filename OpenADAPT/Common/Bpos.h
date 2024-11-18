@@ -14,9 +14,9 @@ struct Bpos final
 {
 	static constexpr int msMaxSmallLayer = 2;
 
-	Bpos() : mLayer(-1), mRow(0), mTposPtr(nullptr) {}
+	Bpos() : mLayer(-1), m_row(0), mTposPtr(nullptr) {}
 	explicit Bpos(LayerType l)
-		: mLayer(l), mRow(0), mTposPtr(nullptr)
+		: mLayer(l), m_row(0), mTposPtr(nullptr)
 	{
 		Init(l);
 	}
@@ -31,7 +31,7 @@ struct Bpos final
 		: mLayer((LayerType)init.size() - 1), mTposPtr(nullptr)
 	{
 		auto it = init.begin();
-		mRow = *it;
+		m_row = *it;
 		++it;
 		if (mLayer > msMaxSmallLayer)
 		{
@@ -47,7 +47,7 @@ struct Bpos final
 	}
 
 	Bpos(const Bpos& b)
-		: mLayer(-1), mRow(0), mTposPtr(nullptr)
+		: mLayer(-1), m_row(0), mTposPtr(nullptr)
 	{
 		//operator=を直接呼び出すとdelete[]で無効なポインタを消そうとしてバグる。nullptrを代入しておくのも手だが。
 		mLayer = b.mLayer;
@@ -60,13 +60,13 @@ struct Bpos final
 		{
 			for (int i = 0; i < mLayer; ++i) mTposArr[i] = b.mTposArr[i];
 		}
-		mRow = b.mRow;
+		m_row = b.m_row;
 	}
 	Bpos(Bpos&& b) noexcept
-		: mLayer(-1), mRow(0), mTposPtr(nullptr)
+		: mLayer(-1), m_row(0), mTposPtr(nullptr)
 	{
 		//operator=を直接呼び出すとdelete[]で無効なポインタを消そうとしてバグる。nullptrを代入しておくのも手だが。
-		mRow = b.mRow;
+		m_row = b.m_row;
 		mLayer = b.mLayer;
 		if (mLayer > msMaxSmallLayer)
 			mTposPtr = b.mTposPtr;
@@ -81,7 +81,7 @@ struct Bpos final
 
 	inline Bpos& operator=(const Bpos& b)
 	{
-		mRow = b.mRow;
+		m_row = b.m_row;
 		if (b.mLayer <= msMaxSmallLayer)
 		{
 			if (mLayer > msMaxSmallLayer)
@@ -102,7 +102,7 @@ struct Bpos final
 	}
 	inline Bpos& operator=(Bpos&& b) noexcept
 	{
-		mRow = b.mRow;
+		m_row = b.m_row;
 		mLayer = b.mLayer;
 		if (mLayer > msMaxSmallLayer) delete[] mTposPtr;
 		if (b.mLayer > msMaxSmallLayer)
@@ -120,14 +120,14 @@ struct Bpos final
 	inline BindexType& operator[](int layer)
 	{
 		assert(0 <= layer && layer <= mLayer);
-		if (layer == 0) return mRow;
+		if (layer == 0) return m_row;
 		if (mLayer > msMaxSmallLayer) return mTposPtr[layer - 1];
 		else return mTposArr[layer - 1];
 	}
 	inline BindexType operator[](int layer) const
 	{
 		assert(0 <= layer && layer <= mLayer);
-		if (layer == 0) return mRow;
+		if (layer == 0) return m_row;
 		if (mLayer > msMaxSmallLayer) return mTposPtr[layer - 1];
 		else return mTposArr[layer - 1];
 	}
@@ -147,19 +147,19 @@ struct Bpos final
 	}
 	/*inline const BindexType& GetLine() const
 	{
-		return mRow;
+		return m_row;
 	}
 	inline BindexType& GetLine()
 	{
-		return mRow;
+		return m_row;
 	}*/
 	inline const BindexType& GetRow() const
 	{
-		return mRow;
+		return m_row;
 	}
 	inline BindexType& GetRow()
 	{
-		return mRow;
+		return m_row;
 	}
 	inline LayerType GetLayer() const
 	{
@@ -176,7 +176,7 @@ struct Bpos final
 	inline bool MatchPartially(const Bpos& b, LayerType maxlayer) const
 	{
 		assert(mLayer >= maxlayer && b.mLayer >= maxlayer);
-		if (mRow != b.mRow) return false;
+		if (m_row != b.m_row) return false;
 		return Eq(GetTpos(), b.GetTpos(), maxlayer);
 	}
 	//layerまでが一致するかどうかを調べる。layerより下は無視される。
@@ -184,7 +184,7 @@ struct Bpos final
 	bool MatchPerfectly(const Bpos& b, int layer) const
 	{
 		assert(mLayer >= layer && b.mLayer >= layer);
-		if (mRow != b.mRow) return false;
+		if (m_row != b.m_row) return false;
 		return Eq(GetTpos(), b.GetTpos(), layer);
 	}
 
@@ -192,7 +192,7 @@ struct Bpos final
 	inline bool MatchPerfectly(const Bpos& b) const
 	{
 		if (mLayer != b.mLayer) return false;
-		if (mRow != b.mRow) return false;
+		if (m_row != b.m_row) return false;
 		if (mLayer > msMaxSmallLayer)
 		{
 			for (int i = 0; i < mLayer; ++i)
@@ -208,12 +208,12 @@ struct Bpos final
 
 	inline bool operator<(const Bpos& b) const
 	{
-		if (mRow != b.mRow) return mRow < b.GetRow();
+		if (m_row != b.m_row) return m_row < b.GetRow();
 		return Less(GetTpos(), mLayer, b.GetTpos(), b.mLayer);
 	}
 	inline bool operator<=(const Bpos& b) const
 	{
-		if (mRow != b.mRow) return mRow < b.GetRow();
+		if (m_row != b.m_row) return m_row < b.GetRow();
 		return LessEq(GetTpos(), mLayer, b.GetTpos(), b.mLayer);
 	}
 
@@ -225,7 +225,7 @@ struct Bpos final
 	//階層をlayerに変更し、全階層の位置をindexで初期化する。
 	inline void Init(LayerType layer, BindexType index)
 	{		
-		mRow = index;
+		m_row = index;
 		mLayer = layer;
 		BindexType* tpos = nullptr;
 		if (layer != mLayer)
@@ -253,7 +253,7 @@ struct Bpos final
 	//引数に与えられたlayerまでをb.cposで初期化、b.cposより深い階層値は0で初期化される。
 	inline void Assign(const Bpos& b, int layer)
 	{
-		mRow = b.mRow;
+		m_row = b.m_row;
 		assert(mLayer >= layer && b.mLayer >= layer);
 		BindexType* tpos = mLayer > msMaxSmallLayer ? mTposPtr : mTposArr.data();
 		Init(tpos, b.GetTpos(), mLayer, layer);
@@ -262,7 +262,7 @@ struct Bpos final
 	//自身か与えられたbのより浅い（階層数の小さい）方の階層数までをb.cposで初期化、b.cposより深い階層値は0で初期化される。
 	inline void Assign(const Bpos& b)
 	{
-		mRow = b.mRow;
+		m_row = b.m_row;
 		int min = std::min(mLayer, b.mLayer);
 		Assign(b, min);
 	}
@@ -288,7 +288,7 @@ public:
 	inline void Assign(BindexType row, Args ...args)
 	{
 		assert(mLayer == sizeof...(Args));
-		mRow = row;
+		m_row = row;
 		if (mLayer > msMaxSmallLayer) AssignPtr_impl<0>(args...);
 		else AssignArr_impl<0>(args...);
 	}
@@ -343,7 +343,7 @@ protected:
 	}
 
 	LayerType mLayer;
-	BindexType mRow;
+	BindexType m_row;
 	union
 	{
 		BindexType* mTposPtr;

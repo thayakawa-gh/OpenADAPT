@@ -600,16 +600,16 @@ private:
 }
 
 template <ctti_node_or_placeholder ...NPs>
-RangeAdapter<detail::CttiFilterView, std::decay_t<NPs>...> Filter(NPs&& ...nps)
+RangeReceiver<detail::CttiFilterView, std::decay_t<NPs>...> Filter(NPs&& ...nps)
 {
-	return RangeAdapter<detail::CttiFilterView, std::decay_t<NPs>...>(std::forward<NPs>(nps)...);
+	return RangeReceiver<detail::CttiFilterView, std::decay_t<NPs>...>(std::forward<NPs>(nps)...);
 }
 
 template <node_or_placeholder ...NPs>
 	requires (!(ctti_node_or_placeholder<NPs> && ...))
-RangeAdapter<detail::RttiFilterView, std::decay_t<NPs>...> Filter(NPs&& ...nps)
+RangeReceiver<detail::RttiFilterView, std::decay_t<NPs>...> Filter(NPs&& ...nps)
 {
-	return RangeAdapter<detail::RttiFilterView, std::decay_t<NPs>...>(std::forward<NPs>(nps)...);
+	return RangeReceiver<detail::RttiFilterView, std::decay_t<NPs>...>(std::forward<NPs>(nps)...);
 }
 
 }

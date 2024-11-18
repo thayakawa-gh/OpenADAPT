@@ -1,5 +1,5 @@
-#ifndef ADAPT_EXCEPTION_H
-#define ADAPT_EXCEPTION_H
+#ifndef ADAPT_UTILITY_EXCEPTION_H
+#define ADAPT_UTILITY_EXCEPTION_H
 
 #include <exception>
 #include <string>

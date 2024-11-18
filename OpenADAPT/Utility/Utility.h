@@ -1,5 +1,5 @@
-#ifndef ADAPT_UTILITY_H
-#define ADAPT_UTILITY_H
+#ifndef ADAPT_UTILITY_UTILITY_H
+#define ADAPT_UTILITY_UTILITY_H
 
 namespace adapt
 {
@@ -16,6 +16,8 @@ struct Number
 	using Type = decltype(I);
 	static constexpr Type value = I;
 };
+
+class EmptyClass {};
 
 //tuple_catは要素にrvalue referenceを含む場合に使えないらしい。
 //ので、代用品を用意しておく。

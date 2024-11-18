@@ -379,14 +379,14 @@ using EvaluatingViewWithTrav = EvaluatingView<Range, std::true_type, NPs...>;
 }
 
 template <node_or_placeholder ...NPs>
-RangeAdapter<detail::EvaluatingViewWithoutTrav, std::decay_t<NPs>...> Evaluate(NPs&& ...nps)
+RangeReceiver<detail::EvaluatingViewWithoutTrav, std::decay_t<NPs>...> Evaluate(NPs&& ...nps)
 {
-	return RangeAdapter<detail::EvaluatingViewWithoutTrav, std::decay_t<NPs>...>(std::forward<NPs>(nps)...);
+	return RangeReceiver<detail::EvaluatingViewWithoutTrav, std::decay_t<NPs>...>(std::forward<NPs>(nps)...);
 }
 template <node_or_placeholder ...NPs>
-RangeAdapter<detail::EvaluatingViewWithTrav, std::decay_t<NPs>...> Evaluate(WithTraverser, NPs&& ...nps)
+RangeReceiver<detail::EvaluatingViewWithTrav, std::decay_t<NPs>...> Evaluate(WithTraverser, NPs&& ...nps)
 {
-	return RangeAdapter<detail::EvaluatingViewWithTrav, std::decay_t<NPs>...>(std::forward<NPs>(nps)...);
+	return RangeReceiver<detail::EvaluatingViewWithTrav, std::decay_t<NPs>...>(std::forward<NPs>(nps)...);
 }
 
 }

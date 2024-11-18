@@ -1,6 +1,7 @@
 #include "examples_join.h"
 #include "examples_rtti.h"
 #include "examples_ctti.h"
+#include "examples_plot.h"
 
 adapt::DTree MakeDTree()
 {
@@ -413,13 +414,23 @@ int main()
 	Extract_ctti(dtree);
 	Extract_ctti(stree);
 
-	//  1.9. Matplot++によるプロット
+	//  1.9. OpenADAPT/Plot/Canvas.hを用いたプロット
 	//    1.9a. 動的型情報で扱う方法
 	Plot_rtti(dtree);
 	Plot_rtti(stree);
 	//    1.9b. 静的型情報を付与して扱う方法
 	Plot_ctti(dtree);
 	Plot_ctti(stree);
+	//    1.9c. 多様なプロット方法
+	PlotVariations();
+
+	//  1.10. Matplot++によるプロット
+	//    1.10a. 動的型情報で扱う方法
+	//Matplot_rtti(dtree);
+	//Matplot_rtti(stree);
+	//    1.10b. 静的型情報を付与して扱う方法
+	//Matplot_ctti(dtree);
+	//Matplot_ctti(stree);
 
 	//2. Join（複数コンテナの疑似結合）
 	adapt::DTree dtree_join = MakeDTree2();
@@ -430,4 +441,6 @@ int main()
 	AccessAndCalc_jtree(jt);
 	Traverse_jtree(jt);
 	Plot_jtree(jt);
+
+
 }

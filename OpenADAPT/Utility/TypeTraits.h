@@ -48,6 +48,26 @@ struct TypeList
 {
 	static constexpr size_t size = sizeof...(T);
 };
+template <class ...T>
+struct CatTypeList;
+template <class ...T1>
+struct CatTypeList<TypeList<T1...>>
+{
+	using Type = TypeList<T1...>;
+};
+template <class ...T1, class ...T2>
+struct CatTypeList<TypeList<T1...>, TypeList<T2...>>
+{
+	using Type = TypeList<T1..., T2...>;
+};
+template <class T1, class T2, class T3, class ...Ts>
+struct CatTypeList<T1, T2, T3, Ts...>
+	: public CatTypeList<typename CatTypeList<T1, T2>::Type, T3, Ts...>
+{};
+template <class ...T>
+using CatTypeList_t = typename CatTypeList<T...>::Type;
+
+
 template <template <class...> class ...T>
 struct UnarguedList
 {
@@ -148,6 +168,25 @@ inline constexpr size_t FindType_v = FindType<Type, Types...>::Index;
 template <class Type, class ...Types>
 using FirstType = Type;
 
+template <size_t Index, class ...Types>
+struct GetFormerNTypes;
+template <>
+struct GetFormerNTypes<0>
+{
+	using Type = TypeList<>;
+};
+template <class Head, class ...Types>
+struct GetFormerNTypes<0, Head, Types...>
+{
+	using Type = TypeList<>;
+};
+template <size_t Index, class Head, class ...Types>
+struct GetFormerNTypes<Index, Head, Types...>
+{
+	using Type = CatTypeList_t<TypeList<Head>, typename GetFormerNTypes<Index - 1, Types...>::Type>;
+};
+template <size_t Index, class ...Types>
+using GetFormerNTypes_t = typename GetFormerNTypes<Index, Types...>::Type;
 
 template <size_t Index, auto ...Values>
 constexpr auto GetValue()
@@ -156,6 +195,20 @@ constexpr auto GetValue()
 	return std::get<Index>(tup);
 }
 
+template <template <class> class Base, class Derived>
+struct IsBaseOf_T
+{
+	template <class U>
+	static constexpr std::true_type check(const Base<U>*);
+	static constexpr std::false_type check(const void*);
+
+	static const Derived* d;
+public:
+	static constexpr bool value = decltype(check(d))::value;
+};
+
+template <template <class> class Base, class Derived>
+inline constexpr bool IsBaseOf_T_v = IsBaseOf_T<Base, Derived>::value;
 
 template <template <class...> class Base, class Derived>
 struct IsBaseOf_XT
@@ -325,6 +378,21 @@ template <class T, template <class...> class U>
 concept similar_to_xt = same_as_xt<std::decay_t<T>, U>;
 template <class T, template <auto...> class U>
 concept similar_to_xn = same_as_xn<std::decay_t<T>, U>;
+
+
+template <class T>
+struct IsTuple : public std::false_type {};
+template <class ...T>
+struct IsTuple<std::tuple<T...>> : public std::true_type {};
+template <class T>
+concept any_tuple = IsTuple<std::remove_cvref_t<T>>::value;
+
+template <class T>
+struct IsArray : public std::false_type {};
+template <class T, size_t N>
+struct IsArray<std::array<T, N>> : public std::true_type {};
+template <class T>
+concept any_array = IsArray<std::remove_cvref_t<T>>::value;
 
 template <class ArgType>
 concept boolean_testable = requires(ArgType a)

@@ -44,10 +44,6 @@ public:
 };
 
 template <class T>
-struct IsTuple : public std::false_type {};
-template <class ...T>
-struct IsTuple<std::tuple<T...>> : public std::true_type {};
-template <class T>
 struct IsNamedTuple : public std::false_type {};
 template <class ...T>
 struct IsNamedTuple<NamedTuple<T...>> : public std::true_type {};

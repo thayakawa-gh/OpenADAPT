@@ -21,12 +21,12 @@ auto GetRange_select_jointmode(Container&& s, Args&& ...args)
 }
 
 template <template <class...> class View, class ...Args>
-class RangeAdapter
+class RangeReceiver
 {
 public:
 	template <class ...Args_>
 		requires (std::convertible_to<Args_&&, Args> && ...)
-	RangeAdapter(Args_&& ...args)
+	RangeReceiver(Args_&& ...args)
 		: m_args(std::forward<Args_>(args)...)
 	{}
 
@@ -55,22 +55,22 @@ public:
 	}
 
 	template <any_container Container>
-	friend auto operator|(Container&& s, RangeAdapter<View, Args...>&& r)
+	friend auto operator|(Container&& s, RangeReceiver<View, Args...>&& r)
 	{
 		return std::move(r).Create(detail::GetRange_select_jointmode(s));
 	}
 	template <any_container Container>
-	friend auto operator|(Container&& s, const RangeAdapter<View, Args...>& r)
+	friend auto operator|(Container&& s, const RangeReceiver<View, Args...>& r)
 	{
 		return r.Create(detail::GetRange_select_jointmode(s));
 	}
 	template <traversal_range Range>
-	friend auto operator|(Range&& s, RangeAdapter<View, Args...>&& r)
+	friend auto operator|(Range&& s, RangeReceiver<View, Args...>&& r)
 	{
 		return std::move(r).Create(std::forward<Range>(s));
 	}
 	template <traversal_range Range>
-	friend auto operator|(Range&& s, const RangeAdapter<View, Args...>& r)
+	friend auto operator|(Range&& s, const RangeReceiver<View, Args...>& r)
 	{
 		return r.Create(std::forward<Range>(s));
 	}

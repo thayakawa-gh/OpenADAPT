@@ -1,7 +1,7 @@
 #include <format>
 #include <iostream>
 #include <OpenADAPT/ADAPT.h>
-#include <matplot/matplot.h>
+//#include <matplot/matplot.h>
 
 using namespace adapt::lit;
 
@@ -465,41 +465,49 @@ void Plot_rtti(const Tree& t)
 {
 	auto [class_, grade, number, name, exam, jpn, math, eng] = GetRttiPlaceholders(t);
 
-	//データを可視化したい場合はMatplot++を使うと良い。
-	//ただし、Matplot++は任意のrangeを引数に取れると説明されているが、あれは嘘っぱちで、
-	//実際にはbegin()、end()の他にconst_iteratorとsize()を要求される（2023/12/1時点）。
-	//また、コンテナを受け取るときのデフォルト引数の記述に誤りがあるので、
-	//事実上std::vector<double>しか使えない状態である。誇大広告にもほどがある。
-	//Matplot++の作者にはIssueを投げて直してくれと頼んであるが、未対応である。
+	//ADAPTはデータ可視化のための機能を有するので、簡易的な図であればADAPT内で完結させることもできる。
+	//この機能はGnuplotをバックエンドとして使用するので、予めインストールしておく必要がある。
 
-	//そこで、ADAPTのrangeをstd::vector<double>に変換することで対応する。
-	//Matplot++も内部的にはあらゆるrange（という名のコンテナ）をvectorに変換してからプロットするので、
-	//ちょっと記述コストが大きくなる以外は同じことである。
+	//Gnuplotのパスは次の順に探索される。
+	// 1. Canvas::SetGnuplotPathで設定されたパス。
+	// 2. 環境変数GNUPLOT_PATHがある場合、その値を使う。
+	// 3. Windowsであれば"C:/Progra~1/gnuplot/bin/gnuplot.exe"、その他OSではパスが通っていると想定し"gnuplot"とする。
 
-	//CMakeとfind_packageを使ってビルドする場合、Matplot++がCMAKE_CXX_STANDARDを上書きしてくることに注意。
-	//target_compile_features(Foo PRIVATE cxx_std_20)を使うか、再度CMAKE_CXX_STANDARDを書き換える必要がある。
-
-	//Matplot++はバックエンドとしてgnuplotを要求する。
-	//インストールした後、PATHを通しておくこと。
+	//adapt::Canvas::SetGnuplotPath("path/to/gnuplot");
 
 	//戻り値はstd::tuple<std::vector<double>, std::vector<double>>;
-	auto [v_jpn, v_eng] = t | Filter(exam == 0) | ToVector(cast_f64(jpn).f64(), cast_f64(eng).f64());
+	auto [v_jpn, v_eng, v_math] = t | Filter(exam == 0) | ToVector(jpn.i32(), eng.i32(), math.i32());
 
-	matplot::figure(true);
+	namespace plot = adapt::plot;
 	std::string tree_type = adapt::s_tree<Tree> ? "stree" : "dtree";
-	matplot::scatter(v_jpn, v_eng);
-	matplot::title("jpn vs eng");
-	matplot::xlabel("jpn");
-	matplot::ylabel("eng");
-	matplot::save(std::format("scatter_jpn_eng_rtti_{}.png", tree_type));
+	adapt::Canvas2D f(std::format("scatter_jpn_eng_rtti_{}.png", tree_type));
+	f.SetTitle("jpn vs eng/math");
+	f.SetXLabel("jpn");
+	f.SetYLabel("eng / math");
+	f.SetXRange(0, 100);
+	f.SetYRange(0, 100);
+	//PlotPointsなどの関数は任意のrangeを受け取ることができる。
+	//そのため、v_jpn等の代わりにt | Filter(exam == 0) | Evaluate(jpn.i32())等としてもよい。
+	f.PlotPoints(v_jpn, v_eng, plot::c_blue, plot::pointtype = 7, plot::ps_large, plot::title = "jpn vs eng").
+		PlotPoints(v_jpn, v_math, plot::c_red, plot::pointtype = 7, plot::ps_large, plot::title = "jpn vs math");
 
-	std::vector<double> v_math = t | Filter(number == 0) | ToVector(cast_f64(math).f64());
-	matplot::hist(v_math);
-	matplot::title("math score distribution");
-	matplot::xlabel("math");
-	matplot::save(std::format("hist_math_rtti_{}.png", tree_type));
+	std::vector<std::string> exams = { "1set-sem-mid", "1st-sem-fin", "2nd-sem-mid", "2nd-sem-fin" };
+	auto dummyko_math = t | Filter(name == "濃伊田美衣子") | ToVector(math.i32());
+	auto seito_math = t | Filter(name == "角兎野誠人") | ToVector(math.i32());
+	auto yuuka_math = t | Filter(name == "子虚烏有花") | ToVector(math.i32());
+	adapt::Canvas2D f2(std::format("dummyko_math_rtti_{}.png", tree_type));
+	f2.SetTitle("math result");
+	f2.SetYLabel("math score");
+	f2.SetXTicsRotate(-45);
+	f2.SetXRange(-0.5, 3.5);
+	f2.SetYRange(0, 100);
+	f2.PlotPoints(exams, dummyko_math, plot::title = "dummyko",
+				  plot::s_linespoints, plot::pt_fcircle, plot::ps_med_large, plot::c_dark_magenta).
+		PlotPoints(exams, seito_math, plot::title = "seito",
+				   plot::s_linespoints, plot::pt_ftri, plot::ps_med_large, plot::c_dark_cyan).
+		PlotPoints(exams, yuuka_math, plot::title = "yuuka",
+				   plot::s_linespoints, plot::pt_fbox, plot::ps_med_large, plot::c_dark_yellow);
 
-	//ちなみに以下のようにadapt::flags::combineを与えると、各値を格納したstd::tupleを要素として持つstd::vectorになる。
-	//Matplot++に対しては使えない、ただのtips。
-	//std::vector<std::tuple<int32_t, int32_t>> vec = t | ToVector(adapt::flags::combine, math.i32(), sci.i32());//戻り値はstd::vector<std::tuple<int32_t, int32_t>>;
+	//この他、より複雑な描画を行いたい場合はMatplot++などを使うこともできる。
+	//各々好ましいものを選択して使うとよい。
 }

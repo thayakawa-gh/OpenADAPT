@@ -237,10 +237,10 @@ void Plot_jtree(const JTree& jt)
 	auto [class_, student_name, jpn, math, eng, family_name, resident_name, income] = GetRttiPlaceholder_jtree(jt);
 
 	auto [v_math, v_income] = jt | ToVector(mean(cast_f64(math)).f64(), cast_f64(sum(income)).f64());
-	matplot::figure(true);
-	matplot::scatter(v_math, v_income);
-	matplot::title("math vs income");
-	matplot::xlabel("mean(math)");
-	matplot::ylabel("household income");
-	matplot::save("scatter_math_vs_income.png");
+	namespace plot = adapt::plot;
+	adapt::Canvas2D c("scatter_math_vs_income.png");
+	c.SetTitle("math vs income");
+	c.SetXLabel("mean(math)");
+	c.SetYLabel("household income");
+	c.PlotPoints(v_math, v_income, plot::pt_circle, plot::ps_med_large, plot::no_title);
 }
