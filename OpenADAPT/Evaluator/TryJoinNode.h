@@ -9,12 +9,9 @@ namespace adapt
 namespace eval
 {
 
-namespace detail
-{
-
 //
 template <RankType Rank, class Container_>
-class CttiTryJoinNode : public CttiMethods<CttiTryJoinNode<Rank, Container_>, std::add_const_t>
+class CttiTryJoinNode : public detail::CttiMethods<CttiTryJoinNode<Rank, Container_>, std::add_const_t>
 {
 public:
 
@@ -62,11 +59,11 @@ public:
 
 	bool Evaluate(const Traverser& t) const
 	{
-		return t.TryJoin<Rank>();
+		return t.template TryJoin<Rank>();
 	}
 	bool Evaluate(const ConstTraverser& t) const
 	{
-		return t.TryJoin<Rank>();
+		return t.template TryJoin<Rank>();
 	}
 
 	bool Evaluate(const Container&) const
@@ -76,7 +73,7 @@ public:
 	}
 	bool Evaluate(const Container& c, const Bpos& bpos) const
 	{
-		return c.TryJoin<Rank>(bpos);
+		return c.template TryJoin<Rank>(bpos);
 	}
 
 	bool operator()(const Traverser& t) const { return Evaluate(t); }
@@ -88,6 +85,9 @@ private:
 
 	const Container* m_container;
 };
+
+namespace detail
+{
 
 template <RankType Rank, joined_container Container>
 CttiTryJoinNode<Rank, Container> MakeTryJoinNode(const Container& c)

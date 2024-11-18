@@ -22,12 +22,15 @@ class DJoinedRange;
 template <template <class> class Qualifier, container_simplex ...IContainers>
 class DJoinedRange_prompt;
 
-namespace eval::detail
+namespace eval
 {
 template <RankType Rank, class Container_>
 class CttiTryJoinNode;
+namespace detail
+{
 template <RankType Rank, joined_container Container>
 CttiTryJoinNode<Rank, Container> MakeTryJoinNode(const Container& c);
+}
 }
 
 template <RankType MaxRank>

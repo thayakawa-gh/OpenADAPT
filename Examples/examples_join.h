@@ -85,7 +85,7 @@ auto GetRttiPlaceholder_jtree(const JTree& jt)
 {
 	//Joinするところでも説明しているが、
 	//JoinedContainerからプレースホルダを取得する方法は、通常のDTree/STreeとは少し異なり、順位を与える必要がある。
-	auto [class_, student_name, jpn, math, eng] = jt.template GetPlaceholders<0>("class", "name", "jpn", "math", "eng");
+	auto [class_, student_name, jpn, math, eng] = jt.template GetPlaceholders<0>("class_", "name", "jpn", "math", "eng");
 	auto [family_name, resident_name, income] = jt.template GetPlaceholders<1>("family_name", "name", "income");
 
 	assert(class_.GetLayer() == 0_layer);

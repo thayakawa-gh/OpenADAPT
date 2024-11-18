@@ -480,7 +480,7 @@ public:
 	template <class LayerSD>
 	static void CopyConstructFields(HierarchySD h, LayerSD layer, const char* from, char* to)
 	{
-		auto [ismaxlayer, elmsize, blocksize] = GetBlockTraits(h, layer);
+		//auto [ismaxlayer, elmsize, blocksize] = GetBlockTraits(h, layer);
 		const auto& phs = GetPlaceholdersIn(h, layer);
 		auto is_totally_trivial = h.value().IsTotallyTrivial(layer);
 		Policy::CopyConstruct(phs, is_totally_trivial, from, to);
@@ -490,7 +490,7 @@ public:
 	template <class LayerSD>
 	static void CopyFields(HierarchySD h, LayerSD layer, const char* from, char* to)
 	{
-		auto [ismaxlayer, elmsize, blocksize] = GetBlockTraits(h, layer);
+		//auto [ismaxlayer, elmsize, blocksize] = GetBlockTraits(h, layer);
 		const auto& phs = GetPlaceholdersIn(h, layer);
 		auto is_totally_trivial = h.value().IsTotallyTrivial(layer);
 		Policy::Copy(phs, is_totally_trivial, from, to);

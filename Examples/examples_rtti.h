@@ -15,11 +15,17 @@ std::array<typename Tree::RttiPlaceholder, 8> GetRttiPlaceholders(const Tree& t)
 	//CttiPlaceholderと比較してラムダ関数使用時のパフォーマンスは不利だが、
 	//プレースホルダやラムダ関数をstd::vectorなどに纏めて管理できる利点がある。
 
-	return t.GetPlaceholders("class", "grade", "number", "name", "exam", "jpn", "math", "eng");
+	return t.GetPlaceholders("class_", "grade", "number", "name", "exam", "jpn", "math", "eng");
 
 	//STreeの場合、FieldTypeに定義されている型のフィールドに対してしか使えないことに注意。
 	//例えばstd::vector<double>型を格納している"vec"という名前のフィールドがあったとすると、
 	//そのRttiPlaceholderを取得しようとしてもMismatchTypeが投げられる。
+
+	//なお、ADAPTはプレースホルダを取得するために次のようなヘルパーを提供している。
+	ADAPT_GET_PLACEHOLDERS(t, class_, grade, number, name, exam, jpn, math, eng);
+	//これは以下と同等である。
+	//auto [class_, grade, number, name, exam, jpn, math, eng] =\
+	//	t.GetPlaceholders("class_"_fld, "grade"_fld, "number"_fld, "name"_fld, "exam"_fld, "jpn"_fld, "math"_fld, "eng"_fld);
 }
 
 template <class Tree>
@@ -458,6 +464,11 @@ void Extract_rtti(const Tree& t)
 
 	//もちろん、Filterを通してもよい。三科目合計点が120を下回った試験結果のみを対象に、名前と合計点をフィールドとして持つTreeを生成する。
 	[[maybe_unused]] adapt::DTree t4 = t | Filter(jpn + math + eng < 120) | Extract(name.named("name"), (jpn + math + eng).named("sum_3subjs"));
+
+	//namedという関数を個々に書くのは冗長になりがちなため、次のようなヘルパーを用意している。
+	auto t5 = t | Extract(ADAPT_NAMED_FIELDS(name, (jpn + math + eng)));
+	//これは以下と同等である。
+	//auto t6 = t | Extract(name.named("name"_fld), (jpn + math + eng).named("(jpn + math + eng)"_fld));
 }
 
 template <class Tree>

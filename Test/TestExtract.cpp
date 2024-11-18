@@ -185,7 +185,7 @@ void TestExtract(Container& s, const std::vector<Class>& clses, Layer0 l0, Layer
 		auto [exam, math, jpn, eng, sci, soc] = l2;
 
 		auto e = s | Extract(flags::all_fields, math + jpn + eng + sci + soc);
-		auto [egrade, eclass_] = e.GetPlaceholders("grade"_fld, "class"_fld);
+		auto [egrade, eclass_] = e.GetPlaceholders("grade"_fld, "class_"_fld);
 		auto [enumber, ename, edob] = e.GetPlaceholders("number"_fld, "name"_fld, "date_of_birth"_fld);
 		auto [eexam, emath, ejpn, eeng, esci, esoc, fld0] = e.GetPlaceholders("exam"_fld, "math"_fld, "japanese"_fld, "english"_fld, "science"_fld, "social"_fld, "fld0"_fld);
 
@@ -220,7 +220,7 @@ void TestExtract(Container& s, const std::vector<Class>& clses, Layer0 l0, Layer
 		auto [exam, math, jpn, eng, sci, soc] = l2;
 
 		auto e = s | Filter(soc < 60) | Extract(flags::all_fields, math + jpn + eng + sci + soc);
-		auto [egrade, eclass_] = e.GetPlaceholders("grade"_fld, "class"_fld);
+		auto [egrade, eclass_] = e.GetPlaceholders("grade"_fld, "class_"_fld);
 		auto [enumber, ename, edob] = e.GetPlaceholders("number"_fld, "name"_fld, "date_of_birth"_fld);
 		auto [eexam, emath, ejpn, eeng, esci, esoc, fld0] = e.GetPlaceholders("exam"_fld, "math"_fld, "japanese"_fld, "english"_fld, "science"_fld, "social"_fld, "fld0"_fld);
 
@@ -250,7 +250,7 @@ void TestExtract(Container& s, const std::vector<Class>& clses, Layer0 l0, Layer
 TEST_F(Aggregator, DTree_Extract)
 {
 	//0層要素。学年とクラス。
-	auto [grade, class_] = m_dtree.GetPlaceholders("grade", "class");
+	auto [grade, class_] = m_dtree.GetPlaceholders("grade", "class_");
 	//1層要素。出席番号、名前、生年月日。
 	auto [number, name, dob] = m_dtree.GetPlaceholders("number", "name", "date_of_birth");
 	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
@@ -265,7 +265,7 @@ TEST_F(Aggregator, DTree_Extract)
 TEST_F(Aggregator, STree_Extract)
 {
 	//0層要素。学年とクラス。
-	auto [grade, class_] = m_stree.GetPlaceholders<"grade", "class">();
+	auto [grade, class_] = m_stree.GetPlaceholders<"grade", "class_">();
 	//1層要素。出席番号、名前、生年月日。
 	auto [number, name, dob] = m_stree.GetPlaceholders<"number", "name", "date_of_birth">();
 	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
@@ -285,7 +285,7 @@ TEST_F(Aggregator, DJoinedContainer_Extract_1)
 
 	auto jtree = Join(m_dtree, 1_layer, 1_layer, m_dtree);
 	//0層要素。学年とクラス。
-	auto [grade, class_] = jtree.GetPlaceholders<0>("grade"_fld, "class"_fld);
+	auto [grade, class_] = jtree.GetPlaceholders<0>("grade"_fld, "class_"_fld);
 	//1層要素。出席番号、名前、生年月日。
 	auto [nu, na] = jtree.GetPlaceholders<0>("number"_fld, "name"_fld);
 	auto [number, name, dob] = jtree.GetPlaceholders<1>("number"_fld, "name"_fld, "date_of_birth"_fld);
@@ -342,7 +342,7 @@ TEST_F(Aggregator, STable_Extract)
 {
 	auto& t = m_stable;
 	auto [grade, class_, number, name, exam, math, jpn, eng, sci, soc] =
-		t.GetPlaceholders("grade"_fld, "class"_fld, "number"_fld, "name"_fld,
+		t.GetPlaceholders("grade"_fld, "class_"_fld, "number"_fld, "name"_fld,
 			"exam"_fld, "math"_fld, "japanese"_fld, "english"_fld, "science"_fld, "social"_fld);
 	TestExtract(t, std::make_tuple(grade, class_, number, name, exam, math, jpn, eng, sci, soc));
 }
@@ -350,14 +350,14 @@ TEST_F(Aggregator, DTable_Extract)
 {
 	auto& t = m_dtable;
 	auto [grade, class_, number, name, exam, math, jpn, eng, sci, soc] =
-		t.GetPlaceholders("grade", "class", "number", "name", "exam", "math", "japanese", "english", "science", "social");
+		t.GetPlaceholders("grade", "class_", "number", "name", "exam", "math", "japanese", "english", "science", "social");
 	TestExtract(t, std::make_tuple(grade, class_, number, name, exam, math, jpn, eng, sci, soc));
 }
 TEST_F(Aggregator, DJoinedTable_Extract)
 {
 	auto& t = m_dtable;
 	auto jt = Join(m_dtable, 0_layer, 0_layer, m_dtable);
-	auto [grade, class_, number, name, exam0] = jt.GetPlaceholders<0>("grade", "class", "number", "name", "exam");
+	auto [grade, class_, number, name, exam0] = jt.GetPlaceholders<0>("grade", "class_", "number", "name", "exam");
 	auto [exam1, math, jpn, eng, sci, soc] = jt.GetPlaceholders<1>("exam", "math", "japanese", "english", "science", "social");
 	auto hash = [&t]()
 	{
@@ -375,17 +375,17 @@ TEST_F(Aggregator, DJoinedTable_Extract)
 
 TEST_F(Aggregator, TryJoinInEvaluator)
 {
-	auto [number, name, dob] = m_dtree.GetPlaceholders("number", "name", "date_of_birth");
+	//auto [number, name, dob] = m_dtree.GetPlaceholders("number", "name", "date_of_birth");
 	auto dtree_even = [this]()
 	{
 		//0層要素。学年とクラス。
-		auto [grade, class_] = m_dtree.GetPlaceholders("grade", "class");
+		auto [grade, class_] = m_dtree.GetPlaceholders("grade", "class_");
 		//1層要素。出席番号、名前、生年月日。
 		auto [number, name, dob] = m_dtree.GetPlaceholders("number", "name", "date_of_birth");
 		//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
 		auto [exam, math, jpn, eng, sci, soc] = m_dtree.GetPlaceholders("exam", "math", "japanese", "english", "science", "social");
 
-		return m_dtree | Filter(number % 2 == 0) | Extract(grade.named("grade"), class_.named("class"),
+		return m_dtree | Filter(number % 2 == 0) | Extract(grade.named("grade"), class_.named("class_"),
 														   number.named("number"), name.named("name"),
 														   math.named("math"), jpn.named("jpn"), eng.named("eng"));
 	}();
@@ -395,7 +395,7 @@ TEST_F(Aggregator, TryJoinInEvaluator)
 		return dtree_even | MakeHashtable(number.i16(), name.str());
 	}();
 	auto jt = Join(m_dtree, 1_layer, 1_layer, dtree_even);
-	auto [jgrade, jclass, jnumber, jname] = jt.GetPlaceholders<0>("grade", "class", "number", "name");
+	auto [jgrade, jclass, jnumber, jname] = jt.GetPlaceholders<0>("grade", "class_", "number", "name");
 	auto jnumber2 = jt.GetPlaceholder<1>("number");
 	jt.SetKeyJoint<1>(std::move(hash), jnumber, jname);
 	auto extr = jt | Extract(jnumber, if_(jt.tryjoin(1_rank), jnumber2, (int16_t)-1));

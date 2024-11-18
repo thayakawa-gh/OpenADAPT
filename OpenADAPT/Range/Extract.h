@@ -458,7 +458,7 @@ class RttiExtractor
 		auto itnode = nodes.begin();
 		if constexpr (AllFieldsFlag)
 		{
-			auto get_srcref = [&t, layer]()
+			auto get_srcref = [](const Traverser& t_, LayerType layer_)
 			{
 				//tはContainerの場合とTraverserの場合がある。
 				//Containerの場合、layerは必ず-1である。
@@ -466,11 +466,11 @@ class RttiExtractor
 				//一方Traverserの場合は、layerが0以上である。
 				//その場合はGetIteratorを使う必要がある。
 				if constexpr (any_traverser<Traverser>)
-					return *t.GetIterator(layer);
+					return *t_.GetIterator(layer_);
 				else
-					return t.GetTopElement();
+					return t_.GetTopElement();
 			};
-			auto srcref = get_srcref();
+			auto srcref = get_srcref(t, layer);
 			srcref.CopyFieldsTo(layer, elmref);
 			itph = phs.end() - nodes.size();
 		}

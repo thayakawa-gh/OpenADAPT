@@ -561,13 +561,21 @@ public:
 	friend bool operator!=(const Sentinel& t, const ExternalTraverser& self) { return !(t == self); }
 
 private:
-	template <RankType Rank>
-	bool MatchPartially_rec(const JBpos& jbp, RankType rank, LayerType intlayer) const
+	template <RankType Rank, direction_flag Flag, joint_mode JointMode>
+	bool MatchPartially_rec(const JBpos& jbp, RankType rank, LayerType intlayer, Flag, JointMode) const
 	{
 		if constexpr (Rank > MaxRank) throw Forbidden("");
 		else
 		{
 			auto& i = std::get<Rank>(m_internals);
+			if constexpr (std::is_same_v<JointMode, DelayedJoint> && Rank > 0)
+			{
+				if (!i.IsJoined(DelayedJoint{}))
+				{
+					bool b = Join<Rank>(Flag{}, DelayedJoint{});
+					if (!b) throw JointError();
+				}
+			}
 			if (Rank == rank)
 			{
 				return i.MatchPartially(jbp[Rank], intlayer);
@@ -575,14 +583,24 @@ private:
 			else
 			{
 				if (!i.Match(jbp[Rank])) return false;
-				return MatchPartially_rec<Rank + 1>(jbp, rank, intlayer);
+				return MatchPartially_rec<Rank + 1>(jbp, rank, intlayer, Flag{}, DelayedJoint{});
 			}
 		}
 	}
 public:
+	template <direction_flag Flag, joint_mode JointMode>
+	bool MatchPartially(const JBpos& jbp, RankType rank, LayerType intlayer, Flag, JointMode) const
+	{
+		return MatchPartially_rec<0>(jbp, rank, intlayer, Flag{}, JointMode{});
+	}
+	template <direction_flag Flag>
+	bool MatchPartially(const JBpos& jbp, RankType rank, LayerType intlayer, Flag) const
+	{
+		return MatchPartially(jbp, rank, intlayer, Flag{}, DelayedJoint{});
+	}
 	bool MatchPartially(const JBpos& jbp, RankType rank, LayerType intlayer) const
 	{
-		return MatchPartially_rec<0>(jbp, rank, intlayer);
+		return MatchPartially(jbp, rank, intlayer, ForwardFlag{}, DelayedJoint{});
 	}
 
 	template <RankType Rank>

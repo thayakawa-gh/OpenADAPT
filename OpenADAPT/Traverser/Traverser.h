@@ -219,18 +219,17 @@ private:
 		{
 			x = Renew(x, Flag{});
 			if (x == (LayerType)-2) return true;
-			//retry_from + 1層が空だったので移動する。
+			//x + 1層が空だったので移動する。
 			for (LayerType l = x; l >= renew_from; --l)
 			{
 				assert(l > m_fixed_layer && l <= m_trav_layer);
-				auto& uit = m_iterators[l];
-				auto& it = m_iterators[l + 1];
+				auto& uit = m_iterators[l];//l-1層。
+				auto& it = m_iterators[l + 1];//l層。
 				if constexpr (std::is_same_v<Flag, ForwardFlag>)
 				{
 					if ((++it) == uit->end())
 					{
-						//l層が空だったため、空要素を詰めておく。
-						//it = m_tree->GetEmptyElement(l - 1).begin();
+						//l層が末尾に達したので、l-1層の判定を行う。
 						continue;
 					}
 				}
@@ -239,7 +238,8 @@ private:
 					if (it == uit->begin()) continue;
 					--it;
 				}
-				x = l;
+				//l層が有効要素への移動に成功した場合、ここに到達する。
+				x = l + 1_layer;
 				goto renew;
 			}
 			return false;

@@ -19,17 +19,23 @@ auto GetCttiPlaceholders(const Tree& t)
 	{
 		//STreeからCttiPlaceholderを取得するときは、名前をテンプレート引数で与えるか、
 		//_fldのユーザー定義リテラルで与えると良い。
-		auto phs = t.template GetPlaceholders<"class", "grade", "number", "name", "exam", "jpn", "math", "eng">();
-		[[maybe_unused]] auto phs2 = t.GetPlaceholders("class"_fld, "grade"_fld, "number"_fld, "name"_fld, "exam"_fld, "jpn"_fld, "math"_fld, "eng"_fld);
+		auto phs = t.template GetPlaceholders<"class_", "grade", "number", "name", "exam", "jpn", "math", "eng">();
+		[[maybe_unused]] auto phs2 = t.GetPlaceholders("class_"_fld, "grade"_fld, "number"_fld, "name"_fld, "exam"_fld, "jpn"_fld, "math"_fld, "eng"_fld);
 		//以上はどちらも同じ結果を返す。phs/phs2はstd::tuple<CttiPlaceholders...>型。
 		return phs;
+
+		//なお、ADAPTはプレースホルダを取得するために次のようなヘルパーを提供している。
+		ADAPT_GET_PLACEHOLDERS(t, class_, grade, number, name, exam, jpn, math, eng);
+		//これは以下と同等である。
+		//auto [class_, grade, number, name, exam, jpn, math, eng] =\
+		//	t.GetPlaceholders("class_"_fld, "grade"_fld, "number"_fld, "name"_fld, "exam"_fld, "jpn"_fld, "math"_fld, "eng"_fld);
 	}
 	else if constexpr (adapt::d_container<Tree>)
 	{
 		//DTreeはもともと静的構造情報を持たないので、
 		//こちらから明示的に型や階層を与えなければならない。
 		//型や階層を間違えると例外MismatchTypeが投げられる。
-		auto class_ = t.template GetPlaceholder<0, int8_t>("class");
+		auto class_ = t.template GetPlaceholder<0, int8_t>("class_");
 		auto grade = t.template GetPlaceholder<0, int8_t>("grade");
 		auto number = t.template GetPlaceholder<1, int16_t>("number");
 		auto name = t.template GetPlaceholder<1, std::string>("name");
@@ -447,11 +453,15 @@ void Extract_ctti(const Tree& t)
 	[[maybe_unused]] auto [name_e2, sum_3subjs_e2] = t3.template GetPlaceholders<"name", "sum_3subjs">();
 
 	//namedの引数に一つでもstd::stringや実行時にしか決定できない形が含まれていると戻り値がDTreeになるので注意。
-	//戻り値をSTreeにするには、抽出する
 	[[maybe_unused]] adapt::DTree tx = t | Extract(name.named("name"), (jpn + math + eng).named("sum_3subjs"));//この書き方はアウト。
 
 	//もちろん、Filterを通してもよい。三科目合計点が120を下回った試験結果のみを対象に、名前と合計点をフィールドとして持つTreeを生成する。
 	[[maybe_unused]] auto t4 = t | Filter(jpn + math + eng < 120) | Extract(name.template named<"name">(), (jpn + math + eng).template named<"sum_3subjs">());
+
+	//namedという関数を個々に書くのは冗長になりがちなため、次のようなヘルパーを用意している。
+	auto t5 = t | Extract(ADAPT_NAMED_FIELDS(name, (jpn + math + eng)));
+	//これは以下と同等である。
+	//auto t6 = t | Extract(name.named("name"_fld), (jpn + math + eng).named("(jpn + math + eng)"_fld));
 }
 
 template <class Tree>

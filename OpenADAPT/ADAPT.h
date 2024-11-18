@@ -24,6 +24,8 @@
 #include <OpenADAPT/Range/Output.h>
 #include <OpenADAPT/Range/MakeHashtable.h>
 
+#include <OpenADAPT/Common/Macros.h>
+
 #include <OpenADAPT/Plot/Canvas.h>
 
 #endif

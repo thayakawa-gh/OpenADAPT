@@ -47,7 +47,7 @@ struct Class
 class Aggregator : public ::testing::Test
 {
 	using TopLayer = NamedTuple<Named<"school", std::string>>;
-	using Layer0 = NamedTuple<Named<"grade", int8_t>, Named<"class", int8_t>>;
+	using Layer0 = NamedTuple<Named<"grade", int8_t>, Named<"class_", int8_t>>;
 	using Layer1 = NamedTuple<Named<"number", int16_t>, Named<"name", std::string>, Named<"date_of_birth", int32_t>, Named<"phone", std::string>, Named<"email", std::string>>;
 	using Layer2 = NamedTuple<Named<"exam", int8_t>, Named<"math", int32_t>, Named<"japanese", int32_t>, Named<"english", int32_t>, Named<"science", int32_t>, Named<"social", int32_t>>;
 
@@ -411,4 +411,75 @@ inline int32_t Sum5Subjs(const Record& r)
 {
 	return r.m_math + r.m_japanese + r.m_english + r.m_science + r.m_social;
 }
+inline int32_t SumMathOver60(const Student& s)
+{
+	int32_t res = 0;
+	for (auto& r : s.m_records)
+	{
+		if (r.m_math > 60) res += r.m_math;
+	}
+	return res;
+}
+inline float MeanMathEngOver60(const Class& c)
+{
+	float res = 0;
+	size_t count = 0;
+	for (auto& s : c.m_students)
+	{
+		int32_t sum_eng = 0;
+		for (auto& r : s.m_records) sum_eng += r.m_english;
+		if (sum_eng >= 240)
+		{
+			for (auto& r : s.m_records)
+			{
+				res += (float)r.m_math;
+				++count;
+			}
+		}
+	}
+	return res / count;
+}
+inline bool IsSecondMaxMath(const Student& s, BindexType k)
+{
+	int32_t max = -1;
+	int32_t second = -1;
+	BindexType max_pos = std::numeric_limits<BindexType>::max();
+	BindexType second_pos = std::numeric_limits<BindexType>::max();
+	for (auto[i, r] : views::Enumerate(s.m_records))
+	{
+		if (max < r.m_math)
+		{
+			//maxが更新された。
+			second = max;
+			max = r.m_math;
+			second_pos = max_pos;
+			max_pos = (BindexType)i;
+		}
+		else if (second < r.m_math)
+		{
+			//secondが更新された。
+			second = r.m_math;
+			second_pos = (BindexType)i;
+		}
+	}
+	return second_pos == k;
+}
+inline bool IsWorstInThirdExam(const Class& c, BindexType j, BindexType k)
+{
+	int32_t min = std::numeric_limits<int32_t>::max();
+	BindexType min_stu = std::numeric_limits<BindexType>::max();
+	if (k != 2) return false;
+	for (auto[i, s] : views::Enumerate(c.m_students))
+	{
+		auto& r = s.m_records[k];
+		int32_t total = r.m_math + r.m_japanese + r.m_english + r.m_science + r.m_social;
+		if (min > total)
+		{
+			min = total;
+			min_stu = (BindexType)i;
+		}
+	}
+	return min_stu == j;
+}
+
 #endif
