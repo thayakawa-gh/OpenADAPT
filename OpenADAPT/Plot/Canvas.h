@@ -466,78 +466,78 @@ inline constexpr auto ax_x2y2 = (axis = "x2y2");
 
 
 // 線の太さ指定の短縮版
-inline constexpr auto lw_ex_thick = (linewidth = 3.0);
-inline constexpr auto lw_thick = (linewidth = 2.0);
+inline constexpr auto lw_ex_thick  = (linewidth = 3.0);
+inline constexpr auto lw_thick     = (linewidth = 2.0);
 inline constexpr auto lw_med_thick = (linewidth = 1.5);
-inline constexpr auto lw_medium = (linewidth = 1.0);
-inline constexpr auto lw_med_fine = (linewidth = 0.7);
-inline constexpr auto lw_fine = (linewidth = 0.5);
-inline constexpr auto lw_ex_fine = (linewidth = 0.3);
+inline constexpr auto lw_medium    = (linewidth = 1.0);
+inline constexpr auto lw_med_fine  = (linewidth = 0.7);
+inline constexpr auto lw_fine      = (linewidth = 0.5);
+inline constexpr auto lw_ex_fine   = (linewidth = 0.3);
 
 // 色指定の短縮版
 // 黒、白、灰、赤、青、緑、黄、マゼンタ、シアンが基本色。黒白以外はdark、lightの指定が可能。
-inline constexpr auto c_black = (color = "black");
-inline constexpr auto c_dark_gray = (color = "dark-gray");
-inline constexpr auto c_gray = (color = "gray");
-inline constexpr auto c_light_gray = (color = "light-gray");
-inline constexpr auto c_white = (color = "white");
-inline constexpr auto c_dark_red = (color = "dark-red");
-inline constexpr auto c_red = (color = "red");
-inline constexpr auto c_light_red = (color = "light-red");
-inline constexpr auto c_dark_green = (color = "dark-green");
-inline constexpr auto c_green = (color = "green");
-inline constexpr auto c_light_green = (color = "light-green");
-inline constexpr auto c_dark_blue = (color = "dark-blue");
-inline constexpr auto c_blue = (color = "blue");
-inline constexpr auto c_light_blue = (color = "light-blue");
-inline constexpr auto c_dark_yellow = (color = "dark-yellow");
-inline constexpr auto c_yellow = (color = "yellow");
-inline constexpr auto c_light_yellow = (color = "rgb #ffffe0");
-inline constexpr auto c_dark_magenta = (color = "dark-magenta");
-inline constexpr auto c_magenta = (color = "magenta");
+inline constexpr auto c_black         = (color = "black");
+inline constexpr auto c_dark_gray     = (color = "dark-gray");
+inline constexpr auto c_gray          = (color = "gray");
+inline constexpr auto c_light_gray    = (color = "light-gray");
+inline constexpr auto c_white         = (color = "white");
+inline constexpr auto c_dark_red      = (color = "dark-red");
+inline constexpr auto c_red           = (color = "red");
+inline constexpr auto c_light_red     = (color = "light-red");
+inline constexpr auto c_dark_green    = (color = "dark-green");
+inline constexpr auto c_green         = (color = "green");
+inline constexpr auto c_light_green   = (color = "light-green");
+inline constexpr auto c_dark_blue     = (color = "dark-blue");
+inline constexpr auto c_blue          = (color = "blue");
+inline constexpr auto c_light_blue    = (color = "light-blue");
+inline constexpr auto c_dark_yellow   = (color = "dark-yellow");
+inline constexpr auto c_yellow        = (color = "yellow");
+inline constexpr auto c_light_yellow  = (color = "rgb #ffffe0");
+inline constexpr auto c_dark_magenta  = (color = "dark-magenta");
+inline constexpr auto c_magenta       = (color = "magenta");
 inline constexpr auto c_light_magenta = (color = "light-magenta");
-inline constexpr auto c_dark_cyan = (color = "dark-cyan");
-inline constexpr auto c_cyan = (color = "cyan");
-inline constexpr auto c_light_cyan = (color = "light-cyan");
+inline constexpr auto c_dark_cyan     = (color = "dark-cyan");
+inline constexpr auto c_cyan          = (color = "cyan");
+inline constexpr auto c_light_cyan    = (color = "light-cyan");
 
 
 // スタイル指定の短縮版
-inline constexpr auto s_lines = (style = Style::lines);
-inline constexpr auto s_points = (style = Style::points);
+inline constexpr auto s_lines       = (style = Style::lines);
+inline constexpr auto s_points      = (style = Style::points);
 inline constexpr auto s_linespoints = (style = Style::linespoints);
-inline constexpr auto s_dots = (style = Style::dots);
-inline constexpr auto s_impulses = (style = Style::impulses);
-inline constexpr auto s_boxes = (style = Style::boxes);
-inline constexpr auto s_steps = (style = Style::steps);
-inline constexpr auto s_fsteps = (style = Style::fsteps);
-inline constexpr auto s_histeps = (style = Style::histeps);
+inline constexpr auto s_dots        = (style = Style::dots);
+inline constexpr auto s_impulses    = (style = Style::impulses);
+inline constexpr auto s_boxes       = (style = Style::boxes);
+inline constexpr auto s_steps       = (style = Style::steps);
+inline constexpr auto s_fsteps      = (style = Style::fsteps);
+inline constexpr auto s_histeps     = (style = Style::histeps);
 
 // ポイントタイプ指定の短縮版
-inline constexpr auto pt_dot = (pointtype = 0);//dot
-inline constexpr auto pt_plus = (pointtype = 1);//+
+inline constexpr auto pt_dot   = (pointtype = 0);//dot
+inline constexpr auto pt_plus  = (pointtype = 1);//+
 inline constexpr auto pt_cross = (pointtype = 2);//x
-inline constexpr auto pt_star = (pointtype = 3);//+ and x
-inline constexpr auto pt_box = (pointtype = 4);//□
-inline constexpr auto pt_fbox = (pointtype = 5);//■
-inline constexpr auto pt_cir = (pointtype = 6);//○
-inline constexpr auto pt_fcir = (pointtype = 7);//●
-inline constexpr auto pt_tri = (pointtype = 8);//△
-inline constexpr auto pt_ftri = (pointtype = 9);//▲
-inline constexpr auto pt_dtri = (pointtype = 10);//▽
+inline constexpr auto pt_star  = (pointtype = 3);//+ and x
+inline constexpr auto pt_box   = (pointtype = 4);//□
+inline constexpr auto pt_fbox  = (pointtype = 5);//■
+inline constexpr auto pt_cir   = (pointtype = 6);//○
+inline constexpr auto pt_fcir  = (pointtype = 7);//●
+inline constexpr auto pt_tri   = (pointtype = 8);//△
+inline constexpr auto pt_ftri  = (pointtype = 9);//▲
+inline constexpr auto pt_dtri  = (pointtype = 10);//▽
 inline constexpr auto pt_fdtri = (pointtype = 11);//▼
-inline constexpr auto pt_dia = (pointtype = 12);//◇
-inline constexpr auto pt_fdia = (pointtype = 13);//♦
-inline constexpr auto pt_pent = (pointtype = 14);//⬠
+inline constexpr auto pt_dia   = (pointtype = 12);//◇
+inline constexpr auto pt_fdia  = (pointtype = 13);//♦
+inline constexpr auto pt_pent  = (pointtype = 14);//⬠
 inline constexpr auto pt_fpent = (pointtype = 15);//⬟
 
 // ポイントサイズ指定の短縮版
-inline constexpr auto ps_ex_large = (pointsize = 3.0);
-inline constexpr auto ps_large = (pointsize = 2.0);
+inline constexpr auto ps_ex_large  = (pointsize = 3.0);
+inline constexpr auto ps_large     = (pointsize = 2.0);
 inline constexpr auto ps_med_large = (pointsize = 1.5);
-inline constexpr auto ps_medium = (pointsize = 1.0);
+inline constexpr auto ps_medium    = (pointsize = 1.0);
 inline constexpr auto ps_med_small = (pointsize = 0.7);
-inline constexpr auto ps_small = (pointsize = 0.5);
-inline constexpr auto ps_ex_small = (pointsize = 0.3);
+inline constexpr auto ps_small     = (pointsize = 0.5);
+inline constexpr auto ps_ex_small  = (pointsize = 0.3);
 
 }
 

@@ -87,6 +87,7 @@ struct GetOptions_impl<TypeList<>>
 {
 	static constexpr auto apply()
 	{
+		// これがデフォルトの設定に相当する。
 		return std::make_tuple(Delimiter<' '>(), End<'\n'>(), std::false_type(), std::integral_constant<size_t, 0>());
 	}
 };

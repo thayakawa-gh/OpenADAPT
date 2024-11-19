@@ -70,7 +70,7 @@ int example_2d(const std::string& output_filename, bool enable_in_memory_data_tr
 				 plot::s_lines).
 		PlotPoints(x1, y1, plot::xerrorbar = 0.125, plot::yerrorbar = e1,
 				   plot::title = "data", plot::c_black,
-				   plot::s_points, plot::pt_fcircle, plot::ps_med_small);
+				   plot::s_points, plot::pt_fcir, plot::ps_med_small);
 
 	if (!enable_in_memory_data_transfer)
 	{
@@ -84,7 +84,7 @@ int example_2d(const std::string& output_filename, bool enable_in_memory_data_tr
 					  plot::s_lines).
 			PlotPoints(output_filename + ".tmp1.txt", "1", "2", plot::xerrorbar = 0.125, plot::yerrorbar = "3",
 					   plot::title = "data", plot::c_black,
-					   plot::s_points, plot::pt_fcircle, plot::ps_med_small);
+					   plot::s_points, plot::pt_fcir, plot::ps_med_small);
 	}
 	return 0;
 }
@@ -349,6 +349,9 @@ int example_datetime(const std::string& output_filename, bool enable_in_memory_d
 	g.SetTitle("example\\_datetime");
 	g.SetYLabel("per day");
 	g.SetY2Label("total");
+	g.SetKeyTopRight();
+	g.SetKeyOpaque();
+	g.SetKeyBox();
 	g.SetXDataTime("%Y-%m-%d");
 	g.SetFormatX("%02m/%02d");
 	g.PlotPoints(x, y, plot::title = "tested", plot::s_steps, plot::fillsolid = 0.5).
@@ -382,6 +385,7 @@ int example_string(const std::string& output_filename, bool enable_in_memory_dat
 	g.SetXRange(-1, 10);
 	g.SetYRange(0, 11);
 	g.SetXTicsRotate(-45);
+	g.SetTitle("example\\_string");
 	g.PlotPoints(x, y, plot::s_boxes, plot::no_title);
 	return 0;
 }
@@ -392,6 +396,8 @@ int example_for_loop(const std::string& output_filename, bool enable_in_memory_d
 	adapt::Canvas2D g(output_filename);
 	//g.ShowCommands(true);
 	g.EnableInMemoryDataTransfer(enable_in_memory_data_transfer); // Enable or disable datablock feature of gnuplot
+	g.SetKeyTopLeft();
+	g.SetTitle("example\\_for\\_loop");
 
 	auto buf = g.GetBuffer();
 	for (int i = 0; i < 5; ++i)

@@ -495,6 +495,7 @@ void Plot_rtti(const Tree& t)
 	f.SetTitle("jpn vs eng/math");
 	f.SetXLabel("jpn");
 	f.SetYLabel("eng / math");
+	f.SetKeyTopLeft();
 	f.SetXRange(0, 100);
 	f.SetYRange(0, 100);
 	//PlotPointsなどの関数は任意のrangeを受け取ることができる。
@@ -513,7 +514,7 @@ void Plot_rtti(const Tree& t)
 	f2.SetXRange(-0.5, 3.5);
 	f2.SetYRange(0, 100);
 	f2.PlotPoints(exams, dummyko_math, plot::title = "dummyko",
-				  plot::s_linespoints, plot::pt_fcircle, plot::ps_med_large, plot::c_dark_magenta).
+				  plot::s_linespoints, plot::pt_fcir, plot::ps_med_large, plot::c_dark_magenta).
 		PlotPoints(exams, seito_math, plot::title = "seito",
 				   plot::s_linespoints, plot::pt_ftri, plot::ps_med_large, plot::c_dark_cyan).
 		PlotPoints(exams, yuuka_math, plot::title = "yuuka",

@@ -72,6 +72,20 @@ public:
 
 	void SetTitle(std::string_view title);
 
+	void SetKeyTopLeft(bool outside = false);
+	void SetKeyTopCenter(bool outside = false);
+	void SetKeyTopRight(bool outside = false);
+	void SetKeyCenterLeft(bool outside = false);
+	void SetKeyCenter(bool outside = false);
+	void SetKeyCenterRight(bool outside = false);
+	void SetKeyBottomLeft(bool outside = false);
+	void SetKeyBottomCenter(bool outside = false);
+	void SetKeyBottomRight(bool outside = false);
+
+	void SetKeyOpaque(bool b = true);
+
+	void SetKeyBox(bool b = true);
+
 	void SetParametric();
 
 	void SetLeftMargin(double w);
@@ -142,6 +156,7 @@ inline Canvas::Canvas(std::string_view output, double sizex, double sizey)
 	if (m_pipe)
 	{
 		//Command("set bars small");
+		//Command("set key box");
 		Command("set palette defined ( 0 '#000090',1 '#000fff',2 '#0090ff',3 '#0fffee',4 '#90ff70',5 '#ffee00',6 '#ff7000',7 '#ee0000',8 '#7f0000')");
 	}
 }
@@ -251,6 +266,21 @@ inline void Canvas::SetTitle(std::string_view title)
 {
 	Command(std::format("set title '{}'", title));
 }
+
+inline void Canvas::SetKeyTopLeft(bool outside) { Command("set", outside ? "outsize" : "", "key top left"); }
+inline void Canvas::SetKeyTopCenter(bool outside) { Command("set", outside ? "outsize" : "", "key top center"); }
+inline void Canvas::SetKeyTopRight(bool outside) { Command("set", outside ? "outsize" : "", "key top right"); }
+inline void Canvas::SetKeyCenterLeft(bool outside) { Command("set", outside ? "outsize" : "", "key center left"); }
+inline void Canvas::SetKeyCenter(bool outside) { Command("set", outside ? "outsize" : "", "key center"); }
+inline void Canvas::SetKeyCenterRight(bool outside) { Command("set", outside ? "outsize" : "", "key center right"); }
+inline void Canvas::SetKeyBottomLeft(bool outside) { Command("set", outside ? "outsize" : "", "key bottom left"); }
+inline void Canvas::SetKeyBottomCenter(bool outside) { Command("set", outside ? "outsize" : "", "key bottom center"); }
+inline void Canvas::SetKeyBottomRight(bool outside) { Command("set", outside ? "outsize" : "", "key bottom right"); }
+
+inline void Canvas::SetKeyOpaque(bool b) { Command("set key", b ? "opaque" : "noopaque"); }
+
+inline void Canvas::SetKeyBox(bool b) { Command("set key", b ? "box" : "nobox"); }
+
 inline void Canvas::SetParametric()
 {
 	Command("set parametric");
