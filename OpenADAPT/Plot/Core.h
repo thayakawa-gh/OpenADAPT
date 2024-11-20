@@ -267,15 +267,15 @@ inline void Canvas::SetTitle(std::string_view title)
 	Command(std::format("set title '{}'", title));
 }
 
-inline void Canvas::SetKeyTopLeft(bool outside) { Command("set", outside ? "outsize" : "", "key top left"); }
-inline void Canvas::SetKeyTopCenter(bool outside) { Command("set", outside ? "outsize" : "", "key top center"); }
-inline void Canvas::SetKeyTopRight(bool outside) { Command("set", outside ? "outsize" : "", "key top right"); }
-inline void Canvas::SetKeyCenterLeft(bool outside) { Command("set", outside ? "outsize" : "", "key center left"); }
-inline void Canvas::SetKeyCenter(bool outside) { Command("set", outside ? "outsize" : "", "key center"); }
-inline void Canvas::SetKeyCenterRight(bool outside) { Command("set", outside ? "outsize" : "", "key center right"); }
-inline void Canvas::SetKeyBottomLeft(bool outside) { Command("set", outside ? "outsize" : "", "key bottom left"); }
-inline void Canvas::SetKeyBottomCenter(bool outside) { Command("set", outside ? "outsize" : "", "key bottom center"); }
-inline void Canvas::SetKeyBottomRight(bool outside) { Command("set", outside ? "outsize" : "", "key bottom right"); }
+inline void Canvas::SetKeyTopLeft(bool outside) { Command("set key", outside ? "outside" : "", "top left"); }
+inline void Canvas::SetKeyTopCenter(bool outside) { Command("set key", outside ? "outside" : "", "top center"); }
+inline void Canvas::SetKeyTopRight(bool outside) { Command("set key", outside ? "outside" : "", "top right"); }
+inline void Canvas::SetKeyCenterLeft(bool outside) { Command("set key", outside ? "outside" : "", "center left"); }
+inline void Canvas::SetKeyCenter(bool outside) { Command("set key", outside ? "outside" : "", "center"); }
+inline void Canvas::SetKeyCenterRight(bool outside) { Command("set key", outside ? "outside" : "", "center right"); }
+inline void Canvas::SetKeyBottomLeft(bool outside) { Command("set key", outside ? "outside" : "", "bottom left"); }
+inline void Canvas::SetKeyBottomCenter(bool outside) { Command("set key", outside ? "outside" : "", "bottom center"); }
+inline void Canvas::SetKeyBottomRight(bool outside) { Command("set key", outside ? "outside" : "", "bottom right"); }
 
 inline void Canvas::SetKeyOpaque(bool b) { Command("set key", b ? "opaque" : "noopaque"); }
 
@@ -319,7 +319,7 @@ inline void Canvas::SetOutput(std::string_view output, double sizex, double size
 		std::string repout = ReplaceStr(output, "\\", "/");
 		if (extension == ".png")
 		{
-			if (sizex == 0 && sizey == 0) sizex = 800, sizey = 600;
+			if (sizex == 0 && sizey == 0) sizex = 720, sizey = 540;
 			Command(std::format("set terminal pngcairo enhanced size {}, {} font \"Arial\"\nset output '{}'", sizex, sizey, repout));
 		}
 		else if (extension == ".eps")
@@ -335,12 +335,12 @@ inline void Canvas::SetOutput(std::string_view output, double sizex, double size
 	}
 	else if (output == "qt")
 	{
-		if (sizex == 0 && sizey == 0) sizex = 800, sizey = 600;
+		if (sizex == 0 && sizey == 0) sizex = 720, sizey = 540;
 		Command(std::format("set terminal qt size {}, {} font \"Arial\" enhanced", sizex, sizey));
 	}
 	else if (output == "wxt")
 	{
-		if (sizex == 0 && sizey == 0) sizex = 800, sizey = 600;
+		if (sizex == 0 && sizey == 0) sizex = 720, sizey = 540;
 		Command(std::format("set terminal wxt enhanced size {}, {} font \"Arial\"", sizex, sizey));
 	}
 	else std::cout << "WARNING : " << output << " is not a terminal or has no valid extension. Default terminal is selected." << std::endl;
@@ -474,7 +474,7 @@ inline void MultiPlot::Begin(std::string_view output, int row, int column, doubl
 			std::string repout = ReplaceStr(output, "\\", "/");
 			if (extension == ".png")
 			{
-				if (sizex == 0 && sizey == 0) sizex = 800 * column, sizey = 600 * row;
+				if (sizex == 0 && sizey == 0) sizex = 720 * column, sizey = 540 * row;
 				Command(std::format("set terminal pngcairo enhanced size {}, {} font \"Arial\"\nset output '{}'", (int)sizex, (int)sizey, repout));
 			}
 			else if (extension == ".eps")
@@ -490,12 +490,12 @@ inline void MultiPlot::Begin(std::string_view output, int row, int column, doubl
 		}
 		else if (output == "qt")
 		{
-			if (sizex == 0 && sizey == 0) sizex = 800 * column, sizey = 600 * row;
+			if (sizex == 0 && sizey == 0) sizex = 720 * column, sizey = 540 * row;
 			Command(std::format("set terminal qt size {}, {} font \"Arial\" enhanced", sizex, sizey));
 		}
 		else if (output == "wxt")
 		{
-			if (sizex == 0 && sizey == 0) sizex = 800 * column, sizey = 600 * row;
+			if (sizex == 0 && sizey == 0) sizex = 720 * column, sizey = 540 * row;
 			Command(std::format("set terminal wxt size {}, {} enhanced font \"Arial\"", sizex, sizey));
 		}
 		else std::cout << "WARNING : " << output << " is not a terminal or has no valid extension. Default terminal is selected." << std::endl;
