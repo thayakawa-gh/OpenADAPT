@@ -228,6 +228,66 @@ auto operator||(Arg1&& a, Arg2&& b)
 	return detail::MakeFunctionNode(OperatorOr{}, std::forward<Arg1>(a), std::forward<Arg2>(b));
 }
 
+struct BitwiseAnd
+{
+	auto operator()(const auto& a, const auto& b) const -> decltype(a & b) { return a & b; }
+};
+template <class Arg1, class Arg2>
+	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
+auto operator&(Arg1&& a, Arg2&& b)
+{
+	return detail::MakeFunctionNode(BitwiseAnd{}, std::forward<Arg1>(a), std::forward<Arg2>(b));
+}
+struct BitwiseOr
+{
+	auto operator()(const auto& a, const auto& b) const -> decltype(a | b) { return a | b; }
+};
+template <class Arg1, class Arg2>
+	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
+auto operator|(Arg1&& a, Arg2&& b)
+{
+	return detail::MakeFunctionNode(BitwiseOr{}, std::forward<Arg1>(a), std::forward<Arg2>(b));
+}
+struct BitwiseXor
+{
+	auto operator()(const auto& a, const auto& b) const -> decltype(a ^ b) { return a ^ b; }
+};
+template <class Arg1, class Arg2>
+	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
+auto operator^(Arg1&& a, Arg2&& b)
+{
+	return detail::MakeFunctionNode(BitwiseXor{}, std::forward<Arg1>(a), std::forward<Arg2>(b));
+}
+struct BitwiseNot
+{
+	auto operator()(const auto& a) const -> decltype(~a) { return ~a; }
+};
+template <node_or_placeholder Arg>
+auto operator~(Arg&& a)
+{
+	return detail::MakeFunctionNode(BitwiseNot{}, std::forward<Arg>(a));
+}
+struct LeftShift
+{
+	auto operator()(const auto& a, const auto& b) const -> decltype(a << b) { return a << b; }
+};
+template <class Arg1, class Arg2>
+	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
+auto operator<<(Arg1&& a, Arg2&& b)
+{
+	return detail::MakeFunctionNode(LeftShift{}, std::forward<Arg1>(a), std::forward<Arg2>(b));
+}
+struct RightShift
+{
+	auto operator()(const auto& a, const auto& b) const -> decltype(a >> b) { return a >> b; }
+};
+template <class Arg1, class Arg2>
+	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
+auto operator>>(Arg1&& a, Arg2&& b)
+{
+	return detail::MakeFunctionNode(RightShift{}, std::forward<Arg1>(a), std::forward<Arg2>(b));
+}
+
 struct IsFinite
 {
 	auto operator()(const auto& a) const -> decltype(std::isfinite(a)) { return std::isfinite(a); }
