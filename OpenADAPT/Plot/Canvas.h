@@ -351,36 +351,17 @@ class Axis##AXIS : public GPM\
 {\
 public:\
 	using GPM::GPM;\
-	void Set##AXIS##Label(const std::string& label);\
-	void Set##AXIS##Range(double min, double max);\
-	void Set##AXIS##RangeMin(double min);\
-	void Set##AXIS##RangeMax(double max);\
-	void SetLog##AXIS(double base = 0);\
-	void SetFormat##AXIS(const std::string& fmt);\
-	void Set##AXIS##DataTime(const std::string& fmt = std::string());\
+	void Set##AXIS##Label(const std::string& label) { this->SetLabel(axis, label); }\
+	void Set##AXIS##Range(double min, double max) { this->SetRange(axis, min, max); }\
+	void Set##AXIS##RangeMin(double min) { this->SetRangeMin(axis, min); }\
+	void Set##AXIS##RangeMax(double max) { this->SetRangeMax(axis, max); }\
+	void SetLog##AXIS(double base = 0) { this->SetLog(axis, base); }\
+	void SetFormat##AXIS(const std::string& fmt) { this->SetFormat(axis, fmt); }\
+	void Set##AXIS##DataTime(const std::string& fmt = std::string()) { this->SetDataTime(axis, fmt); }\
 	template <class ...Args>\
-	void Set##AXIS##Tics(Args&& ...args);\
-	void Set##AXIS##TicsRotate(double ang);\
-};\
-template <class GPM>\
-inline void Axis##AXIS<GPM>::Set##AXIS##Label(const std::string& label) { this->SetLabel(axis, label); }\
-template <class GPM>\
-inline void Axis##AXIS<GPM>::Set##AXIS##Range(double min, double max) { this->SetRange(axis, min, max); }\
-template <class GPM>\
-inline void Axis##AXIS<GPM>::Set##AXIS##RangeMin(double min) { this->SetRangeMin(axis, min); }\
-template <class GPM>\
-inline void Axis##AXIS<GPM>::Set##AXIS##RangeMax(double max) { this->SetRangeMax(axis, max); }\
-template <class GPM>\
-inline void Axis##AXIS<GPM>::SetLog##AXIS(double base) { this->SetLog(axis, base); }\
-template <class GPM>\
-inline void Axis##AXIS<GPM>::SetFormat##AXIS(const std::string& fmt) { this->SetFormat(axis, fmt); }\
-template <class GPM>\
-inline void Axis##AXIS<GPM>::Set##AXIS##DataTime(const std::string& fmt) { this->SetDataTime(axis, fmt); }\
-template <class GPM>\
-template <class ...Args>\
-inline void Axis##AXIS<GPM>::Set##AXIS##Tics(Args&& ...args) { this->SetTics(axis, std::forward<Args>(args)...); }\
-template <class GPM>\
-inline void Axis##AXIS<GPM>::Set##AXIS##TicsRotate(double ang) { this->SetTicsRotate(axis, ang); }
+	void Set##AXIS##Tics(Args&& ...args) { this->SetTics(axis, std::forward<Args>(args)...); }\
+	void Set##AXIS##TicsRotate(double ang) { this->SetTicsRotate(axis, ang); }\
+};
 
 DEF_GPMAXIS(X, "x")
 DEF_GPMAXIS(X2, "x2")
@@ -456,7 +437,7 @@ ADAPT_DEFINE_TAGGED_KEYWORD_OPTION(below, FilledCurveOption)
 
 
 // タイトルなし指定の短縮版
-inline constexpr auto no_title = (title = "notitle");
+inline constexpr auto notitle = (title = "notitle");
 
 // 軸指定の短縮版
 inline constexpr auto ax_x1y1 = (axis = "x1y1");
@@ -492,7 +473,7 @@ inline constexpr auto c_blue          = (color = "blue");
 inline constexpr auto c_light_blue    = (color = "light-blue");
 inline constexpr auto c_dark_yellow   = (color = "dark-yellow");
 inline constexpr auto c_yellow        = (color = "yellow");
-inline constexpr auto c_light_yellow  = (color = "rgb #ffffe0");
+inline constexpr auto c_light_yellow  = (color = "rgb \"#ffffe0\"");
 inline constexpr auto c_dark_magenta  = (color = "dark-magenta");
 inline constexpr auto c_magenta       = (color = "magenta");
 inline constexpr auto c_light_magenta = (color = "light-magenta");
@@ -721,669 +702,532 @@ struct GraphParam2D : public GraphParamBase<PointParam, VectorParam, FilledCurve
 template <class GraphParam>
 struct PlotBuffer2D
 {
-	PlotBuffer2D(Canvas* g);
+	PlotBuffer2D(Canvas* g) : m_canvas(g) {}
 	PlotBuffer2D(const PlotBuffer2D&) = delete;
-	PlotBuffer2D(PlotBuffer2D&& p) noexcept;
+	PlotBuffer2D(PlotBuffer2D&& p) noexcept
+		: m_param(std::move(p.m_param)), m_canvas(p.m_canvas)
+	{
+		p.m_canvas = nullptr;
+	}
 	PlotBuffer2D& operator=(const PlotBuffer2D&) = delete;
-	PlotBuffer2D& operator=(PlotBuffer2D&& p) noexcept;
-	virtual ~PlotBuffer2D();
+	PlotBuffer2D& operator=(PlotBuffer2D&& p) noexcept
+	{
+		m_canvas = p.m_canvas; p.m_canvas = nullptr;
+		m_param = std::move(p.m_param);
+		return *this;
+	}
+	virtual ~PlotBuffer2D()
+	{
+		//mCanvasがnullptrでないときはこのPlotBufferが最終処理を担当する。
+		if (m_canvas != nullptr) Flush();
+	}
 
-	void Flush();
+	void Flush()
+	{
+		if (m_canvas == nullptr) throw NotInitialized("Buffer is empty");
+		std::string c = "plot";
+		for (auto& i : m_param)
+		{
+			c += PlotCommand(i, m_canvas->IsInMemoryDataTransferEnabled()) + ", ";
+		}
+		c.erase(c.end() - 2, c.end());
+		m_canvas->Command(c);
+		m_canvas->Command(InitCommand());
+	}
 
 	template <class ...Options> requires all_keyword_args_tagged_with<plot::PointOption, Options...>
-	PlotBuffer2D PlotPoints(RangeReceiver x, RangeReceiver y, Options ...ops);
+	PlotBuffer2D PlotPoints(RangeReceiver x, RangeReceiver y, Options ...ops)
+	{
+		GraphParam i;
+		i.AssignPoint();
+		i.m_type = GraphParam::DATA;
+		i.SetBaseOptions(ops...);
+
+		//point
+		auto& p = i.GetPointParam();
+		p.m_x = x;
+		p.m_y = y;
+		p.SetOptions(ops...);
+
+		return Plot(i);
+	}
 	template <class ...Options> requires all_keyword_args_tagged_with<plot::PointOption, Options...>
-	PlotBuffer2D PlotPoints(std::string_view filename, std::string_view xcol, std::string_view ycol, Options ...ops);
+	PlotBuffer2D PlotPoints(std::string_view filename, std::string_view xcol, std::string_view ycol, Options ...ops)
+	{
+		GraphParam i;
+		i.AssignPoint();
+		i.m_graph = filename;
+		i.m_type = GraphParam::FILE;
+		i.SetBaseOptions(ops...);
+
+		//point
+		auto& p = i.GetPointParam();
+		p.m_x = xcol;
+		p.m_y = ycol;
+		p.SetOptions(ops...);
+
+		return Plot(i);
+	}
 	template <class ...Options> requires all_keyword_args_tagged_with<plot::PointOption, Options...>
-	PlotBuffer2D PlotPoints(std::string_view equation, Options ...ops);
+	PlotBuffer2D PlotPoints(std::string_view equation, Options ...ops)
+	{
+		GraphParam i;
+		i.AssignPoint();
+		i.m_graph = equation;
+		i.m_type = GraphParam::EQUATION;
+		i.SetBaseOptions(ops...);
+
+		//point
+		auto& p = i.GetPointParam();
+		p.SetOptions(ops...);
+
+		return Plot(i);
+	}
 
 	template <class ...Options> requires all_keyword_args_tagged_with<plot::PointOption, Options...>
-	PlotBuffer2D PlotLines(RangeReceiver x, RangeReceiver y, Options ...ops);
+	PlotBuffer2D PlotLines(RangeReceiver x, RangeReceiver y, Options ...ops)
+	{
+		return PlotPoints(x, y, plot::style = Style::lines, ops...);
+	}
 	template <class ...Options> requires all_keyword_args_tagged_with<plot::PointOption, Options...>
-	PlotBuffer2D PlotLines(std::string_view filename, std::string_view xcol, std::string_view ycol, Options ...ops);
+	PlotBuffer2D PlotLines(std::string_view filename, std::string_view xcol, std::string_view ycol, Options ...ops)
+	{
+		return PlotPoints(filename, xcol, ycol, plot::style = Style::lines, ops...);
+	}
 	template <class ...Options> requires all_keyword_args_tagged_with<plot::PointOption, Options...>
-	PlotBuffer2D PlotLines(std::string_view equation, Options ...ops);
+	PlotBuffer2D PlotLines(std::string_view equation, Options ...ops)
+	{
+		return PlotPoints(equation, plot::style = Style::lines, ops...);
+	}
 
 	template <class ...Options> requires all_keyword_args_tagged_with<plot::VectorOption, Options...>
 	PlotBuffer2D PlotVectors(RangeReceiver xfrom, RangeReceiver yfrom,
-								RangeReceiver xlen, RangeReceiver ylen,
-								Options ...ops);
+							 RangeReceiver xlen, RangeReceiver ylen,
+							 Options ...ops)
+	{
+		GraphParam i;
+		i.AssignVector();
+		i.m_type = GraphParam::DATA;
+		i.SetBaseOptions(ops...);
+
+		auto& v = i.GetVectorParam();
+		v.m_x = xfrom;
+		v.m_y = yfrom;
+		v.m_x_len = xlen;
+		v.m_y_len = ylen;
+		v.SetOptions(ops...);
+		return Plot(i);
+	}
 	template <class ...Options> requires all_keyword_args_tagged_with<plot::VectorOption, Options...>
 	PlotBuffer2D PlotVectors(std::string_view filename,
-								std::string_view xbegin, std::string_view xlen,
-								std::string_view ybegin, std::string_view ylen,
-								Options ...ops);
+							 std::string_view xbegin, std::string_view xlen,
+							 std::string_view ybegin, std::string_view ylen,
+							 Options ...ops)
+	{
+		GraphParam i;
+		i.AssignVector();
+		i.m_type = GraphParam::FILE;
+		i.m_graph = filename;
+		i.SetBaseOptions(ops...);
+
+		auto& v = i.GetVectorParam();
+		v.m_x = xbegin;
+		v.m_y = ybegin;
+		v.m_x_len = xlen;
+		v.m_y_len = ylen;
+		v.SetOptions(ops...);
+		return Plot(i);
+	}
 
 	template <class ...Options> requires all_keyword_args_tagged_with<plot::FilledCurveOption, Options...>
-	PlotBuffer2D PlotFilledCurves(RangeReceiver x, RangeReceiver y, Options ...ops);
+	PlotBuffer2D PlotFilledCurves(RangeReceiver x, RangeReceiver y, Options ...ops)
+	{
+		GraphParam p;
+		p.AssignFilledCurve();
+		p.m_type = GraphParam::DATA;
+		p.SetBaseOptions(ops...);
+
+		auto& f = p.GetFilledCurveParam();
+		f.m_x = x;
+		f.m_y = y;
+		f.SetOptions(ops...);
+		return Plot(p);
+	}
 	template <class ...Options> requires all_keyword_args_tagged_with<plot::FilledCurveOption, Options...>
-	PlotBuffer2D PlotFilledCurves(std::string_view filename, std::string_view x, std::string_view y, Options ...ops);
+	PlotBuffer2D PlotFilledCurves(std::string_view filename, std::string_view x, std::string_view y, Options ...ops)
+	{
+		GraphParam p;
+		p.AssignFilledCurve();
+		p.m_type = GraphParam::FILE;
+		p.m_graph = filename;
+		p.SetBaseOptions(ops...);
+
+		auto& f = p.GetFilledCurveParam();
+		f.m_x = x;
+		f.m_y = y;
+		f.SetOptions(ops...);
+		return Plot(p);
+	}
 	template <class ...Options> requires all_keyword_args_tagged_with<plot::FilledCurveOption, Options...>
-	PlotBuffer2D PlotFilledCurves(RangeReceiver x, RangeReceiver y, RangeReceiver y2,
-									 Options ...ops);
+	PlotBuffer2D PlotFilledCurves(RangeReceiver x, RangeReceiver y, RangeReceiver y2, Options ...ops)
+	{
+		GraphParam p;
+		p.AssignFilledCurve();
+		p.m_type = GraphParam::DATA;
+		p.SetBaseOptions(ops...);
+
+		auto& f = p.GetFilledCurveParam();
+		f.m_x = x;
+		f.m_y = y;
+		f.mY2 = y2;
+		f.SetOptions(ops...);
+		return Plot(p);
+	}
 	template <class ...Options> requires all_keyword_args_tagged_with<plot::FilledCurveOption, Options...>
 	PlotBuffer2D PlotFilledCurves(std::string_view filename, std::string_view x, std::string_view y, std::string_view y2,
-									 Options ...ops);
+								  Options ...ops)
+	{
+		GraphParam p;
+		p.AssignFilledCurve();
+		p.m_type = GraphParam::FILE;
+		p.m_graph = filename;
+		p.SetBaseOptions(ops...);
+
+		auto& f = p.GetFilledCurveParam();
+		f.m_x = x;
+		f.m_y = y;
+		f.mY2 = y2;
+		f.SetOptions(ops...);
+		return Plot(p);
+	}
 
 protected:
 
-	PlotBuffer2D Plot(GraphParam& i);
+	PlotBuffer2D Plot(GraphParam& i)
+	{
+		if (i.m_type == GraphParam::DATA)
+		{
+			if (m_canvas->IsInMemoryDataTransferEnabled())
+			{
+				i.m_graph = "$" + SanitizeForDataBlock(m_canvas->GetOutput()) + "_" + std::to_string(m_param.size()); // datablock name
+			}
+			else
+			{
+				i.m_graph = m_canvas->GetOutput() + ".tmp" + std::to_string(m_param.size()) + ".txt";
+			}
+			auto GET_ARRAY = [this](ArrayData& X, std::string_view ax,
+									std::vector<ArrayData::Range>& it, std::vector<std::string>& column, std::string& labelcolumn)
+			{
+				switch (X.GetType())
+				{
+				case ArrayData::NUM_RANGE:
+					it.emplace_back(X.GetRange());
+					column.emplace_back(std::to_string(it.size()));
+					break;
+				case ArrayData::STR_RANGE:
+					it.emplace_back(X.GetRange());
+					if (m_canvas->IsDateTimeEnabled(ax))
+						column.emplace_back(std::to_string(it.size()));
+					else
+						labelcolumn = std::format("{}tic({})", ax, it.size());
+					break;
+				case ArrayData::COLUMN:
+					column.emplace_back(X.GetColumn());
+					break;
+				case ArrayData::UNIQUE:
+					column.emplace_back(std::format("($1-$1+{})", X.GetUnique()));
+					break;
+				}
+			};
 
-	static std::string PlotCommand(const GraphParam& i, const bool IsInMemoryDataTransferEnabled);
-	static std::string InitCommand();
+			std::vector<ArrayData::Range> it;
+			std::vector<std::string> column;
+			std::string labelcolumn;
+
+			auto find_axis = [&i](const char* a) { return i.m_axis.find(a) != std::string::npos; };
+			std::string x_x2 = find_axis("x2") ? m_canvas->Command("set x2tics"), "x2" : "x";
+			std::string y_y2 = find_axis("y2") ? m_canvas->Command("set y2tics"), "y2" : "y";
+			//ファイルを作成する。
+			if (i.IsPoint())
+			{
+				auto& p = i.GetPointParam();
+				if (!p.m_x) throw InvalidArg("x coordinate list is not given.");
+				if (!p.m_y) throw InvalidArg("y coordinate list is not given.");
+
+				GET_ARRAY(p.m_x, x_x2, it, column, labelcolumn);
+				GET_ARRAY(p.m_y, y_y2, it, column, labelcolumn);
+
+				if (p.m_x_errorbar) GET_ARRAY(p.m_x_errorbar, x_x2, it, column, labelcolumn);
+				if (p.m_y_errorbar) GET_ARRAY(p.m_y_errorbar, y_y2, it, column, labelcolumn);
+				if (p.m_variable_color) GET_ARRAY(p.m_variable_color, "cb", it, column, labelcolumn);
+				if (p.m_variable_size) GET_ARRAY(p.m_variable_size, "variable_size", it, column, labelcolumn);
+			}
+			else if (i.IsVector())
+			{
+				auto& v = i.GetVectorParam();
+				if (!v.m_x) throw InvalidArg("x coordinate list is not given.");
+				GET_ARRAY(v.m_x, x_x2, it, column, labelcolumn);
+				if (!v.m_y) throw InvalidArg("y coordinate list is not given.");
+				GET_ARRAY(v.m_y, y_y2, it, column, labelcolumn);
+				if (!v.m_x_len) throw InvalidArg("xlen list is not given.");
+				GET_ARRAY(v.m_x_len, x_x2, it, column, labelcolumn);
+				if (!v.m_y_len) throw InvalidArg("ylen list is not given.");
+				GET_ARRAY(v.m_y_len, y_y2, it, column, labelcolumn);
+
+				if (v.m_variable_color) GET_ARRAY(v.m_variable_color, "variable_color", it, column, labelcolumn);
+			}
+			else if (i.IsFilledCurve())
+			{
+				auto& f = i.GetFilledCurveParam();
+				if (!f.m_x) throw InvalidArg("x coordinate list is not given.");
+				GET_ARRAY(f.m_x, x_x2, it, column, labelcolumn);
+				if (!f.m_y) throw InvalidArg("y coordinate list is not given.");
+				GET_ARRAY(f.m_y, y_y2, it, column, labelcolumn);
+
+				if (f.mY2) GET_ARRAY(f.mY2, y_y2, it, column, labelcolumn);
+				if (f.m_variable_color) GET_ARRAY(f.m_variable_color, "variable_fillcolor", it, column, labelcolumn);
+			}
+			MakeDataObject(m_canvas, i.m_graph, it);
+			if (!labelcolumn.empty()) column.emplace_back(std::move(labelcolumn));
+			i.m_column = std::move(column);
+		}
+		else if (i.m_type == GraphParam::FILE)
+		{
+			auto ADD_COLUMN = [](const ArrayData& a, const std::string& name, std::vector<std::string>& c)
+			{
+				if (a.GetType() == ArrayData::COLUMN) c.emplace_back(a.GetColumn());
+				else if (a.GetType() == ArrayData::UNIQUE) c.emplace_back("($1-$1+" + std::to_string(a.GetUnique()) + ")");
+				else throw InvalidArg(name + "list in the file plot mode must be given in the form of the string column or unique value.");
+			};
+			//ファイルからプロットする場合、x軸ラベルを文字列にするのがちょっと難しい。
+			//普通ならusing 1:2で済むところ、x軸を文字列ラベルにするとusing 2:xticlabels(1)のようにしなければならない。
+			//しかしそのためには、ファイルをコメントを除く数行読んでみて、数値か文字列かを判定する必要が生じる。
+			//ややこしくなるので今のところ非対応。
+			//一応、ユーザー側でPlotPointsの引数に"2", "xticlabels(1)"と与えることで動作はするが、その場合エラーバーなどは使えなくなる。
+			std::vector<std::string> column;
+			if (i.IsPoint())
+			{
+				auto& p = i.GetPointParam();
+				if (!p.m_x) throw InvalidArg("x coordinate list is not given.");
+				ADD_COLUMN(p.m_x, "x", column);
+				if (!p.m_y) throw InvalidArg("y coordinate list is not given.");
+				ADD_COLUMN(p.m_y, "y", column);
+				if (p.m_x_errorbar) ADD_COLUMN(p.m_x_errorbar, "xerrorbar", column);
+				if (p.m_y_errorbar) ADD_COLUMN(p.m_y_errorbar, "yerrorbar", column);
+				if (p.m_variable_color) ADD_COLUMN(p.m_variable_color, "variable_color", column);
+				if (p.m_variable_size) ADD_COLUMN(p.m_variable_size, "variable_size", column);
+			}
+			else if (i.IsVector())
+			{
+				auto& v = i.GetVectorParam();
+				if (!v.m_x) throw InvalidArg("x coordinate list is not given.");
+				ADD_COLUMN(v.m_x, "x", column);
+				if (!v.m_y) throw InvalidArg("y coordinate list is not given.");
+				ADD_COLUMN(v.m_y, "y", column);
+				if (!v.m_x_len) throw InvalidArg("xlen list is not given.");
+				ADD_COLUMN(v.m_x_len, "xlen", column);
+				if (!v.m_y_len) throw InvalidArg("ylen list is not given.");
+				ADD_COLUMN(v.m_y_len, "ylen", column);
+				if (v.m_variable_color) ADD_COLUMN(v.m_variable_color, "variable_color", column);
+			}
+			else if (i.IsFilledCurve())
+			{
+				auto& f = i.GetFilledCurveParam();
+				if (!f.m_x) throw InvalidArg("x coordinate list is not given.");
+				ADD_COLUMN(f.m_x, "x", column);
+				if (!f.m_y) throw InvalidArg("y coordinate list is not given.");
+				ADD_COLUMN(f.m_y, "y", column);
+
+				if (f.mY2) ADD_COLUMN(f.mY2, "y2", column);
+				if (f.m_variable_color) ADD_COLUMN(f.m_variable_color, "variable_fillcolor", column);
+			}
+			i.m_column = std::move(column);
+		}
+		m_param.emplace_back(std::move(i));
+		return std::move(*this);
+	}
+
+	static std::string PlotCommand(const GraphParam& p, const bool IsInMemoryDataTransferEnabled)
+	{
+		//filename or equation
+		std::string c;
+		switch (p.m_type)
+		{
+		case GraphParam::EQUATION:
+			//equation
+			c += " " + p.m_graph;
+			break;
+		case GraphParam::FILE:
+			//filename
+			c += " '" + p.m_graph + "'";
+
+			//using
+			c += " using ";
+			for (size_t i = 0; i < p.m_column.size(); ++i)
+				c += p.m_column[i] + ":";
+			c.pop_back();
+			break;
+		case GraphParam::DATA:
+			if (IsInMemoryDataTransferEnabled)
+			{
+				//variable name
+				c += " " + p.m_graph;
+			}
+			else {
+				//filename
+				c += " '" + p.m_graph + "'";
+			}
+
+			//using
+			c += " using ";
+			for (size_t i = 0; i < p.m_column.size(); ++i)
+				c += p.m_column[i] + ":";
+			c.pop_back();
+			break;
+		}
+
+		//title
+		if (!p.m_title.empty())
+		{
+			if (p.m_title == "notitle") c += " notitle";
+			else c += " title '" + p.m_title + "'";
+		}
+
+		c += " with";
+		//ベクトル指定がある場合。
+		if (p.IsVector())
+		{
+			c += VectorPlotCommand(p.GetVectorParam());
+		}
+		//点指定がある場合。
+		else if (p.IsPoint())
+		{
+			c += PointPlotCommand(p.GetPointParam());
+		}
+		else if (p.IsFilledCurve())
+		{
+			c += FilledCurveplotCommand(p.GetFilledCurveParam());
+		}
+
+		//axis
+		if (!p.m_axis.empty()) c += " axes " + p.m_axis;
+
+		return c;
+	}
+	static std::string InitCommand()
+	{
+		std::string c;
+		c += "set autoscale\n";
+		c += "unset logscale\n";
+		c += "unset title\n";
+		c += "unset grid\n";
+		c += "set size noratio\n";
+		return c;
+	}
 
 	std::vector<GraphParam> m_param;
 	Canvas* m_canvas;
 };
 
-template <class GraphParam, template <class> class Buffer>
+template <class GraphParam, template <class> class Buffer_>
 class Canvas2D : public Axis2D<Canvas>
 {
 public:
 
-	using _Buffer = Buffer<GraphParam>;
+	using Buffer = Buffer_<GraphParam>;
 	using detail::Axis2D<Canvas>::Axis2D;
 
 	friend class MultiPlotter;
 
 	template <class ...Options> requires all_keyword_args_tagged_with<plot::PointOption, Options...>
-	_Buffer PlotPoints(RangeReceiver x, RangeReceiver y, Options ...ops);
+	Buffer PlotPoints(RangeReceiver x, RangeReceiver y, Options ...ops)
+	{
+		Buffer r(this);
+		return r.PlotPoints(x, y, ops...);
+	}
 	template <class ...Options> requires all_keyword_args_tagged_with<plot::PointOption, Options...>
-	_Buffer PlotPoints(std::string_view filename, std::string_view xcol, std::string_view ycol, Options ...ops);
+	Buffer PlotPoints(std::string_view filename, std::string_view xcol, std::string_view ycol, Options ...ops)
+	{
+		Buffer r(this);
+		return r.PlotPoints(filename, xcol, ycol, ops...);
+	}
 	template <class ...Options> requires all_keyword_args_tagged_with<plot::PointOption, Options...>
-	_Buffer PlotPoints(std::string_view equation, Options ...ops);
-	
+	Buffer PlotPoints(std::string_view equation, Options ...ops)
+	{
+		Buffer r(this);
+		return r.PlotPoints(equation, ops...);
+	}
+
 	template <class ...Options> requires all_keyword_args_tagged_with<plot::PointOption, Options...>
-	_Buffer PlotLines(RangeReceiver x, RangeReceiver y, Options ...ops);
+	Buffer PlotLines(RangeReceiver x, RangeReceiver y, Options ...ops)
+	{
+		Buffer r(this);
+		return r.PlotLines(x, y, ops...);
+	}
 	template <class ...Options> requires all_keyword_args_tagged_with<plot::PointOption, Options...>
-	_Buffer PlotLines(std::string_view filename, std::string_view xcol, std::string_view ycol, Options ...ops);
+	Buffer PlotLines(std::string_view filename, std::string_view xcol, std::string_view ycol, Options ...ops)
+	{
+		Buffer r(this);
+		return r.PlotLines(filename, xcol, ycol, ops...);
+	}
 	template <class ...Options> requires all_keyword_args_tagged_with<plot::PointOption, Options...>
-	_Buffer PlotLines(std::string_view equation, Options ...ops);
+	Buffer PlotLines(std::string_view equation, Options ...ops)
+	{
+		Buffer r(this);
+		return r.PlotLines(equation, ops...);
+	}
 
 	template <class ...Options> requires all_keyword_args_tagged_with<plot::VectorOption, Options...>
-	_Buffer PlotVectors(RangeReceiver xfrom, RangeReceiver yfrom,
-						RangeReceiver xlen, RangeReceiver ylen,
-						Options ...ops);
+	Buffer PlotVectors(RangeReceiver xfrom, RangeReceiver yfrom,
+					   RangeReceiver xlen, RangeReceiver ylen,
+					   Options ...ops)
+	{
+		Buffer r(this);
+		return r.PlotVectors(xfrom, yfrom, xlen, ylen, ops...);
+	}
 	template <class ...Options> requires all_keyword_args_tagged_with<plot::VectorOption, Options...>
-	_Buffer PlotVectors(std::string_view filename,
-						std::string_view xbegin, std::string_view xlen,
-						std::string_view ybegin, std::string_view ylen,
-						Options ...ops);
+	Buffer PlotVectors(std::string_view filename,
+					   std::string_view xbegin, std::string_view xlen,
+					   std::string_view ybegin, std::string_view ylen,
+					   Options ...ops)
+	{
+		Buffer r(this);
+		return r.PlotVectors(filename, xbegin, ybegin, xlen, ylen, ops...);
+	}
 
 	template <class ...Options> requires all_keyword_args_tagged_with<plot::FilledCurveOption, Options...>
-	_Buffer PlotFilledCurves(RangeReceiver x, RangeReceiver y, Options ...ops);
+	Buffer PlotFilledCurves(RangeReceiver x, RangeReceiver y, Options ...ops)
+	{
+		Buffer r(this);
+		return r.PlotFilledCurves(x, y, ops...);
+	}
 	template <class ...Options> requires all_keyword_args_tagged_with<plot::FilledCurveOption, Options...>
-	_Buffer PlotFilledCurves(std::string_view filename, std::string_view x, std::string_view y, Options ...ops);
+	Buffer PlotFilledCurves(std::string_view filename, std::string_view x, std::string_view y, Options ...ops)
+	{
+		Buffer r(this);
+		return r.PlotFilledCurves(filename, x, y, ops...);
+	}
 	template <class ...Options> requires all_keyword_args_tagged_with<plot::FilledCurveOption, Options...>
-	_Buffer PlotFilledCurves(RangeReceiver x, RangeReceiver y, RangeReceiver y2,
-							 Options ...ops);
+	Buffer PlotFilledCurves(RangeReceiver x, RangeReceiver y, RangeReceiver y2,
+							Options ...ops)
+	{
+		Buffer r(this);
+		return r.PlotFilledCurves(x, y, y2, ops...);
+	}
 	template <class ...Options> requires all_keyword_args_tagged_with<plot::FilledCurveOption, Options...>
-	_Buffer PlotFilledCurves(std::string_view filename, std::string_view x, std::string_view y, std::string_view y2,
-							 Options ...ops);
+	Buffer PlotFilledCurves(std::string_view filename, std::string_view x, std::string_view y, std::string_view y2,
+							Options ...ops)
+	{
+		Buffer r(this);
+		return r.PlotFilledCurves(filename, x, y, y2, ops...);
+	}
 
-	_Buffer GetBuffer();
+	Buffer GetBuffer()
+	{
+		return Buffer(this);
+	}
 
 };
-
-template <class GraphParam>
-inline PlotBuffer2D<GraphParam>::PlotBuffer2D(Canvas* g)
-	: m_canvas(g) {}
-template <class GraphParam>
-inline PlotBuffer2D<GraphParam>::PlotBuffer2D(PlotBuffer2D&& p) noexcept
-	: m_param(std::move(p.m_param)), m_canvas(p.m_canvas)
-{
-	p.m_canvas = nullptr;
-}
-template <class GraphParam>
-PlotBuffer2D<GraphParam>& PlotBuffer2D<GraphParam>::operator=(PlotBuffer2D<GraphParam>&& p) noexcept
-{
-	m_canvas = p.m_canvas; p.m_canvas = nullptr;
-	m_param = std::move(p.m_param);
-	return *this;
-}
-template <class GraphParam>
-inline PlotBuffer2D<GraphParam>::~PlotBuffer2D()
-{
-	//mCanvasがnullptrでないときはこのPlotBufferが最終処理を担当する。
-	if (m_canvas != nullptr) Flush();
-}
-template <class GraphParam>
-inline void PlotBuffer2D<GraphParam>::Flush()
-{
-	if (m_canvas == nullptr) throw NotInitialized("Buffer is empty");
-	std::string c = "plot";
-	for (auto& i : m_param)
-	{
-		c += PlotCommand(i, m_canvas->IsInMemoryDataTransferEnabled()) + ", ";
-	}
-	c.erase(c.end() - 2, c.end());
-	m_canvas->Command(c);
-	m_canvas->Command(InitCommand());
-}
-template <class GraphParam>
-inline PlotBuffer2D<GraphParam> PlotBuffer2D<GraphParam>::Plot(GraphParam& i)
-{
-	if (i.m_type == GraphParam::DATA)
-	{
-		if (m_canvas->IsInMemoryDataTransferEnabled())
-		{
-			i.m_graph = "$" + SanitizeForDataBlock(m_canvas->GetOutput()) + "_" + std::to_string(m_param.size()); // datablock name
-		}
-		else
-		{
-			i.m_graph = m_canvas->GetOutput() + ".tmp" + std::to_string(m_param.size()) + ".txt";
-		}
-		auto GET_ARRAY = [this](ArrayData& X, std::string_view ax,
-							std::vector<ArrayData::Range>& it, std::vector<std::string>& column, std::string& labelcolumn)
-		{
-			switch (X.GetType())
-			{
-			case ArrayData::NUM_RANGE:
-				it.emplace_back(X.GetRange());
-				column.emplace_back(std::to_string(it.size()));
-				break;
-			case ArrayData::STR_RANGE:
-				it.emplace_back(X.GetRange());
-				if (m_canvas->IsDateTimeEnabled(ax))
-					column.emplace_back(std::to_string(it.size()));
-				else
-					labelcolumn = std::format("{}tic({})", ax, it.size());
-				break;
-			case ArrayData::COLUMN:
-				column.emplace_back(X.GetColumn());
-				break;
-			case ArrayData::UNIQUE:
-				column.emplace_back(std::format("($1-$1+{})", X.GetUnique()));
-				break;
-			}
-		};
-
-		std::vector<ArrayData::Range> it;
-		std::vector<std::string> column;
-		std::string labelcolumn;
-
-		auto find_axis = [&i](const char* a) { return i.m_axis.find(a) != std::string::npos; };
-		std::string x_x2 = find_axis("x2") ? m_canvas->Command("set x2tics"), "x2" : "x";
-		std::string y_y2 = find_axis("y2") ? m_canvas->Command("set y2tics"), "y2" : "y";
-		//ファイルを作成する。
-		if (i.IsPoint())
-		{
-			auto& p = i.GetPointParam();
-			if (!p.m_x) throw InvalidArg("x coordinate list is not given.");
-			if (!p.m_y) throw InvalidArg("y coordinate list is not given.");
-
-			GET_ARRAY(p.m_x, x_x2, it, column, labelcolumn);
-			GET_ARRAY(p.m_y, y_y2, it, column, labelcolumn);
-
-			if (p.m_x_errorbar) GET_ARRAY(p.m_x_errorbar, x_x2, it, column, labelcolumn);
-			if (p.m_y_errorbar) GET_ARRAY(p.m_y_errorbar, y_y2, it, column, labelcolumn);
-			if (p.m_variable_color) GET_ARRAY(p.m_variable_color, "cb", it, column, labelcolumn);
-			if (p.m_variable_size) GET_ARRAY(p.m_variable_size, "variable_size", it, column, labelcolumn);
-		}
-		else if (i.IsVector())
-		{
-			auto& v = i.GetVectorParam();
-			if (!v.m_x) throw InvalidArg("x coordinate list is not given.");
-			GET_ARRAY(v.m_x, x_x2, it, column, labelcolumn);
-			if (!v.m_y) throw InvalidArg("y coordinate list is not given.");
-			GET_ARRAY(v.m_y, y_y2, it, column, labelcolumn);
-			if (!v.m_x_len) throw InvalidArg("xlen list is not given.");
-			GET_ARRAY(v.m_x_len, x_x2, it, column, labelcolumn);
-			if (!v.m_y_len) throw InvalidArg("ylen list is not given.");
-			GET_ARRAY(v.m_y_len, y_y2, it, column, labelcolumn);
-
-			if (v.m_variable_color) GET_ARRAY(v.m_variable_color, "variable_color", it, column, labelcolumn);
-		}
-		else if (i.IsFilledCurve())
-		{
-			auto& f = i.GetFilledCurveParam();
-			if (!f.m_x) throw InvalidArg("x coordinate list is not given.");
-			GET_ARRAY(f.m_x, x_x2, it, column, labelcolumn);
-			if (!f.m_y) throw InvalidArg("y coordinate list is not given.");
-			GET_ARRAY(f.m_y, y_y2, it, column, labelcolumn);
-
-			if (f.mY2) GET_ARRAY(f.mY2, y_y2, it, column, labelcolumn);
-			if (f.m_variable_color) GET_ARRAY(f.m_variable_color, "variable_fillcolor", it, column, labelcolumn);
-		}
-		MakeDataObject(m_canvas, i.m_graph, it);
-		if (!labelcolumn.empty()) column.emplace_back(std::move(labelcolumn));
-		i.m_column = std::move(column);
-	}
-	else if (i.m_type == GraphParam::FILE)
-	{
-		auto ADD_COLUMN = [](const ArrayData& a, const std::string& name, std::vector<std::string>& c)
-		{
-			if (a.GetType() == ArrayData::COLUMN) c.emplace_back(a.GetColumn());
-			else if (a.GetType() == ArrayData::UNIQUE) c.emplace_back("($1-$1+" + std::to_string(a.GetUnique()) + ")");
-			else throw InvalidArg(name + "list in the file plot mode must be given in the form of the string column or unique value.");
-		};
-		//ファイルからプロットする場合、x軸ラベルを文字列にするのがちょっと難しい。
-		//普通ならusing 1:2で済むところ、x軸を文字列ラベルにするとusing 2:xticlabels(1)のようにしなければならない。
-		//しかしそのためには、ファイルをコメントを除く数行読んでみて、数値か文字列かを判定する必要が生じる。
-		//ややこしくなるので今のところ非対応。
-		//一応、ユーザー側でPlotPointsの引数に"2", "xticlabels(1)"と与えることで動作はするが、その場合エラーバーなどは使えなくなる。
-		std::vector<std::string> column;
-		if (i.IsPoint())
-		{
-			auto& p = i.GetPointParam();
-			if (!p.m_x) throw InvalidArg("x coordinate list is not given.");
-			ADD_COLUMN(p.m_x, "x", column);
-			if (!p.m_y) throw InvalidArg("y coordinate list is not given.");
-			ADD_COLUMN(p.m_y, "y", column);
-			if (p.m_x_errorbar) ADD_COLUMN(p.m_x_errorbar, "xerrorbar", column);
-			if (p.m_y_errorbar) ADD_COLUMN(p.m_y_errorbar, "yerrorbar", column);
-			if (p.m_variable_color) ADD_COLUMN(p.m_variable_color, "variable_color", column);
-			if (p.m_variable_size) ADD_COLUMN(p.m_variable_size, "variable_size", column);
-		}
-		else if (i.IsVector())
-		{
-			auto& v = i.GetVectorParam();
-			if (!v.m_x) throw InvalidArg("x coordinate list is not given.");
-			ADD_COLUMN(v.m_x, "x", column);
-			if (!v.m_y) throw InvalidArg("y coordinate list is not given.");
-			ADD_COLUMN(v.m_y, "y", column);
-			if (!v.m_x_len) throw InvalidArg("xlen list is not given.");
-			ADD_COLUMN(v.m_x_len, "xlen", column);
-			if (!v.m_y_len) throw InvalidArg("ylen list is not given.");
-			ADD_COLUMN(v.m_y_len, "ylen", column);
-			if (v.m_variable_color) ADD_COLUMN(v.m_variable_color, "variable_color", column);
-		}
-		else if (i.IsFilledCurve())
-		{
-			auto& f = i.GetFilledCurveParam();
-			if (!f.m_x) throw InvalidArg("x coordinate list is not given.");
-			ADD_COLUMN(f.m_x, "x", column);
-			if (!f.m_y) throw InvalidArg("y coordinate list is not given.");
-			ADD_COLUMN(f.m_y, "y", column);
-
-			if (f.mY2) ADD_COLUMN(f.mY2, "y2", column);
-			if (f.m_variable_color) ADD_COLUMN(f.m_variable_color, "variable_fillcolor", column);
-		}
-		i.m_column = std::move(column);
-	}
-	m_param.emplace_back(std::move(i));
-	return std::move(*this);
-}
-template <class GraphParam>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::PointOption, Options...>
-inline PlotBuffer2D<GraphParam> PlotBuffer2D<GraphParam>::
-PlotPoints(RangeReceiver x, RangeReceiver y, Options ...ops)
-{
-	GraphParam i;
-	i.AssignPoint();
-	i.m_type = GraphParam::DATA;
-	i.SetBaseOptions(ops...);
-
-	//point
-	auto& p = i.GetPointParam();
-	p.m_x = x;
-	p.m_y = y;
-	p.SetOptions(ops...);
-
-	return Plot(i);
-}
-template <class GraphParam>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::PointOption, Options...>
-inline PlotBuffer2D<GraphParam> PlotBuffer2D<GraphParam>::
-PlotPoints(std::string_view filename, std::string_view xcol, std::string_view ycol, Options ...ops)
-{
-	GraphParam i;
-	i.AssignPoint();
-	i.m_graph = filename;
-	i.m_type = GraphParam::FILE;
-	i.SetBaseOptions(ops...);
-
-	//point
-	auto& p = i.GetPointParam();
-	p.m_x = xcol;
-	p.m_y = ycol;
-	p.SetOptions(ops...);
-
-	return Plot(i);
-}
-template <class GraphParam>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::PointOption, Options...>
-inline PlotBuffer2D<GraphParam> PlotBuffer2D<GraphParam>::
-PlotPoints(std::string_view equation, Options ...ops)
-{
-	GraphParam i;
-	i.AssignPoint();
-	i.m_graph = equation;
-	i.m_type = GraphParam::EQUATION;
-	i.SetBaseOptions(ops...);
-
-	//point
-	auto& p = i.GetPointParam();
-	p.SetOptions(ops...);
-
-	return Plot(i);
-}
-template <class GraphParam>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::PointOption, Options...>
-inline PlotBuffer2D<GraphParam> PlotBuffer2D<GraphParam>::
-PlotLines(RangeReceiver x, RangeReceiver y, Options ...ops)
-{
-	return PlotPoints(x, y, plot::style = Style::lines, ops...);
-}
-template <class GraphParam>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::PointOption, Options...>
-inline PlotBuffer2D<GraphParam> PlotBuffer2D<GraphParam>::
-PlotLines(std::string_view filename, std::string_view xcol, std::string_view ycol, Options ...ops)
-{
-	return PlotPoints(filename, xcol, ycol, plot::style = Style::lines, ops...);
-}
-template <class GraphParam>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::PointOption, Options...>
-inline PlotBuffer2D<GraphParam> PlotBuffer2D<GraphParam>::
-PlotLines(std::string_view equation, Options ...ops)
-{
-	return PlotPoints(equation, plot::style = Style::lines, ops...);
-}
-
-template <class GraphParam>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::VectorOption, Options...>
-inline PlotBuffer2D<GraphParam> PlotBuffer2D<GraphParam>::
-PlotVectors(RangeReceiver xfrom, RangeReceiver yfrom,
-			RangeReceiver xlen, RangeReceiver ylen,
-			Options ...ops)
-{
-	GraphParam i;
-	i.AssignVector();
-	i.m_type = GraphParam::DATA;
-	i.SetBaseOptions(ops...);
-
-	auto& v = i.GetVectorParam();
-	v.m_x = xfrom;
-	v.m_y = yfrom;
-	v.m_x_len = xlen;
-	v.m_y_len = ylen;
-	v.SetOptions(ops...);
-	return Plot(i);
-}
-
-template <class GraphParam>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::VectorOption, Options...>
-inline PlotBuffer2D<GraphParam> PlotBuffer2D<GraphParam>::
-PlotVectors(std::string_view filename,
-			std::string_view xfrom, std::string_view xlen,
-			std::string_view yfrom, std::string_view ylen,
-			Options ...ops)
-{
-	GraphParam i;
-	i.AssignVector();
-	i.m_type = GraphParam::FILE;
-	i.m_graph = filename;
-	i.SetBaseOptions(ops...);
-
-	auto& v = i.GetVectorParam();
-	v.m_x = xfrom;
-	v.m_y = yfrom;
-	v.m_x_len = xlen;
-	v.m_y_len = ylen;
-	v.SetOptions(ops...);
-	return Plot(i);
-}
-
-template <class GraphParam>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::FilledCurveOption, Options...>
-inline PlotBuffer2D<GraphParam> PlotBuffer2D<GraphParam>::
-PlotFilledCurves(RangeReceiver x, RangeReceiver y, Options ...ops)
-{
-	GraphParam p;
-	p.AssignFilledCurve();
-	p.m_type = GraphParam::DATA;
-	p.SetBaseOptions(ops...);
-
-	auto& f = p.GetFilledCurveParam();
-	f.m_x = x;
-	f.m_y = y;
-	f.SetOptions(ops...);
-	return Plot(p);
-}
-template <class GraphParam>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::FilledCurveOption, Options...>
-inline PlotBuffer2D<GraphParam> PlotBuffer2D<GraphParam>::
-PlotFilledCurves(std::string_view filename, std::string_view x, std::string_view y, Options ...ops)
-{
-	GraphParam p;
-	p.AssignFilledCurve();
-	p.m_type = GraphParam::FILE;
-	p.m_graph = filename;
-	p.SetBaseOptions(ops...);
-
-	auto& f = p.GetFilledCurveParam();
-	f.m_x = x;
-	f.m_y = y;
-	f.SetOptions(ops...);
-	return Plot(p);
-}
-template <class GraphParam>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::FilledCurveOption, Options...>
-inline PlotBuffer2D<GraphParam> PlotBuffer2D<GraphParam>::
-PlotFilledCurves(RangeReceiver x, RangeReceiver y, RangeReceiver y2,
-				 Options ...ops)
-{
-	GraphParam p;
-	p.AssignFilledCurve();
-	p.m_type = GraphParam::DATA;
-	p.SetBaseOptions(ops...);
-
-	auto& f = p.GetFilledCurveParam();
-	f.m_x = x;
-	f.m_y = y;
-	f.mY2 = y2;
-	f.SetOptions(ops...);
-	return Plot(p);
-}
-template <class GraphParam>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::FilledCurveOption, Options...>
-inline PlotBuffer2D<GraphParam> PlotBuffer2D<GraphParam>::
-PlotFilledCurves(std::string_view filename, std::string_view x, std::string_view y, std::string_view y2, Options ...ops)
-{
-	GraphParam p;
-	p.AssignFilledCurve();
-	p.m_type = GraphParam::FILE;
-	p.m_graph = filename;
-	p.SetBaseOptions(ops...);
-
-	auto& f = p.GetFilledCurveParam();
-	f.m_x = x;
-	f.m_y = y;
-	f.mY2 = y2;
-	f.SetOptions(ops...);
-	return Plot(p);
-}
-
-template <class GraphParam>
-inline std::string PlotBuffer2D<GraphParam>::
-PlotCommand(const GraphParam& p, bool IsInMemoryDataTransferEnabled)
-{
-	//filename or equation
-	std::string c;
-	switch (p.m_type) 
-	{
-	case GraphParam::EQUATION:
-		//equation
-		c += " " + p.m_graph;
-		break;
-	case GraphParam::FILE:
-		//filename
-		c += " '" + p.m_graph + "'";
-
-		//using
-		c += " using ";
-		for (size_t i = 0; i < p.m_column.size(); ++i)
-			c += p.m_column[i] + ":";
-		c.pop_back();
-		break;
-	case GraphParam::DATA:
-		if (IsInMemoryDataTransferEnabled) 
-		{
-			//variable name
-			c += " " + p.m_graph;
-		}
-		else {
-			//filename
-			c += " '" + p.m_graph + "'";
-		}
-
-		//using
-		c += " using ";
-		for (size_t i = 0; i < p.m_column.size(); ++i)
-			c += p.m_column[i] + ":";
-		c.pop_back();
-		break;
-	}
-
-	//title
-	if (!p.m_title.empty())
-	{
-		if (p.m_title == "notitle") c += " notitle";
-		else c += " title '" + p.m_title + "'";
-	}
-
-	c += " with";
-	//ベクトル指定がある場合。
-	if (p.IsVector())
-	{
-		c += VectorPlotCommand(p.GetVectorParam());
-	}
-	//点指定がある場合。
-	else if (p.IsPoint())
-	{
-		c += PointPlotCommand(p.GetPointParam());
-	}
-	else if (p.IsFilledCurve())
-	{
-		c += FilledCurveplotCommand(p.GetFilledCurveParam());
-	}
-
-	//axis
-	if (!p.m_axis.empty()) c += " axes " + p.m_axis;
-
-	return c;
-}
-template <class GraphParam>
-inline std::string PlotBuffer2D<GraphParam>::InitCommand()
-{
-	std::string c;
-	c += "set autoscale\n";
-	c += "unset logscale\n";
-	c += "unset title\n";
-	c += "unset grid\n";
-	c += "set size noratio\n";
-	return c;
-}
-
-template <class GraphParam, template <class> class Buffer>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::PointOption, Options...>
-inline Buffer<GraphParam> Canvas2D<GraphParam, Buffer>::
-PlotPoints(RangeReceiver x, RangeReceiver y, Options ...ops)
-{
-	_Buffer r(this);
-	return r.PlotPoints(x, y, ops...);
-}
-template <class GraphParam, template <class> class Buffer>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::PointOption, Options...>
-inline Buffer<GraphParam> Canvas2D<GraphParam, Buffer>::
-PlotPoints(std::string_view filename, std::string_view xcol, std::string_view ycol, Options ...ops)
-{
-	_Buffer r(this);
-	return r.PlotPoints(filename, xcol, ycol, ops...);
-}
-template <class GraphParam, template <class> class Buffer>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::PointOption, Options...>
-inline Buffer<GraphParam> Canvas2D<GraphParam, Buffer>::
-PlotPoints(std::string_view equation, Options ...ops)
-{
-	_Buffer r(this);
-	return r.PlotPoints(equation, ops...);
-}
-
-template <class GraphParam, template <class> class Buffer>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::PointOption, Options...>
-inline Buffer<GraphParam> Canvas2D<GraphParam, Buffer>::
-PlotLines(RangeReceiver x, RangeReceiver y, Options ...ops)
-{
-	_Buffer r(this);
-	return r.PlotLines(x, y, ops...);
-}
-template <class GraphParam, template <class> class Buffer>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::PointOption, Options...>
-inline Buffer<GraphParam> Canvas2D<GraphParam, Buffer>::
-PlotLines(std::string_view filename, std::string_view xcol, std::string_view ycol, Options ...ops)
-{
-	_Buffer r(this);
-	return r.PlotLines(filename, xcol, ycol, ops...);
-}
-template <class GraphParam, template <class> class Buffer>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::PointOption, Options...>
-inline Buffer<GraphParam> Canvas2D<GraphParam, Buffer>::
-PlotLines(std::string_view equation, Options ...ops)
-{
-	_Buffer r(this);
-	return r.PlotLines(equation, ops...);
-}
-
-template <class GraphParam, template <class> class Buffer>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::VectorOption, Options...>
-inline Buffer<GraphParam> Canvas2D<GraphParam, Buffer>::
-PlotVectors(RangeReceiver xfrom, RangeReceiver yfrom,
-			RangeReceiver xlen, RangeReceiver ylen,
-			Options ...ops)
-{
-	_Buffer r(this);
-	return r.PlotVectors(xfrom, yfrom, xlen, ylen, ops...);
-}
-template <class GraphParam, template <class> class Buffer>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::VectorOption, Options...>
-inline Buffer<GraphParam> Canvas2D<GraphParam, Buffer>::
-PlotVectors(std::string_view filename,
-			std::string_view xfrom, std::string_view yfrom,
-			std::string_view xlen, std::string_view ylen,
-			Options ...ops)
-{
-	_Buffer r(this);
-	return r.PlotVectors(filename, xfrom, yfrom, xlen, ylen, ops...);
-}
-template <class GraphParam, template <class> class Buffer>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::FilledCurveOption, Options...>
-inline Buffer<GraphParam> Canvas2D<GraphParam, Buffer>::
-PlotFilledCurves(RangeReceiver x, RangeReceiver y, Options ...ops)
-{
-	_Buffer r(this);
-	return r.PlotFilledCurves(x, y, ops...);
-}
-template <class GraphParam, template <class> class Buffer>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::FilledCurveOption, Options...>
-inline Buffer<GraphParam> Canvas2D<GraphParam, Buffer>::
-PlotFilledCurves(std::string_view filename, std::string_view x, std::string_view y, Options ...ops)
-{
-	_Buffer r(this);
-	return r.PlotFilledCurves(filename, x, y, ops...);
-}
-template <class GraphParam, template <class> class Buffer>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::FilledCurveOption, Options...>
-inline Buffer<GraphParam> Canvas2D<GraphParam, Buffer>::
-PlotFilledCurves(RangeReceiver x, RangeReceiver y, RangeReceiver y2,
-				 Options ...ops)
-{
-	_Buffer r(this);
-	return r.PlotFilledCurves(x, y, y2, ops...);
-}
-template <class GraphParam, template <class> class Buffer>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::FilledCurveOption, Options...>
-inline Buffer<GraphParam> Canvas2D<GraphParam, Buffer>::
-PlotFilledCurves(std::string_view filename, std::string_view x, std::string_view y, std::string_view y2, Options ...ops)
-{
-	_Buffer r(this);
-	return r.PlotFilledCurves(filename, x, y, y2, ops...);
-}
-template <class GraphParam, template <class> class Buffer>
-inline Buffer<GraphParam> Canvas2D<GraphParam, Buffer>::GetBuffer()
-{
-	return _Buffer(this);
-}
 
 }
 
@@ -1530,204 +1374,6 @@ struct GraphParamBaseCM
 	const ColormapParam& GetColormapParam() const { return std::get<ColormapParam>(*this); }
 };
 
-using GraphParamCM = GraphParamBaseCM<PointParamCM, VectorParamCM, FilledCurveParamCM, ColormapParam>;
-
-template <class GraphParam>
-struct PlotBufferCM
-{
-	PlotBufferCM(Canvas* g);
-	PlotBufferCM(const PlotBufferCM&) = delete;
-	PlotBufferCM(PlotBufferCM&& p) noexcept;
-	PlotBufferCM& operator=(const PlotBufferCM&) = delete;
-	PlotBufferCM& operator=(PlotBufferCM&& p) noexcept;
-	virtual ~PlotBufferCM();
-
-	void Flush();
-
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-	PlotBufferCM PlotPoints(RangeReceiver x, RangeReceiver y, RangeReceiver z, Options ...ops);
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-	PlotBufferCM PlotPoints(std::string_view filename,
-							   std::string_view x, std::string_view y, std::string_view z,
-							   Options ...ops);
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-	PlotBufferCM PlotPoints(RangeReceiver x, RangeReceiver y, Options ...ops);
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-	PlotBufferCM PlotPoints(std::string_view filename,
-							   std::string_view x, std::string_view y,
-							   Options ...ops);
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-	PlotBufferCM PlotPoints(std::string_view equation, Options ...ops);
-
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-	PlotBufferCM PlotLines(RangeReceiver x, RangeReceiver y, RangeReceiver z, Options ...ops);
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-	PlotBufferCM PlotLines(std::string_view filename,
-							  std::string_view x, std::string_view y, std::string_view z,
-							  Options ...ops);
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-	PlotBufferCM PlotLines(RangeReceiver x, RangeReceiver y, Options ...ops);
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-	PlotBufferCM PlotLines(std::string_view filename,
-							  std::string_view x, std::string_view y,
-							  Options ...ops);
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-	PlotBufferCM PlotLines(std::string_view equation, Options ...ops);
-
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::Vector3DOption, Options...>
-	PlotBufferCM PlotVectors(RangeReceiver xfrom, RangeReceiver yfrom, RangeReceiver zfrom,
-								RangeReceiver xlen, RangeReceiver ylen, RangeReceiver zlen,
-								Options ...ops);
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::Vector3DOption, Options...>
-	PlotBufferCM PlotVectors(std::string_view filename,
-								std::string_view xfrom, std::string_view yfrom, std::string_view zfrom,
-								std::string_view xlen, std::string_view ylen, std::string_view zlen,
-								Options ...ops);
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::Vector3DOption, Options...>
-	PlotBufferCM PlotVectors(RangeReceiver xfrom, RangeReceiver yfrom,
-								RangeReceiver xlen, RangeReceiver ylen,
-								Options ...ops);
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::Vector3DOption, Options...>
-	PlotBufferCM PlotVectors(std::string_view filename,
-								std::string_view xfrom, std::string_view yfrom,
-								std::string_view xlen, std::string_view ylen,
-								Options ...ops);
-
-	template <class Type, class ...Options> requires all_keyword_args_tagged_with<plot::ColormapOption, Options...>
-	PlotBufferCM PlotColormap(const Matrix<Type>& map, RangeReceiver x, RangeReceiver y,
-								 Options ...ops);
-	template <class Type, class ...Options> requires all_keyword_args_tagged_with<plot::ColormapOption, Options...>
-	PlotBufferCM PlotColormap(const Matrix<Type>& map, std::pair<double, double> x, std::pair<double, double> y,
-								 Options ...ops);
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::ColormapOption, Options...>
-	PlotBufferCM PlotColormap(std::string_view filename, std::string_view z, std::string_view x, std::string_view y,
-								 Options ...ops);
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::ColormapOption, Options...>
-	PlotBufferCM PlotColormap(std::string_view equation, Options ...ops);
-
-protected:
-
-	PlotBufferCM Plot(GraphParam& i);
-
-	static std::string PlotCommand(const GraphParam& i, const bool IsInMemoryDataTransferEnabled);
-	static std::string InitCommand();
-
-	std::vector<GraphParam> m_param;
-	Canvas* m_canvas;
-};
-
-
-template <class GraphParam, template <class> class Buffer>
-class CanvasCM : public detail::Axis2D<Canvas>
-{
-public:
-
-	using _Buffer = Buffer<GraphParam>;
-
-	CanvasCM(const std::string& output, double sizex = 0., double sizey = 0.);
-	CanvasCM();
-
-	friend class GPMMultiPlotter;
-
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-	_Buffer PlotPoints(RangeReceiver x, RangeReceiver y, RangeReceiver z, Options ...ops);
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-	_Buffer PlotPoints(std::string_view filename,
-					   std::string_view x, std::string_view y, std::string_view z,
-					   Options ...ops);
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-	_Buffer PlotPoints(RangeReceiver x, RangeReceiver y, Options ...ops);
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-	_Buffer PlotPoints(std::string_view filename,
-					   std::string_view x, std::string_view y,
-					   Options ...ops);
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-	_Buffer PlotPoints(std::string_view equation, Options ...ops);
-
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-	_Buffer PlotLines(RangeReceiver x, RangeReceiver y, RangeReceiver z, Options ...ops);
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-	_Buffer PlotLines(std::string_view filename,
-					  std::string_view x, std::string_view y, std::string_view z,
-					  Options ...ops);
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-	_Buffer PlotLines(RangeReceiver x, RangeReceiver y, Options ...ops);
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-	_Buffer PlotLines(std::string_view filename,
-					  std::string_view x, std::string_view y,
-					  Options ...ops);
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-	_Buffer PlotLines(std::string_view equation, Options ...ops);
-
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::Vector3DOption, Options...>
-	_Buffer PlotVectors(RangeReceiver xfrom, RangeReceiver yfrom, RangeReceiver zfrom,
-						RangeReceiver xlen, RangeReceiver ylen, RangeReceiver zlen,
-						Options ...ops);
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::Vector3DOption, Options...>
-	_Buffer PlotVectors(std::string_view filename,
-						std::string_view xfrom, std::string_view yfrom, std::string_view zfrom,
-						std::string_view xlen, std::string_view ylen, std::string_view zlen,
-						Options ...ops);
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::Vector3DOption, Options...>
-	_Buffer PlotVectors(RangeReceiver xfrom, RangeReceiver yfrom,
-						RangeReceiver xlen, RangeReceiver ylen,
-						Options ...ops);
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::Vector3DOption, Options...>
-	_Buffer PlotVectors(std::string_view filename,
-						std::string_view xfrom, std::string_view yfrom,
-						std::string_view xlen, std::string_view ylen,
-						Options ...ops);
-
-	template <class Type, class ...Options> requires all_keyword_args_tagged_with<plot::ColormapOption, Options...>
-	_Buffer PlotColormap(const Matrix<Type>& map, RangeReceiver x, RangeReceiver y,
-						 Options ...ops);
-	template <class Type, class ...Options> requires all_keyword_args_tagged_with<plot::ColormapOption, Options...>
-	_Buffer PlotColormap(const Matrix<Type>& map, std::pair<double, double> x, std::pair<double, double> y,
-						 Options ...ops);
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::ColormapOption, Options...>
-	_Buffer PlotColormap(std::string_view filename, std::string_view z, std::string_view x, std::string_view y,
-						 Options ...ops);
-	template <class ...Options> requires all_keyword_args_tagged_with<plot::ColormapOption, Options...>
-	_Buffer PlotColormap(std::string_view equation, Options ...ops);
-
-	_Buffer GetBuffer();
-};
-
-template <class GraphParam>
-inline PlotBufferCM<GraphParam>::PlotBufferCM(Canvas* g)
-	: m_canvas(g) {}
-template <class GraphParam>
-inline PlotBufferCM<GraphParam>::PlotBufferCM(PlotBufferCM&& p) noexcept
-	: m_param(std::move(p.m_param)), m_canvas(p.m_canvas)
-{
-	p.m_canvas = nullptr;
-}
-template <class GraphParam>
-inline PlotBufferCM<GraphParam>& PlotBufferCM<GraphParam>::operator=(PlotBufferCM<GraphParam>&& p) noexcept
-{
-	m_canvas = p.m_canvas; p.m_canvas = nullptr;
-	m_param = std::move(p.m_param);
-	return *this;
-}
-template <class GraphParam>
-inline PlotBufferCM<GraphParam>::~PlotBufferCM()
-{
-	//mPipeがnullptrでないときはこのPlotterが最終処理を担当する。
-	if (m_canvas != nullptr) Flush();
-}
-template <class GraphParam>
-inline void PlotBufferCM<GraphParam>::Flush()
-{
-	if (m_canvas == nullptr) throw NotInitialized("Buffer is empty");
-	std::string c = "splot";
-	for (auto& i : m_param)
-	{
-		c += PlotCommand(i, m_canvas->IsInMemoryDataTransferEnabled()) + ", ";
-	}
-	c.erase(c.end() - 2, c.end());
-	m_canvas->Command(c);
-	m_canvas->Command(InitCommand());
-}
 struct CoordRange
 {
 	struct iterator
@@ -1813,877 +1459,857 @@ struct CoordMinMax
 	size_t size;
 	double width;
 };
+
+using GraphParamCM = GraphParamBaseCM<PointParamCM, VectorParamCM, FilledCurveParamCM, ColormapParam>;
+
 template <class GraphParam>
-inline PlotBufferCM<GraphParam> PlotBufferCM<GraphParam>::Plot(GraphParam& i)
+struct PlotBufferCM
 {
-	if (i.m_type == GraphParam::DATA)
+	PlotBufferCM(Canvas* g) : m_canvas(g) {}
+	PlotBufferCM(const PlotBufferCM&) = delete;
+	PlotBufferCM(PlotBufferCM&& p) noexcept
+		: m_param(std::move(p.m_param)), m_canvas(p.m_canvas)
 	{
-		if (m_canvas->IsInMemoryDataTransferEnabled())
+		p.m_canvas = nullptr;
+	}
+	PlotBufferCM& operator=(const PlotBufferCM&) = delete;
+	PlotBufferCM& operator=(PlotBufferCM&& p) noexcept
+	{
+		m_canvas = p.m_canvas; p.m_canvas = nullptr;
+		m_param = std::move(p.m_param);
+		return *this;
+	}
+	virtual ~PlotBufferCM()
+	{
+		//mPipeがnullptrでないときはこのPlotterが最終処理を担当する。
+		if (m_canvas != nullptr) Flush();
+	}
+
+	void Flush()
+	{
+		if (m_canvas == nullptr) throw NotInitialized("Buffer is empty");
+		std::string c = "splot";
+		for (auto& i : m_param)
 		{
-			i.m_graph = "$" + SanitizeForDataBlock(m_canvas->GetOutput()) + "_" + std::to_string(m_param.size()); // datablock name
+			c += PlotCommand(i, m_canvas->IsInMemoryDataTransferEnabled()) + ", ";
 		}
-		else
+		c.erase(c.end() - 2, c.end());
+		m_canvas->Command(c);
+		m_canvas->Command(InitCommand());
+	}
+
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
+	PlotBufferCM PlotPoints(RangeReceiver x, RangeReceiver y, RangeReceiver z, Options ...ops)
+	{
+		GraphParam i;
+		i.AssignPoint();
+		i.m_type = GraphParam::DATA;
+		i.SetBaseOptions(ops...);
+		//point
+		auto& p = i.GetPointParam();
+		p.m_x = x;
+		p.m_y = y;
+		p.m_z = z;
+		p.SetOptions(ops...);
+		return Plot(i);
+	}
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
+	PlotBufferCM PlotPoints(std::string_view filename,
+							std::string_view x, std::string_view y, std::string_view z,
+							Options ...ops)
+	{
+		GraphParam i;
+		i.AssignPoint();
+		i.m_type = GraphParam::FILE;
+		i.m_graph = filename;
+		i.SetBaseOptions(ops...);
+
+		auto& p = i.GetPointParam();
+		p.m_x = x;
+		p.m_y = y;
+		p.m_z = z;
+		p.SetOptions(ops...);
+		return Plot(i);
+	}
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
+	PlotBufferCM PlotPoints(RangeReceiver x, RangeReceiver y, Options ...ops)
+	{
+		GraphParam i;
+		i.AssignPoint();
+		i.m_type = GraphParam::DATA;
+		i.SetBaseOptions(ops...);
+
+		//point
+		auto& p = i.GetPointParam();
+		p.m_x = x;
+		p.m_y = y;
+		p.m_z = 0.;
+		p.SetOptions(ops...);
+		return Plot(i);
+	}
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
+	PlotBufferCM PlotPoints(std::string_view filename,
+							std::string_view x, std::string_view y,
+							Options ...ops)
+	{
+		GraphParam i;
+		i.AssignPoint();
+		i.m_type = GraphParam::FILE;
+		i.m_graph = filename;
+		i.SetBaseOptions(ops...);
+
+		auto& p = i.GetPointParam();
+		p.m_x = x;
+		p.m_y = y;
+		p.m_z = 0.;
+		p.SetOptions(ops...);
+		return Plot(i);
+	}
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
+	PlotBufferCM PlotPoints(std::string_view equation, Options ...ops)
+	{
+		GraphParam i;
+		i.AssignPoint();
+		i.m_type = GraphParam::EQUATION;
+		i.SetBaseOptions(ops...);
+		i.m_graph = equation;
+
+		auto& p = i.GetPointParam();
+		p.SetOptions(ops...);
+		return Plot(i);
+	}
+
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
+	PlotBufferCM PlotLines(RangeReceiver x, RangeReceiver y, RangeReceiver z, Options ...ops)
+	{
+		return PlotPoints(x, y, z, plot::style = Style::lines, ops...);
+	}
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
+	PlotBufferCM PlotLines(std::string_view filename,
+						   std::string_view x, std::string_view y, std::string_view z,
+						   Options ...ops)
+	{
+		return PlotPoints(filename, x, y, z, plot::style = Style::lines, ops...);
+	}
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
+	PlotBufferCM PlotLines(RangeReceiver x, RangeReceiver y, Options ...ops)
+	{
+		return PlotPoints(x, y, plot::style = Style::lines, ops...);
+	}
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
+	PlotBufferCM PlotLines(std::string_view filename,
+						   std::string_view x, std::string_view y,
+						   Options ...ops)
+	{
+		return PlotPoints(filename, x, y, plot::style = Style::lines, ops...);
+	}
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
+	PlotBufferCM PlotLines(std::string_view equation, Options ...ops)
+	{
+		return PlotPoints(equation, plot::style = Style::lines, ops...);
+	}
+
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::Vector3DOption, Options...>
+	PlotBufferCM PlotVectors(RangeReceiver xfrom, RangeReceiver yfrom, RangeReceiver zfrom,
+							 RangeReceiver xlen, RangeReceiver ylen, RangeReceiver zlen,
+							 Options ...ops)
+	{
+		GraphParam i;
+		i.AssignVector();
+		i.m_type = GraphParam::DATA;
+		i.SetBaseOptions(ops...);
+
+		//vector
+		auto& v = i.GetVectorParam();
+		v.m_x = xfrom;
+		v.m_y = yfrom;
+		v.m_z = zfrom;
+		v.m_x_len = xlen;
+		v.m_y_len = ylen;
+		v.m_z_len = zlen;
+		v.SetOptions(ops...);
+		return Plot(i);
+	}
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::Vector3DOption, Options...>
+	PlotBufferCM PlotVectors(std::string_view filename,
+								std::string_view xfrom, std::string_view yfrom, std::string_view zfrom,
+								std::string_view xlen, std::string_view ylen, std::string_view zlen,
+								Options ...ops)
+	{
+		GraphParam i;
+		i.AssignVector();
+		i.m_type = GraphParam::FILE;
+		i.m_graph = filename;
+		i.SetBaseOptions(ops...);
+
+		//vector
+		auto& v = i.GetVectorParam();
+		v.m_x = xfrom;
+		v.m_y = yfrom;
+		v.m_z = zfrom;
+		v.m_x_len = xlen;
+		v.m_y_len = ylen;
+		v.m_z_len = zlen;
+		v.SetOptions(ops...);
+		return Plot(i);
+	}
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::Vector3DOption, Options...>
+	PlotBufferCM PlotVectors(RangeReceiver xfrom, RangeReceiver yfrom,
+								RangeReceiver xlen, RangeReceiver ylen,
+								Options ...ops)
+	{
+		GraphParam i;
+		i.AssignVector();
+		i.m_type = GraphParam::DATA;
+		i.SetBaseOptions(ops...);
+
+		//vector
+		auto& v = i.GetVectorParam();
+		v.m_x = xfrom;
+		v.m_y = yfrom;
+		v.m_z = 0.;
+		v.m_x_len = xlen;
+		v.m_y_len = ylen;
+		v.m_z_len = 0.;
+		v.SetOptions(ops...);
+		return Plot(i);
+	}
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::Vector3DOption, Options...>
+	PlotBufferCM PlotVectors(std::string_view filename,
+								std::string_view xfrom, std::string_view yfrom,
+								std::string_view xlen, std::string_view ylen,
+								Options ...ops)
+	{
+		GraphParam i;
+		i.AssignVector();
+		i.m_type = GraphParam::FILE;
+		i.m_graph = filename;
+		i.SetBaseOptions(ops...);
+
+		//vector
+		auto& v = i.GetVectorParam();
+		v.m_x = xfrom;
+		v.m_y = yfrom;
+		v.m_z = 0.;
+		v.m_x_len = xlen;
+		v.m_y_len = ylen;
+		v.m_z_len = 0.;
+		v.SetOptions(ops...);
+		return Plot(i);
+	}
+
+	template <class Type, class ...Options> requires all_keyword_args_tagged_with<plot::ColormapOption, Options...>
+	PlotBufferCM PlotColormap(const Matrix<Type>& map, RangeReceiver x, RangeReceiver y,
+								 Options ...ops)
+	{
+		GraphParam i;
+		i.AssignColormap();
+		i.m_type = GraphParam::DATA;
+		i.SetBaseOptions(ops...);
+
+		//map
+		auto& m = i.GetColormapParam();
+		m.m_z_map = map;
+		m.m_x_coord = x;
+		m.m_y_coord = y;
+		m.SetOptions(ops...);
+		return Plot(i);
+	}
+	template <class Type, class ...Options> requires all_keyword_args_tagged_with<plot::ColormapOption, Options...>
+	PlotBufferCM PlotColormap(const Matrix<Type>& map, std::pair<double, double> x, std::pair<double, double> y,
+								 Options ...ops)
+	{
+		GraphParam i;
+		i.AssignColormap();
+		i.m_type = GraphParam::DATA;
+		i.SetBaseOptions(ops...);
+
+		//map
+		auto& m = i.GetColormapParam();
+		m.m_z_map = map;
+		m.m_x_range = x;
+		m.m_y_range = y;
+		m.SetOptions(ops...);
+		return Plot(i);
+	}
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::ColormapOption, Options...>
+	PlotBufferCM PlotColormap(std::string_view filename, std::string_view z, std::string_view x, std::string_view y,
+								 Options ...ops)
+	{
+		GraphParam i;
+		i.AssignColormap();
+		i.m_type = GraphParam::FILE;
+		i.m_graph = filename;
+		i.SetBaseOptions(ops...);
+
+		//map
+		auto& m = i.GetColormapParam();
+		m.m_z_map = z;
+		m.m_x_coord = x;
+		m.m_y_coord = y;
+		m.SetOptions(ops...);
+		return Plot(i);
+	}
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::ColormapOption, Options...>
+	PlotBufferCM PlotColormap(std::string_view equation, Options ...ops)
+	{
+		GraphParam i;
+		i.AssignColormap();
+		i.m_graph = equation;
+		i.m_type = GraphParam::DATA;
+		i.SetBaseOptions(ops...);
+
+		//map
+		auto& m = i.GetColormapParam();
+		m.SetOptions(ops...);
+		return Plot(i);
+	}
+
+protected:
+
+	PlotBufferCM Plot(GraphParam& i)
+	{
+		if (i.m_type == GraphParam::DATA)
 		{
-			i.m_graph = m_canvas->GetOutput() + ".tmp" + std::to_string(m_param.size()) + ".txt";
-		}
-		auto GET_ARRAY = [this](ArrayData& X, std::string_view ax,
-								std::vector<ArrayData::Range>& it, std::vector<std::string>& column, std::string& labelcolumn)
-		{
-			switch (X.GetType())
+			if (m_canvas->IsInMemoryDataTransferEnabled())
 			{
-			case ArrayData::NUM_RANGE:
-				it.emplace_back(X.GetRange());
-				column.emplace_back(std::to_string(it.size()));
-				break;
-			case ArrayData::STR_RANGE:
-				it.emplace_back(X.GetRange());
-				if (m_canvas->IsDateTimeEnabled(ax))
-					column.emplace_back(std::to_string(it.size()));
-				else
-					labelcolumn = std::format("{}tic({})", ax, it.size());
-				break;
-			case ArrayData::COLUMN:
-				column.emplace_back(X.GetColumn());
-				break;
-			case ArrayData::UNIQUE:
-				column.emplace_back(std::format("($1-$1+{})", X.GetUnique()));
-				break;
-			}
-		};
-
-		std::vector<std::string> column;
-		std::string labelcolumn;
-
-		auto find_axis = [&i](const char* a) { return i.m_axis.find(a) != std::string::npos; };
-		std::string x_x2 = find_axis("x2") ? m_canvas->Command("set x2tics"), "x2" : "x";
-		std::string y_y2 = find_axis("y2") ? m_canvas->Command("set y2tics"), "y2" : "y";
-		std::string z_z2 = find_axis("z2") ? m_canvas->Command("set z2tics"), "z2" : "z";
-
-		//ファイルを作成する。
-		if (i.IsColormap())
-		{
-			auto& m = i.GetColormapParam();
-			if (!m.m_z_map) throw InvalidArg("z map is not given");
-			if (m.m_z_map.GetType() != MatrixData::NUM_MAT)
-				throw InvalidArg("z map in the data plot mode must be given in the form of Matrix<double>.");
-
-			//mapがMatrixであるとき、x、yの座標値も配列かrangeで与えられていなければならない。
-			if (!((m.m_x_coord && m.m_x_coord.GetType() == ArrayData::NUM_RANGE) ||
-				  m.m_x_range != std::make_pair(DBL_MAX, -DBL_MAX))) throw InvalidArg("");
-			if (!((m.m_y_coord && m.m_y_coord.GetType() == ArrayData::NUM_RANGE) ||
-				  m.m_y_range != std::make_pair(DBL_MAX, -DBL_MAX))) throw InvalidArg("");
-
-			auto [xsize, ysize] = m.m_z_map.GetMatrix().GetSize();
-
-			column = { "1", "2", "5" };
-			if (m.m_x_coord)
-			{
-				auto x_ = m.m_x_coord.GetRange();
-				if (m.m_y_coord)
-				{
-					auto y_ = m.m_y_coord.GetRange();
-					MakeDataObject(m_canvas, i.m_graph, m.m_z_map.GetMatrix(), CoordRange(x_), CoordRange(y_));
-				}
-				else
-				{
-					auto y_ = m.m_y_range;
-					MakeDataObject(m_canvas, i.m_graph, m.m_z_map.GetMatrix(), CoordRange(x_), CoordMinMax(y_, ysize));
-				}
+				i.m_graph = "$" + SanitizeForDataBlock(m_canvas->GetOutput()) + "_" + std::to_string(m_param.size()); // datablock name
 			}
 			else
 			{
-				auto x_ = m.m_x_range;
-				if (m.m_y_coord)
-				{
-					auto y_ = m.m_y_coord.GetRange();
-					//if (y.size() != ysize) throw InvalidArg("size of y coordinate list and the y size of mat must be the same.");
-					MakeDataObject(m_canvas, i.m_graph, m.m_z_map.GetMatrix(), CoordMinMax(x_, xsize), CoordRange(y_));
-				}
-				else
-				{
-					auto y_ = m.m_y_range;
-					MakeDataObject(m_canvas, i.m_graph, m.m_z_map.GetMatrix(), CoordMinMax(x_, xsize), CoordMinMax(y_, ysize));
-				}
+				i.m_graph = m_canvas->GetOutput() + ".tmp" + std::to_string(m_param.size()) + ".txt";
 			}
-
-			//最後にcontourを作成する。
-			if (m.m_with_contour)
+			auto GET_ARRAY = [this](ArrayData& X, std::string_view ax,
+									std::vector<ArrayData::Range>& it, std::vector<std::string>& column, std::string& labelcolumn)
 			{
-				m_canvas->Command("set contour base");
-				if (m.m_cntr_smooth != CntrSmooth::none)
+				switch (X.GetType())
 				{
-					switch (m.m_cntr_smooth)
+				case ArrayData::NUM_RANGE:
+					it.emplace_back(X.GetRange());
+					column.emplace_back(std::to_string(it.size()));
+					break;
+				case ArrayData::STR_RANGE:
+					it.emplace_back(X.GetRange());
+					if (m_canvas->IsDateTimeEnabled(ax))
+						column.emplace_back(std::to_string(it.size()));
+					else
+						labelcolumn = std::format("{}tic({})", ax, it.size());
+					break;
+				case ArrayData::COLUMN:
+					column.emplace_back(X.GetColumn());
+					break;
+				case ArrayData::UNIQUE:
+					column.emplace_back(std::format("($1-$1+{})", X.GetUnique()));
+					break;
+				}
+			};
+
+			std::vector<std::string> column;
+			std::string labelcolumn;
+
+			auto find_axis = [&i](const char* a) { return i.m_axis.find(a) != std::string::npos; };
+			std::string x_x2 = find_axis("x2") ? m_canvas->Command("set x2tics"), "x2" : "x";
+			std::string y_y2 = find_axis("y2") ? m_canvas->Command("set y2tics"), "y2" : "y";
+			std::string z_z2 = find_axis("z2") ? m_canvas->Command("set z2tics"), "z2" : "z";
+
+			//ファイルを作成する。
+			if (i.IsColormap())
+			{
+				auto& m = i.GetColormapParam();
+				if (!m.m_z_map) throw InvalidArg("z map is not given");
+				if (m.m_z_map.GetType() != MatrixData::NUM_MAT)
+					throw InvalidArg("z map in the data plot mode must be given in the form of Matrix<double>.");
+
+				//mapがMatrixであるとき、x、yの座標値も配列かrangeで与えられていなければならない。
+				if (!((m.m_x_coord && m.m_x_coord.GetType() == ArrayData::NUM_RANGE) ||
+					  m.m_x_range != std::make_pair(DBL_MAX, -DBL_MAX))) throw InvalidArg("");
+				if (!((m.m_y_coord && m.m_y_coord.GetType() == ArrayData::NUM_RANGE) ||
+					  m.m_y_range != std::make_pair(DBL_MAX, -DBL_MAX))) throw InvalidArg("");
+
+				auto [xsize, ysize] = m.m_z_map.GetMatrix().GetSize();
+
+				column = { "1", "2", "5" };
+				if (m.m_x_coord)
+				{
+					auto x_ = m.m_x_coord.GetRange();
+					if (m.m_y_coord)
 					{
-					case CntrSmooth::linear: m_canvas->Command("set cntrparam linear"); break;
-					case CntrSmooth::cubicspline: m_canvas->Command("set cntrparam cubicspline"); break;
-					case CntrSmooth::bspline: m_canvas->Command("set cntrparam bspline"); break;
-					default: break;
+						auto y_ = m.m_y_coord.GetRange();
+						MakeDataObject(m_canvas, i.m_graph, m.m_z_map.GetMatrix(), CoordRange(x_), CoordRange(y_));
+					}
+					else
+					{
+						auto y_ = m.m_y_range;
+						MakeDataObject(m_canvas, i.m_graph, m.m_z_map.GetMatrix(), CoordRange(x_), CoordMinMax(y_, ysize));
 					}
 				}
-				if (m.m_cntr_points != -1) m_canvas->Command(std::format("set cntrparam points {}", m.m_cntr_points));
-				if (m.m_cntr_order != -1) m_canvas->Command(std::format("set cntrparam order {}", m.m_cntr_order));
-
-				if (m.m_cntr_levels_auto != -1)
+				else
 				{
-					m_canvas->Command(std::format("set cntrparam levels auto {}", m.m_cntr_levels_auto));
-				}
-				else if (!m.m_cntr_levels_discrete.empty())
-				{
-					std::string str;
-					for (auto x_ : m.m_cntr_levels_discrete) str += std::to_string(x_) + ", ";
-					str.erase(str.end() - 2, str.end());
-					m_canvas->Command("set cntrparam levels discrete " + str);
-				}
-				else if (m.m_cntr_levels_incremental != std::tuple<double, double, double>{ 0, 0, 0 })
-				{
-					double start, incr, end;
-					std::tie(start, incr, end) = m.m_cntr_levels_incremental;
-					m_canvas->Command(std::format("set cntrparam levels incremental {}, {}, {}", start, incr, end));
+					auto x_ = m.m_x_range;
+					if (m.m_y_coord)
+					{
+						auto y_ = m.m_y_coord.GetRange();
+						//if (y.size() != ysize) throw InvalidArg("size of y coordinate list and the y size of mat must be the same.");
+						MakeDataObject(m_canvas, i.m_graph, m.m_z_map.GetMatrix(), CoordMinMax(x_, xsize), CoordRange(y_));
+					}
+					else
+					{
+						auto y_ = m.m_y_range;
+						MakeDataObject(m_canvas, i.m_graph, m.m_z_map.GetMatrix(), CoordMinMax(x_, xsize), CoordMinMax(y_, ysize));
+					}
 				}
 
-				m_canvas->Command("set pm3d implicit");
-				m_canvas->Command("set contour base");
-				m_canvas->Command("unset surface");
-				if (m_canvas->IsInMemoryDataTransferEnabled())
+				//最後にcontourを作成する。
+				if (m.m_with_contour)
 				{
-					m_canvas->Command("set table " + i.m_graph + "_cntr");
+					m_canvas->Command("set contour base");
+					if (m.m_cntr_smooth != CntrSmooth::none)
+					{
+						switch (m.m_cntr_smooth)
+						{
+						case CntrSmooth::linear: m_canvas->Command("set cntrparam linear"); break;
+						case CntrSmooth::cubicspline: m_canvas->Command("set cntrparam cubicspline"); break;
+						case CntrSmooth::bspline: m_canvas->Command("set cntrparam bspline"); break;
+						default: break;
+						}
+					}
+					if (m.m_cntr_points != -1) m_canvas->Command(std::format("set cntrparam points {}", m.m_cntr_points));
+					if (m.m_cntr_order != -1) m_canvas->Command(std::format("set cntrparam order {}", m.m_cntr_order));
+
+					if (m.m_cntr_levels_auto != -1)
+					{
+						m_canvas->Command(std::format("set cntrparam levels auto {}", m.m_cntr_levels_auto));
+					}
+					else if (!m.m_cntr_levels_discrete.empty())
+					{
+						std::string str;
+						for (auto x_ : m.m_cntr_levels_discrete) str += std::to_string(x_) + ", ";
+						str.erase(str.end() - 2, str.end());
+						m_canvas->Command("set cntrparam levels discrete " + str);
+					}
+					else if (m.m_cntr_levels_incremental != std::tuple<double, double, double>{ 0, 0, 0 })
+					{
+						double start, incr, end;
+						std::tie(start, incr, end) = m.m_cntr_levels_incremental;
+						m_canvas->Command(std::format("set cntrparam levels incremental {}, {}, {}", start, incr, end));
+					}
+
+					m_canvas->Command("set pm3d implicit");
+					m_canvas->Command("set contour base");
+					m_canvas->Command("unset surface");
+					if (m_canvas->IsInMemoryDataTransferEnabled())
+					{
+						m_canvas->Command("set table " + i.m_graph + "_cntr");
+					}
+					else {
+						std::string path = i.m_graph;
+						path.erase(path.end() - 3, path.end());
+						path += "cntr.txt";
+						m_canvas->Command("set table '" + path + "'");
+					}
+					//3:4:column[2]でplotする。
+					m_canvas->Command(std::format("splot '{}' using 3:4:{} t '{}'", i.m_graph, column[2], i.m_title));
+					m_canvas->Command("unset table");
+					m_canvas->Command("set surface");
+					m_canvas->Command("unset contour");
+					m_canvas->Command("unset pm3d");
 				}
-				else {
-					std::string path = i.m_graph;
-					path.erase(path.end() - 3, path.end());
-					path += "cntr.txt";
-					m_canvas->Command("set table '" + path + "'");
-				}
-				//3:4:column[2]でplotする。
-				m_canvas->Command(std::format("splot '{}' using 3:4:{} t '{}'", i.m_graph, column[2], i.m_title));
-				m_canvas->Command("unset table");
-				m_canvas->Command("set surface");
-				m_canvas->Command("unset contour");
-				m_canvas->Command("unset pm3d");
 			}
+			else if (i.IsPoint())
+			{
+				std::vector<ArrayData::Range> it;
+				auto& p = i.GetPointParam();
+				if (!p.m_x) throw InvalidArg("x coordinate list is not given.");
+				GET_ARRAY(p.m_x, x_x2, it, column, labelcolumn);
+				if (!p.m_y) throw InvalidArg("y coordinate list is not given.");
+				GET_ARRAY(p.m_y, y_y2, it, column, labelcolumn);
+				if (!p.m_z) throw InvalidArg("z coordinate list is not given.");
+				GET_ARRAY(p.m_z, z_z2, it, column, labelcolumn);
+
+				if (p.m_x_errorbar)
+				{
+					GET_ARRAY(p.m_x_errorbar, x_x2, it, column, labelcolumn);
+				}
+				if (p.m_y_errorbar)
+				{
+					GET_ARRAY(p.m_y_errorbar, y_y2, it, column, labelcolumn);
+				}
+				if (p.m_variable_color)
+				{
+					GET_ARRAY(p.m_variable_color, "cb", it, column, labelcolumn);
+				}
+				if (p.m_variable_size)
+				{
+					GET_ARRAY(p.m_variable_size, "variable_size", it, column, labelcolumn);
+				}
+				MakeDataObject(m_canvas, i.m_graph, it);
+			}
+			else if (i.IsVector())
+			{
+				std::vector<ArrayData::Range> it;
+				auto& v = i.GetVectorParam();
+				if (!v.m_x) throw InvalidArg("x coordinate list is not given.");
+				GET_ARRAY(v.m_x, x_x2, it, column, labelcolumn);
+				if (!v.m_y) throw InvalidArg("y coordinate list is not given.");
+				GET_ARRAY(v.m_y, y_y2, it, column, labelcolumn);
+				if (!v.m_z) throw InvalidArg("z coordinate list is not given.");
+				GET_ARRAY(v.m_z, z_z2, it, column, labelcolumn);
+				if (!v.m_x_len) throw InvalidArg("xlen list is not given.");
+				GET_ARRAY(v.m_x_len, x_x2, it, column, labelcolumn);
+				if (!v.m_y_len) throw InvalidArg("ylen list is not given.");
+				GET_ARRAY(v.m_y_len, y_y2, it, column, labelcolumn);
+				if (!v.m_z_len) throw InvalidArg("zlen list is not given.");
+				GET_ARRAY(v.m_z_len, z_z2, it, column, labelcolumn);
+
+				if (v.m_variable_color)
+				{
+					GET_ARRAY(v.m_variable_color, "variable_color", it, column, labelcolumn);
+				}
+				MakeDataObject(m_canvas, i.m_graph, it);
+			}
+			if (!labelcolumn.empty()) column.emplace_back(std::move(labelcolumn));
+			i.m_column = std::move(column);
 		}
-		else if (i.IsPoint())
+		else if (i.m_type == GraphParam::FILE)
 		{
-			std::vector<ArrayData::Range> it;
-			auto& p = i.GetPointParam();
-			if (!p.m_x) throw InvalidArg("x coordinate list is not given.");
-			GET_ARRAY(p.m_x, x_x2, it, column, labelcolumn);
-			if (!p.m_y) throw InvalidArg("y coordinate list is not given.");
-			GET_ARRAY(p.m_y, y_y2, it, column, labelcolumn);
-			if (!p.m_z) throw InvalidArg("z coordinate list is not given.");
-			GET_ARRAY(p.m_z, z_z2, it, column, labelcolumn);
+			auto ADD_COLUMN = [](const ArrayData& a, const std::string& name, std::vector<std::string>& c)
+			{
+				if (a.GetType() == ArrayData::COLUMN) c.emplace_back(a.GetColumn());
+				else if (a.GetType() == ArrayData::UNIQUE) c.emplace_back("($1-$1+" + std::to_string(a.GetUnique()) + ")");
+				else throw InvalidArg(name + "list in the file plot mode must be given in the form of the string column or unique value.");
+			};
+			std::vector<std::string> column;
+			if (i.IsColormap())
+			{
+				auto& p = i.GetColormapParam();
+				if (!p.m_z_map) throw InvalidArg("z coordinate list is not given.");
+				if (p.m_z_map.GetType() == MatrixData::COLUMN) column.emplace_back(p.m_z_map.GetColumn());
+				else if (p.m_z_map.GetType() == MatrixData::UNIQUE) column.emplace_back("($1-$1+" + std::to_string(p.m_z_map.GetUnique()) + ")");
+				else throw InvalidArg("z coordinate list in the file plot mode must be given in the form of the string column or unique value.");
 
-			if (p.m_x_errorbar)
-			{
-				GET_ARRAY(p.m_x_errorbar, x_x2, it, column, labelcolumn);
+				if (!p.m_x_coord) throw InvalidArg("x coordinate list is not given.");
+				ADD_COLUMN(p.m_x_coord, "x", column);
+				if (!p.m_y_coord) throw InvalidArg("y coordinate list is not given.");
+				ADD_COLUMN(p.m_y_coord, "y", column);
+				//既存のファイルからプロットする場合、等高線表示に対応しない。
 			}
-			if (p.m_y_errorbar)
+			else if (i.IsPoint())
 			{
-				GET_ARRAY(p.m_y_errorbar, y_y2, it, column, labelcolumn);
+				auto& p = i.GetPointParam();
+				if (!p.m_x) throw InvalidArg("x coordinate list is not given.");
+				ADD_COLUMN(p.m_x, "x", column);
+				if (!p.m_y) throw InvalidArg("y coordinate list is not given.");
+				ADD_COLUMN(p.m_y, "y", column);
+				if (!p.m_z) throw InvalidArg("z coordinate list is not given.");
+				ADD_COLUMN(p.m_z, "z", column);
+				if (p.m_x_errorbar) ADD_COLUMN(p.m_x_errorbar, "xerrorbar", column);
+				if (p.m_y_errorbar) ADD_COLUMN(p.m_y_errorbar, "yerrorbar", column);
+				if (p.m_variable_color) ADD_COLUMN(p.m_variable_color, "variable_color", column);
+				if (p.m_variable_size) ADD_COLUMN(p.m_variable_size, "variable_size", column);
 			}
-			if (p.m_variable_color)
+			else if (i.IsVector())
 			{
-				GET_ARRAY(p.m_variable_color, "cb", it, column, labelcolumn);
+				auto& v = i.GetVectorParam();
+				if (!v.m_x) throw InvalidArg("x coordinate list is not given.");
+				ADD_COLUMN(v.m_x, "x", column);
+				if (!v.m_y) throw InvalidArg("y coordinate list is not given.");
+				ADD_COLUMN(v.m_y, "y", column);
+				if (!v.m_z) throw InvalidArg("z coordinate list is not given.");
+				ADD_COLUMN(v.m_z, "z", column);
+				if (!v.m_x_len) throw InvalidArg("xlen list is not given.");
+				ADD_COLUMN(v.m_x_len, "xlen", column);
+				if (!v.m_y_len) throw InvalidArg("ylen list is not given.");
+				ADD_COLUMN(v.m_y_len, "ylen", column);
+				if (!v.m_z_len) throw InvalidArg("zlen list is not given.");
+				ADD_COLUMN(v.m_z_len, "zlen", column);
+				if (v.m_variable_color) ADD_COLUMN(v.m_variable_color, "variable_color", column);
 			}
-			if (p.m_variable_size)
-			{
-				GET_ARRAY(p.m_variable_size, "variable_size", it, column, labelcolumn);
-			}
-			MakeDataObject(m_canvas, i.m_graph, it);
+			//colormapはFilledCurve非対応。
+			i.m_column = std::move(column);
 		}
-		else if (i.IsVector())
-		{
-			std::vector<ArrayData::Range> it;
-			auto& v = i.GetVectorParam();
-			if (!v.m_x) throw InvalidArg("x coordinate list is not given.");
-			GET_ARRAY(v.m_x, x_x2, it, column, labelcolumn);
-			if (!v.m_y) throw InvalidArg("y coordinate list is not given.");
-			GET_ARRAY(v.m_y, y_y2, it, column, labelcolumn);
-			if (!v.m_z) throw InvalidArg("z coordinate list is not given.");
-			GET_ARRAY(v.m_z, z_z2, it, column, labelcolumn);
-			if (!v.m_x_len) throw InvalidArg("xlen list is not given.");
-			GET_ARRAY(v.m_x_len, x_x2, it, column, labelcolumn);
-			if (!v.m_y_len) throw InvalidArg("ylen list is not given.");
-			GET_ARRAY(v.m_y_len, y_y2, it, column, labelcolumn);
-			if (!v.m_z_len) throw InvalidArg("zlen list is not given.");
-			GET_ARRAY(v.m_z_len, z_z2, it, column, labelcolumn);
-
-			if (v.m_variable_color)
-			{
-				GET_ARRAY(v.m_variable_color, "variable_color", it, column, labelcolumn);
-			}
-			MakeDataObject(m_canvas, i.m_graph, it);
-		}
-		if (!labelcolumn.empty()) column.emplace_back(std::move(labelcolumn));
-		i.m_column = std::move(column);
+		m_param.emplace_back(std::move(i));
+		return std::move(*this);
 	}
-	else if (i.m_type == GraphParam::FILE)
+
+	static std::string PlotCommand(const GraphParam& p, const bool IsInMemoryDataTransferEnabled)
 	{
-		auto ADD_COLUMN = [](const ArrayData& a, const std::string& name, std::vector<std::string>& c)
+		//filename or equation
+		std::string c;
+		switch (p.m_type)
 		{
-			if (a.GetType() == ArrayData::COLUMN) c.emplace_back(a.GetColumn());
-			else if (a.GetType() == ArrayData::UNIQUE) c.emplace_back("($1-$1+" + std::to_string(a.GetUnique()) + ")");
-			else throw InvalidArg(name + "list in the file plot mode must be given in the form of the string column or unique value.");
-		};
-		std::vector<std::string> column;
-		if (i.IsColormap())
-		{
-			auto& p = i.GetColormapParam();
-			if (!p.m_z_map) throw InvalidArg("z coordinate list is not given.");
-			if (p.m_z_map.GetType() == MatrixData::COLUMN) column.emplace_back(p.m_z_map.GetColumn());
-			else if (p.m_z_map.GetType() == MatrixData::UNIQUE) column.emplace_back("($1-$1+" + std::to_string(p.m_z_map.GetUnique()) + ")");
-			else throw InvalidArg("z coordinate list in the file plot mode must be given in the form of the string column or unique value.");
-
-			if (!p.m_x_coord) throw InvalidArg("x coordinate list is not given.");
-			ADD_COLUMN(p.m_x_coord, "x", column);
-			if (!p.m_y_coord) throw InvalidArg("y coordinate list is not given.");
-			ADD_COLUMN(p.m_y_coord, "y", column);
-			//既存のファイルからプロットする場合、等高線表示に対応しない。
-		}
-		else if (i.IsPoint())
-		{
-			auto& p = i.GetPointParam();
-			if (!p.m_x) throw InvalidArg("x coordinate list is not given.");
-			ADD_COLUMN(p.m_x, "x", column);
-			if (!p.m_y) throw InvalidArg("y coordinate list is not given.");
-			ADD_COLUMN(p.m_y, "y", column);
-			if (!p.m_z) throw InvalidArg("z coordinate list is not given.");
-			ADD_COLUMN(p.m_z, "z", column);
-			if (p.m_x_errorbar) ADD_COLUMN(p.m_x_errorbar, "xerrorbar", column);
-			if (p.m_y_errorbar) ADD_COLUMN(p.m_y_errorbar, "yerrorbar", column);
-			if (p.m_variable_color) ADD_COLUMN(p.m_variable_color, "variable_color", column);
-			if (p.m_variable_size) ADD_COLUMN(p.m_variable_size, "variable_size", column);
-		}
-		else if (i.IsVector())
-		{
-			auto& v = i.GetVectorParam();
-			if (!v.m_x) throw InvalidArg("x coordinate list is not given.");
-			ADD_COLUMN(v.m_x, "x", column);
-			if (!v.m_y) throw InvalidArg("y coordinate list is not given.");
-			ADD_COLUMN(v.m_y, "y", column);
-			if (!v.m_z) throw InvalidArg("z coordinate list is not given.");
-			ADD_COLUMN(v.m_z, "z", column);
-			if (!v.m_x_len) throw InvalidArg("xlen list is not given.");
-			ADD_COLUMN(v.m_x_len, "xlen", column);
-			if (!v.m_y_len) throw InvalidArg("ylen list is not given.");
-			ADD_COLUMN(v.m_y_len, "ylen", column);
-			if (!v.m_z_len) throw InvalidArg("zlen list is not given.");
-			ADD_COLUMN(v.m_z_len, "zlen", column);
-			if (v.m_variable_color) ADD_COLUMN(v.m_variable_color, "variable_color", column);
-		}
-		//colormapはFilledCurve非対応。
-		i.m_column = std::move(column);
-	}
-	m_param.emplace_back(std::move(i));
-	return std::move(*this);
-}
-template <class GraphParam>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-inline PlotBufferCM<GraphParam> PlotBufferCM<GraphParam>::
-PlotPoints(RangeReceiver x, RangeReceiver y, RangeReceiver z, Options ...ops)
-{
-	GraphParam i;
-	i.AssignPoint();
-	i.m_type = GraphParam::DATA;
-	i.SetBaseOptions(ops...);
-	//point
-	auto& p = i.GetPointParam();
-	p.m_x = x;
-	p.m_y = y;
-	p.m_z = z;
-	p.SetOptions(ops...);
-	return Plot(i);
-}
-template <class GraphParam>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-inline PlotBufferCM<GraphParam> PlotBufferCM<GraphParam>::
-PlotPoints(std::string_view filename,
-		   std::string_view x, std::string_view y, std::string_view z,
-		   Options ...ops)
-{
-	GraphParam i;
-	i.AssignPoint();
-	i.m_type = GraphParam::FILE;
-	i.m_graph = filename;
-	i.SetBaseOptions(ops...);
-
-	auto& p = i.GetPointParam();
-	p.m_x = x;
-	p.m_y = y;
-	p.m_z = z;
-	p.SetOptions(ops...);
-	return Plot(i);
-}
-template <class GraphParam>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-inline PlotBufferCM<GraphParam> PlotBufferCM<GraphParam>::
-PlotPoints(RangeReceiver x, RangeReceiver y, Options ...ops)
-{
-	GraphParam i;
-	i.AssignPoint();
-	i.m_type = GraphParam::DATA;
-	i.SetBaseOptions(ops...);
-
-	//point
-	auto& p = i.GetPointParam();
-	p.m_x = x;
-	p.m_y = y;
-	p.m_z = 0.;
-	p.SetOptions(ops...);
-	return Plot(i);
-}
-template <class GraphParam>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-inline PlotBufferCM<GraphParam> PlotBufferCM<GraphParam>::
-PlotPoints(std::string_view filename,
-		   std::string_view x, std::string_view y,
-		   Options ...ops)
-{
-	GraphParam i;
-	i.AssignPoint();
-	i.m_type = GraphParam::FILE;
-	i.m_graph = filename;
-	i.SetBaseOptions(ops...);
-
-	auto& p = i.GetPointParam();
-	p.m_x = x;
-	p.m_y = y;
-	p.m_z = 0.;
-	p.SetOptions(ops...);
-	return Plot(i);
-}
-template <class GraphParam>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-inline PlotBufferCM<GraphParam> PlotBufferCM<GraphParam>::
-PlotPoints(std::string_view equation, Options ...ops)
-{
-	GraphParam i;
-	i.AssignPoint();
-	i.m_type = GraphParam::EQUATION;
-	i.SetBaseOptions(ops...);
-	i.m_graph = equation;
-
-	auto& p = i.GetPointParam();
-	p.SetOptions(ops...);
-	return Plot(i);
-}
-
-template <class GraphParam>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-inline PlotBufferCM<GraphParam> PlotBufferCM<GraphParam>::
-PlotLines(RangeReceiver x, RangeReceiver y, RangeReceiver z, Options ...ops)
-{
-	return PlotPoints(x, y, z, plot::style = Style::lines, ops...);
-}
-template <class GraphParam>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-inline PlotBufferCM<GraphParam> PlotBufferCM<GraphParam>::
-PlotLines(std::string_view filename,
-		  std::string_view x, std::string_view y, std::string_view z,
-		  Options ...ops)
-{
-	return PlotPoints(filename, x, y, z, plot::style = Style::lines, ops...);
-}
-template <class GraphParam>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-inline PlotBufferCM<GraphParam> PlotBufferCM<GraphParam>::
-PlotLines(RangeReceiver x, RangeReceiver y, Options ...ops)
-{
-	return PlotPoints(x, y, plot::style = Style::lines, ops...);
-}
-template <class GraphParam>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-inline PlotBufferCM<GraphParam> PlotBufferCM<GraphParam>::
-PlotLines(std::string_view filename,
-		  std::string_view x, std::string_view y,
-		  Options ...ops)
-{
-	return PlotPoints(filename, x, y, plot::style = Style::lines, ops...);
-}
-template <class GraphParam>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-inline PlotBufferCM<GraphParam> PlotBufferCM<GraphParam>::
-PlotLines(std::string_view equation, Options ...ops)
-{
-	return PlotPoints(equation, plot::style = Style::lines, ops...);
-}
-
-template <class GraphParam>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::Vector3DOption, Options...>
-inline PlotBufferCM<GraphParam> PlotBufferCM<GraphParam>::
-PlotVectors(RangeReceiver xfrom, RangeReceiver yfrom, RangeReceiver zfrom,
-			RangeReceiver xlen, RangeReceiver ylen, RangeReceiver zlen,
-			Options ...ops)
-{
-	GraphParam i;
-	i.AssignVector();
-	i.m_type = GraphParam::DATA;
-	i.SetBaseOptions(ops...);
-
-	//vector
-	auto& v = i.GetVectorParam();
-	v.m_x = xfrom;
-	v.m_y = yfrom;
-	v.m_z = zfrom;
-	v.m_x_len = xlen;
-	v.m_y_len = ylen;
-	v.m_z_len = zlen;
-	v.SetOptions(ops...);
-	return Plot(i);
-}
-template <class GraphParam>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::Vector3DOption, Options...>
-inline PlotBufferCM<GraphParam> PlotBufferCM<GraphParam>::
-PlotVectors(std::string_view filename,
-			std::string_view xfrom, std::string_view yfrom, std::string_view zfrom,
-			std::string_view xlen, std::string_view ylen, std::string_view zlen,
-			Options ...ops)
-{
-	GraphParam i;
-	i.AssignVector();
-	i.m_type = GraphParam::FILE;
-	i.m_graph = filename;
-	i.SetBaseOptions(ops...);
-
-	//vector
-	auto& v = i.GetVectorParam();
-	v.m_x = xfrom;
-	v.m_y = yfrom;
-	v.m_z = zfrom;
-	v.m_x_len = xlen;
-	v.m_y_len = ylen;
-	v.m_z_len = zlen;
-	v.SetOptions(ops...);
-	return Plot(i);
-}
-template <class GraphParam>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::Vector3DOption, Options...>
-inline PlotBufferCM<GraphParam> PlotBufferCM<GraphParam>::
-PlotVectors(RangeReceiver xfrom, RangeReceiver yfrom,
-			RangeReceiver xlen, RangeReceiver ylen,
-			Options ...ops)
-{
-	GraphParam i;
-	i.AssignVector();
-	i.m_type = GraphParam::DATA;
-	i.SetBaseOptions(ops...);
-
-	//vector
-	auto& v = i.GetVectorParam();
-	v.m_x = xfrom;
-	v.m_y = yfrom;
-	v.m_z = 0.;
-	v.m_x_len = xlen;
-	v.m_y_len = ylen;
-	v.m_z_len = 0.;
-	v.SetOptions(ops...);
-	return Plot(i);
-}
-template <class GraphParam>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::Vector3DOption, Options...>
-inline PlotBufferCM<GraphParam> PlotBufferCM<GraphParam>::
-PlotVectors(std::string_view filename,
-			std::string_view xfrom, std::string_view yfrom,
-			std::string_view xlen, std::string_view ylen,
-			Options ...ops)
-{
-	GraphParam i;
-	i.AssignVector();
-	i.m_type = GraphParam::FILE;
-	i.m_graph = filename;
-	i.SetBaseOptions(ops...);
-
-	//vector
-	auto& v = i.GetVectorParam();
-	v.m_x = xfrom;
-	v.m_y = yfrom;
-	v.m_z = 0.;
-	v.m_x_len = xlen;
-	v.m_y_len = ylen;
-	v.m_z_len = 0.;
-	v.SetOptions(ops...);
-	return Plot(i);
-}
-
-template <class GraphParam>
-template <class Type, class ...Options> requires all_keyword_args_tagged_with<plot::ColormapOption, Options...>
-inline PlotBufferCM<GraphParam> PlotBufferCM<GraphParam>::
-PlotColormap(const Matrix<Type>& map, RangeReceiver x, RangeReceiver y,
-			 Options ...ops)
-{
-	GraphParam i;
-	i.AssignColormap();
-	i.m_type = GraphParam::DATA;
-	i.SetBaseOptions(ops...);
-
-	//map
-	auto& m = i.GetColormapParam();
-	m.m_z_map = map;
-	m.m_x_coord = x;
-	m.m_y_coord = y;
-	m.SetOptions(ops...);
-	return Plot(i);
-}
-template <class GraphParam>
-template <class Type, class ...Options> requires all_keyword_args_tagged_with<plot::ColormapOption, Options...>
-inline PlotBufferCM<GraphParam> PlotBufferCM<GraphParam>::
-PlotColormap(const Matrix<Type>& map, std::pair<double, double> x, std::pair<double, double> y,
-			 Options ...ops)
-{
-	GraphParam i;
-	i.AssignColormap();
-	i.m_type = GraphParam::DATA;
-	i.SetBaseOptions(ops...);
-
-	//map
-	auto& m = i.GetColormapParam();
-	m.m_z_map = map;
-	m.m_x_range = x;
-	m.m_y_range = y;
-	m.SetOptions(ops...);
-	return Plot(i);
-}
-template <class GraphParam>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::ColormapOption, Options...>
-inline PlotBufferCM<GraphParam> PlotBufferCM<GraphParam>::
-PlotColormap(std::string_view filename, std::string_view z, std::string_view x, std::string_view y,
-			 Options ...ops)
-{
-	GraphParam i;
-	i.AssignColormap();
-	i.m_type = GraphParam::FILE;
-	i.m_graph = filename;
-	i.SetBaseOptions(ops...);
-
-	//map
-	auto& m = i.GetColormapParam();
-	m.m_z_map = z;
-	m.m_x_coord = x;
-	m.m_y_coord = y;
-	m.SetOptions(ops...);
-	return Plot(i);
-}
-template <class GraphParam>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::ColormapOption, Options...>
-inline PlotBufferCM<GraphParam> PlotBufferCM<GraphParam>::
-PlotColormap(std::string_view equation, Options ...ops)
-{
-	GraphParam i;
-	i.AssignColormap();
-	i.m_graph = equation;
-	i.m_type = GraphParam::DATA;
-	i.SetBaseOptions(ops...);
-
-	//map
-	auto& m = i.GetColormapParam();
-	m.SetOptions(ops...);
-	return Plot(i);
-}
-
-template <class GraphParam>
-inline std::string PlotBufferCM<GraphParam>::PlotCommand(const GraphParam& p, const bool IsInMemoryDataTransferEnabled)
-{
-	//filename or equation
-	std::string c;
-	switch (p.m_type) 
-	{
-	case GraphParam::EQUATION:
-		//equation
-		c += " " + p.m_graph;
-		break;
-	case GraphParam::FILE:
-		//filename
-		c += " '" + p.m_graph + "'";
-
-		//using
-		c += " using ";
-		for (size_t i = 0; i < p.m_column.size(); ++i)
-			c += p.m_column[i] + ":";
-		c.pop_back();
-		break;
-	case GraphParam::DATA:
-		if (IsInMemoryDataTransferEnabled) 
-		{
-			//variable name
+		case GraphParam::EQUATION:
+			//equation
 			c += " " + p.m_graph;
-		}
-		else {
+			break;
+		case GraphParam::FILE:
 			//filename
 			c += " '" + p.m_graph + "'";
+
+			//using
+			c += " using ";
+			for (size_t i = 0; i < p.m_column.size(); ++i)
+				c += p.m_column[i] + ":";
+			c.pop_back();
+			break;
+		case GraphParam::DATA:
+			if (IsInMemoryDataTransferEnabled)
+			{
+				//variable name
+				c += " " + p.m_graph;
+			}
+			else {
+				//filename
+				c += " '" + p.m_graph + "'";
+			}
+
+			//using
+			c += " using ";
+			for (size_t i = 0; i < p.m_column.size(); ++i)
+				c += p.m_column[i] + ":";
+			c.pop_back();
+			break;
 		}
 
-		//using
-		c += " using ";
-		for (size_t i = 0; i < p.m_column.size(); ++i)
-			c += p.m_column[i] + ":";
-		c.pop_back();
-		break;
-	}
-
-	//title
-	if (!p.m_title.empty())
-	{
-		if (p.m_title == "notitle") c += " notitle";
-		else c += " title '" + p.m_title + "'";
-	}
-
-	c += " with";
-	//カラーマップの場合。
-	if (p.IsColormap())
-	{
-		c += " pm3d";
-		auto& m = p.GetColormapParam();
-		if (m.m_without_surface) c += " nosurface";
-	}
-	//ベクトルの場合。
-	else if (p.IsVector())
-	{
-		c += VectorPlotCommand(p.GetVectorParam());
-	}
-	//点の場合。
-	else if (p.IsPoint())
-	{
-		c += PointPlotCommand(p.GetPointParam());
-	}
-
-	//axis
-	if (!p.m_axis.empty()) c += " axes " + p.m_axis;
-
-	//もしカラーマップでcontourが有効だったら、
-	//更にそれを描画するコマンドを追加する。
-	if (p.IsColormap())
-	{
-		auto& m = p.GetColormapParam();
-		if (m.m_with_contour)
+		//title
+		if (!p.m_title.empty())
 		{
-			if (IsInMemoryDataTransferEnabled) 
-			{
-				c += ", " + p.m_graph + "_cntr with line";
-			}
-			else
-			{
-				std::string str = "'" + p.m_graph;
-				str.erase(str.end() - 3, str.end());
-				c += ", " + str + "cntr.txt' with line";
-			}
 			if (p.m_title == "notitle") c += " notitle";
 			else c += " title '" + p.m_title + "'";
-			if (m.m_cntr_line_type != -2) c += std::format(" linetype {}", m.m_cntr_line_type);
-			if (m.m_cntr_line_width != -1) c += std::format(" linewidth {}", m.m_cntr_line_width);
-			if (m.m_variable_cntr_color) c += " linecolor palette";
-			else if (!m.m_cntr_color.empty()) c += " linecolor '" + m.m_cntr_color + "'";
+		}
+
+		c += " with";
+		//カラーマップの場合。
+		if (p.IsColormap())
+		{
+			c += " pm3d";
+			auto& m = p.GetColormapParam();
+			if (m.m_without_surface) c += " nosurface";
+		}
+		//ベクトルの場合。
+		else if (p.IsVector())
+		{
+			c += VectorPlotCommand(p.GetVectorParam());
+		}
+		//点の場合。
+		else if (p.IsPoint())
+		{
+			c += PointPlotCommand(p.GetPointParam());
+		}
+
+		//axis
+		if (!p.m_axis.empty()) c += " axes " + p.m_axis;
+
+		//もしカラーマップでcontourが有効だったら、
+		//更にそれを描画するコマンドを追加する。
+		if (p.IsColormap())
+		{
+			auto& m = p.GetColormapParam();
+			if (m.m_with_contour)
+			{
+				if (IsInMemoryDataTransferEnabled)
+				{
+					c += ", " + p.m_graph + "_cntr with line";
+				}
+				else
+				{
+					std::string str = "'" + p.m_graph;
+					str.erase(str.end() - 3, str.end());
+					c += ", " + str + "cntr.txt' with line";
+				}
+				if (p.m_title == "notitle") c += " notitle";
+				else c += " title '" + p.m_title + "'";
+				if (m.m_cntr_line_type != -2) c += std::format(" linetype {}", m.m_cntr_line_type);
+				if (m.m_cntr_line_width != -1) c += std::format(" linewidth {}", m.m_cntr_line_width);
+				if (m.m_variable_cntr_color) c += " linecolor palette";
+				else if (!m.m_cntr_color.empty()) c += " linecolor '" + m.m_cntr_color + "'";
+			}
+		}
+		return c;
+	}
+	static std::string InitCommand()
+	{
+		std::string c;
+		c += "set autoscale\n";
+		c += "unset logscale\n";
+		c += "unset title\n";
+		c += "unset grid\n";
+		c += "set size noratio\n";
+		c += "unset pm3d\n";
+		c += "unset contour\n";
+		c += "set surface";
+		return c;
+	}
+
+	std::vector<GraphParam> m_param;
+	Canvas* m_canvas;
+};
+
+
+template <class GraphParam, template <class> class Buffer_>
+class CanvasCM : public detail::Axis2D<Canvas>
+{
+public:
+
+	using Buffer = Buffer_<GraphParam>;
+
+	CanvasCM(const std::string& output, double sizex = 0., double sizey = 0.)
+		: detail::Axis2D<Canvas>(output, sizex, sizey)
+	{
+		if (m_pipe)
+		{
+			this->Command("set pm3d corners2color c1");
+			this->Command("set view map");
 		}
 	}
-	return c;
-}
-template <class GraphParam>
-inline std::string PlotBufferCM<GraphParam>::InitCommand()
-{
-	std::string c;
-	c += "set autoscale\n";
-	c += "unset logscale\n";
-	c += "unset title\n";
-	c += "unset grid\n";
-	c += "set size noratio\n";
-	c += "unset pm3d\n";
-	c += "unset contour\n";
-	c += "set surface";
-	return c;
-}
-
-template <class GraphParam, template <class> class Buffer>
-inline CanvasCM<GraphParam, Buffer>::CanvasCM(const std::string& output, double sizex, double sizey)
-	: detail::Axis2D<Canvas>(output, sizex, sizey)
-{
-	if (m_pipe)
+	CanvasCM()
 	{
-		this->Command("set pm3d corners2color c1");
-		this->Command("set view map");
+		if (m_pipe)
+		{
+			this->Command("set pm3d corners2color c1");
+			this->Command("set view map");
+		}
 	}
-}
-template <class GraphParam, template <class> class Buffer>
-inline CanvasCM<GraphParam, Buffer>::CanvasCM()
-{
-	if (m_pipe)
+
+	friend class MultiPlotter;
+
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
+	Buffer PlotPoints(RangeReceiver x, RangeReceiver y, RangeReceiver z, Options ...ops)
 	{
-		this->Command("set pm3d corners2color c1");
-		this->Command("set view map");
+		Buffer p(this);
+		return p.PlotPoints(x, y, z, ops...);
 	}
-}
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
+	Buffer PlotPoints(std::string_view filename,
+					   std::string_view x, std::string_view y, std::string_view z,
+					   Options ...ops)
+	{
+		Buffer p(this);
+		return p.PlotPoints(filename, x, y, z, ops...);
+	}
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
+	Buffer PlotPoints(RangeReceiver x, RangeReceiver y, Options ...ops)
+	{
+		Buffer p(this);
+		return p.PlotPoints(x, y, ops...);
+	}
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
+	Buffer PlotPoints(std::string_view filename,
+					   std::string_view x, std::string_view y,
+					   Options ...ops)
+	{
+		Buffer p(this);
+		return p.PlotPoints(filename, x, y, ops...);
+	}
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
+	Buffer PlotPoints(std::string_view equation, Options ...ops)
+	{
+		Buffer p(this);
+		return p.PlotPoints(equation, ops...);
+	}
 
-template <class GraphParam, template <class> class Buffer>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-inline Buffer<GraphParam> CanvasCM<GraphParam, Buffer>::
-PlotPoints(RangeReceiver x, RangeReceiver y, RangeReceiver z, Options ...ops)
-{
-	_Buffer p(this);
-	return p.PlotPoints(x, y, z, ops...);
-}
-template <class GraphParam, template <class> class Buffer>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-inline Buffer<GraphParam> CanvasCM<GraphParam, Buffer>::
-PlotPoints(std::string_view filename,
-		   std::string_view x, std::string_view y, std::string_view z,
-		   Options ...ops)
-{
-	_Buffer p(this);
-	return p.PlotPoints(filename, x, y, z, ops...);
-}
-template <class GraphParam, template <class> class Buffer>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-inline Buffer<GraphParam> CanvasCM<GraphParam, Buffer>::
-PlotPoints(RangeReceiver x, RangeReceiver y, Options ...ops)
-{
-	_Buffer p(this);
-	return p.PlotPoints(x, y, ops...);
-}
-template <class GraphParam, template <class> class Buffer>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-inline Buffer<GraphParam> CanvasCM<GraphParam, Buffer>::
-PlotPoints(std::string_view filename,
-		   std::string_view x, std::string_view y,
-		   Options ...ops)
-{
-	_Buffer p(this);
-	return p.PlotPoints(filename, x, y, ops...);
-}
-template <class GraphParam, template <class> class Buffer>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-inline Buffer<GraphParam> CanvasCM<GraphParam, Buffer>::
-PlotPoints(std::string_view equation, Options ...ops)
-{
-	_Buffer p(this);
-	return p.PlotPoints(equation, ops...);
-}
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
+	Buffer PlotLines(RangeReceiver x, RangeReceiver y, RangeReceiver z, Options ...ops)
+	{
+		Buffer p(this);
+		return p.PlotLines(x, y, z, ops...);
+	}
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
+	Buffer PlotLines(std::string_view filename,
+					  std::string_view x, std::string_view y, std::string_view z,
+					  Options ...ops)
+	{
+		Buffer p(this);
+		return p.PlotLines(filename, x, y, z, ops...);
+	}
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
+	Buffer PlotLines(RangeReceiver x, RangeReceiver y, Options ...ops)
+	{
+		Buffer p(this);
+		return p.PlotLines(x, y, ops...);
+	}
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
+	Buffer PlotLines(std::string_view filename,
+					  std::string_view x, std::string_view y,
+					  Options ...ops)
+	{
+		Buffer p(this);
+		return p.PlotLines(filename, x, y, ops...);
+	}
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
+	Buffer PlotLines(std::string_view equation, Options ...ops)
+	{
+		Buffer p(this);
+		return p.PlotLines(equation, ops...);
+	}
 
-template <class GraphParam, template <class> class Buffer>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-inline Buffer<GraphParam> CanvasCM<GraphParam, Buffer>::
-PlotLines(RangeReceiver x, RangeReceiver y, RangeReceiver z, Options ...ops)
-{
-	_Buffer p(this);
-	return p.PlotLines(x, y, z, ops...);
-}
-template <class GraphParam, template <class> class Buffer>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-inline Buffer<GraphParam> CanvasCM<GraphParam, Buffer>::
-PlotLines(std::string_view filename,
-		   std::string_view x, std::string_view y, std::string_view z,
-		   Options ...ops)
-{
-	_Buffer p(this);
-	return p.PlotLines(filename, x, y, z, ops...);
-}
-template <class GraphParam, template <class> class Buffer>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-inline Buffer<GraphParam> CanvasCM<GraphParam, Buffer>::
-PlotLines(RangeReceiver x, RangeReceiver y, Options ...ops)
-{
-	_Buffer p(this);
-	return p.PlotLines(x, y, ops...);
-}
-template <class GraphParam, template <class> class Buffer>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-inline Buffer<GraphParam> CanvasCM<GraphParam, Buffer>::
-PlotLines(std::string_view filename,
-		  std::string_view x, std::string_view y,
-		  Options ...ops)
-{
-	_Buffer p(this);
-	return p.PlotLines(filename, x, y, ops...);
-}
-template <class GraphParam, template <class> class Buffer>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::Point3DOption, Options...>
-inline Buffer<GraphParam> CanvasCM<GraphParam, Buffer>::
-PlotLines(std::string_view equation, Options ...ops)
-{
-	_Buffer p(this);
-	return p.PlotLines(equation, ops...);
-}
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::Vector3DOption, Options...>
+	Buffer PlotVectors(RangeReceiver xfrom, RangeReceiver yfrom, RangeReceiver zfrom,
+						RangeReceiver xlen, RangeReceiver ylen, RangeReceiver zlen,
+						Options ...ops)
+	{
+		Buffer p(this);
+		return p.PlotVectors(xfrom, yfrom, zfrom, xlen, ylen, zlen, ops...);
+	}
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::Vector3DOption, Options...>
+	Buffer PlotVectors(std::string_view filename,
+						std::string_view xfrom, std::string_view yfrom, std::string_view zfrom,
+						std::string_view xlen, std::string_view ylen, std::string_view zlen,
+						Options ...ops)
+	{
+		Buffer p(this);
+		return p.PlotVectors(filename, xfrom, yfrom, zfrom, xlen, ylen, zlen, ops...);
+	}
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::Vector3DOption, Options...>
+	Buffer PlotVectors(RangeReceiver xfrom, RangeReceiver yfrom,
+						RangeReceiver xlen, RangeReceiver ylen,
+						Options ...ops)
+	{
+		Buffer p(this);
+		return p.PlotVectors(xfrom, yfrom, xlen, ylen, ops...);
+	}
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::Vector3DOption, Options...>
+	Buffer PlotVectors(std::string_view filename,
+						std::string_view xfrom, std::string_view yfrom,
+						std::string_view xlen, std::string_view ylen,
+						Options ...ops)
+	{
+		Buffer p(this);
+		return p.PlotVectors(filename, xfrom, yfrom, xlen, ylen, ops...);
+	}
 
-template <class GraphParam, template <class> class Buffer>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::Vector3DOption, Options...>
-inline Buffer<GraphParam> CanvasCM<GraphParam, Buffer>::
-PlotVectors(RangeReceiver xfrom, RangeReceiver yfrom, RangeReceiver zfrom,
-			RangeReceiver xlen, RangeReceiver ylen, RangeReceiver zlen,
-			Options ...ops)
-{
-	_Buffer p(this);
-	return p.PlotVectors(xfrom, yfrom, zfrom, xlen, ylen, zlen, ops...);
-}
-template <class GraphParam, template <class> class Buffer>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::Vector3DOption, Options...>
-inline Buffer<GraphParam> CanvasCM<GraphParam, Buffer>::
-PlotVectors(std::string_view filename,
-			std::string_view xfrom, std::string_view yfrom, std::string_view zfrom,
-			std::string_view xlen, std::string_view ylen, std::string_view zlen,
-			Options ...ops)
-{
-	_Buffer p(this);
-	return p.PlotVectors(filename, xfrom, yfrom, zfrom, xlen, ylen, zlen, ops...);
-}
-template <class GraphParam, template <class> class Buffer>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::Vector3DOption, Options...>
-inline Buffer<GraphParam> CanvasCM<GraphParam, Buffer>::
-PlotVectors(RangeReceiver xfrom, RangeReceiver yfrom,
-			RangeReceiver xlen, RangeReceiver ylen,
-			Options ...ops)
-{
-	_Buffer p(this);
-	return p.PlotVectors(xfrom, yfrom, xlen, ylen, ops...);
-}
-template <class GraphParam, template <class> class Buffer>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::Vector3DOption, Options...>
-inline Buffer<GraphParam> CanvasCM<GraphParam, Buffer>::
-PlotVectors(std::string_view filename,
-			std::string_view xfrom, std::string_view yfrom,
-			std::string_view xlen, std::string_view ylen,
-			Options ...ops)
-{
-	_Buffer p(this);
-	return p.PlotVectors(filename, xfrom, yfrom, xlen, ylen, ops...);
-}
+	template <class Type, class ...Options> requires all_keyword_args_tagged_with<plot::ColormapOption, Options...>
+	Buffer PlotColormap(const Matrix<Type>& map, RangeReceiver x, RangeReceiver y,
+						 Options ...ops)
+	{
+		Buffer p(this);
+		return p.PlotColormap(map, x, y, ops...);
+	}
+	template <class Type, class ...Options> requires all_keyword_args_tagged_with<plot::ColormapOption, Options...>
+	Buffer PlotColormap(const Matrix<Type>& map, std::pair<double, double> x, std::pair<double, double> y,
+						 Options ...ops)
+	{
+		Buffer p(this);
+		return p.PlotColormap(map, x, y, ops...);
+	}
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::ColormapOption, Options...>
+	Buffer PlotColormap(std::string_view filename, std::string_view z, std::string_view x, std::string_view y,
+						 Options ...ops)
+	{
+		Buffer p(this);
+		return p.PlotColormap(filename, z, x, y, ops...);
+	}
+	template <class ...Options> requires all_keyword_args_tagged_with<plot::ColormapOption, Options...>
+	Buffer PlotColormap(std::string_view equation, Options ...ops)
+	{
+		Buffer p(this);
+		return p.PlotColormap(equation, ops...);
+	}
 
-template <class GraphParam, template <class> class Buffer>
-template <class Type, class ...Options> requires all_keyword_args_tagged_with<plot::ColormapOption, Options...>
-Buffer<GraphParam> CanvasCM<GraphParam, Buffer>::
-PlotColormap(const Matrix<Type>& map, RangeReceiver x, RangeReceiver y,
-			 Options ...ops)
-{
-	_Buffer p(this);
-	return p.PlotColormap(map, x, y, ops...);
-}
-template <class GraphParam, template <class> class Buffer>
-template <class Type, class ...Options> requires all_keyword_args_tagged_with<plot::ColormapOption, Options...>
-Buffer<GraphParam> CanvasCM<GraphParam, Buffer>::
-PlotColormap(const Matrix<Type>& map, std::pair<double, double> x, std::pair<double, double> y,
-			 Options ...ops)
-{
-	_Buffer p(this);
-	return p.PlotColormap(map, x, y, ops...);
-}
-template <class GraphParam, template <class> class Buffer>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::ColormapOption, Options...>
-Buffer<GraphParam> CanvasCM<GraphParam, Buffer>::
-PlotColormap(std::string_view filename, std::string_view z, std::string_view x, std::string_view y,
-			 Options ...ops)
-{
-	_Buffer p(this);
-	return p.PlotColormap(filename, z, x, y, ops...);
-}
-template <class GraphParam, template <class> class Buffer>
-template <class ...Options> requires all_keyword_args_tagged_with<plot::ColormapOption, Options...>
-Buffer<GraphParam> CanvasCM<GraphParam, Buffer>::
-PlotColormap(std::string_view equation, Options ...ops)
-{
-	_Buffer p(this);
-	return p.PlotColormap(equation, ops...);
-}
-template <class GraphParam, template <class> class Buffer>
-Buffer<GraphParam> CanvasCM<GraphParam, Buffer>::GetBuffer()
-{
-	return _Buffer(this);
-}
+	Buffer GetBuffer()
+	{
+		return Buffer(this);
+	}
+};
 
 }
 

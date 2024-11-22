@@ -242,5 +242,5 @@ void Plot_jtree(const JTree& jt)
 	c.SetTitle("math vs income");
 	c.SetXLabel("mean(math)");
 	c.SetYLabel("household income");
-	c.PlotPoints(v_math, v_income, plot::pt_cir, plot::ps_med_large, plot::no_title);
+	c.PlotPoints(v_math, v_income, plot::pt_cir, plot::ps_med_large, plot::notitle);
 }

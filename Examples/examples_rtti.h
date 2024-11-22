@@ -503,7 +503,7 @@ void Plot_rtti(const Tree& t)
 	f.PlotPoints(v_jpn, v_eng, plot::c_blue, plot::pointtype = 7, plot::ps_large, plot::title = "jpn vs eng").
 		PlotPoints(v_jpn, v_math, plot::c_red, plot::pointtype = 7, plot::ps_large, plot::title = "jpn vs math");
 
-	std::vector<std::string> exams = { "1set-sem-mid", "1st-sem-fin", "2nd-sem-mid", "2nd-sem-fin" };
+	std::vector<std::string> exams = { "1st-sem-mid", "1st-sem-fin", "2nd-sem-mid", "2nd-sem-fin" };
 	auto dummyko_math = t | Filter(name == "濃伊田美衣子") | ToVector(math.i32());
 	auto seito_math = t | Filter(name == "角兎野誠人") | ToVector(math.i32());
 	auto yuuka_math = t | Filter(name == "子虚烏有花") | ToVector(math.i32());

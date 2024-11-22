@@ -286,13 +286,13 @@ public:
 		template <bool C = std::is_const<MatPursuer<N - 1, Qualifier>>::value>
 		std::enable_if_t<!C, MatPursuer<N + 1, Qualifier>> operator[](uint32_t i)
 		{
-			assert(i >= 0 && i < m_matrix.GetRange()[N]);
+			assert(i < m_matrix.GetRange()[N]);
 			return MatPursuer<N + 1, Qualifier>(m_matrix, m_row * m_matrix.GetRange()[N] + i);
 		}
 
 		MatPursuer<N + 1, Qualifier> operator[](uint32_t i) const
 		{
-			assert(i >= 0 && i < m_matrix.GetRange()[N]);
+			assert(i < m_matrix.GetRange()[N]);
 			return MatPursuer<N + 1, Qualifier>(m_matrix, m_row * m_matrix.GetRange()[N] + i);
 		}
 	private:
@@ -308,13 +308,13 @@ public:
 		template <bool C = std::is_const<MatPursuer<N - 1, Qualifier>>::value>
 		std::enable_if_t<!C, T&> operator[](uint32_t i)
 		{
-			assert(i >= 0 && i < m_matrix.GetRange()[N]);
+			assert(i < m_matrix.GetRange()[N]);
 			return m_matrix.m_matrix_data[m_row * m_matrix.GetRange()[N] + i];
 		}
 
 		const T& operator[](uint32_t i) const
 		{
-			assert(i >= 0 && i < m_matrix.GetRange()[N]);
+			assert(i < m_matrix.GetRange()[N]);
 			return m_matrix.m_matrix_data[m_row * m_matrix.GetRange()[N] + i];
 		}
 	private:
@@ -326,13 +326,13 @@ public:
 	template <bool B = (Dim > 1)>
 	std::enable_if_t<B, MatPursuer<1, std::type_identity_t>> operator[](uint32_t i)
 	{
-		assert(i >= 0 && i < GetRange()[0]);
+		assert(i < GetRange()[0]);
 		return MatPursuer<1, std::type_identity_t>(*this, i);
 	}
 	template <bool B = (Dim > 1)>
 	std::enable_if_t<B, MatPursuer<1, std::add_const_t>> operator[](uint32_t i) const
 	{
-		assert(i >= 0 && i < GetRange()[0]);
+		assert(i < GetRange()[0]);
 		return MatPursuer<1, std::add_const_t>(*this, i);
 	}
 
@@ -340,13 +340,13 @@ public:
 	template <bool B = (Dim == 1)>
 	std::enable_if_t<B, T&> operator[](uint32_t i)
 	{
-		assert(i >= 0 && i < GetRange()[0]);
+		assert(i < GetRange()[0]);
 		return m_matrix_data[i];
 	}
 	template <bool B = (Dim == 1)>
 	std::enable_if_t<B, const T&> operator[](uint32_t i) const
 	{
-		assert(i >= 0 && i < GetRange()[0]);
+		assert(i < GetRange()[0]);
 		return m_matrix_data[i];
 	}
 

@@ -286,7 +286,6 @@ public:
 
 }
 
-
 namespace views
 {
 

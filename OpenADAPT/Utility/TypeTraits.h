@@ -440,6 +440,9 @@ concept equal_comparable_with = requires(T a, U b)
 	{ a == b } -> boolean_testable;
 };
 
+template <class T>
+concept arithmetic = std::is_arithmetic_v<T>;
+
 }
 
 #endif
