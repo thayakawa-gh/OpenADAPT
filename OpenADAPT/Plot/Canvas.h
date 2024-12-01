@@ -132,6 +132,7 @@ std::string PointPlotCommand(const PointParam& p)
 				c += ")";
 			}
 			if (!p.m_color.empty()) c += " linecolor '" + p.m_color + "'";
+			else if (!p.m_color_rgb.empty()) c += " linecolor rgb " + p.m_color_rgb;
 			else if (p.m_variable_color) c += " linecolor palette";
 		}
 		else if (p.m_style == Style::boxes)
@@ -146,6 +147,7 @@ std::string PointPlotCommand(const PointParam& p)
 			if (p.m_line_type != -2) c += " linetype " + std::to_string(p.m_line_type);
 			if (p.m_line_width != -1) c += " linewidth " + std::to_string(p.m_line_width);
 			if (!p.m_color.empty()) c += " linecolor '" + p.m_color + "'";
+			else if (!p.m_color_rgb.empty()) c += " linecolor rgb " + p.m_color_rgb;
 			else if (p.m_variable_color) c += " linecolor palette";
 		}
 		else
@@ -162,8 +164,10 @@ std::string PointPlotCommand(const PointParam& p)
 				c += " yerrorbars";
 			if (p.m_point_type != -1) c += " pointtype " + std::to_string(p.m_point_type);
 			if (p.m_point_size != -1) c += " pointsize " + std::to_string(p.m_point_size);
+			else if (p.m_variable_size) c += " pointsize variable";
 			if (p.m_line_width != -1) c += " linewidth " + std::to_string(p.m_line_width);
 			if (!p.m_color.empty()) c += " linecolor '" + p.m_color + "'";//pointのときも何故かlinecolorらしい。
+			else if (!p.m_color_rgb.empty()) c += " linecolor rgb " + p.m_color_rgb;
 			else if (p.m_variable_color) c += " palette";//しかしpalette指定の場合はlinecolorがいらない。謎。
 		}
 	}
@@ -196,6 +200,7 @@ std::string PointPlotCommand(const PointParam& p)
 			others += ")";
 		}
 		if (!p.m_color.empty()) others += " linecolor '" + p.m_color + "'";
+		else if (!p.m_color_rgb.empty()) c += " linecolor rgb " + p.m_color_rgb;
 		else if (p.m_variable_color) others += " linecolor palette";
 
 		if (p.m_style == Style::boxes || p.m_style == Style::steps)
@@ -231,7 +236,9 @@ std::string PointPlotCommand(const PointParam& p)
 			std::cerr << "WARNING : \"points\" style is incompatible with linewidth option. It is to be ignored." << std::endl;
 		if (p.m_point_type != -1) c += " pointtype " + std::to_string(p.m_point_type);
 		if (p.m_point_size != -1) c += " pointsize " + std::to_string(p.m_point_size);
+		else if (p.m_variable_size) c += " pointsize variable";
 		if (!p.m_color.empty()) c += " linecolor '" + p.m_color + "'";//pointのときも何故かlinecolorらしい。
+		else if (!p.m_color_rgb.empty()) c += " linecolor rgb " + p.m_color_rgb;
 		else if (p.m_variable_color) c += " palette";//しかしpalette指定の場合はlinecolorがいらない。謎。
 	}
 	else if (p.m_style == Style::linespoints)
@@ -241,6 +248,7 @@ std::string PointPlotCommand(const PointParam& p)
 		if (p.m_line_width != -1) c += " linewidth " + std::to_string(p.m_line_width);
 		if (p.m_point_type != -1) c += " pointtype " + std::to_string(p.m_point_type);
 		if (p.m_point_size != -1) c += " pointsize " + std::to_string(p.m_point_size);
+		else if (p.m_variable_size) c += " pointsize variable";
 		if (!p.m_dash_type.empty())
 		{
 			c += " dashtype (" + std::to_string(p.m_dash_type.front());
@@ -248,6 +256,7 @@ std::string PointPlotCommand(const PointParam& p)
 			c += ")";
 		}
 		if (!p.m_color.empty()) c += " linecolor '" + p.m_color + "'";
+		else if (!p.m_color_rgb.empty()) c += " linecolor rgb " + p.m_color_rgb;
 		else if (p.m_variable_color) c += " linecolor palette";
 	}
 	else if (p.m_style == Style::dots)
@@ -262,6 +271,7 @@ std::string PointPlotCommand(const PointParam& p)
 		if (p.m_point_size != -1)
 			std::cerr << "WARNING : \"dots\" style is incompatible with pointsize option. Use points with pointtype 7." << std::endl;
 		if (!p.m_color.empty()) c += " linecolor '" + p.m_color + "'";
+		else if (!p.m_color_rgb.empty()) c += " linecolor rgb " + p.m_color_rgb;
 		else if (p.m_variable_color) c += " palette ";
 	}
 	if (p.m_smooth != Smooth::none)
@@ -300,6 +310,7 @@ std::string VectorPlotCommand(const VectorParam& v)
 	if (v.m_line_type != -2) c += " linetype " + std::to_string(v.m_line_type);
 	if (v.m_line_width != -1) c += " linewidth " + std::to_string(v.m_line_width);
 	if (!v.m_color.empty()) c += " linecolor '" + v.m_color + "'";
+	else if (!v.m_color_rgb.empty()) c += " linecolor rgb " + v.m_color_rgb;
 	else if (v.m_variable_color) c += " linecolor palette";
 	return c;
 }
@@ -407,6 +418,7 @@ ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(linetype, int, LineOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(linewidth, double, LineOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(dashtype, std::vector<int>, LineOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(color, std::string_view, LineOption)
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(color_rgb, std::string_view, LineOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(variable_color, detail::ArrayData, LineOption)
 
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(style, Style, PointOption)
@@ -473,7 +485,7 @@ inline constexpr auto c_blue          = (color = "blue");
 inline constexpr auto c_light_blue    = (color = "light-blue");
 inline constexpr auto c_dark_yellow   = (color = "dark-yellow");
 inline constexpr auto c_yellow        = (color = "yellow");
-inline constexpr auto c_light_yellow  = (color = "rgb \"#ffffe0\"");
+inline constexpr auto c_light_yellow  = (color = "rgb #ffffe0");
 inline constexpr auto c_dark_magenta  = (color = "dark-magenta");
 inline constexpr auto c_magenta       = (color = "magenta");
 inline constexpr auto c_light_magenta = (color = "light-magenta");
@@ -540,6 +552,7 @@ struct PointParam
 		m_line_width = GetKeywordArg(plot::linewidth, -1, ops...);
 		m_dash_type = GetKeywordArg(plot::dashtype, std::vector<int>{}, ops...);
 		m_color = GetKeywordArg(plot::color, "", ops...);
+		m_color_rgb = GetKeywordArg(plot::color_rgb, "", ops...);
 
 		m_fill_color = GetKeywordArg(plot::fillcolor, "", ops...);
 		if (KeywordExists(plot::variable_fillcolor, ops...)) m_variable_fill_color = GetKeywordArg(plot::variable_fillcolor, ops...);
@@ -564,6 +577,7 @@ struct PointParam
 	double m_line_width;//-1ならデフォルト、-2ならvariable
 	std::vector<int> m_dash_type;
 	std::string m_color;
+	std::string m_color_rgb;
 	detail::ArrayData m_variable_color;
 
 	//FillOption
@@ -598,6 +612,7 @@ struct VectorParam
 		m_line_type = GetKeywordArg(plot::linetype, -2, ops...);
 		m_line_width = GetKeywordArg(plot::linewidth, -1, ops...);
 		m_color = GetKeywordArg(plot::color, "", ops...);
+		m_color_rgb = GetKeywordArg(plot::color_rgb, "", ops...);
 		if (KeywordExists(plot::variable_color, ops...)) m_variable_color = GetKeywordArg(plot::variable_color, ops...);
 	}
 
@@ -605,6 +620,7 @@ struct VectorParam
 	int m_line_type;//-2ならデフォルト
 	double m_line_width;//-1ならデフォルト、-2ならvariable
 	std::string m_color;
+	std::string m_color_rgb;
 	detail::ArrayData m_variable_color;
 
 	//VectorOption

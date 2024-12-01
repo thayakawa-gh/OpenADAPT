@@ -89,6 +89,30 @@ int example_2d(const std::string& output_filename, bool enable_in_memory_data_tr
 	return 0;
 }
 
+int example_scatter(const std::string& output_filename, bool enable_in_memory_data_transfer)
+{
+	std::vector<double> longitudes{ 141.3469, 140.74, 141.1526, 140.8694, 140.1023, 140.3633, 140.4676, 140.4468, 139.8836, 139.0608, 139.6489, 140.1233, 139.6917, 139.6423, 139.0235, 137.2113, 136.6256, 136.2219, 138.5684, 138.1812, 136.7223, 138.3828, 136.9066, 136.5086, 135.8686, 135.7556, 135.5023, 135.183, 135.8048, 135.1675, 134.2383, 133.0505, 133.9344, 132.4553, 131.4714, 134.5594, 134.0434, 132.7657, 133.5311, 130.4017, 130.3009, 129.8737, 130.7417, 131.6126, 131.4202, 130.5581, 127.6809 };
+	std::vector<double> latitudes{ 43.0642, 40.8244, 39.7036, 38.2682, 39.7186, 38.2404, 37.7503, 36.3418, 36.5658, 36.3911, 35.8569, 35.6051, 35.6895, 35.4475, 37.9026, 36.6953, 36.5944, 36.0652, 35.6642, 36.6513, 35.3912, 34.9756, 35.1802, 34.7303, 35.0045, 35.021, 34.6937, 34.6913, 34.6851, 34.226, 35.5036, 35.4723, 34.6618, 34.3853, 34.1858, 34.0658, 34.3402, 33.8416, 33.5597, 33.5902, 33.2635, 32.7448, 32.7898, 33.2382, 31.9077, 31.5602, 26.2124 };
+	std::vector<double> populations{ 5250, 1230, 1220, 2330, 970, 1070, 1840, 2860, 1940, 1930, 7330, 6290, 13960, 9200, 2200, 1040, 1140, 770, 810, 2030, 1970, 3630, 7550, 1790, 1410, 2580, 8820, 5450, 1310, 930, 550, 670, 1890, 2810, 1320, 720, 960, 1340, 690, 5100, 810, 1280, 1720, 1130, 1080, 1590, 1450 };
+	auto pop_size = populations | std::views::transform([](double x) { return x / 1000; });
+
+	namespace plot = adapt::plot;
+	adapt::Canvas2D g(output_filename);
+	g.EnableInMemoryDataTransfer(enable_in_memory_data_transfer);
+	g.SetXRange(128, 150);
+	g.SetYRange(29, 46);
+	g.SetSizeRatio(1);
+	g.SetXLabel("longitude");
+	g.SetYLabel("latitude");
+	g.SetTitle("Japan population distribution");
+	// world_10m.txt can be downloaded from https://gnuplotting.org/plotting-the-world-revisited/
+	g.PlotPoints("PlotExamples/world_10m.txt", "1", "2", plot::notitle, plot::c_dark_gray, plot::s_lines).
+		PlotPoints(longitudes, latitudes, plot::notitle,
+				   plot::s_points, plot::pt_fcir, plot::color_rgb = "0xAA6688FF", plot::variable_size = pop_size);
+
+	return 0;
+}
+
 double calc_r(double x, double y)
 {
 	return std::sqrt(x * x + y * y);
@@ -414,6 +438,9 @@ void PlotVariations()
 	std::filesystem::exists("PlotExamples") || std::filesystem::create_directory("PlotExamples");
 	//example_2d("PlotExamples/example_2d.png", false);
 	example_2d("PlotExamples/example_2d-inmemory.png", true);
+
+	//example_scatter("PlotExamples/example_scatter.png", false);
+	example_scatter("PlotExamples/example_scatter-inmemory.png", true);
 
 	//example_colormap("PlotExamples/example_colormap.png", false);
 	example_colormap("PlotExamples/example_colormap-inmemory.png", true);
