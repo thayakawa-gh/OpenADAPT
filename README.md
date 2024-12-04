@@ -33,88 +33,169 @@ target_link_libraries(YOUR_PACKAGE_NAME PRIVATE OpenADAPT::OpenADAPT)
 
 The test and example codes are built by adding `-DBUILD_TEST=ON` and `-DBUILD_EXAMPLES=ON` to the cmake command, respectively. Note that GTest, yaml-cpp and matplot++ are required for these builds.
 
-## Examples
+## Quickstart
 
-### Store data in a container
+For more detailed examples and explanations, please see [Examples/en](Examples/en).
+
+### Define container structure
 ```cpp
+	// DTree/DTable
 	using enum adapt::FieldType;
 	adapt::DTree t;
-	t.SetTopLayer({ { "school", Str } });
-	t.AddLayer({ { "grade", I08 }, { "class_", I08 } });
-	t.AddLayer({ { "number", I16 }, { "name", Str } });
-	t.AddLayer({ { "exam", I08 },  {"jpn", I32}, {"math", I32}, {"eng", I32}, {"sci", I32}, {"soc", I32 } });
-	t.VerifyStructure();
-	
-	t.SetTopFields("胴差県立散布流中学校");
+	t.SetTopLayer({ { "nation", Str }, { "capital", Str } });///Set root layer (-1).
+	t.AddLayer({ { "state", Str }, { "state capital", Str } });//Add layer 0.
+	t.AddLayer({ { "county", Str }, { "county seat", Str }});//Add layer 1.
+	t.AddLayer({ { "city", Str }, { "population", I32 }, { "area", F64 } });//Add layer 2.
+	t.VerifyStructure();// Verify if the structure is correct.
 
-	t.Reserve(1);
-	t.Push((int8_t)3, (int8_t)1);
-
-	auto cls_1 = t[0];
-	cls_1.Reserve(3);
-	cls_1.Push((int16_t)0, "濃伊田美衣子");
-	cls_1.Push((int16_t)1, "角兎野誠人");
-	cls_1.Push((int16_t)2, "子虚烏有花");
-
-	auto dummy_dummy_ko = cls_1[0];
-	dummy_dummy_ko.Reserve(4);
-	dummy_dummy_ko.Push((int8_t)0, 46, 10, 32, 3, 29);
-	dummy_dummy_ko.Push((int8_t)1, 65, 21, 35, 0, 18);
-	dummy_dummy_ko.Push((int8_t)2, 50, 15, 44, 22, 37);
-	dummy_dummy_ko.Push((int8_t)3, 48, 8, 24, 11, 26);
-
-	auto kakuu_no_seito = cls_1[1];
-	kakuu_no_seito.Reserve(4);
-	kakuu_no_seito.Push((int8_t)0, 76, 91, 88, 94, 69);
-	kakuu_no_seito.Push((int8_t)1, 80, 99, 74, 85, 71);
-	kakuu_no_seito.Push((int8_t)2, 72, 95, 72, 93, 75);
-	kakuu_no_seito.Push((int8_t)3, 84, 89, 77, 83, 82);
-
-	auto shikyo_uyuu_ka = cls_1[2];
-	shikyo_uyuu_ka.Push((int8_t)0, 98, 71, 85, 64, 99);
-	shikyo_uyuu_ka.Push((int8_t)1, 86, 69, 91, 70, 100);
-	shikyo_uyuu_ka.Push((int8_t)2, 90, 75, 78, 80, 92);
-	shikyo_uyuu_ka.Push((int8_t)3, 94, 67, 81, 76, 96);
+	// STree/STable
+	using adapt::NamedTuple;
+	using adapt::Named;
+	using TopLayer = NamedTuple<Named<"nation", std::string>, Named<"capital", std::string>>;
+	using Layer0 = NamedTuple<Named<"state", std::string>, Named<"state capital", std::string>>;
+	using Layer1 = NamedTuple<Named<"county", std::string>, Named<"county seat", std::string>>;
+	using Layer2 = NamedTuple<Named<"city", std::string>, Named<"population", int32_t>, Named<"area", double>>;
+	using STree_ = adapt::STree<TopLayer, Layer0, Layer1, Layer2>;
+	STree_ t;
 ```
 
-### Access, traverse and extract data
+### Store data
 ```cpp
-	auto [name, jpn, math, eng] = t.GetPlaceholders("name", "jpn", "math", "eng");
-	auto dummy_dummy_ko = t[0][0];
-	std::cout << dummy_dummy_ko[name].str() << std::endl;//Output: 濃伊田美衣子
+	t.SetTopFields("USA", "Washington D.C.");//Set top layer elements.
+	t.Reserve(2);//Reserve elements for layer 0.
+	t.Push("California", "Sacramento");//Push an element to layer 0.
+	t.Push("Texas", "Austin");
 
-	using Lambda = adapt::eval::RttiFuncNode<adapt::DTree>;
-	Lambda total_3subjs = jpn + math + eng;
-	std::cout << total_3subjs(t, adapt::Bpos{ 0, 0, 1 }).i32() << std::endl;//Output: 121
+	auto california = t[0];//Reference layer 0 element.
+	california.Reserve(2);//Reserve elements for layer 1.
+	california.Push("Los Angeles County", "Los Angeles");
+	california.Push("San Diego County", "San Diego");
 
-	Lambda exist_240 = exist(total_3subjs >= 240);
-	for (auto& trav : t | Filter(exist_240) | GetRange(2_layer))
-	{
-		std::cout << std::format("{}: {}\n", trav[name].str(), total_3subjs(trav).i32());
-		//Output: 
-		//角兎野誠人: 255
-		//角兎野誠人: 253
-		//角兎野誠人: 239
-		//角兎野誠人: 250
-		//子虚烏有花: 254
-		//子虚烏有花: 246
-		//子虚烏有花: 243
-		//子虚烏有花: 242
-	}
+	auto los_angeles_county = california[0];
+	los_angeles_county.Reserve(3);
+	los_angeles_county.Push("Los Angeles", 3976322, 1213.9);//The unit of area is km^2.
+	los_angeles_county.Push("Long Beach", 466742, 130.6);
+	los_angeles_county.Push("Glendale", 196543, 79.3);
 
-	t | Filter(isgreatest(math.at(0))) | Show(name, math.at(0));//Output: [   0,   1]  角兎野誠人     91
+	auto san_diego_county = california[1];
+	san_diego_county.Reserve(3);
+	san_diego_county.Push("San Diego", 1386932, 842.2);
+	san_diego_county.Push("Chula Vista", 275487, 126.6);
+	san_diego_county.Push("Oceanside", 174068, 105.1);
 
-	adapt::DTree e = t | Filter(eng < 35) | Extract(name, eng, greatest(eng), least(eng));
-	auto [fld0, fld1, fld2, fld3] = e.GetPlaceholders("fld0", "fld1", "fld2", "fld3");
-	e | Show(fld0, fld1, fld2, fld3);
-	//Output: 
-	//[   0,   0,   0] 濃伊田美衣子          32          44          24
-	//[   0,   0,   1] 濃伊田美衣子          24          44          24
+	auto texas = t[1];
+	texas.Reserve(2);
+	texas.Push("Harris County", "Houston");
+	texas.Push("Dallas County", "Dallas");
 
-	matplot::figure_handle f = matplot::figure(true);
-	std::vector<double> v_jpn = t | ToVector(cast_f64(jpn.at(2)).f64());
-	matplot::hist(v_jpn);
-	matplot::save("quickstart_dtree.png");
+	auto harris_county = texas[0];
+	harris_county.Reserve(3);
+	harris_county.Push("Houston", 2304580, 1500.7);
+	harris_county.Push("Pasadena", 151950, 114.4);
+	harris_county.Push("Baytown", 83701, 32.7);
+
+	auto dallas_county = texas[1];
+	dallas_county.Reserve(3);
+	dallas_county.Push("Dallas", 1304379, 887.2);
+	dallas_county.Push("Irving", 256684, 174.1);
+	dallas_county.Push("Garland", 246918, 147.9);
 ```
 
-For more detailed examples and explanations, please refer to [Examples/main.cpp](Examples/main.cpp).
+### Get placeholders
+```cpp
+	// Placeholders are used to access/calculate data stored in containers.
+	using namespace adapt::lit;
+	ADAPT_GET_PLACEHOLDERS(t, "capital", "state", "state_capital", "county", "city", "population", "area");
+	// The above macro is equivalent to the following code.
+	auto [capital, state, state_capital, county, city, population, area] = 
+		t.GetPlaceholders("capital"_fld, "state"_fld, "state_capital", "county"_fld, "city"_fld, "population"_fld, "area"_fld);
+
+	// GetPlaceholders returns:
+	// * std::array of RttiPlaceholders if the container is a DTree/DTable.
+	// * std::tuple of CttiPlaceholders if the container is an STree/STable.
+	// CttiPlaceholders have static type information, while RttiPlaceholders have runtime type information.
+```
+
+### Access data using placeholders
+```cpp
+	auto california = t[0];// Get the first element of layer 0.
+	std::cout << california[state_capital].str() << std::endl;// Output: Sacramento
+
+	auto san_diego = california[1][0];// Get the first element of layer 2 in the second element of layer 1.
+	std::cout << san_diego[population].i32() << std::endl;// Output: 1386932
+
+	// If the placeholders are Ctti, explicit casting, such as .i32(), .f64(), .str(), is not required.
+	std::cout << california[state_capital] << std::endl;
+	std::cout << san_diego[population] << std::endl;
+```
+
+### Calculate using placeholders
+```cpp
+	auto population_density = population / area;
+	adapt::Bpos baytown_index = { 1, 0, 2 };
+	std::cout << population_density(t, baytown_index).f64() << std::endl;// 83701 / 32.7 = 2559.6
+
+	auto total_population_in_a_county = sum(population);
+	adapt::Bpos harris_county_index = { 1, 0 };
+	std::cout << total_population_in_a_county(t, harris_county_index).i32() << std::endl;// 2304580 + 151950 + 83701 = 2548231
+```
+
+### Traverse
+```cpp
+	for (const auto& trav : t | GetRange(2_layer))
+	{
+		// All the names of states, counties and citiees are output.
+		std::cout << std::format("{:<12} {:<12} {:<12}\n", trav[state].str(), trav[county].str(), trav[city].str());
+	}
+	
+	auto population_density = population / area;
+	for (const auto& trav : t | Filter(city == county_seat) | GetRange(2_layer))
+	{
+		// All the names, populations and areas of the cities that are the county seats are output.
+		std::cout << std::format("{:<12} {:<12} {:<12} {:>7.1f}\n",
+								 trav[state].str(), trav[county].str(), trav[city].str(), population_density(trav).f64());
+	}
+```
+
+### Extract
+```cpp
+	auto population_density = population / area;
+	auto extracted = usa | Filter(area > 500.) | Extract(state, county, city, population_density);
+	// If all the arguments of Extract are Ctti, the return value is an STree.
+	// Otherwise, the return value is a DTree.
+	extracted.ShowHierarchy();
+	// Output:
+	// Layer[-1] { }
+	// Layer[ 0] { { "fld0", Str } }
+	// Layer[ 1] { { "fld1", Str } }
+	// Layer[ 2] { { "fld2", Str } { "fld3", F64 } }
+
+	ADAPT_GET_PLACEHOLDERS(extracted, fld0, fld1, fld2, fld3);
+	for (const auto& trav : extracted | GetRange(2_layer))
+	{
+		std::cout << std::format("{:<12} {:<12} {:<12} {:>8.1f}\n",
+								 trav[fld0].str(), trav[fld1].str(), trav[fld2].str(), trav[fld3].f64());
+		// Output:
+		// California   Los Angeles  Los Angeles   3275.7
+		// California   San Diego    San Diego     1646.8
+		// Texas        Harris       Houston       1535.7
+		// Texas        Dallas       Dallas        1470.2
+	}
+```
+
+### Plot
+```cpp
+	// Plot area vs population of the cities in California.
+	namespace plot = adapt::plot;
+	auto plot_range = t | Filter(state == "California") | GetRange(2_layer);
+	auto rpop = plot_range | Evaluate(population);
+	auto rarea = plot_range | Evaluate(area);
+	adapt::Canvas2D c("examples_en_stree.png");
+	c.SetXLabel("Area (km^2)");
+	c.SetYLabel("Population");
+	c.SetLogX();
+	c.SetLogY();
+	c.SetTitle("Area vs Population of Cities in California");
+	c.SetGrid();
+	c.PlotPoints(rarea, rpop, plot::pt_cir, plot::ps_med_large, plot::notitle);
+```

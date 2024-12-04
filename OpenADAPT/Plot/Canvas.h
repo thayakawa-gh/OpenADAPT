@@ -366,7 +366,7 @@ public:\
 	void Set##AXIS##Range(double min, double max) { this->SetRange(axis, min, max); }\
 	void Set##AXIS##RangeMin(double min) { this->SetRangeMin(axis, min); }\
 	void Set##AXIS##RangeMax(double max) { this->SetRangeMax(axis, max); }\
-	void SetLog##AXIS(double base = 0) { this->SetLog(axis, base); }\
+	void SetLog##AXIS(double base = 10.) { this->SetLog(axis, base); }\
 	void SetFormat##AXIS(const std::string& fmt) { this->SetFormat(axis, fmt); }\
 	void Set##AXIS##DataTime(const std::string& fmt = std::string()) { this->SetDataTime(axis, fmt); }\
 	template <class ...Args>\

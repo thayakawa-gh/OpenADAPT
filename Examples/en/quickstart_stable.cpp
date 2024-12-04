@@ -220,17 +220,32 @@ void QuickstartSTable()
 	std::cout << "------Plot data with Matplot++------" << std::endl;
 
 	// Plot area vs population of the cities in California.
-	// Matplot++ requires numerical data to be in std::vector<double>, and text data in std::vector<std::string>,
-	// so convert the data to std::vector using ToVector.
-	auto [vcity, vpopulation, varea] = usa | Filter(state == "California") | ToVector("<-" + city, cast_f64(city_population), city_area);
+	namespace plot = adapt::plot;
+	auto plot_range = usa | Filter(state == "California") | GetRange(0_layer);
+	auto rpop = plot_range | Evaluate(city_population);
+	auto rarea = plot_range | Evaluate(city_area);
+	adapt::Canvas2D c("examples_en_stable.png");
+	c.SetXLabel("Area (km^2)");
+	c.SetYLabel("Population");
+	c.SetLogX();
+	c.SetLogY();
+	c.SetTitle("Area vs Population of Cities in California");
+	c.SetGrid();
+	c.PlotPoints(rarea, rpop, plot::pt_cir, plot::ps_med_large, plot::notitle);
+
+	// You can also use Matplot++ to plot the data.
+	// Matplot++ requires numerical data to be in std::vector<double>,
+	// so you need to convert the data using ToVector range conversion.
+	/*
+	auto [vpopulation, varea] = usa | Filter(state == "California") | ToVector(cast_f64(city_population), city_area);
 	auto fig = matplot::figure(true);
 	auto ax = fig->current_axes();
 	ax->scatter(varea, vpopulation);
 	ax->xlabel("Area (km^2)");
 	ax->ylabel("Population");
 	ax->title("Area vs Population of Cities in California");
-	ax->text(varea, vpopulation, vcity);
 	ax->x_axis().scale(matplot::axis_type::axis_scale::log);
 	ax->y_axis().scale(matplot::axis_type::axis_scale::log);
 	fig->save("examples_en_stable.png");
+	*/
 }
