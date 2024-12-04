@@ -66,6 +66,7 @@ struct LayerFuncBase
 	using RetType = Func::RetType;
 	static constexpr bool HasCondition = !std::is_same_v<Cond, EmptyClass>;
 	static constexpr bool IsRtti = rtti_node<Node> || (HasCondition && rtti_node<Cond>);
+	static constexpr bool IsCtti = ctti_node<Node> && (!HasCondition || ctti_node<Cond>);
 	static constexpr RankType MaxRank = Container::MaxRank;
 	static constexpr bool IsJoinedContainer = MaxRank > 0;
 
@@ -149,7 +150,7 @@ private:
 		//ので、その場合はループ防止機能自体を無効にする。
 		//Cttiの場合はOuterInfoがtrue_typeまたはfalse_typeになっておりコンパイル時に分かるが、
 		//Rttiの場合は実行時にしかわからないのでここで判定する。
-		if constexpr (IsRtti)
+		if constexpr (!IsCtti)
 		{
 			bool has_outer = false;
 			LayerInfo<MaxRank> dflt(m_node.GetJointLayerArray());
@@ -310,14 +311,14 @@ public:
 		m_func = {};
 	}
 
-	static constexpr DepthType GetDepth() requires (!IsRtti) { return Depth{}; }
-	DepthType GetDepth() const requires IsRtti { return m_depth; }
+	static constexpr DepthType GetDepth() requires IsCtti { return Depth{}; }
+	DepthType GetDepth() const requires (!IsCtti) { return m_depth; }
 
-	static constexpr JointLayerArray<MaxRank> GetJointLayerArray() requires (!IsRtti) { return Node::GetJointLayerArray(); }
-	JointLayerArray<MaxRank> GetJointLayerArray() const requires IsRtti { return m_node.GetJointLayerArray(); }
-	static constexpr LayerInfo<MaxRank> GetLayerInfo() requires (!IsRtti) { return GetLayerInfo(GetJointLayerArray()); }
-	LayerInfo<MaxRank> GetLayerInfo() const requires IsRtti { return GetLayerInfo(GetJointLayerArray()); }
-	static constexpr LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli) requires (!IsRtti)
+	static constexpr JointLayerArray<MaxRank> GetJointLayerArray() requires IsCtti { return Node::GetJointLayerArray(); }
+	JointLayerArray<MaxRank> GetJointLayerArray() const requires (!IsCtti) { return m_node.GetJointLayerArray(); }
+	static constexpr LayerInfo<MaxRank> GetLayerInfo() requires IsCtti { return GetLayerInfo(GetJointLayerArray()); }
+	LayerInfo<MaxRank> GetLayerInfo() const requires (!IsCtti) { return GetLayerInfo(GetJointLayerArray()); }
+	static constexpr LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli) requires IsCtti
 	{
 		auto no_outer = Node::GetLayerInfo(eli);
 		//inner scopeの中から、depthの一致するfieldの情報を取り出す。
@@ -328,7 +329,7 @@ public:
 		//これと通常のlayerを比較し、大きい方を返す。
 		return std::max(no_outer, outer);
 	}
-	LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli) const requires IsRtti
+	LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli) const requires (!IsCtti)
 	{
 		auto no_outer = m_node.GetLayerInfo(eli);
 		//inner scopeの中から、depthの一致するfieldの情報を取り出す。
@@ -339,21 +340,21 @@ public:
 		//これと通常のlayerを比較し、大きい方を返す。
 		return std::max(no_outer, outer);
 	}
-	static constexpr LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli, DepthType depth) requires (!IsRtti)
+	static constexpr LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli, DepthType depth) requires IsCtti
 	{
 		auto outer = Node::GetLayerInfo(eli, depth);
 		if constexpr (HasCondition) outer = std::max(outer, Cond::GetLayerInfo(eli, depth));
 		return outer;
 	}
-	LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli, DepthType depth) const requires IsRtti
+	LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli, DepthType depth) const requires (!IsCtti)
 	{
 		auto outer = m_node.GetLayerInfo(eli, depth);
 		if constexpr (HasCondition) outer = std::max(outer, m_cond.GetLayerInfo(eli, depth));
 		return outer;
 	}
 
-	static constexpr LayerType GetLayer() requires (!IsRtti) { return GetLayerInfo().GetTravLayer(); }
-	LayerType GetLayer() const requires IsRtti { return GetLayerInfo().GetTravLayer(); }
+	static constexpr LayerType GetLayer() requires IsCtti { return GetLayerInfo().GetTravLayer(); }
+	LayerType GetLayer() const requires (!IsCtti) { return GetLayerInfo().GetTravLayer(); }
 
 protected:
 	template <class TravOrStor, class Bpos_>
@@ -415,33 +416,30 @@ protected:
 			else return node.Evaluate(*trav);
 		};
 
-		if constexpr (HasCondition)
-		{
 			//条件指定がある場合、最初の要素が条件を満たすとは限らないので、
 			//条件を満たす要素が見つかるまでループする必要がある。
-			for (; !trav->IsEnd(); ++(*trav))
-			{
-				if (eval_cond(m_cond, trav))
-				{
-					m_func.First(eval_node(m_node, trav), *trav);
-					++(*trav);
-					break;
-				}
-			}
-		}
-		else
+		for (; !trav->IsEnd(); ++(*trav))
 		{
-			//条件指定がなければ最初の要素で必ずFirstを呼び出せる。
-			if (!trav->IsEnd())
+			try
 			{
+				if constexpr (HasCondition)
+					if (!eval_cond(m_cond, trav)) continue;
 				m_func.First(eval_node(m_node, trav), *trav);
 				++(*trav);
+				break;
 			}
+			catch (const NoElements&) {}
+			catch (const JointError&) {}
 		}
 		for (; !trav->IsEnd(); ++(*trav))
 		{
-			if constexpr (HasCondition) if (!eval_cond(m_cond, trav)) continue;
-			m_func.Exec(eval_node(m_node, trav), *trav);
+			try
+			{
+				if constexpr (HasCondition) if (!eval_cond(m_cond, trav)) continue;
+				m_func.Exec(eval_node(m_node, trav), *trav);
+			}
+			catch (const NoElements&) {}
+			catch (const JointError&) {}
 		}
 		if constexpr (Func::IsRaisingFunc) return m_func.GetResult();
 		else
@@ -457,7 +455,11 @@ protected:
 	template <class Dep>
 	static constexpr auto FindOuter(Dep d)
 	{
-		if constexpr (IsRtti) return false;
+		//Typedの場合、ノードがouterを持つかどうかはコンパイル時には分からない。
+		//例えばrttiをプロキシでtypedに見せかけている場合、完全に判定不能になる。
+		//とはいえ、outer有無がstaticに決定されなかったとしても致命的なオーバーヘッドになるわけではないので、
+		//typedの場合は動的に決定する。
+		if constexpr (!IsCtti) return false;
 		else
 		{
 			static_assert(IsSame_XN_v<DepthConstant, Dep>);
@@ -943,7 +945,7 @@ struct LayerFuncIndex
 	template <class Trav>
 	void First(const ArgType& v, const Trav&) { if (v) m_result = m_count; ++m_count; }
 	template <class Trav>
-	void Exec(const ArgType& v, const Trav&) { if (m_result != -1 && v) m_result = m_count; ++m_count; }
+	void Exec(const ArgType& v, const Trav&) { if (m_result == -1 && v) m_result = m_count; ++m_count; }
 	const RetType& GetResult() const
 	{
 		return m_result;
@@ -991,28 +993,35 @@ struct IsFuncBase
 		m_matching.m_fixed_layer = fixedlayer;
 		m_matching.m_trav_layer = travlayer;
 	}
-	void Init() { m_exist = false; }
+	void Init() { m_executed = false; }
 	template <class Trav>
 	void GetBpos(const Trav& t)
 	{
 		if constexpr (IsJoinedContainer) t.GetJBpos(m_cand);
 		else t.GetBpos(m_cand);
 	}
-	void Exist() { m_exist = true; }
+	void SetExecuted() { m_executed = true; }
+	bool IsExecuted() const { return m_executed; }
 	Bpos_& GetCand() { return m_cand; }
 
 	//戻り値はそのままEvaluateの戻り値になるため、const referenceにしておく必要がある。
 	template <any_traverser Trav>
 	const bool& MatchFixed(const Trav& t)
 	{
-		if constexpr (IsJoinedContainer) m_result = t.MatchPartially(m_cand, m_matching.m_fixed_rank, m_matching.m_fixed_layer);
-		else m_result = t.MatchPartially(m_cand, m_matching.m_fixed_layer);
+		//IsExecuted() == trueを要求する。
+		//というのも、m_candは初期値ではlayer==0かつindex最大値になっているので一致するはずはないが、
+		//m_fixed_layer==-1の場合に限り、m_candの値にかかわらず一致扱いになってしまうため。
+		if constexpr (IsJoinedContainer) m_result = IsExecuted() && t.MatchPartially(m_cand, m_matching.m_fixed_rank, m_matching.m_fixed_layer);
+		else m_result = IsExecuted() && t.MatchPartially(m_cand, m_matching.m_fixed_layer);
 		return m_result;
 	}
 	const bool& MatchFixed(const Container& s, const Bpos& bpos)
 	{
-		if constexpr (IsJoinedContainer) m_result = m_cand.MatchPartially(bpos, s.GetJointLayers(), m_matching.m_fixed_rank, m_matching.m_fixed_layer);
-		else m_result = m_cand.MatchPartially(bpos, m_matching.m_fixed_layer);
+		//IsExecuted() == trueを要求する。
+		//というのも、m_candは初期値ではlayer==0かつindex最大値になっているので一致するはずはないが、
+		//m_fixed_layer==-1の場合に限り、m_candの値にかかわらず一致扱いになってしまうため。
+		if constexpr (IsJoinedContainer) m_result = IsExecuted() && m_cand.MatchPartially(bpos, s.GetJointLayers(), m_matching.m_fixed_rank, m_matching.m_fixed_layer);
+		else m_result = IsExecuted() && m_cand.MatchPartially(bpos, m_matching.m_fixed_layer);
 		return m_result;
 	}
 	template <any_traverser Trav>
@@ -1045,7 +1054,7 @@ private:
 		LayerType m_trav_layer = -1;
 	};
 	Matching<> m_matching;
-	bool m_exist = false;
+	bool m_executed = false;
 	bool m_result = false;
 	Bpos_ m_cand;
 };
@@ -1057,7 +1066,7 @@ struct LayerFuncIsFirst : public IsFuncBase<Container>
 	using RetType = bool;
 	void Init() { Base::Init(); }
 	template <class Trav>
-	void First(const ArgType&, const Trav& t) { Base::GetBpos(t); Base::Exist(); }
+	void First(const ArgType&, const Trav& t) { Base::GetBpos(t); Base::SetExecuted(); }
 	template <class Trav>
 	void Exec(const ArgType&, const Trav&) {}
 };
@@ -1069,11 +1078,11 @@ struct LayerFuncIsLast : public IsFuncBase<Container>
 	using RetType = bool;
 	void Init() { Base::Init(); }
 	template <class Trav>
-	void First(const ArgType&, const Trav& t) { Base::GetBpos(t); Base::Exist(); }
+	void First(const ArgType&, const Trav& t) { Base::GetBpos(t); Base::SetExecuted(); }
 	template <class Trav>
 	void Exec(const ArgType&, const Trav& t) { Base::GetBpos(t); }
 };
-template <std::three_way_comparable ArgType_, class Container>
+template <less_than_comparable  ArgType_, class Container>
 struct LayerFuncIsGreatest : public IsFuncBase<Container>
 {
 	using Base = IsFuncBase<Container>;
@@ -1081,13 +1090,13 @@ struct LayerFuncIsGreatest : public IsFuncBase<Container>
 	using RetType = bool;
 	void Init() { Base::Init(); m_greatest = {}; }
 	template <class Trav>
-	void First(const ArgType& v, const Trav& t) { m_greatest = v; Base::GetBpos(t); Base::Exist(); }
+	void First(const ArgType& v, const Trav& t) { m_greatest = v; Base::GetBpos(t); Base::SetExecuted(); }
 	template <class Trav>
 	void Exec(const ArgType& v, const Trav& t) { if (v > m_greatest) { m_greatest = v; Base::GetBpos(t); } }
 private:
 	ArgType m_greatest = {};
 };
-template <std::three_way_comparable ArgType_, class Container>
+template <less_than_comparable  ArgType_, class Container>
 struct LayerFuncIsLeast : public IsFuncBase<Container>
 {
 	using Base = IsFuncBase<Container>;
@@ -1095,7 +1104,7 @@ struct LayerFuncIsLeast : public IsFuncBase<Container>
 	using RetType = bool;
 	void Init() { Base::Init();  m_least = {}; }
 	template <class Trav>
-	void First(const ArgType& v, const Trav& t) { m_least = v; Base::GetBpos(t); Base::Exist(); }
+	void First(const ArgType& v, const Trav& t) { m_least = v; Base::GetBpos(t); Base::SetExecuted(); }
 	template <class Trav>
 	void Exec(const ArgType& v, const Trav& t) { if (v < m_least) { m_least = v; Base::GetBpos(t); } }
 private:
@@ -1293,73 +1302,106 @@ DEFINE_LAYER_FUNCTION_IF(NAME, NAME_ID##10, 10)
 
 //上昇関数
 //size
-//引数を取得できた要素の数。引数の値は完全に無視する。
+//引数を取得できた要素の数。引数の値は完全に無視する。戻り値型はint64_t/I64。
+//The number of elements that can obtain the arguments. The value of the argument is completely ignored.
+//The return type is int64_t.
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncSize, size)
 //exist
-//引数が真であるような要素が存在するか否か。
+//引数が真であるような要素が存在するか否か。戻り値型はbool/I08。
+//Whether there is an element that the argument is true.
+//The return type is bool/I08.
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncExist, exist)
 //count
-//引数が真であるような要素の数。
+//引数が真であるような要素の数。戻り値型はint64_t/I64。
+//The number of elements that the argument is true.
+//The return type is int64_t.
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncCount, count)
 //sum
 //引数の合計値。戻り値型は引数型と同じ。+=演算が可能な型に対してのみ呼び出せる。
 //要素が一つもない場合は値初期化によるデフォルト値が返る。
+//The sum of the arguments. The return type is the same as the argument type.
+//This can only be called for types that can be added with +=.
+//If there are no elements, the default value is returned.
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncSum, sum)
 DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncSum, sum_if)
 //mean
 //引数の平均値。戻り値型は引数型と同じ。+=および/=演算が可能な型に対してのみ呼び出せる。
 //要素が一つもない場合は値取得失敗となる。
+//The average value of the arguments. The return type is the same as the argument type.
+//This can only be called for types that can be added with += and divided by /=.
+//If there are no elements, the value acquisition fails.
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncMean, mean)
 DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncMean, mean_if)
 //dev
 //引数の標準偏差。戻り値型はdouble。整数または浮動小数点に対して飲み呼び出せる。
 //要素が一つもない場合は値取得失敗となる。
+//The standard deviation of the arguments. The return type is double.
+//This can be called for integers or floating points.
+//If there are no elements, the value acquisition fails.
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncDev, dev)
 DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncDev, dev_if)
 //greatest
 //引数のうち最大値を返す。戻り値型は引数型と同じ。<演算が可能な型に対してのみ呼び出せる。
 //要素が一つもない場合は値取得失敗となる。
+//The maximum value of the arguments. The return type is the same as the argument type.
+//This can only be called for types that can be compared with <.
+//If there are no elements, the value acquisition fails.
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncGreatest, greatest)
 DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncGreatest, greatest_if)
 //least
 //引数のうち最小値を返す。戻り値型は引数型と同じ。<演算が可能な型に対してのみ呼び出せる。
 //要素が一つもない場合は値取得失敗となる。
+//The minimum value of the arguments. The return type is the same as the argument type.
+//This can only be called for types that can be compared with <.
+//If there are no elements, the value acquisition fails.
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncLeast, least)
 DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncLeast, least_if)
 //first
 //引数のうち取得できた最初の値を返す。
 //要素が一つもない場合は値取得失敗となる。
+//The first value that can be obtained from the arguments.
+//If there are no elements, the value acquisition fails.
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncFirst, first)
 DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncFirst, first_if)
 //last
 //引数のうち取得できた最後の値を返す。
 //要素が一つもない場合は値取得失敗となる。
+//The last value that can be obtained from the arguments.
+//If there are no elements, the value acquisition fails.
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncLast, last)
 DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncLast, last_if)
 //index
 //引数が真であるような最初の要素が、走査対象要素の中で何番目かを返す。
 //要素が一つもない場合は-1を返す。
+//The index of the first element that is true in the argument.
+//If there are no elements, -1 is returned.
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncIndex, index)
 //lastindex
 //引数が真であるような最後の要素が、走査対象要素の中で何番目かを返す。
 //要素が一つもない場合は-1を返す。
+//The index of the last element that is true in the argument.
+//If there are no elements, -1 is returned.
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncLastIndex, lastindex)
 
 //is系関数
 //isfirst
 //現在の計算対象が、引数の値を取得できた最初の要素を指している時、trueを返す。
+//Returns true when the current calculation target points to the first element that can get the value of the argument.
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncIsFirst, isfirst)
 DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncIsFirst, isfirst_if)
 //islast
 //現在の計算対象が、引数の値を取得できた最後の要素を指している時、trueを返す。
+//Returns true when the current calculation target points to the last element that can get the value of the argument.
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncIsLast, islast)
 DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncIsLast, islast_if)
 //islast
 //現在の計算対象が、走査対象のうち引数が最大となるような要素を指している時、trueを返す。
+//Returns true when the current calculation target points to an element that is the maximum of the arguments among the traversal targets.
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncIsGreatest, isgreatest)
 DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncIsGreatest, isgreatest_if)
 //islast
 //現在の計算対象が、走査対象のうち引数が最小となるような要素を指している時、trueを返す。
+//Returns true when the current calculation target points to an element that is the minimum of the arguments among the traversal targets.
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncIsLeast, isleast)
 DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncIsLeast, isleast_if)
 

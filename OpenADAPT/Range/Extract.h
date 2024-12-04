@@ -753,9 +753,9 @@ auto Extract_impl2(std::bool_constant<AllFieldsFlag> b, Vars&& ...named_vars)
 		(ctti_node_or_placeholder<std::tuple_element_t<1, std::decay_t<Vars>>> && ...) &&
 		(!AllFieldsFlag || s_container<Container>);//全フィールド出力の場合、コンテナがstaticでないとstaticに構造決定できない。
 	if constexpr (all_stat)
-		return RangeConsumer<CttiExtractor, std::bool_constant<AllFieldsFlag>, Vars...>(b, std::forward<Vars>(named_vars)...);
+		return RangeConversion<CttiExtractor, std::bool_constant<AllFieldsFlag>, Vars...>(b, std::forward<Vars>(named_vars)...);
 	else
-		return RangeConsumer<RttiExtractor, std::bool_constant<AllFieldsFlag>, Vars...>(b, std::forward<Vars>(named_vars)...);
+		return RangeConversion<RttiExtractor, std::bool_constant<AllFieldsFlag>, Vars...>(b, std::forward<Vars>(named_vars)...);
 }
 template <bool AllFieldsFlag, size_t ...Is, class ...Vars>
 auto Extract_impl(std::bool_constant<AllFieldsFlag> b, std::index_sequence<Is...>, Vars&& ...named_vars)

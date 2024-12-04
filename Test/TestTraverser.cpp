@@ -78,6 +78,15 @@ void TestTraverser(Container& tree, const std::vector<Class>& cls,
 
 				cur[2] = k;
 				const Record& r = s.m_records[k];
+				//joined containerの場合、特にdelayed jointでは、
+				//backward移動中の最初のアクセスのときにはBackwardFlagを与えないと、最初の要素に連結してしまう。
+				//そこで、この時点で連結を強要する。
+				if constexpr (joined_container<Container>)
+				{
+					constexpr RankType MaxRank = std::decay_t<decltype(tree)>::MaxRank;
+					trav.template TryJoin<MaxRank>(BackwardFlag{});
+				}
+
 				EXPECT_EQ(i, trav.GetPos(0));
 				EXPECT_EQ(j, trav.GetPos(1));
 				EXPECT_EQ(k, trav.GetPos(2));
@@ -144,6 +153,14 @@ void TestTraverser(Container& tree, const std::vector<Class>& cls,
 			{
 				cur[2] = k;
 				const Record& r = s.m_records[k];
+				//joined containerの場合、特にdelayed jointでは、
+				//backward移動中の最初のアクセスのときにはBackwardFlagを与えないと、最初の要素に連結してしまう。
+				//そこで、この時点で連結を強要する。
+				if constexpr (joined_container<Container>)
+				{
+					constexpr RankType MaxRank = std::decay_t<decltype(tree)>::MaxRank;
+					trav.template TryJoin<MaxRank>(BackwardFlag{});
+				}
 				EXPECT_EQ(i, trav.GetPos(0));
 				EXPECT_EQ(j, trav.GetPos(1));
 				EXPECT_EQ(k, trav.GetPos(2));

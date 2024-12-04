@@ -47,7 +47,7 @@ public:
 template <node_or_placeholder ...NPs>
 auto MakeHashtable(NPs&& ...nps)
 {
-	return RangeConsumer<detail::HashingConsumer, NPs...>(std::forward<NPs>(nps)...);
+	return RangeConversion<detail::HashingConsumer, NPs...>(std::forward<NPs>(nps)...);
 }
 
 }

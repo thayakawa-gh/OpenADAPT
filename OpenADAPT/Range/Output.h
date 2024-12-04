@@ -226,9 +226,17 @@ void WriteAsText(std::ostream& out, Range&& range, NPs&& ...nps)
 	pos.Init(max);
 	for (auto& trav : range)
 	{
-		trav.GetBpos(pos);
-		detail::WriteAsText_print(out, pos, 4);
-		detail::WriteAsText_rec(out, trav, std::forward<NPs>(nps)...);
+		try
+		{
+			std::ostringstream oss;
+			trav.GetBpos(pos);
+			detail::WriteAsText_print(oss, pos, 4);
+			detail::WriteAsText_rec(oss, trav, std::forward<NPs>(nps)...);
+			out << oss.str();
+		}
+		catch (const JointError&)
+		{
+		}
 	}
 }
 
@@ -251,16 +259,16 @@ public:
 }
 
 template <node_or_placeholder ...NPs>
-RangeConsumer<detail::OutputConsumer, std::ostream&, NPs...> Show(NPs&& ...nps)
+RangeConversion<detail::OutputConsumer, std::ostream&, NPs...> Show(NPs&& ...nps)
 {
-	return RangeConsumer<detail::OutputConsumer, std::ostream&, NPs...>(std::cout, std::forward<NPs>(nps)...);
+	return RangeConversion<detail::OutputConsumer, std::ostream&, NPs...>(std::cout, std::forward<NPs>(nps)...);
 }
 template <node_or_placeholder ...NPs>
-RangeConsumer<detail::OutputConsumer, std::ofstream, NPs...> Write(std::string_view filename, NPs&& ...nps)
+RangeConversion<detail::OutputConsumer, std::ofstream, NPs...> Write(std::string_view filename, NPs&& ...nps)
 {
 	std::ofstream ost(filename.data());
 	if (!ost) throw BadFile("file cannot open.");
-	return RangeConsumer<detail::OutputConsumer, std::ofstream, NPs...>(std::move(ost), std::forward<NPs>(nps)...);
+	return RangeConversion<detail::OutputConsumer, std::ofstream, NPs...>(std::move(ost), std::forward<NPs>(nps)...);
 }
 
 

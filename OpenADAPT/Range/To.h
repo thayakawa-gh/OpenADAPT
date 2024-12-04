@@ -11,7 +11,7 @@ namespace detail
 {
 
 template <template <class...> class Arr, class Range>
-class ConvertingConsumer
+class ToContainer
 {
 	template <size_t Index, class ...Values, class ...ResTypes>
 	void PushBack(std::tuple<Values...> t, std::tuple<Arr<ResTypes>...>& res)
@@ -78,19 +78,19 @@ public:
 };
 
 template <class Range>
-using ToVectorConsumer = ConvertingConsumer<std::vector, Range>;
+using ToVectorConversion = ToContainer<std::vector, Range>;
 
 }
 
 template <stat_type_node_or_placeholder ...NPs>
 auto ToVector(Combine, NPs&& ...nps)
 {
-	return RangeConsumer<detail::ToVectorConsumer, NPs...>(std::forward<NPs>(nps)...);
+	return RangeConversion<detail::ToVectorConversion, NPs...>(std::forward<NPs>(nps)...);
 }
 template <stat_type_node_or_placeholder ...NPs>
 auto ToVector(NPs&& ...nps)
 {
-	return RangeConsumer<detail::ToVectorConsumer, NPs...>(std::forward<NPs>(nps)...);
+	return RangeConversion<detail::ToVectorConversion, NPs...>(std::forward<NPs>(nps)...);
 }
 
 }

@@ -328,7 +328,7 @@ public:
 	}
 	decltype(auto) Evaluate(const Container& t) const
 	{
-		return t.GetBranch(std::get<Indices>(m_nodes).Evaluate(t)...).GetField(m_placeholder);
+		return t.GetBranch((BindexType)std::get<Indices>(m_nodes).Evaluate(t)...).GetField(m_placeholder);
 	}
 	decltype(auto) Evaluate(const Container& t, const Bpos& bpos) const
 	{
@@ -925,11 +925,11 @@ struct RttiIndexedFieldNode_impl<Container, Placeholder, Type, TypeList<Nodes...
 
 	virtual RetTypeRef Evaluate(const Traverser& t, Number<Type>) const override
 	{
-		return t.GetField(m_placeholder, this->template GetArg<Indices>(t)...).template as_unsafe<Type>();
+		return t.GetField(m_placeholder, (BindexType)this->template GetArg<Indices>(t)...).template as_unsafe<Type>();
 	}
 	virtual RetTypeRef Evaluate(const ConstTraverser& t, Number<Type>) const override
 	{
-		return t.GetField(m_placeholder, this->template GetArg<Indices>(t)...).template as_unsafe<Type>();
+		return t.GetField(m_placeholder, (BindexType)this->template GetArg<Indices>(t)...).template as_unsafe<Type>();
 	}
 	virtual RetTypeRef Evaluate(const Container& s, Number<Type>) const override
 	{

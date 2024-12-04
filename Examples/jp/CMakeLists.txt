@@ -1,4 +1,4 @@
-set(PROJECT_NAME Examples)
+set(PROJECT_NAME Examples_jp)
 
 project(${PROJECT_NAME})
 

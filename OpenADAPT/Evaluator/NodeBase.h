@@ -811,25 +811,25 @@ struct RttiFuncNode : public detail::RttiMethods<RttiFuncNode<Container_>, std::
 	}
 
 	template <FieldType Type>
-	decltype(auto) operator()(const Traverser& t, Number<Type> n) const
+	decltype(auto) operator()(const Traverser& t, Number<Type> n)
 	{
 		if (m_init_flag) [[unlikely]] Init(t);
 		return Evaluate(t, n);
 	}
 	template <FieldType Type>
-	decltype(auto) operator()(const ConstTraverser& t, Number<Type> n) const
+	decltype(auto) operator()(const ConstTraverser& t, Number<Type> n)
 	{
 		if (m_init_flag) [[unlikely]] Init(t);
 		return Evaluate(t, n);
 	}
 	template <FieldType Type>
-	decltype(auto) operator()(const Container& s, Number<Type> n) const
+	decltype(auto) operator()(const Container& s, Number<Type> n)
 	{
 		if (m_init_flag) [[unlikely]] Init(s);
 		return Evaluate(s, n);
 	}
 	template <FieldType Type>
-	decltype(auto) operator()(const Container& s, const Bpos& bpos, Number<Type> n) const
+	decltype(auto) operator()(const Container& s, const Bpos& bpos, Number<Type> n)
 	{
 		if (m_init_flag) [[unlikely]] Init(s, bpos);
 		return Evaluate(s, bpos, n);

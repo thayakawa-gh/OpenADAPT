@@ -366,6 +366,9 @@ private:
 			}
 			else
 			{
+				//Rank == 0のときはIsJoinedが常にfalseなので、この条件分岐は行わない。
+				if constexpr (Rank > 0)
+					if (!i.IsJoined(JointMode{})) return false;
 				bool res = i.Move(ilayer, Flag{});
 				//Delayedの場合、移動成功と判定されたとしても、Rank + 1以下はまだJoinされていない。
 				//移動に成功した場合は、下位のリリースを行う。
@@ -452,7 +455,7 @@ private:
 	template <RankType Rank, direction_flag Flag>
 	LayerType IncrDecrOperator(Flag, DelayedJoint)
 	{
-		//constexpr bool IsForward = std::is_same_v<Flag, ForwardFlag>;
+		constexpr bool IsForward = std::is_same_v<Flag, ForwardFlag>;
 		if constexpr (Rank >= 0)
 		{
 			auto& i = std::get<Rank>(m_internals);
@@ -472,7 +475,21 @@ private:
 					return IncrDecrOperator<Rank - 1>(Flag{}, DelayedJoint{});
 			LayerType moved = i.IncrDecrOperator(Flag{});
 			//この順位の走査を終えてしまった場合、上位の移動を行う。
-			if (i.IsEnd()) return IncrDecrOperator<Rank - 1>(Flag{}, DelayedJoint{});
+			//走査を終えたかどうかの判定条件がForwardとBackwardで異なる。
+			//Forwardの場合は、IsEndで末尾に達したかどうかを見るのが確実。
+			if constexpr (IsForward)
+			{
+				if (i.IsEnd())
+					return IncrDecrOperator<Rank - 1>(Flag{}, DelayedJoint{});
+			}
+			//Backwardの場合は、IsBegin相当の関数はちょっと作れない。代わりにmovedの値を見る。
+			//movedの値は、もしiの移動を終えてしまった場合、fixedに一致するはずなので、
+			//その場合は上位に投げる。
+			else
+			{
+				if (moved == i.GetFixedLayer())
+					return IncrDecrOperator<Rank - 1>(Flag{}, DelayedJoint{});
+			}
 			Release<Rank + 1>();
 			return i.ConvertIntToExt(moved);
 		}
@@ -603,20 +620,24 @@ public:
 		return MatchPartially(jbp, rank, intlayer, ForwardFlag{}, DelayedJoint{});
 	}
 
-	template <RankType Rank>
-	bool TryJoin() const
+	template <RankType Rank, direction_flag Flag>
+	bool TryJoin(Flag) const
 	{
 		auto& i = std::get<Rank>(m_internals);
 		if (i.IsJoined(DelayedJoint{})) return true;
-		return JoinRecursively<Rank>();
+		return JoinRecursively<Rank>(Flag{}, DelayedJoint{});
 	}
-	template <RankType Rank>
-	bool TryJoin(RankConstant<Rank>) const
+	template <RankType Rank, direction_flag Flag>
+	bool TryJoin(RankConstant<Rank>, Flag) const
 	{
 		auto& i = std::get<Rank>(m_internals);
 		if (i.IsJoined(DelayedJoint{})) return true;
-		return JoinRecursively<Rank>();
+		return JoinRecursively<Rank>(Flag{}, DelayedJoint{});
 	}
+	template <RankType Rank>
+	bool TryJoin() const { return TryJoin<Rank>(ForwardFlag{}); }
+	template <RankType Rank>
+	bool TryJoin(RankConstant<Rank>) const { return TryJoin<Rank>(ForwardFlag{}); }
 
 	const ExternalTraverser& operator*() const { return *this; }
 	const ExternalTraverser* operator->() const { return this; }

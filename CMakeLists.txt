@@ -28,7 +28,8 @@ if(BUILD_TEST)
 	add_subdirectory(Test)
 endif()
 if(BUILD_EXAMPLES)
-	add_subdirectory(Examples)
+	add_subdirectory(Examples/jp)
+	add_subdirectory(Examples/en)
 endif()
 
 install(

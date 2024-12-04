@@ -82,12 +82,12 @@ private:
 
 
 template <template <class> class Consumer, class ...Args>
-class RangeConsumer
+class RangeConversion
 {
 public:
 	template <class ...Args_>
 		requires (std::convertible_to<Args_&&, Args> && ...)
-	RangeConsumer(Args_&& ...args) : m_args(std::forward<Args_>(args)...) {}
+	RangeConversion(Args_&& ...args) : m_args(std::forward<Args_>(args)...) {}
 
 private:
 	template <class Range, size_t ...Indices>
@@ -110,22 +110,22 @@ public:
 	}
 
 	template <any_container Container>
-	friend auto operator|(Container&& s, RangeConsumer<Consumer, Args...>&& r)
+	friend auto operator|(Container&& s, RangeConversion<Consumer, Args...>&& r)
 	{
 		return std::move(r).Exec(detail::GetRange_select_jointmode(s));
 	}
 	template <any_container Container>
-	friend auto operator|(Container&& s, const RangeConsumer<Consumer, Args...>& r)
+	friend auto operator|(Container&& s, const RangeConversion<Consumer, Args...>& r)
 	{
 		return r.Exec(detail::GetRange_select_jointmode(s));
 	}
 	template <traversal_range Range>
-	friend auto operator|(Range&& s, RangeConsumer<Consumer, Args...>&& r)
+	friend auto operator|(Range&& s, RangeConversion<Consumer, Args...>&& r)
 	{
 		return std::move(r).Exec(std::forward<Range>(s));
 	}
 	template <traversal_range Range>
-	friend auto operator|(Range&& s, const RangeConsumer<Consumer, Args...>& r)
+	friend auto operator|(Range&& s, const RangeConversion<Consumer, Args...>& r)
 	{
 		return r.Exec(std::forward<Range>(s));
 	}
@@ -135,22 +135,22 @@ private:
 };
 
 /*template <any_container Container, template <class...> class View, class ...Args>
-auto operator|(Container&& s, RangeConsumer<View, Args...>&& r)
+auto operator|(Container&& s, RangeConversion<View, Args...>&& r)
 {
 	return std::move(r).Exec(detail::GetRange_select_jointmode(s));
 }
 template <any_container Container, template <class...> class View, class ...Args>
-auto operator|(Container&& s, const RangeConsumer<View, Args...>& r)
+auto operator|(Container&& s, const RangeConversion<View, Args...>& r)
 {
 	return r.Exec(detail::GetRange_select_jointmode(s));
 }
 template <traversal_range Range, template <class...> class View, class ...Args>
-auto operator|(Range&& s, RangeConsumer<View, Args...>&& r)
+auto operator|(Range&& s, RangeConversion<View, Args...>&& r)
 {
 	return std::move(r).Exec(std::forward<Range>(s));
 }
 template <traversal_range Range, template <class...> class View, class ...Args>
-auto operator|(Range&& s, const RangeConsumer<View, Args...>& r)
+auto operator|(Range&& s, const RangeConversion<View, Args...>& r)
 {
 	return r.Exec(std::forward<Range>(s));
 }*/

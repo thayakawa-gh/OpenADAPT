@@ -206,16 +206,20 @@ public:
 
 	static constexpr RankType GetMaxRank() { return MaxRank; }
 
-	Range_prompt GetRange() const requires (!IsConst) { return Range_prompt(*this); }
-	ConstRange_prompt GetRange() const requires IsConst { return ConstRange_prompt(*this); }
-	Range_prompt GetRange(LayerType layer) const requires (!IsConst) { return Range_prompt(*this, layer); }
-	ConstRange_prompt GetRange(LayerType layer) const requires IsConst { return ConstRange_prompt(*this, layer); }
+	Range_prompt GetRange_prompt() const requires (!IsConst) { return Range_prompt(*this); }
+	ConstRange_prompt GetRange_prompt() const requires IsConst { return ConstRange_prompt(*this); }
+	Range_prompt GetRange_prompt(LayerType layer) const requires (!IsConst) { return Range_prompt(*this, layer); }
+	ConstRange_prompt GetRange_prompt(LayerType layer) const requires IsConst { return ConstRange_prompt(*this, layer); }
 
 	Range GetRange_delayed() const requires (!IsConst) { return Range(*this); }
 	ConstRange GetRange_delayed() const requires IsConst { return ConstRange(*this); }
 	Range GetRange_delayed(LayerType layer) const requires (!IsConst) { return Range(*this, layer); }
 	ConstRange GetRange_delayed(LayerType layer) const requires IsConst { return ConstRange(*this, layer); }
-	//const JointLayerArray<MaxRank>& GetJointLayers() const { return m_layers; }
+
+	Range_prompt GetRange() const requires (!IsConst) { return GetRange_prompt(); }
+	ConstRange_prompt GetRange() const requires IsConst { return GetRange_prompt(); }
+	Range_prompt GetRange(LayerType layer) const requires (!IsConst) { return GetRange_prompt(layer); }
+	ConstRange_prompt GetRange(LayerType layer) const requires IsConst { return GetRange_prompt(layer); }
 
 	constexpr LayerType GetMaxLayer() const
 	{

@@ -885,7 +885,7 @@ public:
 
 	const std::string& GetFieldName(const RttiPlaceholder& m) const
 	{
-		for (auto [name, ptr] : m_field_map)
+		for (const auto& [name, ptr] : m_field_map)
 		{
 			//layer + indexが一致すれば同一のPlaceholderであると同定できる。
 			if (m.GetIndex() == ptr->GetIndex() && m.GetLayer() == ptr->GetLayer()) return name;
