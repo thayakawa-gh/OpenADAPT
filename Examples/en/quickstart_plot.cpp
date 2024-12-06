@@ -1,6 +1,5 @@
 #include <random>
 #include <filesystem>
-#include <ranges>
 #include <thread>
 #include <OpenADAPT/Plot/Canvas.h>
 

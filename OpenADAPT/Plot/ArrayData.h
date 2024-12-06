@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <string>
+#include <ranges>
 #include <OpenADAPT/Utility/TypeTraits.h>
 #include <OpenADAPT/Utility/Matrix.h>
 #include <OpenADAPT/Utility/Print.h>
