@@ -1,5 +1,5 @@
-#ifndef ADAPT_CUF_MACRO_H
-#define ADAPT_CUF_MACRO_H
+#ifndef ADAPT_UTILITY_MACRO_H
+#define ADAPT_UTILITY_MACRO_H
 
 #define ADAPT_TIE_ARGS(...) __VA_ARGS__
 

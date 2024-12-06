@@ -1,6 +1,8 @@
 #include <random>
 #include <filesystem>
-#include <OpenADAPT/ADAPT.h>
+#include <ranges>
+#include <thread>
+#include <OpenADAPT/Plot/Canvas.h>
 
 int example_2d(const std::string& output_filename, bool enable_in_memory_data_transfer)
 {

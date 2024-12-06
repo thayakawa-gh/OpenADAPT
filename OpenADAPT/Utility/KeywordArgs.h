@@ -1,8 +1,9 @@
 #ifndef ADAPT_KEYWORD_ARGS_H
 #define ADAPT_KEYWORD_ARGS_H
 
-#include <OpenADAPT/Utility/TypeTraits.h>
 #include <tuple>
+#include <OpenADAPT/Utility/TypeTraits.h>
+#include <OpenADAPT/Utility/Utility.h>
 
 namespace adapt
 {

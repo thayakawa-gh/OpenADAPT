@@ -1,9 +1,11 @@
 #ifndef ADAPT_PLOT_CANVAS_H
 #define ADAPT_PLOT_CANVAS_H
 
+#include <variant>
 #include <OpenADAPT/Utility/Matrix.h>
 #include <OpenADAPT/Utility/Function.h>
 #include <OpenADAPT/Utility/KeywordArgs.h>
+#include <OpenADAPT/Utility/Macro.h>
 #include <OpenADAPT/Plot/Core.h>
 #include <OpenADAPT/Plot/ArrayData.h>
 
