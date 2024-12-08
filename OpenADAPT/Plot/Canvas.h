@@ -2,6 +2,7 @@
 #define ADAPT_PLOT_CANVAS_H
 
 #include <variant>
+#include <ranges>
 #include <OpenADAPT/Utility/Matrix.h>
 #include <OpenADAPT/Utility/Function.h>
 #include <OpenADAPT/Utility/KeywordArgs.h>
@@ -103,7 +104,7 @@ inline std::string SanitizeForDataBlock(const std::string& str)
 {
 	std::string res = str;
 	auto pos = res.begin();
-	while (pos = std::find_if(pos, res.end(), [](char c) { return !isalnum(c); }), pos != res.end())
+	while (pos = std::ranges::find_if(pos, res.end(), [](char c) { return !isalnum(c); }), pos != res.end())
 	{
 		res.replace(pos, pos + 1, 1, '_');
 		pos++;

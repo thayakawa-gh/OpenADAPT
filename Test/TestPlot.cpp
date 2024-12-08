@@ -43,7 +43,7 @@ void func(Args&& ...args)
 	std::cout << "LVector        :";
 	for (auto& vv : lv) std::cout << " " << vv;
 	std::cout << std::endl;
-	for (int i = 0; i < lv.size(); ++i) lv[i] = i * 3;
+	for (size_t i = 0; i < lv.size(); ++i) lv[i] = i * 3;
 }
 
 TEST_F(Aggregator, KeywordArg)
@@ -81,7 +81,7 @@ void func2(Args&& ...args)
 	std::cout << "LVector        :";
 	for (auto& vv : lv) std::cout << " " << vv;
 	std::cout << std::endl;
-	for (int i = 0; i < lv.size(); ++i) lv[i] = i * 3;
+	for (size_t i = 0; i < lv.size(); ++i) lv[i] = i * 3;
 }
 TEST_F(Aggregator, KeywordArgWithTag)
 {
