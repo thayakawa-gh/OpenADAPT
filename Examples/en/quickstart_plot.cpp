@@ -210,7 +210,7 @@ int example_colormap(const std::string& output_filename, bool enable_in_memory_d
 		g1.SetYRange(-10, 10);
 		g1.SetCBRange(-5, 5);
 		g1.PlotColormap(m, xrange, yrange, plot::notitle).
-			PlotVectors(xfrom, yfrom, xlen, ylen, plot::notitle, plot::c_white);
+			PlotVectors(xfrom, yfrom, xlen, ylen, plot::notitle, plot::c_white, plot::as_noheads);
 
 		//sleep for a short time to avoid the output image broken by multiplot.
 		std::this_thread::sleep_for(std::chrono::milliseconds(300));
@@ -229,7 +229,7 @@ int example_colormap(const std::string& output_filename, bool enable_in_memory_d
 		g2.PlotColormap(m, xrange, yrange, plot::notitle,
 						plot::with_contour, plot::without_surface, plot::variable_cntrcolor,
 						plot::cntrlevels_incremental = { -20., 0.2, 20. }).
-			PlotVectors(xfrom, yfrom, xlen, ylen, plot::notitle, plot::variable_color = arrowcolor);
+			PlotVectors(xfrom, yfrom, xlen, ylen, plot::notitle, plot::variable_color = arrowcolor, plot::as_nofilled);
 	}
 
 	if (!enable_in_memory_data_transfer)
@@ -245,7 +245,7 @@ int example_colormap(const std::string& output_filename, bool enable_in_memory_d
 		g1.SetYRange(-10, 10);
 		g1.SetCBRange(-5, 5);
 		g1.PlotColormap(output_filename + ".map_tmp.tmp0.txt", "1", "2", "5", plot::notitle).
-			PlotVectors(output_filename + ".map_tmp.tmp1.txt", "1", "2", "3", "4", plot::notitle, plot::c_white);
+			PlotVectors(output_filename + ".map_tmp.tmp1.txt", "1", "2", "3", "4", plot::notitle, plot::c_white, plot::as_nofilled);
 	}
 	return 0;
 }

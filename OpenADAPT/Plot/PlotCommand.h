@@ -100,7 +100,8 @@ ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(variable_size, plot_detail::AnyAcc
 
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(xlen, plot_detail::AnyAcceptableArg, plot_detail::VectorOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(ylen, plot_detail::AnyAcceptableArg, plot_detail::VectorOption)
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(arrowhead, int, plot_detail::VectorOption)
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(arrowhead, ArrowHead, plot_detail::VectorOption)//arrowheadをどこに付けるか。head:先端、heads:両端、noheads:なし
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(arrowfill, ArrowFill, plot_detail::VectorOption)//arrowheadの塗りつぶし。filled:塗りつぶし、nofilled:塗りつぶしなし
 
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(fillpattern, int, plot_detail::FillOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(fillsolid, double, plot_detail::FillOption)
@@ -206,6 +207,15 @@ inline constexpr auto ps_medium = (pointsize = 1.0);
 inline constexpr auto ps_med_small = (pointsize = 0.7);
 inline constexpr auto ps_small = (pointsize = 0.5);
 inline constexpr auto ps_ex_small = (pointsize = 0.3);
+
+// アロースタイル指定の短縮版
+inline constexpr auto as_head = (arrowhead = ArrowHead::head);
+inline constexpr auto as_heads = (arrowhead = ArrowHead::heads);
+inline constexpr auto as_noheads = (arrowhead = ArrowHead::nohead);
+inline constexpr auto as_filled = (arrowfill = ArrowFill::filled);
+inline constexpr auto as_nofilled = (arrowfill = ArrowFill::nofilled);
+inline constexpr auto as_empty = (arrowfill = ArrowFill::empty);
+
 
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(z, plot_detail::AnyAcceptableArg, plot_detail::BaseOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(zerrorbar, plot_detail::AnyAcceptableArg, plot_detail::PointOption)
@@ -450,11 +460,12 @@ struct VectorParam : public PlotParamBase
 	void SetOptions(Ops ...ops)
 	{
 		SetBaseOptions(ops...);
-		if constexpr (KeywordExists(plot::linetype, ops...)) linetype = GetKeywordArg(plot::linetype, -2, ops...);
-		if constexpr (KeywordExists(plot::linewidth, ops...)) linewidth = GetKeywordArg(plot::linewidth, -1, ops...);
-		if constexpr (KeywordExists(plot::color, ops...)) color = GetKeywordArg(plot::color, "", ops...);
-		if constexpr (KeywordExists(plot::color_rgb, ops...)) color_rgb = GetKeywordArg(plot::color_rgb, "", ops...);
-		if constexpr (KeywordExists(plot::arrowhead, ops...)) arrowhead = GetKeywordArg(plot::arrowhead, -1, ops...);
+		if constexpr (KeywordExists(plot::linetype, ops...)) linetype = GetKeywordArg(plot::linetype, ops...);
+		if constexpr (KeywordExists(plot::linewidth, ops...)) linewidth = GetKeywordArg(plot::linewidth, ops...);
+		if constexpr (KeywordExists(plot::color, ops...)) color = GetKeywordArg(plot::color, ops...);
+		if constexpr (KeywordExists(plot::color_rgb, ops...)) color_rgb = GetKeywordArg(plot::color_rgb, ops...);
+		if constexpr (KeywordExists(plot::arrowhead, ops...)) arrowhead = GetKeywordArg(plot::arrowhead, ops...);
+		if constexpr (KeywordExists(plot::arrowfill, ops...)) arrowfill = GetKeywordArg(plot::arrowfill, ops...);
 	}
 
 	bool IsData() const
@@ -488,7 +499,8 @@ struct VectorParam : public PlotParamBase
 	Y y;
 	XL xlen;
 	YL ylen;
-	int arrowhead = -1;//-1ならデフォルト。
+	ArrowHead arrowhead = ArrowHead::none;//noneならデフォルト。
+	ArrowFill arrowfill = ArrowFill::none;//noneならデフォルト。
 };
 template <keyword_arg ...Options>
 auto MakeVectorParam(Options ...ops)
@@ -1255,14 +1267,17 @@ std::string MakePlotCommand(std::string_view, bool, const VectorParam<X, Y, XL, 
 {
 	std::string c;
 	c += " vector ";
-	if (p.arrowhead != -1)
+	if (p.arrowhead != ArrowHead::none)
 	{
-		if ((p.arrowhead & 0b11) == 0) c += " head";
-		else if ((p.arrowhead & 0b11) == 1) c += " heads";
-		else if ((p.arrowhead & 0b11) == 2) c += " noheads";
-		if ((p.arrowhead & 0b1100) == 0) c += " filled";
-		else if ((p.arrowhead & 0b1100) == 4) c += " empty";
-		else if ((p.arrowhead & 0b1100) == 8) c += " nofilled";
+		if (p.arrowhead == ArrowHead::head) c += " head";
+		else if (p.arrowhead == ArrowHead::heads) c += " heads";
+		else if (p.arrowhead == ArrowHead::nohead) c += " nohead";
+	}
+	if (p.arrowfill != ArrowFill::none)
+	{
+		if (p.arrowfill == ArrowFill::filled) c += " filled";
+		else if (p.arrowfill == ArrowFill::empty) c += " empty";
+		else if (p.arrowfill == ArrowFill::nofilled) c += " nofilled";
 	}
 	constexpr bool variablecolor_assigned = !PlotParamBase::IsEmptyView<VC>();
 	if (p.linetype != -2) c += " linetype " + std::to_string(p.linetype);

@@ -16,7 +16,8 @@ namespace adapt
 
 enum class Style { none, lines, points, linespoints, dots, impulses, boxes, steps, fsteps, histeps, };
 enum class Smooth { none, unique, frequency, cumulative, cnormal, kdensity, csplines, acsplines, bezier, sbezier, };
-enum class ArrowHead { head = 0, heads = 1, noheads = 2, filled = 0 << 2, empty = 1 << 2, nofilled = 2 << 2, };
+enum class ArrowHead { none, head, heads, nohead, };
+enum class ArrowFill { none, filled, empty, nofilled, noborder, };
 
 enum class Contour { none, base, surface, both, };
 enum class CntrSmooth { none, linear, cubicspline, bspline };
