@@ -3,17 +3,102 @@
 
 #include <vector>
 #include <string>
+#include <string_view>
 #include <OpenADAPT/Utility/TypeTraits.h>
+#include <OpenADAPT/Utility/Any.h>
 #include <OpenADAPT/Utility/Matrix.h>
 #include <OpenADAPT/Utility/Print.h>
-#include <OpenADAPT/Utility/Any.h>
-#include <OpenADAPT/Utility/Generics.h>
+#include <OpenADAPT/Utility/Ranges.h>
 
 namespace adapt
 {
 
 namespace detail
 {
+
+class AnyAcceptableArg
+{
+public:
+
+	class sentinel
+	{
+	public:
+		template <class T>
+		sentinel(T&& t) : m_st(std::forward<T>(t)) {};
+	private:
+		Any m_st;
+	};
+	class iterator
+	{
+	public:
+		template <class T>
+		iterator(T&& t) : m_it(std::forward<T>(t)) {}
+
+		template <class Stream>
+		void Output(Stream& str) const
+		{
+			adapt::Print(str, )
+		}
+		const iterator& operator++() { m_ft.increment(m_it.GetPtr()); return *this; }
+
+	private:
+
+		struct FuncTable
+		{
+			template <class Iter>
+			static void Output(FILE* pipe, const void* it)
+			{
+
+			}
+			template <class Iter>
+			static void Increment(const void* it)
+			{
+				++(*static_cast<const Iter*>(it));
+			}
+			template <class Iter>
+			static bool Compare(const void* it, const sentinel& last)
+			{
+				return *static_cast<const Iter*>(it) == last;
+			}
+
+			bool(*is_arithmetic_range)(const void*);
+			bool(*is_string_range)(const void*);
+			double(*get_double)(const void*);
+			std::string_view(*get_string)(const void*);
+			void(*increment)(const void*);
+		};
+		template <class T>
+		inline constexpr FuncTable m_ft{ &FuncTable::IsArithmeticRange<T>, &FuncTable::IsStringRange<T>,
+										 &FuncTable::GetDouble<T>, &FuncTable::GetString<T>,
+										 &FuncTable::Increment<T> };
+
+		detail::Any_impl<40, true> m_it;
+	};
+
+	iterator begin() const
+	{
+
+	}
+
+private:
+	struct FuncTable
+	{
+		template <class T>
+		iterator Begin(const void* arr)
+		{
+			if constexpr (std::)
+			auto it = static_cast<const T*>(arr)->begin();
+			return iterator(std::move(it));
+		}
+		template <class T>
+		sentinel End(const void* arr)
+		{
+
+		}
+	};
+	AnyCRef m_array;
+};
+
 
 struct ToFPtr
 {

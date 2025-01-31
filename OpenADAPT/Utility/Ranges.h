@@ -101,6 +101,9 @@ public:
 		return it != end;
 	}
 
+	template <size_t Index>
+	decltype(auto) GetSentinelAt() const { return std::get<Index>(mIterators); }
+
 private:
 	std::tuple<Sentinels...> mIterators;
 };
@@ -298,6 +301,21 @@ public:
 };
 
 template <std::ranges::input_range ...C> Enumerate(C&& ...) -> Enumerate<C...>;
+
+}
+
+namespace ranges
+{
+
+template <class Range>
+concept arithmetic_range = std::ranges::input_range<Range> && arithmetic<std::ranges::range_value_t<Range>>;
+template <class Range>
+concept string_range = std::ranges::input_range<Range> && std::convertible_to<std::ranges::range_value_t<Range>, std::string_view>;
+template <class Range>
+concept range_of_range = std::ranges::input_range<Range> && std::ranges::input_range<std::ranges::range_value_t<Range>>;
+template <class Range>
+concept arithmetic_matrix_range = ranges::range_of_range<Range> && std::ranges::sized_range<Range> &&
+ranges::arithmetic_range<std::ranges::range_value_t<Range>> && std::ranges::sized_range<std::ranges::range_value_t<Range>>;
 
 }
 

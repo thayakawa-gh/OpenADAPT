@@ -48,7 +48,7 @@ class Aggregator : public ::testing::Test
 {
 	using TopLayer = NamedTuple<Named<"school", std::string>>;
 	using Layer0 = NamedTuple<Named<"grade", int8_t>, Named<"class_", int8_t>>;
-	using Layer1 = NamedTuple<Named<"number", int16_t>, Named<"name", std::string>, Named<"date_of_birth", int32_t>, Named<"phone", std::string>, Named<"email", std::string>>;
+	using Layer1 = NamedTuple<Named<"number", int16_t>, Named<"name", std::string>, Named<"date_of_birth", int32_t>>;
 	using Layer2 = NamedTuple<Named<"exam", int8_t>, Named<"math", int32_t>, Named<"japanese", int32_t>, Named<"english", int32_t>, Named<"science", int32_t>, Named<"social", int32_t>>;
 
 	using STree_ = STree<TopLayer, Layer0, Layer1, Layer2>;
@@ -197,8 +197,7 @@ class Aggregator : public ::testing::Test
 		if constexpr (d_tree<Tree>)
 		{
 			t.AddLayer({ { "grade", I08 }, { "class_", I08 } });
-			t.AddLayer({ { "number", I16 }, { "name", Str }, { "date_of_birth", I32 },
-					     { "phone", Str }, { "email", Str } });
+			t.AddLayer({ { "number", I16 }, { "name", Str }, { "date_of_birth", I32 }/*, {"phone", Str}, {"email", Str}*/});
 			t.AddLayer({ { "exam", I08 },  {"math", I32}, {"japanese", I32}, {"english", I32}, {"science", I32}, {"social", I32}});
 			t.SetTopLayer({ { "school", Str } });
 			t.VerifyStructure();
@@ -213,8 +212,7 @@ class Aggregator : public ::testing::Test
 			ce.Reserve((BindexType)c.m_students.size());
 			for (auto& s : c.m_students)
 			{
-				ce.Push(s.m_number, s.m_name, /*s.m_name_furigana,*/ s.m_date_of_birth,
-						/*s.m_postal_code, s.m_address,*/ s.m_phone, s.m_email);
+				ce.Push(s.m_number, s.m_name, /*s.m_name_furigana,*/ s.m_date_of_birth/*, s.m_postal_code, s.m_address, s.m_phone, s.m_email*/);
 				auto&& se = ce.Back();
 				se.Reserve((BindexType)s.m_records.size());
 				for (auto& r : s.m_records)
@@ -232,7 +230,7 @@ class Aggregator : public ::testing::Test
 		{
 			t.SetLayer(0, { { "grade", I08 }, { "class_", I08 },
 						 { "number", I16 }, { "name", Str }, { "date_of_birth", I32 },
-						 { "phone", Str }, { "email", Str },
+						 //{ "phone", Str }, { "email", Str },
 						 { "exam", I08 },  {"math", I32}, {"japanese", I32}, {"english", I32}, {"science", I32}, {"social", I32} });
 			t.SetTopLayer({ { "school", Str } });
 			t.VerifyStructure();
@@ -247,7 +245,7 @@ class Aggregator : public ::testing::Test
 				{
 					t.Push(c.m_grade, c.m_class,
 						s.m_number, s.m_name, /*s.m_name_furigana,*/ s.m_date_of_birth,
-						/*s.m_postal_code, s.m_address,*/ s.m_phone, s.m_email,
+						/*s.m_postal_code, s.m_address, s.m_phone, s.m_email,*/
 						r.m_exam, r.m_math, r.m_japanese, r.m_english, r.m_science, r.m_social);
 				}
 			}

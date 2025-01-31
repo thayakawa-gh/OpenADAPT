@@ -247,7 +247,7 @@ int example_colormap(const std::string& output_filename, bool enable_in_memory_d
 		g1.SetYRange(-10, 10);
 		g1.SetCBRange(-5, 5);
 		g1.PlotColormap(output_filename + ".map_tmp.tmp0.txt", "1", "2", "5", plot::notitle).
-			PlotVectors(output_filename + ".map_tmp.tmp1.txt", "1", "2", "3", "4", plot::notitle, plot::c_white);
+			PlotVectors(output_filename + ".map_tmp.tmp1.txt", "1", "2", "4", "5", plot::notitle, plot::c_white);
 	}
 	return 0;
 }
@@ -442,7 +442,7 @@ void PlotVariations()
 	//example_scatter("PlotExamples/example_scatter.png", false);
 	example_scatter("PlotExamples/example_scatter-inmemory.png", true);
 
-	//example_colormap("PlotExamples/example_colormap.png", false);
+	example_colormap("PlotExamples/example_colormap.png", false);
 	example_colormap("PlotExamples/example_colormap-inmemory.png", true);
 
 	//example_filledcurve("PlotExamples/example_filledcurve.png", false);

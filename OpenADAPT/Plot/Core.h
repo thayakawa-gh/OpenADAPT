@@ -9,6 +9,7 @@
 #include <string_view>
 #include <cfloat>
 #include <OpenADAPT/Utility/Print.h>
+#include <OpenADAPT/Utility/Verbose.h>
 
 namespace adapt
 {
@@ -16,6 +17,9 @@ namespace adapt
 enum class Style { none, lines, points, linespoints, dots, impulses, boxes, steps, fsteps, histeps, };
 enum class Smooth { none, unique, frequency, cumulative, cnormal, kdensity, csplines, acsplines, bezier, sbezier, };
 enum class ArrowHead { head = 0, heads = 1, noheads = 2, filled = 0 << 2, empty = 1 << 2, nofilled = 2 << 2, };
+
+enum class Contour { none, base, surface, both, };
+enum class CntrSmooth { none, linear, cubicspline, bspline };
 
 class Canvas
 {
@@ -45,25 +49,9 @@ public:
 	friend class MultiPlot;
 
 	Canvas(std::string_view output, double sizex = 0., double sizey = 0.)
-		: m_output(output), m_pipe(nullptr), m_show_commands(false), m_in_memory_data_transfer(true)
 	{
-		if (ms_global_pipe != nullptr)
-			m_pipe = ms_global_pipe;
-		else
-		{
-			if ((m_pipe = OpenGnuplot(GetGnuplotPath())) == nullptr)
-				std::cerr << "Gnuplot cannot open. " << GetGnuplotPath() << std::endl;
-			else
-				SetOutput(output, sizex, sizey);
-		}
-		if (m_pipe)
-		{
-			// Command("set bars small");
-			// Command("set key box");
-			Command("set palette defined ( 0 '#000090',1 '#000fff',2 "
-					"'#0090ff',3 '#0fffee',4 '#90ff70',5 '#ffee00',6 "
-					"'#ff7000',7 '#ee0000',8 '#7f0000')");
-		}
+		Open();
+		SetOutput(output, sizex, sizey);
 	}
 	Canvas(double sizex = 0., double sizey = 0.)
 		: Canvas(ms_default_gnuplot_terminal, sizex, sizey)
@@ -74,12 +62,7 @@ public:
 	Canvas& operator=(Canvas&&) = delete;
 	virtual ~Canvas()
 	{
-		if (m_pipe != nullptr && m_pipe != ms_global_pipe)
-		{
-			Command("exit");
-			CloseGnuplot(m_pipe);
-		}
-		m_pipe = nullptr;
+		Close();
 	}
 
 	void SetLabel(std::string_view axis, std::string_view label)
@@ -227,6 +210,7 @@ public:
 
 	void SetOutput(std::string_view output, double sizex, double sizey)
 	{
+		m_output = output;
 		if (output.size() > 4)
 		{
 			std::string_view extension(output.substr(output.size() - 4, 4));
@@ -262,6 +246,42 @@ public:
 	}
 	void Reset() { Command("reset"); }
 	const std::string& GetOutput() const { return m_output; }
+
+	void Open()
+	{
+		if (m_pipe != nullptr)
+		{
+			PrintWarning("Gnuplot has already been open. {}", GetGnuplotPath());
+			return;
+		}
+		if (ms_global_pipe != nullptr)
+			m_pipe = ms_global_pipe;
+		else
+		{
+			if ((m_pipe = OpenGnuplot(GetGnuplotPath())) == nullptr)
+				PrintError("Gnuplot cannot open. {}", GetGnuplotPath());
+		}
+		if (m_pipe)
+		{
+			Command("set palette defined ( 0 '#000090',1 '#000fff',2 "
+					"'#0090ff',3 '#0fffee',4 '#90ff70',5 '#ffee00',6 "
+					"'#ff7000',7 '#ee0000',8 '#7f0000')");
+		}
+	}
+	void Open(std::string_view output, double sizex = 0., double sizey = 0.)
+	{
+		Open();
+		SetOutput(output, sizex, sizey);
+	}
+	void Close()
+	{
+		if (m_pipe != nullptr && m_pipe != ms_global_pipe)
+		{
+			Command("exit");
+			CloseGnuplot(m_pipe);
+		}
+		m_pipe = nullptr;
+	}
 
 	template <class ...Args>
 	void Command(Args&& ...args)
@@ -305,9 +325,9 @@ public:
 protected:
 
 	std::string m_output;
-	FILE* m_pipe;
-	bool m_show_commands;
-	bool m_in_memory_data_transfer; // Use datablock feature of Gnuplot if true (default: false)
+	FILE* m_pipe = nullptr;
+	bool m_show_commands = false;
+	bool m_in_memory_data_transfer = true; // Use datablock feature of Gnuplot if true (default: false)
 
 	//When any axes (x, y, x2, y2, z) are contained within this variable, 
 	//the values of them are treated as DateTime even if the type of values are std::string or a type that is convertible to std::string.
@@ -407,6 +427,7 @@ public:
 	{
 		adapt::Print(Canvas::ms_global_pipe, std::forward<Args>(args)...);
 	}
+
 private:
 };
 

@@ -10,447 +10,370 @@
 namespace adapt
 {
 
-template <class T, int Dim = 2>
+template <class T, size_t Dim = 2>
 class Matrix
 {
-	static constexpr size_t ms_range_size = (Dim + Dim % 2) * sizeof(uint32_t);
-	struct Range
+	template <size_t X>
+	static size_t CalcUnit(std::array<uint32_t, X> sizes)
 	{
-		const uint32_t& operator[](int dim) const
-		{
-			assert(dim < Dim);
-			return m_size[dim];
-		}
-		uint32_t& operator[](int dim)
-		{
-			assert(dim < Dim);
-			return m_size[dim];
-		}
-		bool operator==(const Range& r) const
-		{
-			return Operator_eq(r, std::make_index_sequence<Dim>());
-		}
-		bool operator!=(const Range& r) const
-		{
-			return !(*this == r);
-		}
-		uint32_t* begin() { return m_size; }
-		uint32_t* end() { return m_size + Dim; }
-		const uint32_t* begin() const { return m_size; }
-		const uint32_t* end() const { return m_size + Dim; }
+		return std::accumulate(sizes.begin() + 1, sizes.end(), (size_t)1, std::multiplies<size_t>());
+	}
+	template <std::integral S, std::integral ...Sizes>
+	static size_t CalcUnit(S, Sizes ...sizes)
+	{
+		return ((size_t)sizes * ...);
+	}
 
-		template <size_t ...Indices>
-		bool Operator_eq(const Range& r, std::index_sequence<Indices...>) const
+	template <size_t Dim, template <class...> class Qualifier>
+	class Iterator;
+	template <size_t Dim, template <class...> class Qualifier>
+	class Range
+	{
+		static constexpr bool IsConst = std::is_const_v<Qualifier<T>>;
+	public:
+
+		using iterator = Iterator<Dim - 1, std::type_identity_t>;
+		using const_iterator = Iterator<Dim - 1, std::add_const_t>;
+
+		template <size_t Dim_> requires (Dim_ == Dim || Dim_ == Dim + 1)
+		Range(Qualifier<T>* begin, const std::array<uint32_t, Dim_>& sizes)
+			: m_begin(begin)
 		{
-			return AndAll((m_size[Indices] == r.m_size[Indices])...);
+			for (size_t i = 0; i < Dim; ++i)
+			{
+				if constexpr (Dim_ == Dim) m_sizes[i] = sizes[i];
+				else m_sizes[i] = sizes[i + 1];
+			}
+			m_unit = CalcUnit(m_sizes);
 		}
-		uint32_t m_size[Dim];
+		Range(const Range<Dim, Qualifier>& r)
+			: m_begin(r.m_begin), m_unit(r.m_unit), m_sizes(r.m_sizes)
+		{}
+		Range<Dim, Qualifier>& operator=(const Range<Dim, Qualifier>& r)
+		{
+			m_begin = r.m_begin;
+			m_unit = r.m_unit;
+			m_sizes = r.m_sizes;
+			return *this;
+		}
+
+		uint32_t size() const { return m_sizes[0]; }
+
+		Range<Dim - 1, std::type_identity_t> operator[](uint32_t i) requires (!IsConst)
+		{
+			assert(i < m_sizes[0]);
+			return Range<Dim - 1, std::type_identity_t>(m_begin + i * m_unit, m_sizes);
+		}
+		Range<Dim - 1, std::add_const_t> operator[](uint32_t i) const
+		{
+			assert(i < m_sizes[0]);
+			return Range<Dim - 1, std::add_const_t>(m_begin + i * m_unit, m_sizes);
+		}
+		iterator begin() requires (!IsConst) { return iterator(m_begin, m_sizes); }
+		iterator end() requires (!IsConst) { return iterator(m_begin + m_sizes[0] * m_unit, m_sizes); }
+		const_iterator begin() const { return cbegin(); }
+		const_iterator end() const { return cend(); }
+		const_iterator cbegin() const { return const_iterator(m_begin, m_sizes); }
+		const_iterator cend() const { return const_iterator(m_begin + m_sizes[0] * m_unit, m_sizes); }
+
+	private:
+		Qualifier<T>* m_begin = nullptr;
+		size_t m_unit = 0;
+		std::array<uint32_t, Dim> m_sizes = {};
 	};
+	template <template <class...> class Qualifier>
+	class Range<1, Qualifier>
+	{
+		static constexpr bool IsConst = std::is_const_v<Qualifier<T>>;
+	public:
 
+		using iterator = Iterator<0, std::type_identity_t>;
+		using const_iterator = Iterator<0, std::add_const_t>;
+
+		template <size_t Dim_> requires (Dim_ == 1 || Dim_ == 2)
+		Range(Qualifier<T>* begin, const std::array<uint32_t, Dim_>& sizes)
+			: m_begin(begin), m_end(begin + sizes.back())
+		{}
+		Range(const Range<1, Qualifier>& r)
+			: m_begin(r.m_begin), m_end(r.m_end)
+		{}
+		Range<1, Qualifier>& operator=(const Range<1, Qualifier>& r)
+		{
+			m_begin = r.m_begin;
+			m_end = r.m_end;
+			return *this;
+		}
+
+		uint32_t size() const { return uint32_t(m_end - m_begin); }
+
+		const T& operator[](uint32_t i) const
+		{
+			assert(m_begin + i < m_end);
+			return m_begin[i];
+		}
+		T& operator[](uint32_t i) requires (!IsConst)
+		{
+			assert(m_begin + i < m_end);
+			return m_begin[i];
+		}
+		iterator begin() requires (!IsConst) { return iterator(m_begin); }
+		iterator end() requires (!IsConst) { return iterator(m_end); }
+		const_iterator begin() const { return cbegin(); }
+		const_iterator end() const { return cend(); }
+		const_iterator cbegin() const { return const_iterator(m_begin); }
+		const_iterator cend() const { return const_iterator(m_end); }
+
+	private:
+		Qualifier<T>* m_begin = nullptr;
+		Qualifier<T>* m_end = nullptr;
+	};
+	template <size_t Dim, template <class...> class Qualifier>
+	struct RangePointerProxy
+	{
+		Range<Dim, Qualifier> m_range;
+		Range<Dim, Qualifier>* operator->() { return &m_range; }
+	};
+	template <size_t Dim, template <class...> class Qualifier>
+	class Iterator
+	{
+		static constexpr bool IsConst = std::is_const_v<Qualifier<T>>;
+	public:
+		using difference_type = ptrdiff_t;
+		using value_type = Range<Dim, Qualifier>;
+		using reference = Range<Dim, Qualifier>;
+		using iterator_category = std::random_access_iterator_tag;
+
+		Iterator() = default;
+		Iterator(Qualifier<T>* pos, const std::array<uint32_t, Dim + 1>& sizes)
+			: m_current(pos)
+		{
+			for (size_t i = 0; i < Dim; ++i) m_sizes[i] = sizes[i + 1];
+			m_unit = CalcUnit(sizes);
+		}
+		Iterator(const Iterator<Dim, Qualifier>& it) = default;
+		Iterator& operator=(const Iterator<Dim, Qualifier>& it) = default;
+
+		Iterator<Dim, Qualifier>& operator++()
+		{
+			m_current += m_unit;
+			return *this;
+		}
+		Iterator<Dim, Qualifier> operator++(int)
+		{
+			Iterator<Dim, Qualifier> res = *this;
+			++(*this);
+			return res;
+		}
+		Iterator<Dim, Qualifier> operator+=(size_t n)
+		{
+			m_current += m_unit * n;
+			return *this;
+		}
+		Iterator<Dim, Qualifier> operator+(size_t n) const
+		{
+			Iterator<Dim, Qualifier> res = *this;
+			res += n;
+			return res;
+		}
+		Iterator<Dim, Qualifier>& operator--()
+		{
+			m_current -= m_unit;
+			return *this;
+		}
+		Iterator<Dim, Qualifier> operator--(int)
+		{
+			Iterator<Dim, Qualifier> res = *this;
+			--(*this);
+			return res;
+		}
+		Iterator<Dim, Qualifier> operator-=(size_t n)
+		{
+			m_current -= m_unit * n;
+			return *this;
+		}
+		Iterator<Dim, Qualifier> operator-(size_t n) const
+		{
+			Iterator<Dim, Qualifier> res = *this;
+			res -= n;
+			return res;
+		}
+
+		bool operator==(const Iterator<Dim, Qualifier>& it) const
+		{
+			return m_current == it.m_current;
+		}
+		bool operator!=(const Iterator<Dim, Qualifier>& it) const
+		{
+			return !(*this == it);
+		}
+
+		Range<Dim, Qualifier> operator*() const
+		{
+			return Range<Dim, Qualifier>(m_current, m_sizes);
+		}
+		RangePointerProxy<Dim, Qualifier> operator->() const
+		{
+			return RangePointerProxy<Dim, Qualifier>{ { m_current, m_sizes } };
+		}
+
+	private:
+		Qualifier<T>* m_current = nullptr;
+		size_t m_unit = 0;
+		std::array<uint32_t, Dim> m_sizes = {};
+	};
+	template <template <class...> class Qualifier>
+	class Iterator<0, Qualifier>
+	{
+		static constexpr bool IsConst = std::is_const_v<Qualifier<T>>;
+	public:
+		using difference_type = ptrdiff_t;
+		using value_type = T;
+		using reference = T&;
+		using iterator_category = std::random_access_iterator_tag;
+
+		Iterator() = default;
+		Iterator(Qualifier<T>* pos)
+			: m_current(pos)
+		{}
+		Iterator(const Iterator<0, Qualifier>& it) = default;
+		Iterator<0, Qualifier>& operator=(const Iterator<0, Qualifier>& it) = default;
+
+		Iterator<0, Qualifier>& operator++()
+		{
+			++m_current;
+			return *this;
+		}
+		Iterator<0, Qualifier> operator++(int)
+		{
+			Iterator<0, Qualifier> res = *this;
+			++(*this);
+			return res;
+		}
+		Iterator<0, Qualifier>& operator+=(size_t n)
+		{
+			m_current += n;
+			return *this;
+		}
+		Iterator<0, Qualifier> operator+(size_t n) const
+		{
+			Iterator<0, Qualifier> res = *this;
+			res += n;
+			return res;
+		}
+		Iterator<0, Qualifier>& operator--()
+		{
+			--m_current;
+			return *this;
+		}
+		Iterator<0, Qualifier> operator--(int)
+		{
+			Iterator<1, Qualifier> res = *this;
+			--(*this);
+			return res;
+		}
+		Iterator<0, Qualifier>& operator-=(size_t n)
+		{
+			m_current -= n;
+			return *this;
+		}
+		Iterator<0, Qualifier> operator-(size_t n) const
+		{
+			Iterator<0, Qualifier> res = *this;
+			res -= n;
+			return res;
+		}
+
+		bool operator==(const Iterator<0, Qualifier>& it) const
+		{
+			return m_current == it.m_current;
+		}
+		bool operator!=(const Iterator<0, Qualifier>& it) const
+		{
+			return !(*this == it);
+		}
+
+		Qualifier<T>& operator*() const { return *m_current; }
+
+	private:
+		Qualifier<T>* m_current;
+	};
 public:
 
-	Matrix()
-		: m_matrix_data(nullptr)
-	{}
+	using iterator = Iterator<Dim - 1, std::type_identity_t>;
+	using const_iterator = Iterator<Dim - 1, std::add_const_t>;
 
-	template <bool B = (Dim == 1), std::enable_if_t<B, std::nullptr_t> = nullptr>
-	Matrix(uint32_t x, const T& i)
-		: m_matrix_data(nullptr)
-	{
-		Allocate(x);
-		GetRange() = { x };
-		ConstructAll(x, i);
-	}
-	template <bool B = (Dim == 1), std::enable_if_t<B, std::nullptr_t> = nullptr>
-	Matrix(uint32_t x)
-		: m_matrix_data(nullptr)
-	{
-		Allocate(x);
-		GetRange() = { x };
-		ConstructAll(x, T());
-	}
-	template <bool B = (Dim == 2), std::enable_if_t<B, std::nullptr_t> = nullptr>
-	Matrix(uint32_t x, uint32_t y, const T& i)
-		: m_matrix_data(nullptr)
-	{
-		size_t cap = (size_t)x * (size_t)y;
-		Allocate(cap);
-		GetRange() = { x, y };
-		ConstructAll(cap, i);
-	}
-	template <bool B = (Dim == 2), std::enable_if_t<B, std::nullptr_t> = nullptr>
-	Matrix(uint32_t x, uint32_t y)
-		: m_matrix_data(nullptr)
-	{
-		size_t cap = (size_t)x * (size_t)y;
-		Allocate(cap);
-		GetRange() = { x, y };
-		ConstructAll(cap, T());
-	}
-	template <bool B = (Dim == 3), std::enable_if_t<B, std::nullptr_t> = nullptr>
-	Matrix(uint32_t x, uint32_t y, uint32_t z, const T& i)
-		: m_matrix_data(nullptr)
-	{
-		size_t cap = (size_t)x * (size_t)y * (size_t)z;
-		Allocate(cap);
-		GetRange() = { x, y, z };
-		ConstructAll(cap, i);
-	}
-	template <bool B = (Dim == 3), std::enable_if_t<B, std::nullptr_t> = nullptr>
-	Matrix(uint32_t x, uint32_t y, uint32_t z)
-		: m_matrix_data(nullptr)
-	{
-		size_t cap = (size_t)x * (size_t)y * (size_t)z;
-		Allocate(cap);
-		GetRange() = { x, y, z };
-		ConstructAll(cap, T());
-	}
-	template <bool B = (Dim == 4), std::enable_if_t<B, std::nullptr_t> = nullptr>
-	Matrix(uint32_t x, uint32_t y, uint32_t z, uint32_t t, const T& i)
-		: m_matrix_data(nullptr)
-	{
-		size_t cap = (size_t)x * (size_t)y * (size_t)z * (size_t)t;
-		Allocate(cap);
-		GetRange() = { x, y, z, t };
-		ConstructAll(cap, i);
-	}
-	template <bool B = (Dim == 4), std::enable_if_t<B, std::nullptr_t> = nullptr>
-	Matrix(uint32_t x, uint32_t y, uint32_t z, uint32_t t)
-		: m_matrix_data(nullptr)
-	{
-		size_t cap = (size_t)x * (size_t)y * (size_t)z * (size_t)t;
-		Allocate(cap);
-		GetRange() = { x, y, z, t };
-		ConstructAll(cap, T());
-	}
-	template <bool B = (Dim == 5), std::enable_if_t<B, std::nullptr_t> = nullptr>
-	Matrix(uint32_t x, uint32_t y, uint32_t z, uint32_t t, uint32_t u, const T& i)
-		: m_matrix_data(nullptr)
-	{
-		size_t cap = (size_t)x * (size_t)y * (size_t)z * (size_t)t * (size_t)u;
-		Allocate(cap);
-		GetRange() = { x, y, z, t, u };
-		ConstructAll(cap, i);
-	}
-	template <bool B = (Dim == 5), std::enable_if_t<B, std::nullptr_t> = nullptr>
-	Matrix(uint32_t x, uint32_t y, uint32_t z, uint32_t t, uint32_t u)
-		: m_matrix_data(nullptr)
-	{
-		size_t cap = (size_t)x * (size_t)y * (size_t)z * (size_t)t * (size_t)u;
-		Allocate(cap);
-		GetRange() = { x, y, z, t, u };
-		ConstructAll(cap, T());
-	}
+	static constexpr int GetDimension() { return Dim; }
 
-	template <bool B = (Dim == 1), std::enable_if_t<B, std::nullptr_t> = nullptr>
-	Matrix(std::initializer_list<T> a)
-		: m_matrix_data(nullptr)
+	Matrix() {}
+	template <std::integral ...Sizes>
+		requires (sizeof...(Sizes) == Dim)
+	Matrix(const T& i, Sizes ...sizes)
+		: m_unit(CalcUnit(sizes...)), m_sizes{ (uint32_t)sizes... }
 	{
-		size_t size = a.size();
-		Allocate(size);
-		GetRange() = { (uint32_t)size };
-		auto* end = m_matrix_data + size;
-		auto* it = m_matrix_data;
-		for (auto x : a)
-		{
-			new (it) T(x);
-			++it;
-		}
+		size_t cap = GetCapacity();
+		Allocate(cap);
+		ConstructAll(i, cap);
 	}
-	template <bool B = (Dim == 2), std::enable_if_t<B, std::nullptr_t> = nullptr>
-	Matrix(std::initializer_list<std::initializer_list<T>> a)
-		: m_matrix_data(nullptr)
+	template <std::integral ...Sizes>
+		requires (sizeof...(Sizes) == Dim)
+	Matrix(Sizes ...sizes)
+		: m_unit(CalcUnit(sizes...)), m_sizes{ (uint32_t)sizes... }
 	{
-		size_t xsize = a.size();
-		size_t ysize = a.begin()->size();
-#ifndef NDEBUG
-		for (auto x : a) assert(x.size() == ysize);
-#endif
-		Allocate(xsize * ysize);
-		GetRange() = { (uint32_t)xsize, (uint32_t)ysize };
-		auto* end = m_matrix_data + xsize * ysize;
-		auto* it = m_matrix_data;
-		for (auto x : a)
-		{
-			for (auto y : x)
-			{
-				new (it) T(y);
-				++it;
-			}
-		}
+		size_t cap = GetCapacity();
+		Allocate(cap);
+		ConstructAll(T{}, cap);
 	}
-
 	Matrix(const Matrix& m)
-		: m_matrix_data(nullptr)
+		: m_unit(m.m_unit), m_sizes(m.m_sizes)
 	{
-		size_t cap = m.GetCapacity();
+		size_t cap = GetCapacity();
 		Allocate(cap);
-		GetRange() = m.GetRange();
 		T* it = m_matrix_data;
 		const T* it2 = m.m_matrix_data;
 		const T* end = it + cap;
 		for (; it != end; ++it, ++it2) new (it) T(*it2);
 	}
 	Matrix(Matrix&& m) noexcept
-		: m_matrix_data(m.m_matrix_data)
+		: m_matrix_data(m.m_matrix_data), m_unit(m.m_unit), m_sizes(m.m_sizes)
 	{
 		m.m_matrix_data = nullptr;
-	}
-
-	Matrix<T, Dim>& operator=(const Matrix& m)
-	{
-		size_t cap = m.GetCapacity();
-		if (m_matrix_data == nullptr) Allocate(cap);
-		else if(GetCapacity() != cap) Reallocate(cap);
-		else DestructAll(cap);
-
-		{
-			GetRange() = m.GetRange();
-			T* it = m_matrix_data;
-			const T* it2 = m.m_matrix_data;
-			const T* end = it + cap;
-			for (; it != end; ++it, ++it2) new (it) T(*it2);
-		}
-		return *this;
-	}
-	Matrix<T, Dim>& operator=(Matrix&& m)
-	{
-		m_matrix_data = m.m_matrix_data;
-		m.m_matrix_data = nullptr;
-		return *this;
+		m.m_unit = 0;
+		m.m_sizes = {};
 	}
 	~Matrix()
 	{
 		Destroy();
 	}
 
-	template <bool B = (Dim == 1), std::enable_if_t<B, std::nullptr_t> = nullptr>
-	Matrix& operator=(std::initializer_list<T> a)
+	uint32_t GetSize(uint32_t dim) const { return m_sizes[dim]; }
+	uint32_t size() const { return GetSize(0); }
+	size_t GetCapacity() const { return m_unit * m_sizes[0]; }
+
+	iterator begin() { return iterator(m_matrix_data, m_sizes); }
+	iterator end() { return iterator(m_matrix_data + GetCapacity(), m_sizes); }
+	const_iterator begin() const { return cbegin(); }
+	const_iterator end() const { return cend(); }
+	const_iterator cbegin() const { return const_iterator(m_matrix_data, m_sizes); }
+	const_iterator cend() const { return const_iterator(m_matrix_data + GetCapacity(), m_sizes); }
+
+	Range<Dim - 1, std::type_identity_t> operator[](uint32_t i)
 	{
-		size_t cap = a.size();
-		if (m_matrix_data == nullptr) Allocate(cap);
-		else if (GetCapacity() != cap) Reallocate(cap);
-		else DestructAll(cap);
-		GetRange() = { (uint32_t)cap };
-		auto* end = m_matrix_data + cap;
-		auto* it = m_matrix_data;
-		for (auto x : a)
-		{
-			new (it) T(x);
-			++it;
-		}
-		return *this;
+		assert(i < m_sizes[0]);
+		return Range<Dim - 1, std::type_identity_t>(m_matrix_data + i * m_unit, m_sizes);
 	}
-	template <bool B = (Dim == 2), std::enable_if_t<B, std::nullptr_t> = nullptr>
-	Matrix& operator=(std::initializer_list<std::initializer_list<T>> a)
+	Range<Dim - 1, std::add_const_t> operator[](uint32_t i) const
 	{
-		size_t xsize = a.size();
-		size_t ysize = a.begin()->size();
-#ifndef NDEBUG
-		for (auto x : a) assert(x.size() == ysize);
-#endif
-		size_t cap = xsize * ysize;
-		if (m_matrix_data == nullptr) Allocate(cap);
-		else if (GetCapacity() != cap) Reallocate(cap);
-		else DestructAll(cap);
-		GetRange() = { (uint32_t)xsize, (uint32_t)ysize };
-		auto* end = m_matrix_data + cap;
-		auto* it = m_matrix_data;
-		for (auto x : a)
-		{
-			for (auto y : x)
-			{
-				new (it) T(y);
-				++it;
-			}
-		}
-		return *this;
+		assert(i < m_sizes[0]);
+		return Range<Dim - 1, std::add_const_t>(m_matrix_data + i * m_unit, m_sizes);
 	}
 
-	static constexpr int GetDimension() { return Dim; }
-	uint32_t GetSize(uint32_t dim) const { return GetRange()[dim]; }
-	size_t GetCapacity() const
-	{
-		size_t res = 1;
-		for (int i = 0; i < Dim; ++i) res *= GetSize(i);
-		return res;
-	}
-	//std::array<uint32_t, Dim> GetSizes() const { return m_size; }
-
-	template <int N, template <class> class Qualifier, bool B = (N == Dim - 1)>
-	class MatPursuer
-	{
-	public:
-		MatPursuer(Qualifier<Matrix<T, Dim>>& m, std::size_t row) : m_row(row), m_matrix(m) {}
-
-		template <bool C = std::is_const<MatPursuer<N - 1, Qualifier>>::value>
-		std::enable_if_t<!C, MatPursuer<N + 1, Qualifier>> operator[](uint32_t i)
-		{
-			assert(i < m_matrix.GetRange()[N]);
-			return MatPursuer<N + 1, Qualifier>(m_matrix, m_row * m_matrix.GetRange()[N] + i);
-		}
-
-		MatPursuer<N + 1, Qualifier> operator[](uint32_t i) const
-		{
-			assert(i < m_matrix.GetRange()[N]);
-			return MatPursuer<N + 1, Qualifier>(m_matrix, m_row * m_matrix.GetRange()[N] + i);
-		}
-	private:
-		std::size_t m_row;
-		Qualifier<Matrix<T, Dim>>& m_matrix;
-	};
-	template <int N, template <class> class Qualifier>
-	class MatPursuer<N, Qualifier, true>
-	{
-	public:
-		MatPursuer(Qualifier<Matrix<T, Dim>>& m, std::size_t row) : m_row(row), m_matrix(m) {}
-
-		template <bool C = std::is_const<MatPursuer<N - 1, Qualifier>>::value>
-		std::enable_if_t<!C, T&> operator[](uint32_t i)
-		{
-			assert(i < m_matrix.GetRange()[N]);
-			return m_matrix.m_matrix_data[m_row * m_matrix.GetRange()[N] + i];
-		}
-
-		const T& operator[](uint32_t i) const
-		{
-			assert(i < m_matrix.GetRange()[N]);
-			return m_matrix.m_matrix_data[m_row * m_matrix.GetRange()[N] + i];
-		}
-	private:
-		std::size_t m_row;
-		Qualifier<Matrix<T, Dim>>& m_matrix;
-	};
-
-	//Dim>1のときはMatPursuerを返す。
-	template <bool B = (Dim > 1)>
-	std::enable_if_t<B, MatPursuer<1, std::type_identity_t>> operator[](uint32_t i)
-	{
-		assert(i < GetRange()[0]);
-		return MatPursuer<1, std::type_identity_t>(*this, i);
-	}
-	template <bool B = (Dim > 1)>
-	std::enable_if_t<B, MatPursuer<1, std::add_const_t>> operator[](uint32_t i) const
-	{
-		assert(i < GetRange()[0]);
-		return MatPursuer<1, std::add_const_t>(*this, i);
-	}
-
-	//Dim == 1のときはMatPursuerを介す必要はない。
-	template <bool B = (Dim == 1)>
-	std::enable_if_t<B, T&> operator[](uint32_t i)
-	{
-		assert(i < GetRange()[0]);
-		return m_matrix_data[i];
-	}
-	template <bool B = (Dim == 1)>
-	std::enable_if_t<B, const T&> operator[](uint32_t i) const
-	{
-		assert(i < GetRange()[0]);
-		return m_matrix_data[i];
-	}
-
-	bool operator==(const Matrix& m) const
-	{
-		if (GetRange() != m.GetRange()) return false;
-		for (auto t : BundleRange(*this, m)) if (std::get<0>(t) != std::get<1>(t)) return false;
-		return true;
-	}
-	bool operator!=(const Matrix& m) const
-	{
-		return operator==(m);
-	}
-
-
-	//[0][0], [0][1], [0][2], ...みたいな順に走査する。はず。
-	T* begin() { return m_matrix_data; }
-	const T* begin() const { return m_matrix_data; }
-	const T* cbegin() const { return begin(); }
-	T* end() { return m_matrix_data + std::accumulate(GetRange().begin(), GetRange().end(), 1, std::multiplies<uint32_t>()); }
-	const T* end() const { return m_matrix_data + std::accumulate(GetRange().begin(), GetRange().end(), 1, std::multiplies<uint32_t>()); }
-	const T* cend() const { return end(); }
-
-	Matrix& operator*=(const T& x) { for (auto& e : *this) e *= x; return *this; }
-	Matrix& operator/=(const T& x) { for (auto& e : *this) e /= x; return *this; }
-
-	friend Matrix operator*(const Matrix& m, const T& t) { Matrix res = m; res *= t; return std::move(res); }
-	friend Matrix operator*(const T& t, const Matrix& m) { Matrix res = m; res *= t; return std::move(res); }
-	friend Matrix operator/(const Matrix& m, const T& t) { Matrix res = m; res /= t; return std::move(res); }
-	friend Matrix operator/(const T& t, const Matrix& m) { Matrix res = m; res /= t; return std::move(res); }
-
-	Matrix& operator+=(const Matrix& x)
-	{
-		assert(GetRange() == x.GetRange());
-		for (const auto& t : BundleRange(*this, x))
-			std::get<0>(t) += std::get<1>(t);
-		return *this;
-	}
-	friend Matrix operator+(const Matrix& a, const Matrix& b)
-	{
-		Matrix res(a);
-		res += b;
-		return std::move(res);
-	}
-	Matrix& operator-=(const Matrix& x)
-	{
-		assert(GetRange() == x.GetRange());
-		for (const auto& t : BundleRange(*this, x))
-			std::get<0>(t) -= std::get<1>(t);
-		return *this;
-	}
-	friend Matrix operator-(const Matrix& a, const Matrix& b)
-	{
-		Matrix res(a);
-		res -= b;
-		return std::move(res);
-	}
-
-	//配列の再確保のための関数。
-	//mMatrixDataがnullptrであることを前提としている。
-	template <bool B = (Dim == 1), std::enable_if_t<B, std::nullptr_t> = nullptr>
-	void Resize(uint32_t x)
-	{
-		size_t cap = (size_t)x;
-		if (!m_matrix_data) Allocate(cap);
-		else if (GetCapacity() != cap) Reallocate(cap);
-		GetRange() = { x };
-		ConstructAll(cap, T());
-	}
-	template <bool B = (Dim == 2), std::enable_if_t<B, std::nullptr_t> = nullptr>
-	void Resize(uint32_t x, uint32_t y)
-	{
-		size_t cap = (size_t)x * (size_t)y;
-		if (!m_matrix_data) Allocate(cap);
-		else if (GetCapacity() != cap) Reallocate(cap);
-		GetRange() = { x, y };
-		ConstructAll(cap, T());
-	}
-	template <bool B = (Dim == 3), std::enable_if_t<B, std::nullptr_t> = nullptr>
-	void Resize(uint32_t x, uint32_t y, uint32_t z)
-	{
-		size_t cap = (size_t)x * (size_t)y * (size_t)z;
-		if (!m_matrix_data) Allocate(cap);
-		else if (GetCapacity() != cap) Reallocate(cap);
-		GetRange() = { x, y, z };
-		ConstructAll(cap, T());
-	}
-	template <bool B = (Dim == 4), std::enable_if_t<B, std::nullptr_t> = nullptr>
-	void Resize(uint32_t x, uint32_t y, uint32_t z, uint32_t t)
-	{
-		size_t cap = (size_t)x * (size_t)y * (size_t)z * (size_t)t;
-		if (!m_matrix_data) Allocate(cap);
-		else if (GetCapacity() != cap) Reallocate(cap);
-		GetRange() = { x, y, z, t };
-		ConstructAll(cap, T());
-	}
-
-protected:
+private:
 
 	void Allocate(size_t size)
 	{
 		assert(m_matrix_data == nullptr);
-		char* p = (char*)malloc(size * sizeof(T) + ms_range_size);
-		m_matrix_data = (T*)(p + ms_range_size);
+		char* p = (char*)malloc(size * sizeof(T));
+		m_matrix_data = (T*)p;
 	}
 	void Reallocate(size_t size)
 	{
@@ -462,10 +385,10 @@ protected:
 		if (m_matrix_data == nullptr) return;
 		DestructAll(GetCapacity());
 		char* ptr = (char*)m_matrix_data;
-		free(ptr - ms_range_size);
+		free(ptr);
 		m_matrix_data = nullptr;
 	}
-	void ConstructAll(size_t cap, const T& t)
+	void ConstructAll(const T & t, size_t cap)
 	{
 		T* it = m_matrix_data;
 		T* end = m_matrix_data + cap;
@@ -473,160 +396,16 @@ protected:
 	}
 	void DestructAll(size_t cap)
 	{
-		//メモリ解放を行わない、ただ要素を全削除するもの。
+		//メモリ解放を行わない、ただ全要素のデストラクタを呼ぶもの。
 		T* it = m_matrix_data;
 		T* end = m_matrix_data + cap;
 		for (; it != end; ++it) it->~T();
 	}
 
-	Range& GetRange() { return *reinterpret_cast<Range*>((char*)m_matrix_data - ms_range_size); }
-	const Range& GetRange() const { return *reinterpret_cast<const Range*>((char*)m_matrix_data - ms_range_size); }
-
-	//std::array<uint32_t, Dim> m_size;
-	T* m_matrix_data;
+	T* m_matrix_data = nullptr;
+	size_t m_unit = 0;
+	std::array<uint32_t, Dim> m_sizes = {};
 };
-
-template <class T>
-using Vector = Matrix<T, 1>;
-
-template <class T>
-Matrix<T, 2> MakeMatrix(const Vector<T>& r1, const Vector<T>& r2)
-{
-	Matrix<T, 2> res;
-	MakeMatrix(res, r1, r2);
-	return std::move(res);
-}
-template <class T>
-void MakeMatrix(Matrix<T, 2>& res, const Vector<T>& r1, const Vector<T>& r2)
-{
-	uint32_t sc = r1.GetSize(0);
-	assert(sc == r2.GetSize(0));
-	res.Resize(2, sc);
-	for (uint32_t c = 0; c < sc; ++c) res[0][c] = r1[c];
-	for (uint32_t c = 0; c < sc; ++c) res[1][c] = r2[c];
-}
-template <class T>
-Matrix<T, 2> MakeMatrix(const Vector<T>& r1, const Vector<T>& r2, const Vector<T>& r3)
-{
-	Matrix<T, 2> res;
-	MakeMatrix(res, r1, r2, r3);
-	return std::move(res);
-}
-template <class T>
-void MakeMatrix(Matrix<T, 2>& res, const Vector<T>& r1, const Vector<T>& r2, const Vector<T>& r3)
-{
-	uint32_t sc = r1.GetSize(0);
-	assert(sc == r2.GetSize(0));
-	assert(sc == r3.GetSize(0));
-	res.Resize(3, sc);
-	for (uint32_t c = 0; c < sc; ++c) res[0][c] = r1[c];
-	for (uint32_t c = 0; c < sc; ++c) res[1][c] = r2[c];
-	for (uint32_t c = 0; c < sc; ++c) res[2][c] = r3[c];
-}
-
-template <class T>
-Matrix<T, 2> operator*(const Matrix<T, 2>& x, const Matrix<T, 2>& y)
-{
-	Matrix<T, 2> res;
-	Multiply(res, x, y);
-	return std::move(res);
-}
-template <class T>
-void Multiply(Matrix<T, 2>& res, const Matrix<T, 2>& x, const Matrix<T, 2>& y)
-{
-	assert(x.GetSize(1) == y.GetSize(0));
-	uint32_t s = x.GetSize(1);
-	uint32_t sx = x.GetSize(0);
-	uint32_t sy = y.GetSize(1);
-	res.Resize(sx, sy);
-	for (uint32_t i = 0; i < sx; ++i)
-	{
-		for (uint32_t j = 0; j < sy; ++j)
-		{
-			T v = 0;
-			for (uint32_t k = 0; k < s; ++k)
-			{
-				v += x[i][k] * y[k][j];
-			}
-			res[i][j] = v;
-		}
-	}
-}
-template <class T>
-Vector<T> operator*(const Matrix<T, 2>& x, const Vector<T>& y)
-{
-	Vector<T> res;
-	Multiply(res, x, y);
-	return std::move(res);
-}
-template <class T>
-void Multiply(Vector<T>& res, const Matrix<T, 2>& x, const Vector<T>& y)
-{
-	uint32_t sx = x.GetSize(0);
-	uint32_t sy = x.GetSize(1);
-	assert(sx == y.GetSize(0));
-	res.Resize(sx);
-	for (uint32_t i = 0; i < sx; ++i)
-	{
-		T v = 0;
-		for (uint32_t j = 0; j < sy; ++j)
-		{
-			v += x[i][j] * y[j];
-		}
-		res[i] = v;
-	}
-}
-
-template <class T>
-Matrix<T, 2> Transpose(const Matrix<T, 2>& x)
-{
-	Matrix<T, 2> res;
-	Transpose(res, x);
-	return std::move(res);
-}
-template <class T>
-void Transpose(Matrix<T, 2>& res, const Matrix<T, 2>& x)
-{
-	uint32_t sx = x.GetSize(0), sy = x.GetSize(1);
-	res.Resize(sx, sy);
-	for (uint32_t i = 0; i < sx; ++i)
-	{
-		for (uint32_t j = 0; j < sy; ++j)
-		{
-			res[j][i] = x[i][j];
-		}
-	}
-}
-
-//内積
-template <class T>
-T Dot(const Vector<T>& x, const Vector<T>& y)
-{
-	assert(x.GetSize(0) == y.GetSize(0));
-	T res = 0;
-	for (auto t : BundleRange(x, y)) res += std::get<0>(t) * std::get<1>(t);
-	return std::move(res);
-}
-//外積
-template <class T>
-Vector<T> Cross(const Vector<T>& a, const Vector<T>& b)
-{
-	assert(a.GetSize(0) == 3 && b.GetSize(0) == 3);
-	Vector<T> res;
-	Cross(res, a, b);
-	return std::move(res);
-}
-template <class T>
-void Cross(Vector<T>& res, const Vector<T>& a, const Vector<T>& b)
-{
-	assert(a.GetSize(0) == 3 && b.GetSize(0) == 3);
-	res.Resize(a.GetSize(0));
-	double ax = a[0], ay = a[1], az = a[2];
-	double bx = b[0], by = b[1], bz = b[2];
-	res[0] = ay * bz - az * by;
-	res[1] = az * bx - ax * bz;
-	res[2] = ax * by - ay * bx;
-}
 
 }
 

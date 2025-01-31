@@ -16,12 +16,12 @@ namespace tagged_args
 {
 
 struct Tag {};
-struct DerivedTag : Tag {};
+struct Tag2;
 
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION(non_type, Tag)
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(floating_point, float, DerivedTag)
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(floating_point, float, Tag2)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(rvector, std::vector<double>&&, Tag)
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(lvector, std::vector<double>&, DerivedTag)
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(lvector, std::vector<double>&, Tag2)
 
 }
 
@@ -62,8 +62,7 @@ TEST_F(Aggregator, KeywordArg)
 	std::cout << std::endl;
 }
 
-template <class ...Args>
-	requires all_keyword_args_tagged_with<tagged_args::DerivedTag, Args...>
+template <keyword_arg_tagged_with<tagged_args::Tag, tagged_args::Tag2> ...Args>
 void func2(Args&& ...args)
 {
 	//キーワードの有無のみを調べる。下のmain関数では与えられているので、trueとなる。
