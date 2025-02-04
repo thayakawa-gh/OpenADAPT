@@ -105,7 +105,7 @@ For more detailed examples and explanations, please see [Examples/en](Examples/e
 ```cpp
 	// Placeholders are used to access/calculate data stored in containers.
 	using namespace adapt::lit;
-	ADAPT_GET_PLACEHOLDERS(t, "capital", "state", "state_capital", "county", "city", "population", "area");
+	ADAPT_GET_PLACEHOLDERS(t, capital, state, state_capital, county, city, population, area);
 	// The above macro is equivalent to the following code.
 	auto [capital, state, state_capital, county, city, population, area] = 
 		t.GetPlaceholders("capital"_fld, "state"_fld, "state_capital", "county"_fld, "city"_fld, "population"_fld, "area"_fld);
@@ -153,7 +153,7 @@ For more detailed examples and explanations, please see [Examples/en](Examples/e
 	{
 		// All the names, populations and areas of the cities that are the county seats are output.
 		std::cout << std::format("{:<12} {:<12} {:<12} {:>7.1f}\n",
-								 trav[state].str(), trav[county].str(), trav[city].str(), population_density(trav).f64());
+					　trav[state].str(), trav[county].str(), trav[city].str(), population_density(trav).f64());
 	}
 ```
 
@@ -174,7 +174,7 @@ For more detailed examples and explanations, please see [Examples/en](Examples/e
 	for (const auto& trav : extracted | GetRange(2_layer))
 	{
 		std::cout << std::format("{:<12} {:<12} {:<12} {:>8.1f}\n",
-								 trav[fld0].str(), trav[fld1].str(), trav[fld2].str(), trav[fld3].f64());
+					　trav[fld0].str(), trav[fld1].str(), trav[fld2].str(), trav[fld3].f64());
 		// Output:
 		// California   Los Angeles  Los Angeles   3275.7
 		// California   San Diego    San Diego     1646.8
