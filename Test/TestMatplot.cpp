@@ -14,7 +14,7 @@ struct DummyIterable
 
 TEST_F(Aggregator, Matplot)
 {
-	[[maybe_unused]] auto [number, name, dob] = m_dtree.GetPlaceholders("number", "name", "date_of_birth");
+	[[maybe_unused]] auto [number, name] = m_dtree.GetPlaceholders("number", "name");
 	[[maybe_unused]] auto [exam, math, eng, jpn, sci, soc] = m_dtree.GetPlaceholders("exam", "math", "japanese", "english", "science", "social");
 
 	//戻り値はstd::tuple<std::vector<double>, std::vector<double>>;

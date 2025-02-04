@@ -24,32 +24,32 @@ class Matrix
 		return ((size_t)sizes * ...);
 	}
 
-	template <size_t Dim, template <class...> class Qualifier>
+	template <size_t Dim_, template <class...> class Qualifier>
 	class Iterator;
-	template <size_t Dim, template <class...> class Qualifier>
+	template <size_t Dim_, template <class...> class Qualifier>
 	class Range
 	{
 		static constexpr bool IsConst = std::is_const_v<Qualifier<T>>;
 	public:
 
-		using iterator = Iterator<Dim - 1, std::type_identity_t>;
-		using const_iterator = Iterator<Dim - 1, std::add_const_t>;
+		using iterator = Iterator<Dim_ - 1, std::type_identity_t>;
+		using const_iterator = Iterator<Dim_ - 1, std::add_const_t>;
 
-		template <size_t Dim_> requires (Dim_ == Dim || Dim_ == Dim + 1)
-		Range(Qualifier<T>* begin, const std::array<uint32_t, Dim_>& sizes)
+		template <size_t Dim__> requires (Dim__ == Dim_ || Dim__ == Dim_ + 1)
+		Range(Qualifier<T>* begin, const std::array<uint32_t, Dim__>& sizes)
 			: m_begin(begin)
 		{
-			for (size_t i = 0; i < Dim; ++i)
+			for (size_t i = 0; i < Dim_; ++i)
 			{
-				if constexpr (Dim_ == Dim) m_sizes[i] = sizes[i];
+				if constexpr (Dim__ == Dim_) m_sizes[i] = sizes[i];
 				else m_sizes[i] = sizes[i + 1];
 			}
 			m_unit = CalcUnit(m_sizes);
 		}
-		Range(const Range<Dim, Qualifier>& r)
+		Range(const Range<Dim_, Qualifier>& r)
 			: m_begin(r.m_begin), m_unit(r.m_unit), m_sizes(r.m_sizes)
 		{}
-		Range<Dim, Qualifier>& operator=(const Range<Dim, Qualifier>& r)
+		Range<Dim_, Qualifier>& operator=(const Range<Dim_, Qualifier>& r)
 		{
 			m_begin = r.m_begin;
 			m_unit = r.m_unit;
@@ -59,15 +59,15 @@ class Matrix
 
 		uint32_t size() const { return m_sizes[0]; }
 
-		Range<Dim - 1, std::type_identity_t> operator[](uint32_t i) requires (!IsConst)
+		Range<Dim_ - 1, std::type_identity_t> operator[](uint32_t i) requires (!IsConst)
 		{
 			assert(i < m_sizes[0]);
-			return Range<Dim - 1, std::type_identity_t>(m_begin + i * m_unit, m_sizes);
+			return Range<Dim_ - 1, std::type_identity_t>(m_begin + i * m_unit, m_sizes);
 		}
-		Range<Dim - 1, std::add_const_t> operator[](uint32_t i) const
+		Range<Dim_ - 1, std::add_const_t> operator[](uint32_t i) const
 		{
 			assert(i < m_sizes[0]);
-			return Range<Dim - 1, std::add_const_t>(m_begin + i * m_unit, m_sizes);
+			return Range<Dim_ - 1, std::add_const_t>(m_begin + i * m_unit, m_sizes);
 		}
 		iterator begin() requires (!IsConst) { return iterator(m_begin, m_sizes); }
 		iterator end() requires (!IsConst) { return iterator(m_begin + m_sizes[0] * m_unit, m_sizes); }
@@ -79,7 +79,7 @@ class Matrix
 	private:
 		Qualifier<T>* m_begin = nullptr;
 		size_t m_unit = 0;
-		std::array<uint32_t, Dim> m_sizes = {};
+		std::array<uint32_t, Dim_> m_sizes = {};
 	};
 	template <template <class...> class Qualifier>
 	class Range<1, Qualifier>
@@ -127,99 +127,99 @@ class Matrix
 		Qualifier<T>* m_begin = nullptr;
 		Qualifier<T>* m_end = nullptr;
 	};
-	template <size_t Dim, template <class...> class Qualifier>
+	template <size_t Dim_, template <class...> class Qualifier>
 	struct RangePointerProxy
 	{
-		Range<Dim, Qualifier> m_range;
-		Range<Dim, Qualifier>* operator->() { return &m_range; }
+		Range<Dim_, Qualifier> m_range;
+		Range<Dim_, Qualifier>* operator->() { return &m_range; }
 	};
-	template <size_t Dim, template <class...> class Qualifier>
+	template <size_t Dim_, template <class...> class Qualifier>
 	class Iterator
 	{
 		static constexpr bool IsConst = std::is_const_v<Qualifier<T>>;
 	public:
 		using difference_type = ptrdiff_t;
-		using value_type = Range<Dim, Qualifier>;
-		using reference = Range<Dim, Qualifier>;
+		using value_type = Range<Dim_, Qualifier>;
+		using reference = Range<Dim_, Qualifier>;
 		using iterator_category = std::random_access_iterator_tag;
 
 		Iterator() = default;
-		Iterator(Qualifier<T>* pos, const std::array<uint32_t, Dim + 1>& sizes)
+		Iterator(Qualifier<T>* pos, const std::array<uint32_t, Dim_ + 1>& sizes)
 			: m_current(pos)
 		{
-			for (size_t i = 0; i < Dim; ++i) m_sizes[i] = sizes[i + 1];
+			for (size_t i = 0; i < Dim_; ++i) m_sizes[i] = sizes[i + 1];
 			m_unit = CalcUnit(sizes);
 		}
-		Iterator(const Iterator<Dim, Qualifier>& it) = default;
-		Iterator& operator=(const Iterator<Dim, Qualifier>& it) = default;
+		Iterator(const Iterator<Dim_, Qualifier>& it) = default;
+		Iterator& operator=(const Iterator<Dim_, Qualifier>& it) = default;
 
-		Iterator<Dim, Qualifier>& operator++()
+		Iterator<Dim_, Qualifier>& operator++()
 		{
 			m_current += m_unit;
 			return *this;
 		}
-		Iterator<Dim, Qualifier> operator++(int)
+		Iterator<Dim_, Qualifier> operator++(int)
 		{
-			Iterator<Dim, Qualifier> res = *this;
+			Iterator<Dim_, Qualifier> res = *this;
 			++(*this);
 			return res;
 		}
-		Iterator<Dim, Qualifier> operator+=(size_t n)
+		Iterator<Dim_, Qualifier> operator+=(size_t n)
 		{
 			m_current += m_unit * n;
 			return *this;
 		}
-		Iterator<Dim, Qualifier> operator+(size_t n) const
+		Iterator<Dim_, Qualifier> operator+(size_t n) const
 		{
-			Iterator<Dim, Qualifier> res = *this;
+			Iterator<Dim_, Qualifier> res = *this;
 			res += n;
 			return res;
 		}
-		Iterator<Dim, Qualifier>& operator--()
+		Iterator<Dim_, Qualifier>& operator--()
 		{
 			m_current -= m_unit;
 			return *this;
 		}
-		Iterator<Dim, Qualifier> operator--(int)
+		Iterator<Dim_, Qualifier> operator--(int)
 		{
-			Iterator<Dim, Qualifier> res = *this;
+			Iterator<Dim_, Qualifier> res = *this;
 			--(*this);
 			return res;
 		}
-		Iterator<Dim, Qualifier> operator-=(size_t n)
+		Iterator<Dim_, Qualifier> operator-=(size_t n)
 		{
 			m_current -= m_unit * n;
 			return *this;
 		}
-		Iterator<Dim, Qualifier> operator-(size_t n) const
+		Iterator<Dim_, Qualifier> operator-(size_t n) const
 		{
-			Iterator<Dim, Qualifier> res = *this;
+			Iterator<Dim_, Qualifier> res = *this;
 			res -= n;
 			return res;
 		}
 
-		bool operator==(const Iterator<Dim, Qualifier>& it) const
+		bool operator==(const Iterator<Dim_, Qualifier>& it) const
 		{
 			return m_current == it.m_current;
 		}
-		bool operator!=(const Iterator<Dim, Qualifier>& it) const
+		bool operator!=(const Iterator<Dim_, Qualifier>& it) const
 		{
 			return !(*this == it);
 		}
 
-		Range<Dim, Qualifier> operator*() const
+		Range<Dim_, Qualifier> operator*() const
 		{
-			return Range<Dim, Qualifier>(m_current, m_sizes);
+			return Range<Dim_, Qualifier>(m_current, m_sizes);
 		}
-		RangePointerProxy<Dim, Qualifier> operator->() const
+		RangePointerProxy<Dim_, Qualifier> operator->() const
 		{
-			return RangePointerProxy<Dim, Qualifier>{ { m_current, m_sizes } };
+			return RangePointerProxy<Dim_, Qualifier>{ { m_current, m_sizes } };
 		}
 
 	private:
 		Qualifier<T>* m_current = nullptr;
 		size_t m_unit = 0;
-		std::array<uint32_t, Dim> m_sizes = {};
+		std::array<uint32_t, Dim_> m_sizes = {};
 	};
 	template <template <class...> class Qualifier>
 	class Iterator<0, Qualifier>

@@ -15,16 +15,16 @@ void TestEvaluate(Container& tree, const std::vector<Class>& cls,
 	//0層要素。学年とクラス。
 	[[maybe_unused]] auto [grade, class_] = l0;
 	//1層要素。出席番号、名前、生年月日。
-	[[maybe_unused]] auto [number, name, dob] = l1;
+	[[maybe_unused]] auto [number, name] = l1;
 	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
 	[[maybe_unused]] auto [exam, math, jpn, eng, sci, soc] = l2;
 
 	static constexpr bool IsAllCtti = ctti_placeholder<decltype(grade)> && ctti_placeholder<decltype(class_)> &&
-									  ctti_placeholder<decltype(number)> && ctti_placeholder<decltype(name)> && ctti_placeholder<decltype(dob)> &&
+									  ctti_placeholder<decltype(number)> && ctti_placeholder<decltype(name)> &&
 									  ctti_placeholder<decltype(exam)> && ctti_placeholder<decltype(math)> && ctti_placeholder<decltype(jpn)> &&
 									  ctti_placeholder<decltype(eng)> && ctti_placeholder<decltype(sci)> && ctti_placeholder<decltype(soc)>;
 	static constexpr bool IsAllRtti = rtti_placeholder<decltype(grade)> && rtti_placeholder<decltype(class_)> &&
-									  rtti_placeholder<decltype(number)> && rtti_placeholder<decltype(name)> && rtti_placeholder<decltype(dob)> &&
+									  rtti_placeholder<decltype(number)> && rtti_placeholder<decltype(name)> &&
 									  rtti_placeholder<decltype(exam)> && rtti_placeholder<decltype(math)> && rtti_placeholder<decltype(jpn)> &&
 									  rtti_placeholder<decltype(eng)> && rtti_placeholder<decltype(sci)> && rtti_placeholder<decltype(soc)>;
 
@@ -261,14 +261,14 @@ TEST_F(Aggregator, DTree_Evaluate)
 {
 	//0層要素。学年とクラス。
 	auto [grade, class_] = m_dtree.GetPlaceholders("grade", "class_");
-	//1層要素。出席番号、名前、生年月日。
-	auto [number, name, dob] = m_dtree.GetPlaceholders("number", "name", "date_of_birth");
+	//1層要素。出席番号、名前。
+	auto [number, name] = m_dtree.GetPlaceholders("number", "name");
 	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
 	auto [exam, math, jpn, eng, sci, soc] = m_dtree.GetPlaceholders("exam", "math", "japanese", "english", "science", "social");
 
 	TestEvaluate(m_dtree, m_class,
 				 std::make_tuple(grade, class_),
-				 std::make_tuple(number, name, dob),
+				 std::make_tuple(number, name),
 				 std::make_tuple(exam, math, jpn, eng, sci, soc),
 				 std::false_type{});
 }
@@ -277,8 +277,8 @@ TEST_F(Aggregator, STree_Evaluate)
 	//0層要素。学年とクラス。
 	//auto g = m_stree.GetPlaceholder<0, 0>();
 	auto [grade, class_] = m_stree.GetPlaceholders<"grade", "class_">();
-	//1層要素。出席番号、名前、生年月日。
-	auto [number, name, dob] = m_stree.GetPlaceholders<"number", "name", "date_of_birth">();
+	//1層要素。出席番号、名前。
+	auto [number, name] = m_stree.GetPlaceholders<"number", "name">();
 	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
 	auto [exam, math, jpn, eng, sci, soc] = m_stree.GetPlaceholders<"exam", "math", "japanese", "english", "science", "social">();
 
@@ -288,7 +288,7 @@ TEST_F(Aggregator, STree_Evaluate)
 	static_assert(s_hierarchy<decltype(m_stree)>);
 	TestEvaluate(m_stree, m_class,
 				 std::make_tuple(grade, class_),
-				 std::make_tuple(number, name, dob),
+				 std::make_tuple(number, name),
 				 std::make_tuple(exam, math, jpn, eng, sci, soc),
 				 std::false_type{});
 }
@@ -303,8 +303,8 @@ TEST_F(Aggregator, DJoinedContainer_Evaluate_0)
 	//0層要素。学年とクラス。
 	auto [gg, cc] = jtree.GetPlaceholders<0>("grade"_fld, "class_"_fld);
 	auto [grade, class_] = jtree.GetPlaceholders<1>("grade"_fld, "class_"_fld);
-	//1層要素。出席番号、名前、生年月日。
-	auto [number, name, dob] = jtree.GetPlaceholders<1>("number"_fld, "name"_fld, "date_of_birth"_fld);
+	//1層要素。出席番号、名前。
+	auto [number, name] = jtree.GetPlaceholders<1>("number"_fld, "name"_fld);
 	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
 	auto [exam, math, jpn, eng, sci, soc] = jtree.GetPlaceholders<1>("exam", "math", "japanese", "english", "science", "social");
 
@@ -312,7 +312,7 @@ TEST_F(Aggregator, DJoinedContainer_Evaluate_0)
 
 	TestEvaluate(jtree, m_class,
 				 std::make_tuple(grade, class_),
-				 std::make_tuple(number, name, dob),
+				 std::make_tuple(number, name),
 				 std::make_tuple(exam, math, jpn, eng, sci, soc),
 				 std::false_type{});
 }
@@ -326,9 +326,9 @@ TEST_F(Aggregator, DJoinedContainer_Evaluate_1)
 	auto jtree = Join(m_dtree, 1_layer, 1_layer, m_dtree);
 	//0層要素。学年とクラス。
 	auto [grade, class_] = jtree.GetPlaceholders<0>("grade"_fld, "class_"_fld);
-	//1層要素。出席番号、名前、生年月日。
+	//1層要素。出席番号、名前。
 	auto [nu, na] = jtree.GetPlaceholders<0>("number"_fld, "name"_fld);
-	auto [number, name, dob] = jtree.GetPlaceholders<1>("number"_fld, "name"_fld, "date_of_birth"_fld);
+	auto [number, name] = jtree.GetPlaceholders<1>("number"_fld, "name"_fld);
 	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
 	auto [exam, math, jpn, eng, sci, soc] = jtree.GetPlaceholders<1>("exam"_fld, "math"_fld, "japanese"_fld, "english"_fld, "science"_fld, "social"_fld);
 
@@ -336,7 +336,7 @@ TEST_F(Aggregator, DJoinedContainer_Evaluate_1)
 
 	TestEvaluate(jtree, m_class,
 				 std::make_tuple(grade, class_),
-				 std::make_tuple(number, name, dob),
+				 std::make_tuple(number, name),
 				 std::make_tuple(exam, math, jpn, eng, sci, soc),
 				 std::false_type{});
 }
@@ -351,9 +351,9 @@ TEST_F(Aggregator, DJoinedContainer_Evaluate_2)
 	auto jtree = Join(m_dtree, 2_layer, 2_layer, m_dtree);
 	//0層要素。学年とクラス。
 	auto [grade, class_] = jtree.GetPlaceholders<0>("grade"_fld, "class_"_fld);
-	//1層要素。出席番号、名前、生年月日。
+	//1層要素。出席番号、名前。
 	auto [nu, na] = jtree.GetPlaceholders<0>("number"_fld, "name"_fld);
-	auto [number, name, dob] = jtree.GetPlaceholders<1>("number"_fld, "name"_fld, "date_of_birth"_fld);
+	auto [number, name] = jtree.GetPlaceholders<1>("number"_fld, "name"_fld);
 	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
 	auto ee = jtree.GetPlaceholder<0>("exam"_fld);
 	auto [exam, math, jpn, eng, sci, soc] = jtree.GetPlaceholders<1>("exam"_fld, "math"_fld, "japanese"_fld, "english"_fld, "science"_fld, "social"_fld);
@@ -362,7 +362,7 @@ TEST_F(Aggregator, DJoinedContainer_Evaluate_2)
 
 	TestEvaluate(jtree, m_class,
 				 std::make_tuple(grade, class_),
-				 std::make_tuple(number, name, dob),
+				 std::make_tuple(number, name),
 				 std::make_tuple(exam, math, jpn, eng, sci, soc),
 				 std::true_type{});
 }
@@ -380,8 +380,8 @@ TEST_F(Aggregator, DJoinedContainer_Evaluate_0_1)
 	auto jtree = Join(m_dtree, 0_layer, 0_layer, m_dtree, 1_layer, 1_layer, m_dtree);
 	//0層要素。学年とクラス。
 	auto [grade, class_] = jtree.GetPlaceholders<0>("grade"_fld, "class_"_fld);
-	//1層要素。出席番号、名前、生年月日。
-	auto [number, name, dob] = jtree.GetPlaceholders<1>("number"_fld, "name"_fld, "date_of_birth"_fld);
+	//1層要素。出席番号、名前。
+	auto [number, name] = jtree.GetPlaceholders<1>("number"_fld, "name"_fld);
 	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
 	[[maybe_unused]] auto ee = jtree.GetPlaceholder<1>("exam"_fld);
 	auto [exam, math, jpn, eng, sci, soc] = jtree.GetPlaceholders<2>("exam"_fld, "math"_fld, "japanese"_fld, "english"_fld, "science"_fld, "social"_fld);
@@ -391,7 +391,7 @@ TEST_F(Aggregator, DJoinedContainer_Evaluate_0_1)
 
 	TestEvaluate(jtree, m_class,
 				 std::make_tuple(grade, class_),
-				 std::make_tuple(number, name, dob),
+				 std::make_tuple(number, name),
 				 std::make_tuple(exam, math, jpn, eng, sci, soc),
 				 std::false_type{});
 }
@@ -407,9 +407,9 @@ TEST_F(Aggregator, DJoinedContainer_Evaluate_1_2)
 	auto jtree = Join(m_dtree, 1_layer, 1_layer, m_dtree, 2_layer, 2_layer, m_dtree);
 	//0層要素。学年とクラス。
 	auto [grade, class_] = jtree.GetPlaceholders<0>("grade"_fld, "class_"_fld);
-	//1層要素。出席番号、名前、生年月日。
+	//1層要素。出席番号、名前。
 	auto [nu, na] = jtree.GetPlaceholders<0>("number"_fld, "name"_fld);
-	auto [number, name, dob] = jtree.GetPlaceholders<1>("number"_fld, "name"_fld, "date_of_birth"_fld);
+	auto [number, name] = jtree.GetPlaceholders<1>("number"_fld, "name"_fld);
 	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
 	auto ee = jtree.GetPlaceholder<1>("exam"_fld);
 	auto [exam, math, jpn, eng, sci, soc] = jtree.GetPlaceholders<2>("exam"_fld, "math"_fld, "japanese"_fld, "english"_fld, "science"_fld, "social"_fld);
@@ -419,7 +419,7 @@ TEST_F(Aggregator, DJoinedContainer_Evaluate_1_2)
 
 	TestEvaluate(jtree, m_class,
 				 std::make_tuple(grade, class_),
-				 std::make_tuple(number, name, dob),
+				 std::make_tuple(number, name),
 				 std::make_tuple(exam, math, jpn, eng, sci, soc),
 				 std::true_type{});
 }

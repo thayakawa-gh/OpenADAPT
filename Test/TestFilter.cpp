@@ -8,7 +8,7 @@ template <class Container, class Layer0, class Layer1, class Layer2, bool Disabl
 void TestFilter(Container& tree, const std::vector<Class>& clses,
 				const Layer0&, const Layer1& l1, const Layer2& l2, std::bool_constant<Disabled> = std::false_type{})
 {
-	auto [number, name, dob] = l1;
+	auto [number, name] = l1;
 	auto [math, jpn, eng, sci, soc] = l2;
 
 	auto mean_math = mean(cast_f64(math));
@@ -84,23 +84,23 @@ void TestFilter(Container& tree, const std::vector<Class>& clses,
 
 TEST_F(Aggregator, DTree_Filter)
 {
-	auto [number, name, dob] = m_dtree.GetPlaceholders("number", "name", "date_of_birth");
+	auto [number, name] = m_dtree.GetPlaceholders("number", "name");
 	auto [math, eng, jpn, sci, soc] = m_dtree.GetPlaceholders("math", "japanese", "english", "science", "social");
 
 	TestFilter(m_dtree, m_class,
 		std::make_tuple(),
-		std::make_tuple(number, name, dob),
+		std::make_tuple(number, name),
 		std::make_tuple(math, eng, jpn, sci, soc),
 		std::true_type{});
 }
 TEST_F(Aggregator, STree_Filter)
 {
-	auto [number, name, dob] = m_stree.GetPlaceholders<"number", "name", "date_of_birth">();
+	auto [number, name] = m_stree.GetPlaceholders<"number", "name">();
 	auto [math, eng, jpn, sci, soc] = m_stree.GetPlaceholders<"math", "japanese", "english", "science", "social">();
 
 	TestFilter(m_stree, m_class,
 		std::make_tuple(),
-		std::make_tuple(number, name, dob),
+		std::make_tuple(number, name),
 		std::make_tuple(math, eng, jpn, sci, soc),
 		std::true_type{});
 }

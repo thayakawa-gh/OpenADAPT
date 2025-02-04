@@ -1,10 +1,10 @@
-#ifndef ADAPT_KEYWORD_ARGS_H
-#define ADAPT_KEYWORD_ARGS_H
+#ifndef ADAPT_UTILITY_KEYWORD_ARGS_H
+#define ADAPT_UTILITY_KEYWORD_ARGS_H
 
 #include <tuple>
 #include <OpenADAPT/Utility/TypeTraits.h>
 #include <OpenADAPT/Utility/Utility.h>
-#include <OpenADAPT/Utility/Macro.h>
+#include <OpenADAPT/Utility/Macros.h>
 
 namespace adapt
 {
@@ -103,7 +103,7 @@ constexpr bool KeywordExists_impl(KeywordName, Arg&&, [[maybe_unused]] Args&& ..
 template <keyword_name KeywordName, class Default>
 constexpr decltype(auto) GetKeywordArg_impl(KeywordName, [[maybe_unused]] Default&& dflt)
 {
-	if constexpr (std::same_as<std::remove_cvref_t<Default>, EmptyClass>) throw std::exception("Default value does not exist.");
+	if constexpr (std::same_as<std::remove_cvref_t<Default>, EmptyClass>) throw InvalidArg("Default value does not exist.");
 	else return std::forward<Default>(dflt);
 }
 template <keyword_name KeywordName, class Default, keyword_arg Arg, keyword_arg ...Args>

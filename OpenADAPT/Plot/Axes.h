@@ -1,6 +1,7 @@
 #ifndef ADAPT_PLOT_AXES_H
 #define ADAPT_PLOT_AXES_H
 
+#include <OpenADAPT/Utility/Macros.h>
 #include <OpenADAPT/Plot/Core.h>
 
 namespace adapt

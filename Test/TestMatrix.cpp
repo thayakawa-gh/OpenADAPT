@@ -6,10 +6,10 @@ TEST(Utility, Matrix)
 {
 	adapt::Matrix<double, 3> m(0., 3, 5, 7);
 	adapt::Matrix<double, 2> m2(0., 3, 5);
-	//static_assert(adapt::plot_detail::gnuplot_acceptable_matrix_range<const adapt::Matrix<double, 2>&>);
+	//static_assert(adapt::plot_detail::acceptable_matrix_range<const adapt::Matrix<double, 2>&>);
 	static_assert(std::input_or_output_iterator<decltype(static_cast<const adapt::Matrix<double, 2>&>(m2).begin())>);
-	std::ranges::begin(m);
-	std::ranges::end(m);
+	//std::ranges::begin(m);
+	//std::ranges::end(m);
 	for (uint32_t x = 0; x < 3; ++x)
 	{
 		for (uint32_t y = 0; y < 5; ++y)

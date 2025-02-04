@@ -87,6 +87,52 @@ int example_2d(const std::string& output_filename, bool enable_in_memory_data_tr
 	return 0;
 }
 
+int example_histogram(const std::string& output_filename, bool enable_in_memory_data_transfer)
+{
+	//similar to example_2d, but the histogram is automatically generated in the PlotHistogram function.
+	std::string norm = std::to_string(250. / std::sqrt(2 * 3.1415926535));
+	std::string equation = norm + "*exp(-x*x/2)";
+
+	std::mt19937_64 mt(0);
+	std::normal_distribution<> nd(0., 1.);
+	std::vector<double> data;
+	for (int i = 0; i < 1000; ++i)
+	{
+		double x = nd(mt);
+		if (x < -4.0 || x >= 4.0) continue;
+		data.push_back(x);
+	}
+
+	namespace plot = adapt::plot;
+	adapt::Canvas2D g(output_filename);
+	//g.ShowCommands(true);
+	g.EnableInMemoryDataTransfer(enable_in_memory_data_transfer); // Enable or disable datablock feature of gnuplot
+	g.SetTitle("example\\_histogram");
+	g.SetXRange(-4.0, 4.0);
+	g.SetXLabel("x");
+	g.SetYLabel("y");
+	g.PlotPoints(equation, plot::title = "mu = 0, sigma = 1",
+				 plot::s_lines).
+		//err_68 adds xy errorbars to each bin indicating the statistical errors corresponding to a 68% confidence interval.
+		PlotHistogram(data, -4, 4, 32, plot::err_68,
+					  plot::title = "data", plot::c_black, plot::pt_fcir, plot::ps_med_small);
+
+	if (!enable_in_memory_data_transfer)
+	{
+		adapt::Canvas2D g2(output_filename + ".fileplot.png");
+		g2.ShowCommands(true);
+		g2.SetTitle("example\\_histogram");
+		g2.SetXRange(-4.0, 4.0);
+		g2.SetXLabel("x");
+		g2.SetYLabel("y");
+		g2.PlotPoints(equation, plot::title = "mu = 0, sigma = 1",
+					  plot::s_lines).
+			PlotPoints(output_filename + ".tmp1.txt", "1", "2", plot::xerrorbar = "0.125", plot::yerrlow = "3", plot::yerrhigh = "4",
+					   plot::title = "data", plot::c_black, plot::pt_fcir, plot::ps_med_small);
+	}
+	return 0;
+}
+
 int example_scatter(const std::string& output_filename, bool enable_in_memory_data_transfer)
 {
 	std::vector<double> longitudes{ 141.3469, 140.74, 141.1526, 140.8694, 140.1023, 140.3633, 140.4676, 140.4468, 139.8836, 139.0608, 139.6489, 140.1233, 139.6917, 139.6423, 139.0235, 137.2113, 136.6256, 136.2219, 138.5684, 138.1812, 136.7223, 138.3828, 136.9066, 136.5086, 135.8686, 135.7556, 135.5023, 135.183, 135.8048, 135.1675, 134.2383, 133.0505, 133.9344, 132.4553, 131.4714, 134.5594, 134.0434, 132.7657, 133.5311, 130.4017, 130.3009, 129.8737, 130.7417, 131.6126, 131.4202, 130.5581, 127.6809 };
@@ -210,7 +256,7 @@ int example_colormap(const std::string& output_filename, bool enable_in_memory_d
 		g1.SetYRange(-10, 10);
 		g1.SetCBRange(-5, 5);
 		g1.PlotColormap(m, xrange, yrange, plot::notitle).
-			PlotVectors(xfrom, yfrom, xlen, ylen, plot::notitle, plot::c_white, plot::as_noheads);
+			PlotVectors(xfrom, yfrom, xlen, ylen, plot::notitle, plot::c_white, plot::as_nofilled);
 
 		//sleep for a short time to avoid the output image broken by multiplot.
 		std::this_thread::sleep_for(std::chrono::milliseconds(300));
@@ -436,6 +482,9 @@ void QuickstartPlot()
 	std::filesystem::exists("PlotExamples") || std::filesystem::create_directory("PlotExamples");
 	//example_2d("PlotExamples/example_2d.png", false);
 	example_2d("PlotExamples/example_2d-inmemory.png", true);
+
+	//example_histogram("PlotExamples/example_histogram.png", false);
+	example_histogram("PlotExamples/example_histogram-inmemory.png", true);
 
 	//example_scatter("PlotExamples/example_scatter.png", false);
 	example_scatter("PlotExamples/example_scatter-inmemory.png", true);

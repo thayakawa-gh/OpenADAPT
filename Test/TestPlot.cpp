@@ -43,7 +43,7 @@ void func(Args&& ...args)
 	std::cout << "LVector        :";
 	for (auto& vv : lv) std::cout << " " << vv;
 	std::cout << std::endl;
-	for (int i = 0; i < lv.size(); ++i) lv[i] = i * 3;
+	for (int i = 0; i < (int)lv.size(); ++i) lv[i] = i * 3;
 }
 
 TEST_F(Aggregator, KeywordArg)
@@ -80,7 +80,7 @@ void func2(Args&& ...args)
 	std::cout << "LVector        :";
 	for (auto& vv : lv) std::cout << " " << vv;
 	std::cout << std::endl;
-	for (int i = 0; i < lv.size(); ++i) lv[i] = i * 3;
+	for (int i = 0; i < (int)lv.size(); ++i) lv[i] = i * 3;
 }
 TEST_F(Aggregator, KeywordArgWithTag)
 {
@@ -93,4 +93,19 @@ TEST_F(Aggregator, KeywordArgWithTag)
 	std::cout << "LVector        :";
 	for (auto& v : l) std::cout << " " << v;//左辺値参照なので中身が書き換えられる。
 	std::cout << std::endl;
+}
+
+TEST_F(Aggregator, Plot_xyerrorbars)
+{
+	std::vector<double> x = { 1, 2, 3, 4, 5 };
+	std::vector<double> y = { 1, 2, 3, 4, 5 };
+	std::vector<double> xerr = { 0.1, 0.1, 0.1, 0.1, 0.1 };
+	std::vector<double> yerr = { 0.1, 0.2, 0.3, 0.4, 0.5 };
+	std::vector<double> vc = { 1, 2, 3, 4, 5 };
+
+	Canvas2D g("Plot_xyerrorbars.png");
+	g.SetTitle("Plot\\_xyerrorbars");
+	g.SetXLabel("X");
+	g.SetYLabel("Y");
+	g.PlotPoints(x, y, plot::xerrorbar = xerr, plot::yerrorbar = yerr, plot::variable_color = vc);
 }

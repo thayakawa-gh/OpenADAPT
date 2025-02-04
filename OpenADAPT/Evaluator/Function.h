@@ -3,7 +3,7 @@
 
 #include <type_traits>
 #include <OpenADAPT/Utility/TypeTraits.h>
-#include <OpenADAPT/Utility/Macro.h>
+#include <OpenADAPT/Utility/Macros.h>
 #include <OpenADAPT/Common/Concepts.h>
 #include <OpenADAPT/Evaluator/ConstNode.h>
 #include <OpenADAPT/Evaluator/FuncNode.h>

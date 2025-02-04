@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <string_view>
+#include <OpenADAPT/Utility/Macro.h>
 #include <OpenADAPT/Utility/TypeTraits.h>
 #include <OpenADAPT/Utility/Any.h>
 #include <OpenADAPT/Utility/Matrix.h>

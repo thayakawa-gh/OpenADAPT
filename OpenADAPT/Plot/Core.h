@@ -8,6 +8,7 @@
 #include <string>
 #include <string_view>
 #include <cfloat>
+#include <OpenADAPT/Utility/Macros.h>
 #include <OpenADAPT/Utility/Print.h>
 #include <OpenADAPT/Utility/Verbose.h>
 

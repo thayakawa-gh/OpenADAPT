@@ -1,5 +1,5 @@
-#ifndef ADAPT_FUNCTION_H
-#define ADAPT_FUNCTION_H
+#ifndef ADAPT_UTILITY_FUNCTION_H
+#define ADAPT_UTILITY_FUNCTION_H
 
 #include <cstdlib>
 #include <concepts>
@@ -29,6 +29,18 @@ inline void FreeAligned(void* ptr)
 }
 
 inline constexpr bool IsDigit(char c) { return c <= '9' && c >= '0'; }
+
+inline constexpr bool IsIntegral(std::string_view str)
+{
+	if (str.empty()) return false;
+	auto it = str.begin();
+	if (*it == '+' || *it == '-') ++it;
+	for (; it != str.end(); ++it)
+	{
+		if (!IsDigit(*it)) return false;
+	}
+	return true;
+}
 
 //+-数字以外の文字が含まれてはいけない。空白も駄目。
 template <std::integral T>

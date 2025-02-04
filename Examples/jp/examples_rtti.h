@@ -22,7 +22,7 @@ std::array<typename Tree::RttiPlaceholder, 8> GetRttiPlaceholders(const Tree& t)
 	//そのRttiPlaceholderを取得しようとしてもMismatchTypeが投げられる。
 
 	//なお、ADAPTはプレースホルダを取得するために次のようなヘルパーを提供している。
-	ADAPT_GET_PLACEHOLDERS(t, class_, grade, number, name, exam, jpn, math, eng);
+	[[maybe_unused]] ADAPT_GET_PLACEHOLDERS(t, class_, grade, number, name, exam, jpn, math, eng);
 	//これは以下と同等である。
 	//auto [class_, grade, number, name, exam, jpn, math, eng] =\
 	//	t.GetPlaceholders("class_"_fld, "grade"_fld, "number"_fld, "name"_fld, "exam"_fld, "jpn"_fld, "math"_fld, "eng"_fld);
