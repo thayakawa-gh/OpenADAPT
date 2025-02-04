@@ -240,7 +240,7 @@ protected:
 			std::vector<double> yerrlow(p.xnbin), yerrhigh(p.xnbin);
 			for (size_t i = 0; i < p.xnbin; ++i)
 			{
-				auto [low, high] = GetPoissonCI68(hist[i]);
+				auto [low, high] = GetPoissonCI68((uint64_t)hist[i]);
 				yerrlow[i] = low;
 				yerrhigh[i] = high;
 			}
