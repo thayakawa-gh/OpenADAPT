@@ -20,8 +20,6 @@ namespace adapt
 namespace plot_detail
 {
 
-
-
 // 1. 数値型のrange
 // 2. 文字列型のrange
 // 3. 単一の数値
@@ -34,17 +32,23 @@ concept acceptable_arg = acceptable_range<Type> || arithmetic<Type> || std::conv
 
 template <ranges::arithmetic_range Range>
 struct ArithmeticRange {};
+template <ranges::string_range Range>
+struct StringRange {};
 template <acceptable_arg>
 struct AcceptableArg {};
 
 using AnyArithmeticRange = AnyTypeKeyword<ArithmeticRange>;
+using AnyStringRange = AnyTypeKeyword<StringRange>;
 using AnyAcceptableArg = AnyTypeKeyword<AcceptableArg>;
+
 struct BaseOption {};
 struct FillOption {};
+struct ColorOption {};
 struct LineOption {};
 struct PointOption {};
 struct VectorOption {};
 struct FilledCurveOption {};
+struct LabelOption {};
 struct ColormapOption {};
 struct HistogramOption {};
 struct Histogram2DOption {};
@@ -52,11 +56,13 @@ struct Histogram2DOption {};
 template <class T>
 concept base_option = keyword_arg_tagged_with<T, BaseOption>;
 template <class T>
-concept point_option = keyword_arg_tagged_with<T, BaseOption, LineOption, FillOption, PointOption>;
+concept point_option = keyword_arg_tagged_with<T, BaseOption, ColorOption, LineOption, FillOption, PointOption>;
 template <class T>
-concept vector_option = keyword_arg_tagged_with<T, BaseOption, LineOption, VectorOption>;
+concept vector_option = keyword_arg_tagged_with<T, BaseOption, ColorOption, LineOption, VectorOption>;
 template <class T>
-concept filledcurve_option = keyword_arg_tagged_with<T, BaseOption, FillOption, FilledCurveOption>;
+concept filledcurve_option = keyword_arg_tagged_with<T, BaseOption, ColorOption, FillOption, FilledCurveOption>;
+template <class T>
+concept label_option = keyword_arg_tagged_with<T, BaseOption, ColorOption, LabelOption>;
 
 template <class Range>
 concept acceptable_matrix_range = (ranges::arithmetic_matrix_range<Range> || std::convertible_to<Range, std::string_view>) && !ranges::string_range<Range>;
@@ -70,7 +76,7 @@ template <class Opt>
 concept colormap_option = keyword_arg_tagged_with<Opt, BaseOption, ColormapOption>;
 
 template <class Opt>
-concept histogram_option = keyword_arg_tagged_with<Opt, BaseOption, HistogramOption, LineOption, PointOption>;
+concept histogram_option = keyword_arg_tagged_with<Opt, BaseOption, HistogramOption, ColorOption, LineOption, PointOption>;
 template <class Opt>
 concept histogram2d_option = keyword_arg_tagged_with<Opt, BaseOption, Histogram2DOption, ColormapOption>;
 
@@ -79,38 +85,48 @@ concept histogram2d_option = keyword_arg_tagged_with<Opt, BaseOption, Histogram2
 namespace plot
 {
 
+//BaseOption
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(x, plot_detail::AnyAcceptableArg, plot_detail::BaseOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(y, plot_detail::AnyAcceptableArg, plot_detail::BaseOption)
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(z, plot_detail::AnyAcceptableArg, plot_detail::BaseOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(title, std::string_view, plot_detail::BaseOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(title_add_entries, int64_t, plot_detail::BaseOption)//データプロットの場合に、データ点の数をタイトルに追加する。
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(axis, std::string_view, plot_detail::BaseOption)//y2軸を使いたい場合などに、"x1y2"のように指定する。
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(column, std::vector<std::string>, plot_detail::BaseOption);
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(input, std::string_view, plot_detail::BaseOption);
 
+//LineOption
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(linetype, int, plot_detail::LineOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(linewidth, double, plot_detail::LineOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(dashtype, std::vector<int>, plot_detail::LineOption)
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(color, std::string_view, plot_detail::LineOption)
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(color_rgb, std::string_view, plot_detail::LineOption)
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(variable_color, plot_detail::AnyAcceptableArg, plot_detail::LineOption)
 
+//ColorOption
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(color, std::string_view, plot_detail::ColorOption)
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(color_rgb, std::string_view, plot_detail::ColorOption)
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(variable_color, plot_detail::AnyAcceptableArg, plot_detail::ColorOption)
+
+//PointOption
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(style, Style, plot_detail::PointOption)
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(pointtype, int, plot_detail::PointOption)
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(pointsize, double, plot_detail::PointOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(smooth, Smooth, plot_detail::PointOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(xerrorbar, plot_detail::AnyAcceptableArg, plot_detail::PointOption)//xerrorbarの大きさ
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(yerrorbar, plot_detail::AnyAcceptableArg, plot_detail::PointOption)//yerrorbarの大きさ
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(zerrorbar, plot_detail::AnyAcceptableArg, plot_detail::PointOption)//zerrorbarの大きさ
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(xerrlow, plot_detail::AnyAcceptableArg, plot_detail::PointOption)//xerrorbarの左側（大きさではなく座標）
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(xerrhigh, plot_detail::AnyAcceptableArg, plot_detail::PointOption)//xerrorbarの右側（大きさではなく座標）
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(yerrlow, plot_detail::AnyAcceptableArg, plot_detail::PointOption)//yerrorbarの下側（大きさではなく座標）
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(yerrhigh, plot_detail::AnyAcceptableArg, plot_detail::PointOption)//yerrorbarの上側（大きさではなく座標）
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(pointtype, int, plot_detail::PointOption)
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(pointsize, double, plot_detail::PointOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(variable_size, plot_detail::AnyAcceptableArg, plot_detail::PointOption)
 
+//VectorOption
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(xlen, plot_detail::AnyAcceptableArg, plot_detail::VectorOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(ylen, plot_detail::AnyAcceptableArg, plot_detail::VectorOption)
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(zlen, plot_detail::AnyAcceptableArg, plot_detail::VectorOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(arrowhead, ArrowHead, plot_detail::VectorOption)//arrowheadをどこに付けるか。head:先端、heads:両端、noheads:なし
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(arrowfill, ArrowFill, plot_detail::VectorOption)//arrowheadの塗りつぶし。filled:塗りつぶし、nofilled:塗りつぶしなし
 
+//FillOption
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(fillpattern, int, plot_detail::FillOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(fillsolid, double, plot_detail::FillOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION(filltransparent, plot_detail::FillOption)
@@ -119,18 +135,49 @@ ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(variable_fillcolor, plot_detail::A
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(bordercolor, std::string_view, plot_detail::FillOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(bordertype, int, plot_detail::FillOption)//linetype
 
+//FilledCurveOption
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(ybelow, plot_detail::AnyAcceptableArg, plot_detail::FilledCurveOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(baseline, std::string_view, plot_detail::FilledCurveOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION(closed, plot_detail::FilledCurveOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION(above, plot_detail::FilledCurveOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION(below, plot_detail::FilledCurveOption)
 
+//HistogramOption
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(xmin, double, plot_detail::HistogramOption);
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(xmax, double, plot_detail::HistogramOption);
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(xnbin, size_t, plot_detail::HistogramOption);
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(data, plot_detail::AnyArithmeticRange, plot_detail::HistogramOption);
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION(err_68, plot_detail::HistogramOption);
-//ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(fit_gauss, ADAPT_TIE_ARGS(std::pair<double, double>), plot_detail::HistogramOption);//mean、sigmaの初期値を与える。
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(binerror, BinError, plot_detail::HistogramOption);
+
+//LabelOption
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(label, plot_detail::AnyAcceptableArg, plot_detail::LabelOption);
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(labelpos, LabelPos, plot_detail::LabelOption);
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(labelrotate, double, plot_detail::LabelOption);
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION(noenhanced, plot_detail::LabelOption);
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(labelfont, std::string_view, plot_detail::LabelOption);
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(labeloverlay, LabelOverlay, plot_detail::LabelOption);
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(labeloffset, ADAPT_TIE_ARGS(std::pair<double, double>), plot_detail::LabelOption);
+
+//ColormapOption
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(map, plot_detail::AnyMatrix, plot_detail::ColormapOption)
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(xrange, plot_detail::AnyCoordRange, plot_detail::ColormapOption)
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(yrange, plot_detail::AnyCoordRange, plot_detail::ColormapOption)
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(xminmax, ADAPT_TIE_ARGS(std::pair<double, double>), plot_detail::ColormapOption)
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(yminmax, ADAPT_TIE_ARGS(std::pair<double, double>), plot_detail::ColormapOption)
+//options for contour plot
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION(with_contour, plot_detail::ColormapOption)
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION(without_surface, plot_detail::ColormapOption)
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrsmooth, CntrSmooth, plot_detail::ColormapOption)
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrpoints, int, plot_detail::ColormapOption)//the number of lines for cspline and bspline
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrorder, int, plot_detail::ColormapOption)//order for bspline, [2, 10]
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrlevels_auto, int, plot_detail::ColormapOption)
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrlevels_discrete, const std::vector<double>&, plot_detail::ColormapOption)
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrlevels_incremental, ADAPT_TIE_ARGS(std::tuple<double, double, double>), plot_detail::ColormapOption)
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrcolor, std::string_view, plot_detail::ColormapOption)
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION(variable_cntrcolor, plot_detail::ColormapOption)
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrlinetype, int, plot_detail::ColormapOption)
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrlinewidth, double, plot_detail::ColormapOption)
+
 
 // タイトルなし指定の短縮版
 inline constexpr auto notitle = (title = "notitle");
@@ -226,29 +273,32 @@ inline constexpr auto as_nofilled = (arrowfill = ArrowFill::nofilled);
 inline constexpr auto as_empty = (arrowfill = ArrowFill::empty);
 
 
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(z, plot_detail::AnyAcceptableArg, plot_detail::BaseOption)
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(zerrorbar, plot_detail::AnyAcceptableArg, plot_detail::PointOption)
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(zlen, plot_detail::AnyAcceptableArg, plot_detail::VectorOption)
+//ヒストグラムのビンのエラーバーの短縮版
+inline constexpr auto he_poisson = (binerror = BinError::poisson68);
+inline constexpr auto he_poisson95 = (binerror = BinError::poisson95);
+inline constexpr auto he_normal = (binerror = BinError::normal68);
+inline constexpr auto he_normal95 = (binerror = BinError::normal95);
 
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(map, plot_detail::AnyMatrix, plot_detail::ColormapOption)
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(xrange, plot_detail::AnyCoordRange, plot_detail::ColormapOption)
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(yrange, plot_detail::AnyCoordRange, plot_detail::ColormapOption)
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(xminmax, ADAPT_TIE_ARGS(std::pair<double, double>), plot_detail::ColormapOption)
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(yminmax, ADAPT_TIE_ARGS(std::pair<double, double>), plot_detail::ColormapOption)
+//ラベルの位置指定の短縮版
+inline constexpr auto lp_left = (labelpos = LabelPos::left);
+inline constexpr auto lp_center = (labelpos = LabelPos::center);
+inline constexpr auto lp_right = (labelpos = LabelPos::right);
 
-//options for contour plot
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION(with_contour, plot_detail::ColormapOption)
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION(without_surface, plot_detail::ColormapOption)
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrsmooth, CntrSmooth, plot_detail::ColormapOption)
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrpoints, int, plot_detail::ColormapOption)//the number of lines for cspline and bspline
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrorder, int, plot_detail::ColormapOption)//order for bspline, [2, 10]
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrlevels_auto, int, plot_detail::ColormapOption)
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrlevels_discrete, const std::vector<double>&, plot_detail::ColormapOption)
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrlevels_incremental, ADAPT_TIE_ARGS(std::tuple<double, double, double>), plot_detail::ColormapOption)
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrcolor, std::string_view, plot_detail::ColormapOption)
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION(variable_cntrcolor, plot_detail::ColormapOption)
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrlinetype, int, plot_detail::ColormapOption)
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrlinewidth, double, plot_detail::ColormapOption)
+//ラベル回転指定の短縮版
+inline constexpr auto lr_0 = (labelrotate = 0.0);
+inline constexpr auto lr_45 = (labelrotate = 45.0);
+inline constexpr auto lr_90 = (labelrotate = 90.0);
+inline constexpr auto lr_135 = (labelrotate = 135.0);
+inline constexpr auto lr_180 = (labelrotate = 180.0);
+inline constexpr auto lr_m45 = (labelrotate = -45.0);
+inline constexpr auto lr_m90 = (labelrotate = -90.0);
+inline constexpr auto lr_m135 = (labelrotate = -135.0);
+
+//ラベルオーバーレイ指定の短縮版
+inline constexpr auto lo_front = (labeloverlay = LabelOverlay::front);
+inline constexpr auto lo_back = (labeloverlay = LabelOverlay::back);
+
+
 
 }
 
@@ -626,6 +676,92 @@ auto MakeFilledCurveParam(Options ...ops)
 	ADAPT_DETAIL_MAKE_PARAM_MACRO(FilledCurveParam, x, y, ybelow, variable_fillcolor);
 }
 
+template <acceptable_arg X, acceptable_arg Y, acceptable_arg L, acceptable_arg VTC>
+struct LabelParam : public PlotParamBase
+{
+	template <keyword_arg ...Ops>
+	LabelParam(X x_, Y y_, L l_, VTC vtc, Ops ...ops)
+		: x(x_), y(y_), label(l_), variable_color(vtc)
+	{
+		SetOptions(ops...);
+	}
+	template <keyword_arg ...Ops>
+	void SetOptions(Ops ...ops)
+	{
+		SetBaseOptions(ops...);
+		ADAPT_DETAIL_SET_OPTIONS_MACRO(color, color_rgb, labelpos, labelrotate, noenhanced, labelfont, labeloverlay, labeloffset);
+	}
+	bool IsData() const
+	{
+		return input.empty() && !IsEmptyView<X>() && !IsEmptyView<Y>() && !IsEmptyView<L>();
+	}
+	bool IsFile() const
+	{
+		return !input.empty() && IsString<X>() && IsString<Y>() && IsString<L>();
+	}
+	bool IsEquation() const
+	{
+		return !input.empty() && IsEmptyView<X>() && IsEmptyView<Y>() && IsEmptyView<L>();
+	}
+	static constexpr bool HasVariableTextcolor() { return !IsEmptyView<VTC>(); }
+
+	[[no_unique_address]] X x;
+	[[no_unique_address]] Y y;
+	[[no_unique_address]] L label;
+	std::string color;
+	std::string color_rgb;
+	[[no_unique_address]] VTC variable_color;
+
+	LabelPos labelpos = LabelPos::none;
+	double labelrotate = std::numeric_limits<double>::quiet_NaN();
+	bool noenhanced = false;
+	std::string labelfont;
+	LabelOverlay labeloverlay = LabelOverlay::none;
+	std::pair<double, double> labeloffset = { 0., 0. };
+};
+
+template <keyword_arg ...Options>
+auto MakeLabelParam(Options ...ops)
+{
+	ADAPT_DETAIL_MAKE_PARAM_MACRO(LabelParam, x, y, label, variable_color);
+}
+
+template <acceptable_arg X, acceptable_arg Y, acceptable_arg Z, acceptable_arg L, acceptable_arg VTC>
+struct LabelParam3D : public LabelParam<X, Y, L, VTC>
+{
+	using Base = LabelParam<X, Y, L, VTC>;
+	template <keyword_arg ...Ops>
+	LabelParam3D(X x_, Y y_, Z z_, L l_, VTC vtc, Ops ...ops)
+		: Base(x_, y_, l_, vtc), z(z_)
+	{
+		SetOptions(ops...);
+	}
+	template <keyword_arg ...Ops>
+	void SetOptions(Ops ...ops)
+	{
+		Base::SetOptions(ops...);
+	}
+	bool IsData() const
+	{
+		return Base::IsData() && !PlotParamBase::IsEmptyView<Z>();
+	}
+	bool IsFile() const
+	{
+		return Base::IsFile() && PlotParamBase::IsString<Z>();
+	}
+	bool IsEquation() const
+	{
+		return Base::IsEquation() && PlotParamBase::IsEmptyView<Z>();
+	}
+	[[no_unique_address]] Z z;
+};
+
+template <keyword_arg ...Options>
+auto MakeLabelParam3D(Options ...ops)
+{
+	ADAPT_DETAIL_MAKE_PARAM_MACRO(LabelParam3D, x, y, z, label, variable_color);
+}
+
 // Gnuplotでカラーマップを作成する際、
 // corners2color c1を指定しているためx、y座標は矩形の左下座標をファイルに出力する必要がある。
 // 一方で等高線を書くとき、矩形の中央の座標も参照する必要がある。
@@ -874,6 +1010,13 @@ auto MakeHistogramParam(Options ...ops)
 	return HistogramParam<decltype(data)>(data, xmin, xmax, xnbin, ops...);
 }
 
+#undef ADAPT_DETAIL_GET_KEYWORD_ARG_AS_VIEW
+#undef ADAPT_DETAIL_DECLTYPE_AUTO
+#undef ADAPT_DETAIL_FORWARD_ARG
+#undef ADAPT_DETAIL_MAKE_PARAM_MACRO
+#undef ADAPT_DETAIL_GET_KEYWORD_ARG_IF_EXIST
+#undef ADAPT_DETAIL_SET_OPTIONS_MACRO
+
 
 template <class Range>
 auto ConvertUniqueToRange(Range&& range)
@@ -910,6 +1053,10 @@ auto MakeDataObject(Stream& stream, std::tuple<Ranges...> ranges)
 	auto&& end = zipped.end();
 	for (; it != end; ++it)
 	{
+		//print::quote<true>を指定してstd::stringに引用符を付与すると
+		//xyticに文字列を使うときにスペースなどに対応できるので便利ではあるが、
+		//今度はdatetimeのカラムを認識してくれなくなるらしい。
+		//仕方ないので、スペースを含む文字列は自前で引用符をつけてもらうことにする。
 		std::apply([&stream](auto&& ...args) { adapt::Print(stream, args...); }, *it);
 	}
 	if (!IsAllEnd(TypeList<Ranges...>{}, it, end, std::make_index_sequence<sizeof...(Ranges)>{}))
@@ -1020,9 +1167,10 @@ auto ArrangeColumnOption(std::map<std::string, std::variant<int, std::string>>& 
 		else if constexpr (ranges::string_range<DecayedType>)
 		{
 			std::string_view axis = axes[I];
-			if (canvas->IsDateTimeEnabled(axis)) cols[names[I]] = Count;
+			if (canvas->IsDateTimeEnabled(axis) || axis.empty()) cols[names[I]] = Count;
 			else
 			{
+				//axisに有効値が入っている場合、これはxyz軸などのラベルを指定している。
 				cols[names[I]] = "$0";
 				labelcols.push_back(std::format("{}tic({})", axis, Count));
 			}
@@ -1422,6 +1570,45 @@ void MakePlotCommand(std::string_view, bool,
 		if (!p.bordercolor.empty()) bd += " linecolor '" + p.bordercolor + "'";
 		if (!bd.empty()) c += " border" + bd;
 	}
+}
+template <class Param>
+	requires derived_from_xt<Param, LabelParam>
+void MakePlotCommand(std::string_view, bool,
+					 const std::map<std::string, std::variant<int, std::string>>& cols,
+					 const Param& p, std::string& c, std::string& usg)
+{
+	constexpr bool is_3d = derived_from_xt<Param, LabelParam3D>;
+	c += " labels";
+	if (p.IsData() || p.IsFile())
+	{
+		usg += std::format("{}:{}", GetCol(cols.at("x")), GetCol(cols.at("y")));
+		if constexpr (is_3d) usg += std::format(":{}", GetCol(cols.at("z")));
+		usg += std::format(":{}", GetCol(cols.at("label")));
+	}
+
+	//gnuplotの位置指定は「ラベルに対して点が右か左か」という直感と逆になっているので、ここで反転する。
+	if (p.labelpos == LabelPos::center) c += " center";
+	else if (p.labelpos == LabelPos::left) c += " right";
+	else if (p.labelpos == LabelPos::right) c += " left";
+
+	if (!std::isnan(p.labelrotate)) c += std::format(" rotate by {}", p.labelrotate);
+
+	if (p.noenhanced) c += " noenhanced";
+
+	if (!p.labelfont.empty()) c += std::format(" font \"{}\"", p.labelfont);
+
+	if (p.labeloverlay == LabelOverlay::front) c += " front";
+	else if (p.labeloverlay == LabelOverlay::back) c += " back";
+
+	if (!p.color.empty()) c += std::format(" textcolor '{}'", p.color);
+	else if (!p.color_rgb.empty()) c += std::format(" textcolor rgb '{}'", p.color_rgb);
+	else if constexpr (Param::HasVariableTextcolor())
+	{
+		c += " textcolor palette";
+		if (p.IsData() || p.IsFile()) usg += std::format(":{}", GetCol(cols.at("variable_color")));
+	}
+
+	if (p.labeloffset != std::pair{ 0., 0. }) c += std::format(" offset {}, {}", p.labeloffset.first, p.labeloffset.second);
 }
 template <class Map, class X, class Y>
 void MakePlotCommand(std::string_view output_name, bool inmemory,

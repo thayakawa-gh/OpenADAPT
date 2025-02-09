@@ -115,14 +115,14 @@ int example_histogram(const std::string& output_filename, bool enable_in_memory_
 	g.SetYLabel("y");
 	g.PlotPoints(equation, plot::title = "mu = 0, sigma = 1",
 				 plot::s_lines).
-		//err_68 adds xy errorbars to each bin indicating the statistical errors corresponding to a 68% confidence interval.
-		PlotHistogram(data, -4, 4, 32, plot::err_68,
+		//err_poisson adds xy errorbars to each bin indicating the statistical errors corresponding to a 68% confidence interval.
+		PlotHistogram(data, -4, 4, 32, plot::he_poisson,
 					  plot::title = "data", plot::c_black, plot::pt_fcir, plot::ps_med_small);
 
 	if (!enable_in_memory_data_transfer)
 	{
 		adapt::Canvas2D g2(output_filename + ".fileplot.png");
-		g2.ShowCommands(true);
+		//g2.ShowCommands(true);
 		g2.SetTitle("example\\_histogram");
 		g2.SetXRange(-4.0, 4.0);
 		g2.SetXLabel("x");
@@ -155,6 +155,43 @@ int example_scatter(const std::string& output_filename, bool enable_in_memory_da
 	g.PlotPoints("PlotExamples/world_10m.txt", "1", "2", plot::notitle, plot::c_dark_gray, plot::s_lines).
 		PlotPoints(longitudes, latitudes, plot::notitle,
 				   plot::s_points, plot::pt_fcir, plot::color_rgb = "0xAA6688FF", plot::variable_size = pop_size);
+
+	return 0;
+}
+
+int example_labels(const std::string& output_filename, bool enable_in_memory_data_transfer)
+{
+	std::vector<std::string> cities = { "London", "Paris", "Berlin", "Rome", "Madrid", "Amsterdam", "Brussels", "Vienna", "Prague", "Warsaw", "Budapest", "Stockholm", "Copenhagen", "Helsinki", "Oslo", "Dublin", "Lisbon", "Athens", "Istanbul", "Kyiv" };
+	std::vector<double> latitudes = { 51.5074, 48.8566, 52.5200, 41.9028, 40.4168, 52.3676, 50.8503, 48.2082, 50.0755, 52.2298, 47.4979, 59.3293, 55.6761, 60.1695, 59.9139, 53.3498, 38.7169, 37.9838, 41.0082, 50.4501 };
+	std::vector<double> longitudes = { -0.1278, 2.3522, 13.4050, 12.4964, -3.7038, 4.9041, 4.3517, 16.3738, 14.4378, 21.0122, 19.0402, 18.0686, 12.5683, 24.9354, 10.7522, -6.2603, -9.1399, 23.7275, 28.9784, 30.5234 };
+	std::vector<int> populations = { 8982000, 2148000, 3769000, 2873000, 3266000, 872680, 1867000, 1921000, 1335000, 1794000, 1756000, 975551, 805402, 658864, 702543, 554554, 544851, 664046, 15462452, 2963199 };
+
+	//If you want to plot labels with different sizes, label strings should be formatted as "{/=fontsize label}".
+	auto zip = adapt::views::Zip(cities, populations);
+	auto it = zip.begin();
+	auto end = zip.end();
+	static_assert(std::sentinel_for<decltype(end), decltype(it)>);
+
+	auto dscities = adapt::views::Zip(cities, populations) |
+		std::views::transform([](const auto& x) { return std::format("\"{{/={} {}}}\"", std::sqrt(std::get<1>(x) / 10000), std::get<0>(x)); });
+
+	namespace plot = adapt::plot;
+	adapt::Canvas2D g(output_filename);
+	g.EnableInMemoryDataTransfer(enable_in_memory_data_transfer);
+	g.SetXRange(-10, 40);
+	g.SetYRange(35, 65);
+	g.SetSizeRatio(1);
+	g.SetXLabel("longitude");
+	g.SetYLabel("latitude");
+	g.SetCBLabel("population");
+	g.SetLogCB();
+	g.SetTitle("Europe major cities");
+	// world_10m.txt can be downloaded from https://gnuplotting.org/plotting-the-world-revisited/
+	g.PlotPoints("PlotExamples/world_10m.txt", "1", "2", plot::notitle, plot::c_dark_gray, plot::s_lines).
+		PlotPoints(longitudes, latitudes, plot::notitle, plot::pt_fbox, plot::c_dark_gray).
+		//PlotLabels(longitudes, latitudes, cities, plot::labelfont = "Times New Roman,12", plot::lp_center, plot::notitle, plot::labeloffset = {0.0, 0.7});// labels with the same size
+		PlotLabels(longitudes, latitudes, dscities, plot::variable_color = populations,
+				   plot::labelfont = "Times New Roman", plot::lp_center, plot::notitle, plot::labeloffset = { 0.0, 0.7 });// labels with different sizes
 
 	return 0;
 }
@@ -295,6 +332,38 @@ int example_colormap(const std::string& output_filename, bool enable_in_memory_d
 		g1.PlotColormap(output_filename + ".map_tmp.tmp0.txt", "1", "2", "5", plot::notitle).
 			PlotVectors(output_filename + ".map_tmp.tmp1.txt", "1", "2", "3", "4", plot::notitle, plot::c_white);
 	}
+	return 0;
+}
+
+int example_labels_on_colormap(const std::string& output_filename, bool enable_in_memory_data_transfer)
+{
+	std::vector<int> x;
+	std::vector<int> y;
+	std::vector<int> label;
+	adapt::Matrix<double> m(10, 10);
+	for (int i = 1; i <= 10; ++i)
+	{
+		for (int j = 1; j <= 10; ++j)
+		{
+			int lcm = std::lcm(i, j);
+			m[i - 1][j - 1] = lcm;
+			x.push_back(i);
+			y.push_back(j);
+			label.push_back(lcm);
+		}
+	}
+
+	namespace plot = adapt::plot;
+	adapt::CanvasCM g(output_filename);
+	g.EnableInMemoryDataTransfer(enable_in_memory_data_transfer);
+	g.SetTitle("example\\_labels\\_on\\_colormap");
+	g.SetXLabel("m");
+	g.SetYLabel("n");
+	g.SetSizeRatio(1);
+	g.SetXRange(0.5, 10.5);
+	g.SetYRange(0.5, 10.5);
+	g.PlotColormap(m, { 1, 10 }, { 1, 10 }, plot::notitle).
+		PlotLabels(x, y, label, plot::notitle, plot::lp_center, plot::c_white);
 	return 0;
 }
 
@@ -490,6 +559,12 @@ void PlotVariations()
 
 	//example_scatter("PlotExamples/example_scatter.png", false);
 	example_scatter("PlotExamples/example_scatter-inmemory.png", true);
+
+	//example_labels("PlotExamples/example_labels.png", false);
+	example_labels("PlotExamples/example_labels-inmemory.png", true);
+
+	//example_labels_on_colormap("PlotExamples/example_labels_on_colormap.png", false);
+	example_labels_on_colormap("PlotExamples/example_labels_on_colormap-inmemory.png", true);
 
 	//example_colormap("PlotExamples/example_colormap.png", false);
 	example_colormap("PlotExamples/example_colormap-inmemory.png", true);

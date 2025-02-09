@@ -24,8 +24,8 @@ class ZippedIterator_impl<std::tuple<Iterators...>, std::index_sequence<Indices.
 public:
 
 	using iterator_category = std::input_iterator_tag;
-	using difference_type = typename std::tuple_element_t<0, std::tuple<std::iterator_traits<Iterators>...>>::difference_type;
-	using value_type = std::tuple<typename std::iterator_traits<Iterators>::value_type...>;
+	using difference_type = typename std::tuple_element_t<0, std::tuple<std::iter_difference_t<Iterators>...>>;
+	using value_type = std::tuple<std::iter_value_t<Iterators>...>;
 	using reference = std::tuple<std::iter_reference_t<Iterators>...>;
 
 	ZippedIterator_impl() = default;
@@ -33,6 +33,10 @@ public:
 	ZippedIterator_impl(Iters&& ...cs)
 		: mIterators(std::forward<Iters>(cs)...)
 	{}
+	ZippedIterator_impl(const ZippedIterator_impl&) = default;
+	ZippedIterator_impl(ZippedIterator_impl&&) = default;
+	ZippedIterator_impl& operator=(const ZippedIterator_impl&) = default;
+	ZippedIterator_impl& operator=(ZippedIterator_impl&&) = default;
 
 	ZippedIterator_impl& operator++()
 	{
@@ -76,9 +80,14 @@ public:
 
 	ZippedSentinel_impl() = default;
 	template <class ...Ss>
+		requires (std::convertible_to<Ss, Sentinels> && ...)
 	ZippedSentinel_impl(Ss&& ...ss)
 		: mIterators(std::forward<Ss>(ss)...)
 	{}
+	ZippedSentinel_impl(const ZippedSentinel_impl&) = default;
+	ZippedSentinel_impl(ZippedSentinel_impl&&) = default;
+	ZippedSentinel_impl& operator=(const ZippedSentinel_impl&) = default;
+	ZippedSentinel_impl& operator=(ZippedSentinel_impl&&) = default;
 	template <class ZippedIterator>
 	friend bool operator==(const ZippedIterator& it, const ZippedSentinel_impl& end)
 	{
@@ -310,7 +319,7 @@ namespace ranges
 template <class Range>
 concept arithmetic_range = std::ranges::input_range<Range> && arithmetic<std::ranges::range_value_t<Range>>;
 template <class Range>
-concept string_range = std::ranges::input_range<Range> && std::convertible_to<std::ranges::range_value_t<Range>, std::string_view>;
+concept string_range = std::ranges::input_range<Range> && std::convertible_to<std::ranges::range_value_t<Range>, std::string>;
 template <class Range>
 concept range_of_range = std::ranges::input_range<Range> && std::ranges::input_range<std::ranges::range_value_t<Range>>;
 template <class Range>

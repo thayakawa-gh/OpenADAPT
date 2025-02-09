@@ -15,13 +15,17 @@
 namespace adapt
 {
 
-enum class Style { none, lines, points, linespoints, dots, impulses, boxes, steps, fsteps, histeps, };
-enum class Smooth { none, unique, frequency, cumulative, cnormal, kdensity, csplines, acsplines, bezier, sbezier, };
-enum class ArrowHead { none, head, heads, nohead, };
-enum class ArrowFill { none, filled, empty, nofilled, noborder, };
+enum class Style : int16_t { none, lines, points, linespoints, dots, impulses, boxes, steps, fsteps, histeps, };
+enum class Smooth : int16_t { none, unique, frequency, cumulative, cnormal, kdensity, csplines, acsplines, bezier, sbezier, };
+enum class ArrowHead : int16_t { none, head, heads, nohead, };
+enum class ArrowFill : int16_t { none, filled, empty, nofilled, noborder, };
+enum class LabelPos : int16_t { none, left, center, right, };
+enum class LabelOverlay : int16_t { none, front, back, };
 
-enum class Contour { none, base, surface, both, };
-enum class CntrSmooth { none, linear, cubicspline, bspline };
+enum BinError : int16_t { none, poisson68, poisson95, normal68, normal95, };
+
+enum class Contour : int16_t { none, base, surface, both, };
+enum class CntrSmooth : int16_t { none, linear, cubicspline, bspline };
 
 class Canvas
 {
@@ -220,28 +224,28 @@ public:
 			if (extension == ".png")
 			{
 				if (sizex == 0 && sizey == 0) sizex = 720, sizey = 540;
-				Command(std::format("set terminal pngcairo enhanced size {}, {} font \"Arial\"\nset output '{}'", sizex, sizey, repout));
+				Command(std::format("set terminal pngcairo enhanced size {}, {} font \"sans\"\nset output '{}'", sizex, sizey, repout));
 			}
 			else if (extension == ".eps")
 			{
 				if (sizex == 0 && sizey == 0) sizex = 6, sizey = 4.5;
-				Command(std::format("set terminal epscairo enhanced size {}in, {}in font \"Arial\"\nset output '{}'", sizex, sizey, repout));
+				Command(std::format("set terminal epscairo enhanced size {}in, {}in font \"sans\"\nset output '{}'", sizex, sizey, repout));
 			}
 			else if (extension == ".pdf")
 			{
 				if (sizex == 0 && sizey == 0) sizex = 6, sizey = 4.5;
-				Command(std::format("set terminal pdfcairo enhanced size {}in, {}in font \"Arial\"\nset output '{}'", sizex, sizey, repout));
+				Command(std::format("set terminal pdfcairo enhanced size {}in, {}in font \"sans, 14\"\nset output '{}'", sizex, sizey, repout));
 			}
 		}
 		else if (output == "qt")
 		{
 			if (sizex == 0 && sizey == 0) sizex = 720, sizey = 540;
-			Command(std::format("set terminal qt size {}, {} font \"Arial\" enhanced", sizex, sizey));
+			Command(std::format("set terminal qt size {}, {} font \"sans\" enhanced", sizex, sizey));
 		}
 		else if (output == "wxt")
 		{
 			if (sizex == 0 && sizey == 0) sizex = 720, sizey = 540;
-			Command(std::format("set terminal wxt enhanced size {}, {} font \"Arial\"", sizex, sizey));
+			Command(std::format("set terminal wxt enhanced size {}, {} font \"sans\"", sizex, sizey));
 		}
 		else std::cout << "WARNING : " << output << " is not a terminal or has no valid extension. Default terminal is selected." << std::endl;
 

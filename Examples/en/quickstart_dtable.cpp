@@ -226,9 +226,7 @@ void QuickstartDTable()
 
 	// Plot area vs population of the cities in California.
 	namespace plot = adapt::plot;
-	auto plot_range = usa | Filter(state == "California") | GetRange(0_layer);
-	auto rpop = plot_range | Evaluate(cast_f64(city_population).f64());
-	auto rarea = plot_range | Evaluate(city_area.f64());
+	auto [vpop, varea, vcity] = usa | Filter(state == "California") | ToVector(city_population.i32(), city_area.f64(), ("\"<-" + city + "\"").str());
 	adapt::Canvas2D c("examples_en_dtable.png");
 	c.SetXLabel("Area (km^2)");
 	c.SetYLabel("Population");
@@ -236,11 +234,10 @@ void QuickstartDTable()
 	c.SetLogY();
 	c.SetTitle("Area vs Population of Cities in California");
 	c.SetGrid();
-	c.PlotPoints(rarea, rpop, plot::pt_cir, plot::ps_med_large, plot::notitle);
+	c.PlotPoints(varea, vpop, plot::pt_cir, plot::ps_med_large, plot::notitle).
+		PlotLabels(varea, vpop, vcity, plot::labelpos = adapt::LabelPos::right, plot::notitle);
 
 	// You can also use Matplot++ to plot the data.
-	// Matplot++ requires numerical data to be in std::vector<double>,
-	// so you need to convert the data using ToVector range conversion.
 	/*
 	auto [vpopulation, varea] = usa | Filter(state == "California") | ToVector(cast_f64(city_population).f64(), city_area.f64());
 	auto fig = matplot::figure(true);

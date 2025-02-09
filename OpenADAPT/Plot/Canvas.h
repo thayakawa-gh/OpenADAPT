@@ -144,6 +144,20 @@ struct PlotBuffer2D
 		return Plot(p);
 	}
 
+	template <acceptable_arg X, acceptable_arg Y, acceptable_arg L,
+		label_option ...Options>
+	PlotBuffer2D PlotLabels(const X& x, const Y& y, const L& label, Options ...ops)
+	{
+		auto p = MakeLabelParam(plot::x = x, plot::y = y, plot::label = label, ops...);
+		return Plot(p);
+	}
+	template <label_option ...Options>
+	PlotBuffer2D PlotLabels(std::string_view filename, std::string_view xcol, std::string_view ycol, std::string_view labelcol, Options ...ops)
+	{
+		auto p = MakeLabelParam(plot::input = filename, plot::x = xcol, plot::y = ycol, plot::label = labelcol, ops...);
+		return Plot(p);
+	}
+
 protected:
 
 	std::string GetSanitizedOutputName() const
@@ -217,8 +231,8 @@ protected:
 	template <class Data, class ...Options>
 	PlotBuffer2D Plot(const HistogramParam<Data>& p, Options ...ops)
 	{
-		//stair_style::histogramなら、最後に余計なビンを加える必要はなさそう。
-		std::vector<double> hist(p.xnbin, 0);
+		//histepsなら最後のビンに0を追加する必要はないらしい。
+		std::vector<uint64_t> hist(p.xnbin, 0);
 		double wbin = (p.xmax - p.xmin) / p.xnbin;
 		auto ibin = [&p, wbin](double v)
 		{
@@ -235,17 +249,35 @@ protected:
 		std::vector<double> x(p.xnbin);
 		for (size_t i = 0; i < p.xnbin; ++i) x[i] = p.xmin + wbin * (i + 0.5);
 
-		if constexpr (KeywordExists(plot::err_68, ops...))
+		BinError be = BinError::none;
+		if constexpr (KeywordExists(plot::binerror, ops...)) be = GetKeywordArg(plot::binerror, ops...);
+
+		if (be != BinError::none)
 		{
-			std::vector<double> yerrlow(p.xnbin), yerrhigh(p.xnbin);
-			for (size_t i = 0; i < p.xnbin; ++i)
+			if (be == BinError::poisson68 || be == BinError::poisson95)
 			{
-				auto [low, high] = GetPoissonCI68((uint64_t)hist[i]);
-				yerrlow[i] = low;
-				yerrhigh[i] = high;
+				std::vector<double> yerrlow(p.xnbin), yerrhigh(p.xnbin);
+				for (size_t i = 0; i < p.xnbin; ++i)
+				{
+					if (be == BinError::poisson68)
+						std::tie(yerrlow[i], yerrhigh[i]) = GetPoissonCI68(hist[i]);
+					else
+						std::tie(yerrlow[i], yerrhigh[i]) = GetPoissonCI95(hist[i]);
+				}
+				auto p2 = MakePointParam(plot::x = x, plot::y = hist, ops..., plot::s_points, plot::xerrorbar = wbin / 2., plot::yerrlow = yerrlow, plot::yerrhigh = yerrhigh);
+				return Plot(p2);
 			}
-			auto p2 = MakePointParam(plot::x = x, plot::y = hist, ops..., plot::s_points, plot::xerrorbar = wbin / 2., plot::yerrlow = yerrlow, plot::yerrhigh = yerrhigh);
-			return Plot(p2);
+			else
+			{
+				std::vector<double> yerr(p.xnbin);
+				for (size_t i = 0; i < p.xnbin; ++i)
+				{
+					yerr[i] = std::sqrt(hist[i]);
+					if (be == BinError::normal95) yerr[i] *= 1.96;
+				}
+				auto p2 = MakePointParam(plot::x = x, plot::y = hist, ops..., plot::s_points, plot::xerrorbar = wbin / 2., plot::yerrorbar = yerr);
+				return Plot(p2);
+			}
 		}
 		else
 		{
@@ -328,6 +360,55 @@ protected:
 			AddColumn(p.y, "y", column);
 			AddColumn(p.ybelow, "y2", column);
 			AddColumn(p.variable_fillcolor, "variable_fillcolor", column);
+			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+		}
+		else if (p.IsEquation())
+		{
+			std::map<std::string, std::variant<int, std::string>> column;
+			std::vector<std::string> labelcolumn;
+			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+		}
+		m_commands.push_back(command);
+		return std::move(*this);
+	}
+	template <class X, class Y, class L, class VTC>
+	PlotBuffer2D Plot(const LabelParam<X, Y, L, VTC>& p)
+	{
+		std::string command;
+		if (p.IsData())
+		{
+			std::string output_name = GetSanitizedOutputName();
+			auto [x_x2, y_y2] = GetAxes2D(p);
+			if (x_x2 == "x2") m_canvas->Command("set x2tics");
+			if (y_y2 == "y2") m_canvas->Command("set y2tics");
+
+			//変数名とカラムのセット。
+			std::map<std::string, std::variant<int, std::string>> column;
+			std::vector<std::string> labelcolumn;
+
+			//rangesは各変数のうち空でないものがtupleとしてまとめられている。
+			auto ranges =
+				ArrangeColumnOption<0, 1>(column, labelcolumn, m_canvas,
+										  std::array<std::string, 4>{ "x", "y", "label", "variable_color" },
+										  std::array<std::string_view, 4>{ x_x2, y_y2, "", "" },
+										  p.x, p.y, p.label, p.variable_color);
+			//dataでない場合、コンパイル時にrangesが空になってエラーになりうる。
+			//ので、空tupleだったら何もしない。
+			if constexpr (std::tuple_size_v<decltype(ranges)> != 0)
+				MakeDataObject(m_canvas, output_name, ranges);
+
+			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, p);
+		}
+		else if (p.IsFile())
+		{
+			//xとyが与えられている場合はファイルプロット。
+			//x、yにはカラムの情報が入っている。
+			std::map<std::string, std::variant<int, std::string>> column;
+			std::vector<std::string> labelcolumn;
+			AddColumn(p.x, "x", column);
+			AddColumn(p.y, "y", column);
+			AddColumn(p.label, "label", column);
+			AddColumn(p.variable_color, "variable_color", column);
 			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
 		}
 		else if (p.IsEquation())
@@ -446,6 +527,19 @@ public:
 	{
 		PlotBuffer2D r(this);
 		return r.PlotFilledCurves(filename, x, y, y2, ops...);
+	}
+	template <acceptable_arg X, acceptable_arg Y, acceptable_arg L,
+		label_option ...Options>
+	PlotBuffer2D PlotLabels(const X& x, const Y& y, const L& label, Options ...ops)
+	{
+		PlotBuffer2D r(this);
+		return r.PlotLabels(x, y, label, ops...);
+	}
+	template <label_option ...Options>
+	PlotBuffer2D PlotLabels(std::string_view filename, std::string_view xcol, std::string_view ycol, std::string_view labelcol, Options ...ops)
+	{
+		PlotBuffer2D r(this);
+		return r.PlotLabels(filename, xcol, ycol, labelcol, ops...);
 	}
 
 	PlotBuffer2D GetBuffer()
@@ -603,8 +697,39 @@ struct PlotBufferCM
 							 Options ...ops)
 	{
 		auto p = MakeVectorParam3D(plot::input = filename,
-								   plot::x = xfrom, plot::y = yfrom, plot::z = "($1-$1)",
-								   plot::xlen = xlen, plot::ylen = ylen, plot::zlen = "($1-$1)", ops...);
+								   plot::x = xfrom, plot::y = yfrom, plot::z = "($0-$0)",
+								   plot::xlen = xlen, plot::ylen = ylen, plot::zlen = "($0-$0)", ops...);
+		return Plot(p);
+	}
+
+	template <acceptable_arg X, acceptable_arg Y, acceptable_arg L,
+		label_option ...Options>
+	PlotBufferCM PlotLabels(const X& x, const Y& y, const L& label, Options ...ops)
+	{
+		auto p = MakeLabelParam3D(plot::x = x, plot::y = y, plot::z = 0., plot::label = label, ops...);
+		return Plot(p);
+	}
+	template <label_option ...Options>
+	PlotBufferCM PlotLabels(std::string_view filename, std::string_view xcol, std::string_view ycol, std::string_view labelcol, Options ...ops)
+	{
+		auto p = MakeLabelParam3D(plot::input = filename, plot::x = xcol, plot::y = ycol, plot::z = "($0-$0)",
+								  plot::label = labelcol, ops...);
+		return Plot(p);
+	}
+	template <acceptable_arg X, acceptable_arg Y, acceptable_arg Z, acceptable_arg L,
+		label_option ...Options>
+	PlotBufferCM PlotLabels(const X& x, const Y& y, const Z& z, const L& label, Options ...ops)
+	{
+		auto p = MakeLabelParam3D(plot::x = x, plot::y = y, plot::label = label, ops...);
+		return Plot(p);
+	}
+	template <label_option ...Options>
+	PlotBufferCM PlotLabels(std::string_view filename,
+							std::string_view xcol, std::string_view ycol, std::string_view zcol,
+							std::string_view labelcol, Options ...ops)
+	{
+		auto p = MakeLabelParam3D(plot::input = filename, plot::x = xcol, plot::y = ycol, plot::z = zcol,
+								  plot::label = labelcol, ops...);
 		return Plot(p);
 	}
 
@@ -819,6 +944,57 @@ protected:
 		return std::move(*this);
 	}
 	//CMはFilledCurveをサポートしない。
+	template <class X, class Y, class Z, class L, class VTC>
+	PlotBufferCM Plot(const LabelParam3D<X, Y, Z, L, VTC>& p)
+	{
+		std::string command;
+		if (p.IsData())
+		{
+			std::string output_name = GetSanitizedOutputName();
+			auto [x_x2, y_y2, z_z2] = GetAxes3D(p);
+			if (x_x2 == "x2") m_canvas->Command("set x2tics");
+			if (y_y2 == "y2") m_canvas->Command("set y2tics");
+			if (z_z2 == "z2") m_canvas->Command("set z2tics");
+
+			//変数名とカラムのセット。
+			std::map<std::string, std::variant<int, std::string>> column;
+			std::vector<std::string> labelcolumn;
+
+			//rangesは各変数のうち空でないものがtupleとしてまとめられている。
+			auto ranges =
+				ArrangeColumnOption<0, 1>(column, labelcolumn, m_canvas,
+										  std::array<std::string, 5>{ "x", "y", "z", "label", "variable_color" },
+										  std::array<std::string_view, 5>{ x_x2, y_y2, z_z2, "", "" },
+										  p.x, p.y, p.z, p.label, p.variable_color);
+			//dataでない場合、コンパイル時にrangesが空になってエラーになりうる。
+			//ので、空tupleだったら何もしない。
+			if constexpr (std::tuple_size_v<decltype(ranges)> != 0)
+				MakeDataObject(m_canvas, output_name, ranges);
+
+			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, p);
+		}
+		else if (p.IsFile())
+		{
+			//xとyが与えられている場合はファイルプロット。
+			//x、yにはカラムの情報が入っている。
+			std::map<std::string, std::variant<int, std::string>> column;
+			std::vector<std::string> labelcolumn;
+			AddColumn(p.x, "x", column);
+			AddColumn(p.y, "y", column);
+			AddColumn(p.z, "z", column);
+			AddColumn(p.label, "label", column);
+			AddColumn(p.variable_color, "variable_color", column);
+			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+		}
+		else if (p.IsEquation())
+		{
+			std::map<std::string, std::variant<int, std::string>> column;
+			std::vector<std::string> labelcolumn;
+			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+		}
+		m_commands.push_back(command);
+		return std::move(*this);
+	}
 
 	static std::string InitCommand()
 	{
@@ -974,6 +1150,35 @@ public:
 	{
 		PlotBufferCM p(this);
 		return p.PlotVectors(filename, xfrom, yfrom, xlen, ylen, ops...);
+	}
+
+	template <acceptable_arg X, acceptable_arg Y, acceptable_arg L,
+		label_option ...Options>
+	PlotBufferCM PlotLabels(const X& x, const Y& y, const L& label, Options ...ops)
+	{
+		PlotBufferCM p(this);
+		return p.PlotLabels(x, y, label, ops...);
+	}
+	template <label_option ...Options>
+	PlotBufferCM PlotLabels(std::string_view filename, std::string_view xcol, std::string_view ycol, std::string_view labelcol, Options ...ops)
+	{
+		PlotBufferCM p(this);
+		return p.PlotLabels(filename, xcol, ycol, labelcol, ops...);
+	}
+	template <acceptable_arg X, acceptable_arg Y, acceptable_arg Z, ranges::string_range L,
+		label_option ...Options>
+	PlotBufferCM PlotLabels(const X& x, const Y& y, const Z& z, const L& label, Options ...ops)
+	{
+		PlotBufferCM p(this);
+		return p.PlotLabels(x, y, z, label, ops...);
+	}
+	template <label_option ...Options>
+	PlotBufferCM PlotLabels(std::string_view filename,
+							std::string_view xcol, std::string_view ycol, std::string_view zcol,
+							std::string_view labelcol, Options ...ops)
+	{
+		PlotBufferCM p(this);
+		return p.PlotLabels(filename, xcol, ycol, zcol, labelcol, ops...);
 	}
 
 	template <acceptable_matrix_range Map, ranges::arithmetic_range X, ranges::arithmetic_range Y,

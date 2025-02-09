@@ -205,7 +205,7 @@ public:
 	{
 		return GetLayerInfo_impl(eli, depth, std::make_index_sequence<sizeof...(Nodes)>{});
 	}
-	LayerType GetLayer() requires (!IsCtti)
+	LayerType GetLayer() const requires (!IsCtti)
 	{
 		return GetLayerInfo().GetTravLayer();
 	}
