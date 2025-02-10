@@ -167,11 +167,6 @@ int example_labels(const std::string& output_filename, bool enable_in_memory_dat
 	std::vector<int> populations = { 8982000, 2148000, 3769000, 2873000, 3266000, 872680, 1867000, 1921000, 1335000, 1794000, 1756000, 975551, 805402, 658864, 702543, 554554, 544851, 664046, 15462452, 2963199 };
 
 	//If you want to plot labels with different sizes, label strings should be formatted as "{/=fontsize label}".
-	auto zip = adapt::views::Zip(cities, populations);
-	auto it = zip.begin();
-	auto end = zip.end();
-	static_assert(std::sentinel_for<decltype(end), decltype(it)>);
-
 	auto dscities = adapt::views::Zip(cities, populations) |
 		std::views::transform([](const auto& x) { return std::format("\"{{/={} {}}}\"", std::sqrt(std::get<1>(x) / 10000), std::get<0>(x)); });
 
@@ -189,7 +184,8 @@ int example_labels(const std::string& output_filename, bool enable_in_memory_dat
 	// world_10m.txt can be downloaded from https://gnuplotting.org/plotting-the-world-revisited/
 	g.PlotPoints("PlotExamples/world_10m.txt", "1", "2", plot::notitle, plot::c_dark_gray, plot::s_lines).
 		PlotPoints(longitudes, latitudes, plot::notitle, plot::pt_fbox, plot::c_dark_gray).
-		//PlotLabels(longitudes, latitudes, cities, plot::labelfont = "Times New Roman,12", plot::lp_center, plot::notitle, plot::labeloffset = {0.0, 0.7});// labels with the same size
+		//PlotLabels(longitudes, latitudes, cities, plot::variable_color = populations,
+		//			 plot::labelfont = "Times New Roman,12", plot::lp_center, plot::notitle, plot::labeloffset = {0.0, 0.7});// labels with the same size
 		PlotLabels(longitudes, latitudes, dscities, plot::variable_color = populations,
 				   plot::labelfont = "Times New Roman", plot::lp_center, plot::notitle, plot::labeloffset = { 0.0, 0.7 });// labels with different sizes
 

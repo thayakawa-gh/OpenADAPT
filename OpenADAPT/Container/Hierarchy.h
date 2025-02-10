@@ -25,7 +25,7 @@ consteval auto GetPlaceholderList_field(NamedTuple<>)
 	return std::tuple<>{};
 }
 template <class Container, LayerType Layer, uint16_t Index, ptrdiff_t EndPtr, StaticChar Name, class Type, StaticChar ...Names, class ...Types>
-consteval auto GetPlaceholderList_field(NamedTuple<Named<Name, Type>, Named<Names, Types>...>)
+constexpr auto GetPlaceholderList_field(NamedTuple<Named<Name, Type>, Named<Names, Types>...>)
 {
 	using CttiPlaceholder = eval::CttiPlaceholder<Layer, Type, Container>;
 	constexpr size_t size = sizeof(Type);
@@ -38,12 +38,12 @@ consteval auto GetPlaceholderList_field(NamedTuple<Named<Name, Type>, Named<Name
 }
 
 template <class Container, named_tuple ...Elements, LayerType ...Indices>
-consteval auto GetPlaceholderList_layer(TypeList<Elements...>, std::integer_sequence<LayerType, Indices...>)
+constexpr auto GetPlaceholderList_layer(TypeList<Elements...>, std::integer_sequence<LayerType, Indices...>)
 {
 	return std::make_tuple(GetPlaceholderList_field<Container, LayerType(Indices - 1), 0, 0>(Elements{})...);
 }
 template <class Container, named_tuple ...Elements>
-consteval auto GetPlaceholderList(TypeList<Elements...>)
+constexpr auto GetPlaceholderList(TypeList<Elements...>)
 {
 	return GetPlaceholderList_layer<Container>(TypeList<Elements...>{}, std::make_integer_sequence<LayerType, sizeof...(Elements)>{});
 }
