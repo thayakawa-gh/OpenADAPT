@@ -158,6 +158,36 @@ struct PlotBuffer2D
 		return Plot(p);
 	}
 
+	template <acceptable_matrix_range Map,
+		ranges::arithmetic_range XRange, ranges::arithmetic_range YRange,
+		colormap_option ...Options>
+	PlotBuffer2D PlotColormap(const Map& map_, const XRange& x, const YRange& y,
+							  Options ...ops)
+	{
+		auto p = MakeColormapParam(plot::map = map_, plot::xrange = x, plot::yrange = y, ops...);
+		return Plot(p);
+	}
+	template <acceptable_matrix_range Map, colormap_option ...Options>
+	PlotBuffer2D PlotColormap(const Map& map_, std::pair<double, double> x, std::pair<double, double> y,
+							  Options ...ops)
+	{
+		auto p = MakeColormapParam(plot::map = map_, plot::xminmax = x, plot::yminmax = y, ops...);
+		return Plot(p);
+	}
+	template <colormap_option ...Options>
+	PlotBuffer2D PlotColormap(std::string_view filename, std::string_view x, std::string_view y, std::string_view map,
+							  Options ...ops)
+	{
+		auto p = MakeColormapParam(plot::input = filename, plot::map = map, plot::xrange = x, plot::yrange = y, ops...);
+		return Plot(p);
+	}
+	template <colormap_option ...Options>
+	PlotBuffer2D PlotColormap(std::string_view equation, Options ...ops)
+	{
+		auto p = MakeColormapParam(plot::input = equation, ops...);
+		return Plot(p);
+	}
+
 protected:
 
 	std::string GetSanitizedOutputName() const
@@ -296,29 +326,30 @@ protected:
 			if (x_x2 == "x2") m_canvas->Command("set x2tics");
 			if (y_y2 == "y2") m_canvas->Command("set y2tics");
 
-			std::vector<std::string> column;
-			std::string labelcolumn;
+			std::map<std::string, std::variant<int, std::string>> column;
+			std::vector<std::string> labelcolumn;
 
 			auto ranges =
 				ArrangeColumnOption<0, 1>(column, labelcolumn, m_canvas,
-										  std::array<std::string, 5>{ "x", "y", "xlen", "ylen", "variable_folor" },
+										  std::array<std::string, 5>{ "x", "y", "xlen", "ylen", "variable_color" },
 										  std::array<std::string_view, 5>{ x_x2, y_y2, x_x2, y_y2, "" },
 										  p.x, p.y, p.xlen, p.ylen, p.variable_color);
 			if constexpr (std::tuple_size_v<decltype(ranges)> != 0)
 				MakeDataObject(m_canvas, output_name, ranges);
-			if (!labelcolumn.empty()) column.emplace_back(std::move(labelcolumn));
+			//if (!labelcolumn.empty()) column.emplace_back(std::move(labelcolumn));
 
-			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, p);
+			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, p);
 		}
 		else if (p.IsFile())
 		{
-			std::vector<std::string> column;
+			std::map<std::string, std::variant<int, std::string>> column;
+			std::vector<std::string> labelcolumn;
 			AddColumn(p.x, "x", column);
 			AddColumn(p.y, "y", column);
 			AddColumn(p.xlen, "xlen", column);
 			AddColumn(p.ylen, "ylen", column);
 			AddColumn(p.variable_color, "variable_color", column);
-			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, p);
+			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
 		}
 		else if (p.IsEquation())
 		{
@@ -410,6 +441,71 @@ protected:
 			AddColumn(p.label, "label", column);
 			AddColumn(p.variable_color, "variable_color", column);
 			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+		}
+		else if (p.IsEquation())
+		{
+			std::map<std::string, std::variant<int, std::string>> column;
+			std::vector<std::string> labelcolumn;
+			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+		}
+		m_commands.push_back(command);
+		return std::move(*this);
+	}
+	template <class Map, class X, class Y>
+	PlotBuffer2D Plot(const ColormapParam<Map, X, Y>& p)
+	{
+		constexpr bool xrange_assigned = !PlotParamBase::IsEmptyView<X>();
+		constexpr bool yrange_assigned = !PlotParamBase::IsEmptyView<Y>();
+
+		std::string command;
+		if (p.IsData())
+		{
+			//p.mapがデータでない場合にコンパイルエラーになるのを防ぐため、constexpr ifで括っておく。
+			if constexpr (ranges::arithmetic_matrix_range<Map>)
+			{
+				//データプロットの場合。
+				std::string output_name = GetSanitizedOutputName();
+				if (!p.IsXAssigned()) throw InvalidArg("xrange or xminmax must be specified.");
+				if (!p.IsYAssigned()) throw InvalidArg("yrange or yminmax must be specified.");
+				//std::vector<std::string> column{ "1", "2", "5" };
+				std::map<std::string, std::variant<int, std::string>> column{ { "x", 3 }, { "y", 4 }, { "map", 5} };
+				std::vector<std::string> labelcolumn;
+				size_t xsize = p.map.size();
+				size_t ysize = p.map.front().size();
+				if constexpr (xrange_assigned)
+				{
+					if constexpr (yrange_assigned)
+						MakeDataObject(m_canvas, output_name, p.map, CoordRange<X>(p.xrange), CoordRange<Y>(p.yrange));
+					else
+						MakeDataObject(m_canvas, output_name, p.map, CoordRange<X>(p.xrange), CoordMinMax(p.yminmax, ysize));
+				}
+				else
+				{
+					if constexpr (yrange_assigned)
+						MakeDataObject(m_canvas, output_name, p.map, CoordMinMax(p.xminmax, xsize), CoordRange<Y>(p.yrange));
+					else
+						MakeDataObject(m_canvas, output_name, p.map, CoordMinMax(p.xminmax, xsize), CoordMinMax(p.yminmax, ysize));
+				}
+				if (p.with_contour)
+				{
+					m_canvas->Command(MakeContourPlotCommand(output_name, m_canvas->IsInMemoryDataTransferEnabled(), p));
+				}
+				command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, p);
+			}
+		}
+		else if (p.IsFile())
+		{
+			//ファイルプロットの場合、p.map、p.xrange、p.yrangeにカラムの情報が入っている。
+			std::map<std::string, std::variant<int, std::string>> column;
+			std::vector<std::string> labelcolumn;
+			AddColumn(p.xrange, "x", column);
+			AddColumn(p.yrange, "y", column);
+			AddColumn(p.map, "map", column);
+			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+			if (p.with_contour)
+			{
+				PrintWarning("Contour plot is not supported for file plot.");
+			}
 		}
 		else if (p.IsEquation())
 		{
@@ -541,12 +637,39 @@ public:
 		PlotBuffer2D r(this);
 		return r.PlotLabels(filename, xcol, ycol, labelcol, ops...);
 	}
+	template <acceptable_matrix_range Map, ranges::arithmetic_range X, ranges::arithmetic_range Y,
+		colormap_option ...Options>
+	PlotBuffer2D PlotColormap(const Map& map, const X& x, const Y& y,
+							  Options ...ops)
+	{
+		PlotBuffer2D p(this);
+		return p.PlotColormap(map, x, y, ops...);
+	}
+	template <acceptable_matrix_range Map, colormap_option ...Options>
+	PlotBuffer2D PlotColormap(const Map& map, std::pair<double, double> x, std::pair<double, double> y,
+							  Options ...ops)
+	{
+		PlotBuffer2D p(this);
+		return p.PlotColormap(map, x, y, ops...);
+	}
+	template <colormap_option ...Options>
+	PlotBuffer2D PlotColormap(std::string_view filename, std::string_view x, std::string_view y, std::string_view z,
+							  Options ...ops)
+	{
+		PlotBuffer2D p(this);
+		return p.PlotColormap(filename, x, y, z, ops...);
+	}
+	template <colormap_option ...Options>
+	PlotBuffer2D PlotColormap(std::string_view equation, Options ...ops)
+	{
+		PlotBuffer2D p(this);
+		return p.PlotColormap(equation, ops...);
+	}
 
 	PlotBuffer2D GetBuffer()
 	{
 		return PlotBuffer2D(this);
 	}
-
 };
 
 }
@@ -554,23 +677,23 @@ public:
 namespace plot_detail
 {
 
-struct PlotBufferCM
+struct PlotBuffer3D
 {
-	PlotBufferCM(Canvas* g) : m_canvas(g) {}
-	PlotBufferCM(const PlotBufferCM&) = delete;
-	PlotBufferCM(PlotBufferCM&& p) noexcept
+	PlotBuffer3D(Canvas* g) : m_canvas(g) {}
+	PlotBuffer3D(const PlotBuffer3D&) = delete;
+	PlotBuffer3D(PlotBuffer3D&& p) noexcept
 		: m_commands(std::move(p.m_commands)), m_canvas(p.m_canvas)
 	{
 		p.m_canvas = nullptr;
 	}
-	PlotBufferCM& operator=(const PlotBufferCM&) = delete;
-	PlotBufferCM& operator=(PlotBufferCM&& p) noexcept
+	PlotBuffer3D& operator=(const PlotBuffer3D&) = delete;
+	PlotBuffer3D& operator=(PlotBuffer3D&& p) noexcept
 	{
 		m_canvas = p.m_canvas; p.m_canvas = nullptr;
 		m_commands = std::move(p.m_commands);
 		return *this;
 	}
-	virtual ~PlotBufferCM()
+	virtual ~PlotBuffer3D()
 	{
 		//mPipeがnullptrでないときはこのPlotterが最終処理を担当する。
 		if (m_canvas != nullptr) Flush();
@@ -590,13 +713,13 @@ struct PlotBufferCM
 
 	template <acceptable_arg X, acceptable_arg Y, acceptable_arg Z,
 			  point_option ...Options>
-	PlotBufferCM PlotPoints(const X& x, const Y& y, const Z& z, Options ...ops)
+	PlotBuffer3D PlotPoints(const X& x, const Y& y, const Z& z, Options ...ops)
 	{
 		auto p = MakePoint3DParam(plot::x = x, plot::y = y, plot::z = z, ops...);
 		return Plot(p);
 	}
 	template <point_option ...Options>
-	PlotBufferCM PlotPoints(std::string_view filename,
+	PlotBuffer3D PlotPoints(std::string_view filename,
 							std::string_view x, std::string_view y, std::string_view z,
 							Options ...ops)
 	{
@@ -605,13 +728,13 @@ struct PlotBufferCM
 	}
 	template <acceptable_arg X, acceptable_arg Y,
 			  point_option ...Options>
-	PlotBufferCM PlotPoints(const X& x, const Y& y, Options ...ops)
+	PlotBuffer3D PlotPoints(const X& x, const Y& y, Options ...ops)
 	{
 		auto p = MakePoint3DParam(plot::x = x, plot::y = y, plot::z = 0, ops...);
 		return Plot(p);
 	}
 	template <point_option ...Options>
-	PlotBufferCM PlotPoints(std::string_view filename,
+	PlotBuffer3D PlotPoints(std::string_view filename,
 							std::string_view x, std::string_view y,
 							Options ...ops)
 	{
@@ -619,7 +742,7 @@ struct PlotBufferCM
 		return Plot(p);
 	}
 	template <point_option ...Options>
-	PlotBufferCM PlotPoints(std::string_view equation, Options ...ops)
+	PlotBuffer3D PlotPoints(std::string_view equation, Options ...ops)
 	{
 		auto p = MakePoint3DParam(plot::input = equation, plot::z = "($1-$1)", ops...);
 		return Plot(p);
@@ -627,12 +750,12 @@ struct PlotBufferCM
 
 	template <acceptable_arg X, acceptable_arg Y, acceptable_arg Z,
 			  point_option ...Options>
-	PlotBufferCM PlotLines(const X& x, const Y& y, const Z& z, Options ...ops)
+	PlotBuffer3D PlotLines(const X& x, const Y& y, const Z& z, Options ...ops)
 	{
 		return PlotPoints(x, y, z, plot::style = Style::lines, ops...);
 	}
 	template <point_option ...Options>
-	PlotBufferCM PlotLines(std::string_view filename,
+	PlotBuffer3D PlotLines(std::string_view filename,
 						   std::string_view x, std::string_view y, std::string_view z,
 						   Options ...ops)
 	{
@@ -640,19 +763,19 @@ struct PlotBufferCM
 	}
 	template <acceptable_arg X, acceptable_arg Y,
 			  point_option ...Options>
-	PlotBufferCM PlotLines(const X& x, const Y& y, Options ...ops)
+	PlotBuffer3D PlotLines(const X& x, const Y& y, Options ...ops)
 	{
 		return PlotPoints(x, y, plot::style = Style::lines, ops...);
 	}
 	template <point_option ...Options>
-	PlotBufferCM PlotLines(std::string_view filename,
+	PlotBuffer3D PlotLines(std::string_view filename,
 						   std::string_view x, std::string_view y,
 						   Options ...ops)
 	{
 		return PlotPoints(filename, x, y, plot::style = Style::lines, ops...);
 	}
 	template <point_option ...Options>
-	PlotBufferCM PlotLines(std::string_view equation, Options ...ops)
+	PlotBuffer3D PlotLines(std::string_view equation, Options ...ops)
 	{
 		return PlotPoints(equation, plot::style = Style::lines, ops...);
 	}
@@ -660,7 +783,7 @@ struct PlotBufferCM
 	template <acceptable_arg X, acceptable_arg Y, acceptable_arg Z,
 			  acceptable_arg XL, acceptable_arg YL, acceptable_arg ZL,
 			  vector_option ...Options>
-	PlotBufferCM PlotVectors(const X& xfrom, const Y& yfrom, const Z& zfrom,
+	PlotBuffer3D PlotVectors(const X& xfrom, const Y& yfrom, const Z& zfrom,
 							 const XL& xlen, const YL& ylen, const ZL& zlen,
 							 Options ...ops)
 	{
@@ -669,7 +792,7 @@ struct PlotBufferCM
 		return Plot(p);
 	}
 	template <vector_option ...Options>
-	PlotBufferCM PlotVectors(std::string_view filename,
+	PlotBuffer3D PlotVectors(std::string_view filename,
 							 std::string_view xfrom, std::string_view yfrom, std::string_view zfrom,
 							 std::string_view xlen, std::string_view ylen, std::string_view zlen,
 							 Options ...ops)
@@ -682,7 +805,7 @@ struct PlotBufferCM
 	template <acceptable_arg X, acceptable_arg Y,
 			  acceptable_arg XL, acceptable_arg YL,
 			  vector_option ...Options>
-	PlotBufferCM PlotVectors(const X& xfrom, const Y& yfrom,
+	PlotBuffer3D PlotVectors(const X& xfrom, const Y& yfrom,
 							 const XL& xlen, const YL& ylen,
 							 Options ...ops)
 	{
@@ -691,7 +814,7 @@ struct PlotBufferCM
 		return Plot(p);
 	}
 	template <vector_option ...Options>
-	PlotBufferCM PlotVectors(std::string_view filename,
+	PlotBuffer3D PlotVectors(std::string_view filename,
 							 std::string_view xfrom, std::string_view yfrom,
 							 std::string_view xlen, std::string_view ylen,
 							 Options ...ops)
@@ -704,13 +827,13 @@ struct PlotBufferCM
 
 	template <acceptable_arg X, acceptable_arg Y, acceptable_arg L,
 		label_option ...Options>
-	PlotBufferCM PlotLabels(const X& x, const Y& y, const L& label, Options ...ops)
+	PlotBuffer3D PlotLabels(const X& x, const Y& y, const L& label, Options ...ops)
 	{
 		auto p = MakeLabelParam3D(plot::x = x, plot::y = y, plot::z = 0., plot::label = label, ops...);
 		return Plot(p);
 	}
 	template <label_option ...Options>
-	PlotBufferCM PlotLabels(std::string_view filename, std::string_view xcol, std::string_view ycol, std::string_view labelcol, Options ...ops)
+	PlotBuffer3D PlotLabels(std::string_view filename, std::string_view xcol, std::string_view ycol, std::string_view labelcol, Options ...ops)
 	{
 		auto p = MakeLabelParam3D(plot::input = filename, plot::x = xcol, plot::y = ycol, plot::z = "($0-$0)",
 								  plot::label = labelcol, ops...);
@@ -718,13 +841,13 @@ struct PlotBufferCM
 	}
 	template <acceptable_arg X, acceptable_arg Y, acceptable_arg Z, acceptable_arg L,
 		label_option ...Options>
-	PlotBufferCM PlotLabels(const X& x, const Y& y, const Z& z, const L& label, Options ...ops)
+	PlotBuffer3D PlotLabels(const X& x, const Y& y, const Z& z, const L& label, Options ...ops)
 	{
 		auto p = MakeLabelParam3D(plot::x = x, plot::y = y, plot::label = label, ops...);
 		return Plot(p);
 	}
 	template <label_option ...Options>
-	PlotBufferCM PlotLabels(std::string_view filename,
+	PlotBuffer3D PlotLabels(std::string_view filename,
 							std::string_view xcol, std::string_view ycol, std::string_view zcol,
 							std::string_view labelcol, Options ...ops)
 	{
@@ -736,30 +859,56 @@ struct PlotBufferCM
 	template <acceptable_matrix_range Map,
 			  ranges::arithmetic_range XRange, ranges::arithmetic_range YRange,
 			  colormap_option ...Options>
-	PlotBufferCM PlotColormap(const Map& map_, const XRange& x, const YRange& y,
+	PlotBuffer3D PlotColormap(const Map& map_, const XRange& x, const YRange& y,
 							  Options ...ops)
 	{
 		auto p = MakeColormapParam(plot::map = map_, plot::xrange = x, plot::yrange = y, ops...);
 		return Plot(p);
 	}
 	template <acceptable_matrix_range Map, colormap_option ...Options>
-	PlotBufferCM PlotColormap(const Map& map_, std::pair<double, double> x, std::pair<double, double> y,
+	PlotBuffer3D PlotColormap(const Map& map_, std::pair<double, double> x, std::pair<double, double> y,
 							  Options ...ops)
 	{
 		auto p = MakeColormapParam(plot::map = map_, plot::xminmax = x, plot::yminmax = y, ops...);
 		return Plot(p);
 	}
 	template <colormap_option ...Options>
-	PlotBufferCM PlotColormap(std::string_view filename, std::string_view x, std::string_view y, std::string_view map,
+	PlotBuffer3D PlotColormap(std::string_view filename, std::string_view x, std::string_view y, std::string_view map,
 							  Options ...ops)
 	{
 		auto p = MakeColormapParam(plot::input = filename, plot::map = map, plot::xrange = x, plot::yrange = y, ops...);
 		return Plot(p);
 	}
 	template <colormap_option ...Options>
-	PlotBufferCM PlotColormap(std::string_view equation, Options ...ops)
+	PlotBuffer3D PlotColormap(std::string_view equation, Options ...ops)
 	{
 		auto p = MakeColormapParam(plot::input = equation, ops...);
+		return Plot(p);
+	}
+
+	template <acceptable_matrix_range Map, ranges::arithmetic_range X, ranges::arithmetic_range Y,
+		surface_option ...Options>
+	PlotBuffer3D PlotSurface(const Map& z, const X& x, const Y& y, Options ...ops)
+	{
+		auto p = MakeSurfaceParam(plot::map = z, plot::x = x, plot::y = y, ops...);
+		return Plot(p);
+	}
+	template <acceptable_matrix_range Map, surface_option ...Options>
+	PlotBuffer3D PlotSurface(const Map& z, std::pair<double, double> x, std::pair<double, double> y, Options ...ops)
+	{
+		auto p = MakeSurfaceParam(plot::map = z, plot::xminmax = x, plot::yminmax = y, ops...);
+		return Plot(p);
+	}
+	template <surface_option ...Options>
+	PlotBuffer3D PlotSurface(std::string_view filename, std::string_view x, std::string_view y, std::string_view z, Options ...ops)
+	{
+		auto p = MakeSurfaceParam(plot::input = filename, plot::map = z, plot::xrange = x, plot::yrange = y, ops...);
+		return Plot(p);
+	}
+	template <surface_option ...Options>
+	PlotBuffer3D PlotSurface(std::string_view equation, Options ...ops)
+	{
+		auto p = MakeSurfaceParam(plot::input = equation, ops...);
 		return Plot(p);
 	}
 
@@ -773,73 +922,8 @@ protected:
 			return m_canvas->GetOutput() + ".tmp" + std::to_string(m_commands.size()) + ".txt";
 	}
 
-	template <class Map, class X, class Y>
-	PlotBufferCM Plot(const ColormapParam<Map, X, Y>& p)
-	{
-		constexpr bool xrange_assigned = !PlotParamBase::IsEmptyView<X>();
-		constexpr bool yrange_assigned = !PlotParamBase::IsEmptyView<Y>();
-
-		std::string command;
-		if (p.IsData())
-		{
-			//p.mapがデータでない場合にコンパイルエラーになるのを防ぐため、constexpr ifで括っておく。
-			if constexpr (ranges::arithmetic_matrix_range<Map>)
-			{
-				//データプロットの場合。
-				std::string output_name = GetSanitizedOutputName();
-				if (!p.IsXAssigned()) throw InvalidArg("xrange or xminmax must be specified.");
-				if (!p.IsYAssigned()) throw InvalidArg("yrange or yminmax must be specified.");
-				//std::vector<std::string> column{ "1", "2", "5" };
-				std::map<std::string, std::variant<int, std::string>> column{ { "x", 1 }, { "y", 2 }, { "map", 5} };
-				std::vector<std::string> labelcolumn;
-				size_t xsize = p.map.size();
-				size_t ysize = p.map.front().size();
-				if constexpr (xrange_assigned)
-				{
-					if constexpr (yrange_assigned)
-						MakeDataObject(m_canvas, output_name, p.map, CoordRange<X>(p.xrange), CoordRange<Y>(p.yrange));
-					else
-						MakeDataObject(m_canvas, output_name, p.map, CoordRange<X>(p.xrange), CoordMinMax(p.yminmax, ysize));
-				}
-				else
-				{
-					if constexpr (yrange_assigned)
-						MakeDataObject(m_canvas, output_name, p.map, CoordMinMax(p.xminmax, xsize), CoordRange<Y>(p.yrange));
-					else
-						MakeDataObject(m_canvas, output_name, p.map, CoordMinMax(p.xminmax, xsize), CoordMinMax(p.yminmax, ysize));
-				}
-				if (p.with_contour)
-				{
-					m_canvas->Command(MakeContourPlotCommand(output_name, m_canvas->IsInMemoryDataTransferEnabled(), p));
-				}
-				command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, p);
-			}
-		}
-		else if (p.IsFile())
-		{
-			//ファイルプロットの場合、p.map、p.xrange、p.yrangeにカラムの情報が入っている。
-			std::map<std::string, std::variant<int, std::string>> column;
-			std::vector<std::string> labelcolumn;
-			AddColumn(p.xrange, "x", column);
-			AddColumn(p.yrange, "y", column);
-			AddColumn(p.map, "map", column);
-			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
-			if (p.with_contour)
-			{
-				PrintWarning("Contour plot is not supported for file plot.");
-			}
-		}
-		else if (p.IsEquation())
-		{
-			std::map<std::string, std::variant<int, std::string>> column;
-			std::vector<std::string> labelcolumn;
-			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
-		}
-		m_commands.push_back(command);
-		return std::move(*this);
-	}
 	template <class X, class Y, class Z, class XE, class XEL, class XEH, class YE, class YEL, class YEH, class VC, class VS, class VFC>
-	PlotBufferCM Plot(const PointParam3D<X, Y, Z, XE, XEL, XEH, YE, YEL, YEH, VC, VS, VFC>& p)
+	PlotBuffer3D Plot(const PointParam3D<X, Y, Z, XE, XEL, XEH, YE, YEL, YEH, VC, VS, VFC>& p)
 	{
 		std::string command;
 		if (p.IsData())
@@ -898,7 +982,7 @@ protected:
 		return std::move(*this);
 	}
 	template <class X, class Y, class Z, class XL, class YL, class ZL, class VC>
-	PlotBufferCM Plot(const VectorParam3D<X, Y, Z, XL, YL, ZL, VC>& p)
+	PlotBuffer3D Plot(const VectorParam3D<X, Y, Z, XL, YL, ZL, VC>& p)
 	{
 		std::string command;
 		if (p.IsData())
@@ -945,7 +1029,7 @@ protected:
 	}
 	//CMはFilledCurveをサポートしない。
 	template <class X, class Y, class Z, class L, class VTC>
-	PlotBufferCM Plot(const LabelParam3D<X, Y, Z, L, VTC>& p)
+	PlotBuffer3D Plot(const LabelParam3D<X, Y, Z, L, VTC>& p)
 	{
 		std::string command;
 		if (p.IsData())
@@ -995,6 +1079,139 @@ protected:
 		m_commands.push_back(command);
 		return std::move(*this);
 	}
+	template <class Map, class X, class Y>
+	PlotBuffer3D Plot(const ColormapParam<Map, X, Y>& p)
+	{
+		constexpr bool xrange_assigned = !PlotParamBase::IsEmptyView<X>();
+		constexpr bool yrange_assigned = !PlotParamBase::IsEmptyView<Y>();
+
+		std::string command;
+		if (p.IsData())
+		{
+			//p.mapがデータでない場合にコンパイルエラーになるのを防ぐため、constexpr ifで括っておく。
+			if constexpr (ranges::arithmetic_matrix_range<Map>)
+			{
+				//データプロットの場合。
+				std::string output_name = GetSanitizedOutputName();
+				if (!p.IsXAssigned()) throw InvalidArg("xrange or xminmax must be specified.");
+				if (!p.IsYAssigned()) throw InvalidArg("yrange or yminmax must be specified.");
+				//std::vector<std::string> column{ "1", "2", "5" };
+				std::map<std::string, std::variant<int, std::string>> column{ { "x", 3 }, { "y", 4 }, { "map", 5} };
+				std::vector<std::string> labelcolumn;
+				size_t xsize = p.map.size();
+				size_t ysize = p.map.front().size();
+				if constexpr (xrange_assigned)
+				{
+					if constexpr (yrange_assigned)
+						MakeDataObject(m_canvas, output_name, p.map, CoordRange<X>(p.xrange), CoordRange<Y>(p.yrange));
+					else
+						MakeDataObject(m_canvas, output_name, p.map, CoordRange<X>(p.xrange), CoordMinMax(p.yminmax, ysize));
+				}
+				else
+				{
+					if constexpr (yrange_assigned)
+						MakeDataObject(m_canvas, output_name, p.map, CoordMinMax(p.xminmax, xsize), CoordRange<Y>(p.yrange));
+					else
+						MakeDataObject(m_canvas, output_name, p.map, CoordMinMax(p.xminmax, xsize), CoordMinMax(p.yminmax, ysize));
+				}
+				if (p.with_contour)
+				{
+					m_canvas->Command(MakeContourPlotCommand(output_name, m_canvas->IsInMemoryDataTransferEnabled(), p));
+				}
+				command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, p);
+			}
+		}
+		else if (p.IsFile())
+		{
+			//ファイルプロットの場合、p.map、p.xrange、p.yrangeにカラムの情報が入っている。
+			std::map<std::string, std::variant<int, std::string>> column;
+			std::vector<std::string> labelcolumn;
+			AddColumn(p.xrange, "x", column);
+			AddColumn(p.yrange, "y", column);
+			AddColumn(p.map, "map", column);
+			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+			if (p.with_contour)
+			{
+				PrintWarning("Contour plot is not supported for file plot.");
+			}
+		}
+		else if (p.IsEquation())
+		{
+			std::map<std::string, std::variant<int, std::string>> column;
+			std::vector<std::string> labelcolumn;
+			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+		}
+		m_commands.push_back(command);
+		return std::move(*this);
+	}
+	template <class Map, class X, class Y, class VC, class VS>
+	PlotBuffer3D Plot(const SurfaceParam<Map, X, Y, VC, VS>& p)
+	{
+		constexpr bool xrange_assigned = !PlotParamBase::IsEmptyView<X>();
+		constexpr bool yrange_assigned = !PlotParamBase::IsEmptyView<Y>();
+
+		std::string command;
+		if (p.IsData())
+		{
+			//p.mapがデータでない場合にコンパイルエラーになるのを防ぐため、constexpr ifで括っておく。
+			if constexpr (ranges::arithmetic_matrix_range<Map>)
+			{
+				//データプロットの場合。
+				std::string output_name = GetSanitizedOutputName();
+				if (!p.IsXAssigned()) throw InvalidArg("xrange or xminmax must be specified.");
+				if (!p.IsYAssigned()) throw InvalidArg("yrange or yminmax must be specified.");
+				//std::vector<std::string> column{ "1", "2", "5" };
+				std::map<std::string, std::variant<int, std::string>> column{ { "x", 3 }, { "y", 4 }, { "z", 5} };
+				int c = 6;
+				if constexpr (p.HasVariableColor()) column.emplace("variable_color", c), ++c;
+				if constexpr (p.HasVariableSize()) column.emplace("variable_size", c);
+				std::vector<std::string> labelcolumn;
+				size_t xsize = p.z.size();
+				size_t ysize = p.z.front().size();
+				if constexpr (xrange_assigned)
+				{
+					if constexpr (yrange_assigned)
+						MakeDataObject(m_canvas, output_name, p.z, CoordRange<X>(p.xrange), CoordRange<Y>(p.yrange));
+					else
+						MakeDataObject(m_canvas, output_name, p.z, CoordRange<X>(p.xrange), CoordMinMax(p.yminmax, ysize));
+				}
+				else
+				{
+					if constexpr (yrange_assigned)
+						MakeDataObject(m_canvas, output_name, p.z, CoordMinMax(p.xminmax, xsize), CoordRange<Y>(p.yrange));
+					else
+						MakeDataObject(m_canvas, output_name, p.z, CoordMinMax(p.xminmax, xsize), CoordMinMax(p.yminmax, ysize));
+				}
+				if (p.with_contour)
+				{
+					m_canvas->Command(MakeContourPlotCommand(output_name, m_canvas->IsInMemoryDataTransferEnabled(), p));
+				}
+				command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, p);
+			}
+		}
+		else if (p.IsFile())
+		{
+			//ファイルプロットの場合、p.map、p.xrange、p.yrangeにカラムの情報が入っている。
+			std::map<std::string, std::variant<int, std::string>> column;
+			std::vector<std::string> labelcolumn;
+			AddColumn(p.xrange, "x", column);
+			AddColumn(p.yrange, "y", column);
+			AddColumn(p.z, "z", column);
+			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+			if (p.with_contour)
+			{
+				PrintWarning("Contour plot is not supported for file plot.");
+			}
+		}
+		else if (p.IsEquation())
+		{
+			std::map<std::string, std::variant<int, std::string>> column;
+			std::vector<std::string> labelcolumn;
+			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+		}
+		m_commands.push_back(command);
+		return std::move(*this);
+	}
 
 	static std::string InitCommand()
 	{
@@ -1015,211 +1232,229 @@ protected:
 };
 
 
-class CanvasCM : public Axis2D<Canvas>
+class Canvas3D : public Axis3D<Canvas>
 {
 public:
 
-	CanvasCM(const std::string& output, double sizex = 0., double sizey = 0.)
-		: Axis2D<Canvas>(output, sizex, sizey)
-	{
-		if (m_pipe)
-		{
-			this->Command("set pm3d corners2color c1");
-			this->Command("set view map");
-		}
-	}
-	CanvasCM()
-	{
-		if (m_pipe)
-		{
-			this->Command("set pm3d corners2color c1");
-			this->Command("set view map");
-		}
-	}
+	Canvas3D(const std::string& output, double sizex = 0., double sizey = 0.)
+		: Axis3D<Canvas>(output, sizex, sizey)
+	{}
+	Canvas3D()
+	{}
 
 	friend class MultiPlotter;
 
+	void SetViewMap() { this->Command("set view map"); }
+	void SetXYPlaneRelative(double frac) { this->Command("set xyplane relative ", frac); }
+	void SetXYPlaneAt(double z) { this->Command("set xyplane at ", z); }
+
 	template <acceptable_arg X, acceptable_arg Y, acceptable_arg Z,
 			  point_option ...Options>
-	PlotBufferCM PlotPoints(const X& x, const Y& y, const Z& z, Options ...ops)
+	PlotBuffer3D PlotPoints(const X& x, const Y& y, const Z& z, Options ...ops)
 	{
-		PlotBufferCM p(this);
+		PlotBuffer3D p(this);
 		return p.PlotPoints(x, y, z, ops...);
 	}
 	template <point_option ...Options>
-	PlotBufferCM PlotPoints(std::string_view filename,
+	PlotBuffer3D PlotPoints(std::string_view filename,
 							std::string_view x, std::string_view y, std::string_view z,
 							Options ...ops)
 	{
-		PlotBufferCM p(this);
+		PlotBuffer3D p(this);
 		return p.PlotPoints(filename, x, y, z, ops...);
 	}
 	template <acceptable_arg X, acceptable_arg Y,
 			  point_option ...Options>
-	PlotBufferCM PlotPoints(const X& x, const Y& y, Options ...ops)
+	PlotBuffer3D PlotPoints(const X& x, const Y& y, Options ...ops)
 	{
-		PlotBufferCM p(this);
+		PlotBuffer3D p(this);
 		return p.PlotPoints(x, y, ops...);
 	}
 	template <point_option ...Options>
-	PlotBufferCM PlotPoints(std::string_view filename,
+	PlotBuffer3D PlotPoints(std::string_view filename,
 							std::string_view x, std::string_view y,
 							Options ...ops)
 	{
-		PlotBufferCM p(this);
+		PlotBuffer3D p(this);
 		return p.PlotPoints(filename, x, y, ops...);
 	}
 	template <point_option ...Options>
-	PlotBufferCM PlotPoints(std::string_view equation, Options ...ops)
+	PlotBuffer3D PlotPoints(std::string_view equation, Options ...ops)
 	{
-		PlotBufferCM p(this);
+		PlotBuffer3D p(this);
 		return p.PlotPoints(equation, ops...);
 	}
 
 	template <acceptable_arg X, acceptable_arg Y, acceptable_arg Z,
 			  point_option ...Options>
-	PlotBufferCM PlotLines(const X& x, const Y& y, const Z& z, Options ...ops)
+	PlotBuffer3D PlotLines(const X& x, const Y& y, const Z& z, Options ...ops)
 	{
-		PlotBufferCM p(this);
+		PlotBuffer3D p(this);
 		return p.PlotLines(x, y, z, ops...);
 	}
 	template <point_option ...Options>
-	PlotBufferCM PlotLines(std::string_view filename,
+	PlotBuffer3D PlotLines(std::string_view filename,
 						   std::string_view x, std::string_view y, std::string_view z,
 						   Options ...ops)
 	{
-		PlotBufferCM p(this);
+		PlotBuffer3D p(this);
 		return p.PlotLines(filename, x, y, z, ops...);
 	}
 	template <acceptable_arg X, acceptable_arg Y,
 			  point_option ...Options>
-	PlotBufferCM PlotLines(const X& x, const Y& y, Options ...ops)
+	PlotBuffer3D PlotLines(const X& x, const Y& y, Options ...ops)
 	{
-		PlotBufferCM p(this);
+		PlotBuffer3D p(this);
 		return p.PlotLines(x, y, ops...);
 	}
 	template <point_option ...Options>
-	PlotBufferCM PlotLines(std::string_view filename,
+	PlotBuffer3D PlotLines(std::string_view filename,
 						   std::string_view x, std::string_view y,
 						   Options ...ops)
 	{
-		PlotBufferCM p(this);
+		PlotBuffer3D p(this);
 		return p.PlotLines(filename, x, y, ops...);
 	}
 	template <point_option ...Options>
-	PlotBufferCM PlotLines(std::string_view equation, Options ...ops)
+	PlotBuffer3D PlotLines(std::string_view equation, Options ...ops)
 	{
-		PlotBufferCM p(this);
+		PlotBuffer3D p(this);
 		return p.PlotLines(equation, ops...);
 	}
 
 	template <acceptable_arg X, acceptable_arg Y, acceptable_arg Z,
 			  acceptable_arg XL, acceptable_arg YL, acceptable_arg ZL,
 			  vector_option ...Options>
-	PlotBufferCM PlotVectors(const X& xfrom, const Y& yfrom, const Z& zfrom,
+	PlotBuffer3D PlotVectors(const X& xfrom, const Y& yfrom, const Z& zfrom,
 							 const XL& xlen, const YL& ylen, const ZL& zlen,
 							 Options ...ops)
 	{
-		PlotBufferCM p(this);
+		PlotBuffer3D p(this);
 		return p.PlotVectors(xfrom, yfrom, zfrom, xlen, ylen, zlen, ops...);
 	}
 	template <vector_option ...Options>
-	PlotBufferCM PlotVectors(std::string_view filename,
+	PlotBuffer3D PlotVectors(std::string_view filename,
 							 std::string_view xfrom, std::string_view yfrom, std::string_view zfrom,
 							 std::string_view xlen, std::string_view ylen, std::string_view zlen,
 							 Options ...ops)
 	{
-		PlotBufferCM p(this);
+		PlotBuffer3D p(this);
 		return p.PlotVectors(filename, xfrom, yfrom, zfrom, xlen, ylen, zlen, ops...);
 	}
 	template <acceptable_arg X, acceptable_arg Y,
 			  acceptable_arg XL, acceptable_arg YL,
 			  vector_option ...Options>
-	PlotBufferCM PlotVectors(const X& xfrom, const Y& yfrom,
+	PlotBuffer3D PlotVectors(const X& xfrom, const Y& yfrom,
 							 const XL& xlen, const YL& ylen,
 							 Options ...ops)
 	{
-		PlotBufferCM p(this);
+		PlotBuffer3D p(this);
 		return p.PlotVectors(xfrom, yfrom, xlen, ylen, ops...);
 	}
 	template <vector_option ...Options>
-	PlotBufferCM PlotVectors(std::string_view filename,
+	PlotBuffer3D PlotVectors(std::string_view filename,
 							 std::string_view xfrom, std::string_view yfrom,
 							 std::string_view xlen, std::string_view ylen,
 							 Options ...ops)
 	{
-		PlotBufferCM p(this);
+		PlotBuffer3D p(this);
 		return p.PlotVectors(filename, xfrom, yfrom, xlen, ylen, ops...);
 	}
 
 	template <acceptable_arg X, acceptable_arg Y, acceptable_arg L,
 		label_option ...Options>
-	PlotBufferCM PlotLabels(const X& x, const Y& y, const L& label, Options ...ops)
+	PlotBuffer3D PlotLabels(const X& x, const Y& y, const L& label, Options ...ops)
 	{
-		PlotBufferCM p(this);
+		PlotBuffer3D p(this);
 		return p.PlotLabels(x, y, label, ops...);
 	}
 	template <label_option ...Options>
-	PlotBufferCM PlotLabels(std::string_view filename, std::string_view xcol, std::string_view ycol, std::string_view labelcol, Options ...ops)
+	PlotBuffer3D PlotLabels(std::string_view filename, std::string_view xcol, std::string_view ycol, std::string_view labelcol, Options ...ops)
 	{
-		PlotBufferCM p(this);
+		PlotBuffer3D p(this);
 		return p.PlotLabels(filename, xcol, ycol, labelcol, ops...);
 	}
 	template <acceptable_arg X, acceptable_arg Y, acceptable_arg Z, ranges::string_range L,
 		label_option ...Options>
-	PlotBufferCM PlotLabels(const X& x, const Y& y, const Z& z, const L& label, Options ...ops)
+	PlotBuffer3D PlotLabels(const X& x, const Y& y, const Z& z, const L& label, Options ...ops)
 	{
-		PlotBufferCM p(this);
+		PlotBuffer3D p(this);
 		return p.PlotLabels(x, y, z, label, ops...);
 	}
 	template <label_option ...Options>
-	PlotBufferCM PlotLabels(std::string_view filename,
+	PlotBuffer3D PlotLabels(std::string_view filename,
 							std::string_view xcol, std::string_view ycol, std::string_view zcol,
 							std::string_view labelcol, Options ...ops)
 	{
-		PlotBufferCM p(this);
+		PlotBuffer3D p(this);
 		return p.PlotLabels(filename, xcol, ycol, zcol, labelcol, ops...);
 	}
 
 	template <acceptable_matrix_range Map, ranges::arithmetic_range X, ranges::arithmetic_range Y,
 			  colormap_option ...Options>
-	PlotBufferCM PlotColormap(const Map& map, const X& x, const Y& y,
+	PlotBuffer3D PlotColormap(const Map& map, const X& x, const Y& y,
 							  Options ...ops)
 	{
-		PlotBufferCM p(this);
+		PlotBuffer3D p(this);
 		return p.PlotColormap(map, x, y, ops...);
 	}
 	template <acceptable_matrix_range Map, colormap_option ...Options>
-	PlotBufferCM PlotColormap(const Map& map, std::pair<double, double> x, std::pair<double, double> y,
+	PlotBuffer3D PlotColormap(const Map& map, std::pair<double, double> x, std::pair<double, double> y,
 							  Options ...ops)
 	{
-		PlotBufferCM p(this);
+		PlotBuffer3D p(this);
 		return p.PlotColormap(map, x, y, ops...);
 	}
 	template <colormap_option ...Options>
-	PlotBufferCM PlotColormap(std::string_view filename, std::string_view x, std::string_view y, std::string_view z,
+	PlotBuffer3D PlotColormap(std::string_view filename, std::string_view x, std::string_view y, std::string_view z,
 							  Options ...ops)
 	{
-		PlotBufferCM p(this);
+		PlotBuffer3D p(this);
 		return p.PlotColormap(filename, x, y, z, ops...);
 	}
 	template <colormap_option ...Options>
-	PlotBufferCM PlotColormap(std::string_view equation, Options ...ops)
+	PlotBuffer3D PlotColormap(std::string_view equation, Options ...ops)
 	{
-		PlotBufferCM p(this);
+		PlotBuffer3D p(this);
 		return p.PlotColormap(equation, ops...);
 	}
 
-	PlotBufferCM GetBuffer()
+	template <acceptable_matrix_range Map, ranges::arithmetic_range X, ranges::arithmetic_range Y,
+		surface_option ...Options>
+	PlotBuffer3D PlotSurface(const Map& z, const X& x, const Y& y, Options ...ops)
 	{
-		return PlotBufferCM(this);
+		PlotBuffer3D p(this);
+		return p.PlotSurface(z, x, y, ops...);
+	}
+	template <acceptable_matrix_range Map, surface_option ...Options>
+	PlotBuffer3D PlotSurface(const Map& z, std::pair<double, double> x, std::pair<double, double> y, Options ...ops)
+	{
+		PlotBuffer3D p(this);
+		return p.PlotSurface(z, x, y, ops...);
+	}
+	template <surface_option ...Options>
+	PlotBuffer3D PlotSurface(std::string_view filename, std::string_view x, std::string_view y, std::string_view z, Options ...ops)
+	{
+		PlotBuffer3D p(this);
+		return p.PlotSurface(filename, x, y, z, ops...);
+	}
+	template <surface_option ...Options>
+	PlotBuffer3D PlotSurface(std::string_view equation, Options ...ops)
+	{
+		PlotBuffer3D p(this);
+		return p.PlotSurface(equation, ops...);
+	}
+
+	PlotBuffer3D GetBuffer()
+	{
+		return PlotBuffer3D(this);
 	}
 };
 
 }
 
 using Canvas2D = plot_detail::Canvas2D;
-using CanvasCM = plot_detail::CanvasCM;
+using Canvas3D = plot_detail::Canvas3D;
 
 }
 
