@@ -15,12 +15,13 @@
 namespace adapt
 {
 
-enum class Style : int16_t { none, lines, points, linespoints, dots, impulses, boxes, steps, fsteps, histeps, };
+enum class Style : int16_t { none, lines, points, linespoints, dots, impulses, boxes, steps, fsteps, histeps, pm3d, };
 enum class Smooth : int16_t { none, unique, frequency, cumulative, cnormal, kdensity, csplines, acsplines, bezier, sbezier, };
 enum class ArrowHead : int16_t { none, head, heads, nohead, };
 enum class ArrowFill : int16_t { none, filled, empty, nofilled, noborder, };
 enum class LabelPos : int16_t { none, left, center, right, };
 enum class LabelOverlay : int16_t { none, front, back, };
+enum class Pm3dPosition : int16_t { none, bottom, surface, top, };
 
 enum BinError : int16_t { none, poisson68, poisson95, normal68, normal95, };
 

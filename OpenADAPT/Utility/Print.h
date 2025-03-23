@@ -194,6 +194,14 @@ constexpr auto MakeFormatStr_rec()
 
 template <class Del, class End, class Quo, class Args>
 struct MakeFormatStr;
+template <class Del, class End, class Quo>
+struct MakeFormatStr<Del, End, Quo, TypeList<>>
+{
+	static constexpr auto apply()
+	{
+		return MakeFormatStr_rec<Del, End, Quo>();
+	}
+};
 template <class Del, class End, class Quo, class Head, class ...Args>
 struct MakeFormatStr<Del, End, Quo, TypeList<Head, Args...>>
 {
@@ -205,6 +213,12 @@ struct MakeFormatStr<Del, End, Quo, TypeList<Head, Args...>>
 
 struct PrintToStream
 {
+	template <class Del, class End, class Fls, class Quo>
+	void operator()(std::ostream& ost, Del, End, Fls, Quo) const
+	{
+		ost << CatArray(End::Get(), std::array<char, 1>{ '\0' }).data();
+		Flush_<Fls>(ost);
+	}
 	template <class Del, class End, class Fls, class Quo, class Head>
 	void operator()(std::ostream& ost, Del, End, Fls, Quo, Head&& head) const
 	{

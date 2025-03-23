@@ -42,6 +42,7 @@ using AnyStringRange = AnyTypeKeyword<StringRange>;
 using AnyAcceptableArg = AnyTypeKeyword<AcceptableArg>;
 
 struct BaseOption {};
+struct StyleOption {};
 struct FillOption {};
 struct ColorOption {};
 struct LineOption {};
@@ -50,13 +51,14 @@ struct VectorOption {};
 struct FilledCurveOption {};
 struct LabelOption {};
 struct ColormapOption {};
+struct SurfaceOption {};
 struct HistogramOption {};
-struct Histogram2DOption {};
+struct BinscatterOption {};
 
 template <class T>
 concept base_option = keyword_arg_tagged_with<T, BaseOption>;
 template <class T>
-concept point_option = keyword_arg_tagged_with<T, BaseOption, ColorOption, LineOption, FillOption, PointOption>;
+concept point_option = keyword_arg_tagged_with<T, BaseOption, StyleOption, ColorOption, LineOption, PointOption, FillOption>;
 template <class T>
 concept vector_option = keyword_arg_tagged_with<T, BaseOption, ColorOption, LineOption, VectorOption>;
 template <class T>
@@ -74,11 +76,19 @@ using AnyCoordRange = AnyTypeKeyword<ArithmeticRange>;
 
 template <class Opt>
 concept colormap_option = keyword_arg_tagged_with<Opt, BaseOption, ColormapOption>;
+template <class Opt>
+concept surface_option = keyword_arg_tagged_with<Opt, BaseOption, StyleOption, ColorOption, LineOption, PointOption, SurfaceOption>;
 
 template <class Opt>
 concept histogram_option = keyword_arg_tagged_with<Opt, BaseOption, HistogramOption, ColorOption, LineOption, PointOption>;
 template <class Opt>
-concept histogram2d_option = keyword_arg_tagged_with<Opt, BaseOption, Histogram2DOption, ColormapOption>;
+concept binscatter_option = keyword_arg_tagged_with<Opt, BaseOption, BinscatterOption, PointOption, ColormapOption>;
+
+template <class Param>
+concept zaxis_param = requires(Param p)
+{
+	{ p.z };
+};
 
 }
 
@@ -95,6 +105,8 @@ ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(axis, std::string_view, plot_detai
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(column, std::vector<std::string>, plot_detail::BaseOption);
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(input, std::string_view, plot_detail::BaseOption);
 
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(style, Style, plot_detail::StyleOption)
+
 //LineOption
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(linetype, int, plot_detail::LineOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(linewidth, double, plot_detail::LineOption)
@@ -106,7 +118,6 @@ ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(color_rgb, std::string_view, plot_
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(variable_color, plot_detail::AnyAcceptableArg, plot_detail::ColorOption)
 
 //PointOption
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(style, Style, plot_detail::PointOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(smooth, Smooth, plot_detail::PointOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(xerrorbar, plot_detail::AnyAcceptableArg, plot_detail::PointOption)//xerrorbarの大きさ
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(yerrorbar, plot_detail::AnyAcceptableArg, plot_detail::PointOption)//yerrorbarの大きさ
@@ -143,11 +154,24 @@ ADAPT_DEFINE_TAGGED_KEYWORD_OPTION(above, plot_detail::FilledCurveOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION(below, plot_detail::FilledCurveOption)
 
 //HistogramOption
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(xmin, double, plot_detail::HistogramOption);
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(xmax, double, plot_detail::HistogramOption);
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(xnbin, size_t, plot_detail::HistogramOption);
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(min, double, plot_detail::HistogramOption);
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(max, double, plot_detail::HistogramOption);
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(nbin, size_t, plot_detail::HistogramOption);
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(data, plot_detail::AnyArithmeticRange, plot_detail::HistogramOption);
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(binerror, BinError, plot_detail::HistogramOption);
+
+//BinscatterOption
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(datax, plot_detail::AnyArithmeticRange, plot_detail::BinscatterOption);
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(datay, plot_detail::AnyArithmeticRange, plot_detail::BinscatterOption);
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(xmin, double, plot_detail::BinscatterOption);
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(xmax, double, plot_detail::BinscatterOption);
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(xnbin, size_t, plot_detail::BinscatterOption);
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(ymin, double, plot_detail::BinscatterOption);
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(ymax, double, plot_detail::BinscatterOption);
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(ynbin, size_t, plot_detail::BinscatterOption);
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION(bs_points, plot_detail::BinscatterOption);//binscatterだが、散布図の各点に密度に対応する色を付与する形で表現する。
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(bs_lower, uint64_t, plot_detail::BinscatterOption);//binscatterの下限値。これ以下の値は白色で表示される。
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(bs_upper, uint64_t, plot_detail::BinscatterOption);//binscatterの上限値。これ以上の値は白色で表示される。
 
 //LabelOption
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(label, plot_detail::AnyAcceptableArg, plot_detail::LabelOption);
@@ -178,10 +202,24 @@ ADAPT_DEFINE_TAGGED_KEYWORD_OPTION(variable_cntrcolor, plot_detail::ColormapOpti
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrlinetype, int, plot_detail::ColormapOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrlinewidth, double, plot_detail::ColormapOption)
 
+//SurfaceOption
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(pm3d_at, Pm3dPosition, plot_detail::SurfaceOption)
 
 // タイトルなし指定の短縮版
 inline constexpr auto notitle = (title = "notitle");
 inline constexpr auto t_entries = (title_add_entries = 1);
+
+// スタイル指定の短縮版
+inline constexpr auto s_lines = (style = Style::lines);
+inline constexpr auto s_points = (style = Style::points);
+inline constexpr auto s_linespoints = (style = Style::linespoints);
+inline constexpr auto s_dots = (style = Style::dots);
+inline constexpr auto s_impulses = (style = Style::impulses);
+inline constexpr auto s_boxes = (style = Style::boxes);
+inline constexpr auto s_steps = (style = Style::steps);
+inline constexpr auto s_fsteps = (style = Style::fsteps);
+inline constexpr auto s_histeps = (style = Style::histeps);
+inline constexpr auto s_pm3d = (style = Style::pm3d);
 
 // 軸指定の短縮版
 inline constexpr auto ax_x1y1 = (axis = "x1y1");
@@ -226,17 +264,6 @@ inline constexpr auto c_cyan = (color = "cyan");
 inline constexpr auto c_light_cyan = (color = "light-cyan");
 
 
-// スタイル指定の短縮版
-inline constexpr auto s_lines = (style = Style::lines);
-inline constexpr auto s_points = (style = Style::points);
-inline constexpr auto s_linespoints = (style = Style::linespoints);
-inline constexpr auto s_dots = (style = Style::dots);
-inline constexpr auto s_impulses = (style = Style::impulses);
-inline constexpr auto s_boxes = (style = Style::boxes);
-inline constexpr auto s_steps = (style = Style::steps);
-inline constexpr auto s_fsteps = (style = Style::fsteps);
-inline constexpr auto s_histeps = (style = Style::histeps);
-
 // ポイントタイプ指定の短縮版
 inline constexpr auto pt_dot = (pointtype = 0);//dot
 inline constexpr auto pt_plus = (pointtype = 1);//+
@@ -279,6 +306,9 @@ inline constexpr auto he_poisson95 = (binerror = BinError::poisson95);
 inline constexpr auto he_normal = (binerror = BinError::normal68);
 inline constexpr auto he_normal95 = (binerror = BinError::normal95);
 
+inline constexpr auto bs_no_lowlim = (bs_lower = std::numeric_limits<uint64_t>::min());
+
+
 //ラベルの位置指定の短縮版
 inline constexpr auto lp_left = (labelpos = LabelPos::left);
 inline constexpr auto lp_center = (labelpos = LabelPos::center);
@@ -298,6 +328,10 @@ inline constexpr auto lr_m135 = (labelrotate = -135.0);
 inline constexpr auto lo_front = (labeloverlay = LabelOverlay::front);
 inline constexpr auto lo_back = (labeloverlay = LabelOverlay::back);
 
+//PM3Dの位置指定の短縮版
+inline constexpr auto pm3d_bottom = (pm3d_at = Pm3dPosition::bottom);
+inline constexpr auto pm3d_surface = (pm3d_at = Pm3dPosition::surface);
+inline constexpr auto pm3d_top = (pm3d_at = Pm3dPosition::top);
 
 
 }
@@ -393,9 +427,9 @@ struct PointParam : public PlotParamBase
 	void SetOptions(Ops ...ops)
 	{
 		SetBaseOptions(ops...);
-		ADAPT_DETAIL_SET_OPTIONS_MACRO(linetype, linewidth, dashtype, color, color_rgb,
-								variable_color, fillcolor, fillpattern, fillsolid, filltransparent, bordercolor, bordertype,
-								style, smooth, pointtype, pointsize);
+		ADAPT_DETAIL_SET_OPTIONS_MACRO(style, linetype, linewidth, dashtype, color, color_rgb,
+									   variable_color, fillcolor, fillpattern, fillsolid, filltransparent, bordercolor, bordertype,
+									   smooth, pointtype, pointsize);
 	}
 
 	bool IsData() const
@@ -443,6 +477,8 @@ struct PointParam : public PlotParamBase
 	[[no_unique_address]] YEL yerrlow = {};
 	[[no_unique_address]] YEH yerrhigh = {};
 
+	Style style = Style::points;//デフォルトではpoints
+
 	//LineOption
 	int linetype = -2;//-2ならデフォルト
 	double linewidth = -1.;//-1ならデフォルト、-2ならvariable
@@ -453,7 +489,6 @@ struct PointParam : public PlotParamBase
 	[[no_unique_address]] VC variable_color = {};
 
 	//PointOption
-	Style style = Style::points;//デフォルトではPOINTS
 	int pointtype = -1;//-1ならデフォルト
 	double pointsize = -1.;//-1ならデフォルト、-2ならvariable
 	[[no_unique_address]] VS variable_size = {};
@@ -970,7 +1005,7 @@ struct ColormapParam : PlotParamBase
 	int cntrlinetype = -2;
 	double cntrlinewidth = -1;
 };
-template <colormap_option ...Options>
+template <keyword_arg ...Options>
 auto MakeColormapParam(Options ...ops)
 {
 	auto map = AllView(GetKeywordArg(plot::map, std::ranges::empty_view<std::ranges::empty_view<double>>{}, ops...));
@@ -980,6 +1015,110 @@ auto MakeColormapParam(Options ...ops)
 	auto yminmax = GetKeywordArg(plot::yminmax, std::pair<double, double>{ 0, 0 }, ops...);
 	return ColormapParam<decltype(map), decltype(xrange), decltype(yrange)>
 		(map, xrange, yrange, xminmax, yminmax, ops...);
+}
+
+using EmptyPointParam = PointParam<
+	std::ranges::empty_view<double>,
+	std::ranges::empty_view<double>,
+	std::ranges::empty_view<double>,
+	std::ranges::empty_view<double>,
+	std::ranges::empty_view<double>,
+	std::ranges::empty_view<double>,
+	std::ranges::empty_view<double>,
+	std::ranges::empty_view<double>,
+	std::ranges::empty_view<double>,
+	std::ranges::empty_view<double>,
+	std::ranges::empty_view<double>>;
+
+template <acceptable_matrix_range Z, ranges::arithmetic_range XRange, ranges::arithmetic_range YRange,
+		  acceptable_matrix_range VC, acceptable_matrix_range VS>
+struct SurfaceParam : public EmptyPointParam
+{
+private:
+	static std::ranges::empty_view<double> ev() { return {}; }
+public:
+	using Base = EmptyPointParam;
+	template <keyword_arg ...Ops>
+	SurfaceParam(Z z_, XRange xrange_, YRange yrange_,
+				 std::pair<double, double> xminmax_, std::pair<double, double> yminmax_,
+				 VC vc_, VS vs_, Ops ...ops)
+		: Base(ev(), ev(), ev(), ev(), ev(), ev(), ev(), ev(), ev(), ev(), ev()),
+		z(z_), xrange(xrange_), yrange(yrange_), xminmax(xminmax_), yminmax(yminmax_),
+		variable_color(vc_), variable_size(vs_)
+	{
+		SetOptions(ops...);
+	}
+
+	template <keyword_arg ...Ops>
+	void SetOptions(Ops ...ops)
+	{
+		style = Style::lines;//デフォルトではlinesだが、Base::SetOptionsでstyleが変更される可能性がある。
+		Base::SetOptions(ops...);
+		ADAPT_DETAIL_SET_OPTIONS_MACRO(pm3d_at,
+									   with_contour, without_surface,
+									   cntrsmooth, cntrpoints, cntrorder, cntrlevels_auto, cntrlevels_discrete, cntrlevels_incremental,
+									   cntrcolor, variable_cntrcolor, cntrlinetype, cntrlinewidth);
+		if (pm3d_at != Pm3dPosition::none) style = Style::pm3d;
+	}
+
+	bool IsXRangeAssigned() const { return !IsEmptyView<XRange>(); }
+	bool IsYRangeAssigned() const { return !IsEmptyView<YRange>(); }
+	bool IsXMinMaxAssigned() const { return xminmax.first != 0 || xminmax.second != 0; }
+	bool IsYMinMaxAssigned() const { return yminmax.first != 0 || yminmax.second != 0; }
+	bool IsXAssigned() const { return IsXRangeAssigned() || IsXMinMaxAssigned(); }
+	bool IsYAssigned() const { return IsYRangeAssigned() || IsYMinMaxAssigned(); }
+
+	static constexpr bool HasVariableColor() { return !IsEmptyView<VC>(); }
+	static constexpr bool HasVariableSize() { return !IsEmptyView<VS>(); }
+
+	bool IsData() const
+	{
+		return input.empty() && !IsEmptyView<Z>() && IsXAssigned() && IsYAssigned();
+	}
+	bool IsFile() const
+	{
+		return !input.empty() && IsString<Z>() && IsString<XRange>() && IsString<YRange>();
+	}
+	bool IsEquation() const
+	{
+		return !input.empty() && IsEmptyView<Z>() && !IsXAssigned() && !IsYAssigned();
+	}
+
+	[[no_unique_address]] Z z;
+	[[no_unique_address]] XRange xrange;
+	[[no_unique_address]] YRange yrange;
+	std::pair<double, double> xminmax;
+	std::pair<double, double> yminmax;
+	[[no_unique_address]] VC variable_color;//基底クラスの同盟メンバ変数を隠蔽している。
+	[[no_unique_address]] VS variable_size;//基底クラスの同盟メンバ変数を隠蔽している。
+
+	Pm3dPosition pm3d_at = Pm3dPosition::none;//これが指定された場合、styleは強制的にpm3dになる。
+
+	bool with_contour = false;
+	bool without_surface = false;
+	CntrSmooth cntrsmooth = CntrSmooth::none;
+	int cntrpoints = -1;
+	int cntrorder = -1;
+	int cntrlevels_auto = -1;
+	std::vector<double> cntrlevels_discrete{};
+	std::tuple<double, double, double> cntrlevels_incremental = { 0, 0, 0 };
+	std::string cntrcolor;
+	bool variable_cntrcolor = false;
+	int cntrlinetype = -2;
+	double cntrlinewidth = -1;
+};
+template <keyword_arg ...Options>
+auto MakeSurfaceParam(Options ...ops)
+{
+	auto z = AllView(GetKeywordArg(plot::map, std::ranges::empty_view<std::ranges::empty_view<double>>{}, ops...));
+	auto xrange = AllView(GetKeywordArg(plot::xrange, std::ranges::empty_view<double>{}, ops...));
+	auto yrange = AllView(GetKeywordArg(plot::yrange, std::ranges::empty_view<double>{}, ops...));
+	auto xminmax = GetKeywordArg(plot::xminmax, std::pair<double, double>{ 0, 0 }, ops...);
+	auto yminmax = GetKeywordArg(plot::yminmax, std::pair<double, double>{ 0, 0 }, ops...);
+	auto vc = GetKeywordArg(plot::variable_color, std::ranges::empty_view<std::ranges::empty_view<double>>{}, ops...);
+	auto vs = GetKeywordArg(plot::variable_size, std::ranges::empty_view<std::ranges::empty_view<double>>{}, ops...);
+	return SurfaceParam<decltype(z), decltype(xrange), decltype(yrange), decltype(vc), decltype(vs)>
+		(z, xrange, yrange, xminmax, yminmax, vc, vs, ops...);
 }
 
 template <ranges::arithmetic_range Range>
@@ -993,21 +1132,70 @@ struct HistogramParam
 	}
 
 	template <keyword_arg ...Ops>
-	void SetOptions(Ops ...)
-	{}
+	void SetOptions(Ops ...ops)
+	{
+		if constexpr (KeywordExists(plot::binerror, ops...)) binerror = GetKeywordArg(plot::binerror, ops...);
+	}
 	Range data;
 	double xmin;
 	double xmax;
 	size_t xnbin;
+	BinError binerror;
 };
 template <keyword_arg ...Options>
 auto MakeHistogramParam(Options ...ops)
 {
 	auto data = AllView(GetKeywordArg(plot::data, ops...));
+	auto xmin = GetKeywordArg(plot::min, ops...);
+	auto xmax = GetKeywordArg(plot::max, ops...);
+	auto xnbin = GetKeywordArg(plot::nbin, ops...);
+	return HistogramParam<decltype(data)>(data, xmin, xmax, xnbin, ops...);
+}
+
+template <ranges::arithmetic_range X, ranges::arithmetic_range Y>
+struct BinscatterParam
+{
+	template <keyword_arg ...Ops>
+	BinscatterParam(X x, double xmin, double xmax, size_t xnbin,
+				   Y y, double ymin, double ymax, size_t ynbin,
+				   Ops ...ops)
+		: x(x), xmin(xmin), xmax(xmax), xnbin(xnbin), y(y), ymin(ymin), ymax(ymax), ynbin(ynbin)
+	{
+		SetOptions(ops...);
+	}
+
+	template <keyword_arg ...Ops>
+	void SetOptions(Ops ...ops)
+	{
+		if constexpr (KeywordExists(plot::bs_points, ops...)) bs_points = GetKeywordArg(plot::bs_points, ops...);
+		if constexpr (KeywordExists(plot::bs_lower, ops...)) bs_lower = GetKeywordArg(plot::bs_lower, ops...);
+		if constexpr (KeywordExists(plot::bs_upper, ops...)) bs_upper = GetKeywordArg(plot::bs_upper, ops...);
+	}
+	X x;
+	double xmin;
+	double xmax;
+	size_t xnbin;
+	Y y;
+	double ymin;
+	double ymax;
+	size_t ynbin;
+
+	bool bs_points = false;
+	uint64_t bs_lower = 1;
+	uint64_t bs_upper = std::numeric_limits<uint64_t>::max();
+};
+template <keyword_arg ...Options>
+auto MakeBinscatterParam(Options ...ops)
+{
+	auto x = AllView(GetKeywordArg(plot::datax, ops...));
 	auto xmin = GetKeywordArg(plot::xmin, ops...);
 	auto xmax = GetKeywordArg(plot::xmax, ops...);
 	auto xnbin = GetKeywordArg(plot::xnbin, ops...);
-	return HistogramParam<decltype(data)>(data, xmin, xmax, xnbin, ops...);
+	auto y = AllView(GetKeywordArg(plot::datay, ops...));
+	auto ymin = GetKeywordArg(plot::ymin, ops...);
+	auto ymax = GetKeywordArg(plot::ymax, ops...);
+	auto ynbin = GetKeywordArg(plot::ynbin, ops...);
+	return BinscatterParam<decltype(x), decltype(y)>(x, xmin, xmax, xnbin, y, ymin, ymax, ynbin, ops...);
 }
 
 #undef ADAPT_DETAIL_GET_KEYWORD_ARG_AS_VIEW
@@ -1084,19 +1272,20 @@ void MakeDataObject(Stream& stream, const MatRange& mat, const RangeX& rx, const
 			++mity;
 		}
 		//この時点でityはry.end()に到達しているが、CoordMinMax/CoordRangeクラスのend状態は*ityで値を取得できるので問題ない。
-		auto [y, cy] = *ity;
-		adapt::Print(stream, x, y, cx, cy, " 0\n");
+		//auto [y, cy] = *ity;
+		//adapt::Print(stream, x, y, cx, cy, " 0\n");
+		adapt::Print(stream);
 		++mitx;
 	}
-	auto [x, cx] = *itx;
-	auto ity = ry.begin();
-	for (; ity != ry.end(); ++ity)
-	{
-		auto [y, cy] = *ity;
-		adapt::Print(stream, x, y, cx, cy, " 0");
-	}
-	auto [y, cy] = *ity;
-	adapt::Print(stream, x, y, cx, cy, " 0");
+	//auto [x, cx] = *itx;
+	//auto ity = ry.begin();
+	//for (; ity != ry.end(); ++ity)
+	//{
+	//	auto [y, cy] = *ity;
+	//	adapt::Print(stream, x, y, cx, cy, " 0");
+	//}
+	//auto [y, cy] = *ity;
+	//adapt::Print(stream, x, y, cx, cy, " 0");
 }
 template <class ...Args>
 inline auto MakeDataObject(Canvas* g, const std::string& name, Args&& ...args)
@@ -1241,6 +1430,41 @@ inline std::string ConvCol(const std::variant<int, std::string>& col)
 	}
 }
 
+template <class Param>
+void MakeOutputNameCommand(bool inmemory, std::string_view output_name, const Param& p, std::string& out)
+{
+	if (p.IsData())
+	{
+		//from data
+		if (inmemory)
+			//variable name
+			out += std::format(" {}", output_name);
+		else
+			//filename
+			out += std::format(" '{}'", output_name);
+	}
+	else if (p.IsFile())
+	{
+		//from file
+		out += std::format(" '{}'", output_name);
+	}
+	else if (p.IsEquation())
+	{
+		//from equation
+		out += std::format(" {}", output_name);
+	}
+}
+
+template <class Param>
+void MakeTitleCommand(const Param& p, std::string& c)
+{
+	if (!p.title.empty())
+	{
+		if (p.title == "notitle") c += " notitle";
+		else c += std::format(" title '{}'", p.title);
+	}
+}
+
 template <bool IsLines, class Param>
 void MakeErrorbarCommand(const std::map<std::string, std::variant<int, std::string>>& cols, const Param& p, std::string& c, std::string& usg)
 {
@@ -1248,8 +1472,8 @@ void MakeErrorbarCommand(const std::map<std::string, std::variant<int, std::stri
 	static constexpr bool yeb_assigned = Param::HasYErrorbar() || (Param::HasYErrLow() && Param::HasYErrHigh());
 	if constexpr (xeb_assigned && yeb_assigned)
 	{
-		if constexpr (IsLines) c += " xyerrorlines";
-		else c += " xyerrorbars";
+		if constexpr (IsLines) c += " with xyerrorlines";
+		else c += " with xyerrorbars";
 		//ややこしいが、deltaで持っているかlowhighで指定しているかで場合分けする必要がある。
 		if (p.IsData() || p.IsFile())
 		{
@@ -1266,8 +1490,8 @@ void MakeErrorbarCommand(const std::map<std::string, std::variant<int, std::stri
 	}
 	else if constexpr (xeb_assigned)
 	{
-		if constexpr (IsLines) c += " xerrorlines";
-		else c += " xerrorbars";
+		if constexpr (IsLines) c += " with xerrorlines";
+		else c += " with xerrorbars";
 		if (p.IsData() || p.IsFile())
 		{
 			if constexpr (Param::HasXErrorbar()) usg += std::format(":{}", GetCol(cols.at("xerrorbar")));
@@ -1276,8 +1500,8 @@ void MakeErrorbarCommand(const std::map<std::string, std::variant<int, std::stri
 	}
 	else
 	{
-		if constexpr (IsLines) c += " yerrorlines";
-		else c += " yerrorbars";
+		if constexpr (IsLines) c += " with yerrorlines";
+		else c += " with yerrorbars";
 		if (p.IsData() || p.IsFile())
 		{
 			if constexpr (Param::HasYErrorbar()) usg += std::format(":{}", GetCol(cols.at("yerrorbar")));
@@ -1321,10 +1545,21 @@ void MakeColorCommand(const std::map<std::string, std::variant<int, std::string>
 }
 
 template <class Param>
-	requires derived_from_xt<Param, PointParam>
-void MakePlotCommand(std::string_view, bool, const std::map<std::string, std::variant<int, std::string>>& cols, const Param& p, std::string& c, std::string& usg)
+void MakeAxisCommand(const std::vector<std::string>& labelcols, const Param& p, std::string& c, std::string& usg)
 {
-	constexpr bool is_3d = derived_from_xt<Param, PointParam3D>;
+	for (const auto& lc : labelcols) usg += std::format(":{}", lc);
+	if (!p.axis.empty()) c += std::format(" axes {}", p.axis);
+}
+
+template <class Param>
+	requires derived_from_xt<Param, PointParam>
+std::string MakePlotCommand(std::string_view output_name, bool inmemory,
+							const std::map<std::string, std::variant<int, std::string>>& cols,
+							const std::vector<std::string>& labelcols,
+							const Param& p)
+{
+	constexpr bool is_3d = zaxis_param<Param>;
+	constexpr bool is_surface = derived_from_xt<Param, SurfaceParam>;
 	constexpr bool xeb_assigned = Param::HasXErrorbar() || (Param::HasXErrLow() && Param::HasXErrHigh());
 	constexpr bool yeb_assigned = Param::HasYErrorbar() || (Param::HasYErrLow() && Param::HasYErrHigh());
 
@@ -1335,14 +1570,22 @@ void MakePlotCommand(std::string_view, bool, const std::map<std::string, std::va
 	static_assert(!(xeb_assigned || yeb_assigned) || !Param::HasVariableFillcolor(),
 				  "errorbar and fillcolor options are exclusive.");
 
+	std::string c;
+	std::string usg;
+	std::string out;
+
+	MakeOutputNameCommand(inmemory, output_name, p, out);
 	if (p.IsData() || p.IsFile())
 	{
-		usg += std::format("{}:{}", GetCol(cols.at("x")), GetCol(cols.at("y")));
+		usg += std::format(" using {}:{}", GetCol(cols.at("x")), GetCol(cols.at("y")));
 		if constexpr (is_3d)
 			usg += std::format(":{}", GetCol(cols.at("z")));
 	}
+	MakeAxisCommand(labelcols, p, c, usg);
+	MakeTitleCommand(p, c);
 	if constexpr (xeb_assigned || yeb_assigned)
 	{
+		static_assert(!is_surface, "errorbars are not allowed with surface plots.");
 		if (p.style == Style::lines)
 		{
 			if constexpr (Param::HasVariableSize())
@@ -1367,7 +1610,7 @@ void MakePlotCommand(std::string_view, bool, const std::map<std::string, std::va
 				PrintWarning("WARNING : Box style is incompatible with xerrlow and xerrhigh options.");
 			else
 			{
-				c += " boxerrorbars";
+				c += " with boxerrorbars";
 				if (p.IsData() || p.IsFile())
 				{
 					if constexpr (Param::HasYErrorbar()) usg += std::format(":{}", GetCol(cols.at("yerrorbar")));
@@ -1397,7 +1640,25 @@ void MakePlotCommand(std::string_view, bool, const std::map<std::string, std::va
 			//else if constexpr (variablecolor_assigned) c += " palette";//しかしpalette指定の場合はlinecolorがいらない。謎。
 		}
 	}
-	//ベクトル、エラーバー指定がない場合。
+	//エラーバー指定がない場合。
+	else if (p.style == Style::pm3d)
+	{
+		if constexpr (!is_surface) throw InvalidArg("pm3d style is only allowed with surface plots.");
+		else
+		{
+			c += " with pm3d";
+			if (p.pm3d_at != Pm3dPosition::none)
+			{
+				switch (p.pm3d_at)
+				{
+				case Pm3dPosition::bottom: c += " at b"; break;
+				case Pm3dPosition::surface: c += " at s"; break;
+				case Pm3dPosition::top: c += " at t"; break;
+				default: break;
+				}
+			}
+		}
+	}
 	else if (p.style == Style::lines ||
 			 p.style == Style::impulses ||
 			 p.style == Style::steps ||
@@ -1409,20 +1670,19 @@ void MakePlotCommand(std::string_view, bool, const std::map<std::string, std::va
 		std::string others;
 		switch (p.style)
 		{
-		case Style::lines: strstyle = " lines"; break;
-		case Style::impulses: strstyle = " impulses"; break;
-		case Style::steps: strstyle = " steps"; break;
-		case Style::fsteps: strstyle = " fsteps"; break;
-		case Style::histeps: strstyle = " histeps"; break;
-		case Style::boxes: strstyle = " boxes"; break;
+		case Style::lines: strstyle = " with lines"; break;
+		case Style::impulses: strstyle = " with impulses"; break;
+		case Style::steps: strstyle = " with steps"; break;
+		case Style::fsteps: strstyle = " with fsteps"; break;
+		case Style::histeps: strstyle = " with histeps"; break;
+		case Style::boxes: strstyle = " with boxes"; break;
 		default: break;
 		}
 		MakeLineCommand(cols, p, others, usg);
 		MakeColorCommand<true>(cols, p, others, usg);
-
 		if (p.style == Style::boxes || p.style == Style::steps)
 		{
-			if (p.style == Style::steps) strstyle = " fillsteps";
+			if (p.style == Style::steps) strstyle = " with fillsteps";
 			//現状、fill系オプションはboxesまたはstepsにしか使えない。
 			if (!p.fillcolor.empty()) others += std::format(" fillcolor '{}'", p.fillcolor);
 			else if constexpr (Param::HasVariableFillcolor())
@@ -1450,7 +1710,7 @@ void MakePlotCommand(std::string_view, bool, const std::map<std::string, std::va
 	}
 	else if (p.style == Style::points)
 	{
-		c += " points";
+		c += " with points";
 		if (p.HasLineOption())
 			PrintWarning("WARNING : \"points\" style is incompatible with line options.");
 		MakePointCommand<true>(cols, p, c, usg);
@@ -1458,14 +1718,14 @@ void MakePlotCommand(std::string_view, bool, const std::map<std::string, std::va
 	}
 	else if (p.style == Style::linespoints)
 	{
-		c += " linespoints";
+		c += " with linespoints";
 		MakePointCommand<true>(cols, p, c, usg);
 		MakeLineCommand(cols, p, c, usg);
 		MakeColorCommand<true>(cols, p, c, usg);
 	}
 	else if (p.style == Style::dots)
 	{
-		c += " dots";
+		c += " with dots";
 		if (p.HasLineOption())
 			PrintWarning("WARNING : \"dots\" style is incompatible with line options.");
 		if (p.HasPointOption())
@@ -1491,22 +1751,33 @@ void MakePlotCommand(std::string_view, bool, const std::map<std::string, std::va
 		default: break;
 		}
 	}
+
+	if (p.IsData() || p.IsFile()) return out + usg + c;
+	else return out + c;
 }
 template <class Param>
 	requires derived_from_xt<Param, VectorParam>
-void MakePlotCommand(std::string_view, bool,
-					 const std::map<std::string, std::variant<int, std::string>>& cols,
-					 const Param& p, std::string& c, std::string& usg)
+std::string MakePlotCommand(std::string_view output_name, bool inmemory,
+							const std::map<std::string, std::variant<int, std::string>>& cols,
+							const std::vector<std::string>& labelcols,
+							const Param& p)
 {
 	constexpr bool is_3d = derived_from_xt<Param, VectorParam3D>;
-	c += " vector ";
+	std::string c;
+	std::string usg;
+	std::string out;
+
+	MakeOutputNameCommand(inmemory, output_name, p, out);
+	MakeAxisCommand(labelcols, p, c, usg);
+	MakeTitleCommand(p, c);
+	c += " with vector ";
 	if (p.IsData() || p.IsFile())
 	{
 		if constexpr (!is_3d)
-			usg += std::format("{}:{}:{}:{}",
+			usg += std::format(" using {}:{}:{}:{}",
 							   GetCol(cols.at("x")), GetCol(cols.at("y")), GetCol(cols.at("xlen")), GetCol(cols.at("ylen")));
 		else
-			usg += std::format("{}:{}:{}:{}:{}:{}",
+			usg += std::format(" using {}:{}:{}:{}:{}:{}",
 							   GetCol(cols.at("x")), GetCol(cols.at("y")), GetCol(cols.at("z")),
 							   GetCol(cols.at("xlen")), GetCol(cols.at("ylen")), GetCol(cols.at("zlen")));
 	}
@@ -1524,18 +1795,29 @@ void MakePlotCommand(std::string_view, bool,
 	}
 	MakeLineCommand(cols, p, c, usg);
 	MakeColorCommand<true>(cols, p, c, usg);
+
+	if (p.IsData() || p.IsFile()) return out + usg + c;
+	else return out + c;
 }
 template <class Param>
 	requires derived_from_xt<Param, FilledCurveParam>
-void MakePlotCommand(std::string_view, bool,
-					 const std::map<std::string, std::variant<int, std::string>>& cols,
-					 const Param& p, std::string& c, std::string& usg)
+std::string MakePlotCommand(std::string_view output_name, bool inmemory,
+							const std::map<std::string, std::variant<int, std::string>>& cols,
+							const std::vector<std::string>& labelcols,
+							const Param& p)
 {
-	c += " filledcurves";
+	std::string c;
+	std::string usg;
+	std::string out;
+
+	MakeOutputNameCommand(inmemory, output_name, p, out);
+	MakeAxisCommand(labelcols, p, c, usg);
+	MakeTitleCommand(p, c);
+	c += " with filledcurves";
 
 	if (p.IsData() || p.IsFile())
 	{
-		usg += std::format("{}:{}", GetCol(cols.at("x")), GetCol(cols.at("y")));
+		usg += std::format(" using {}:{}", GetCol(cols.at("x")), GetCol(cols.at("y")));
 		if constexpr (Param::HasYBelow())
 			usg += std::format(":{}", GetCol(cols.at("ybelow")));
 	}
@@ -1570,18 +1852,29 @@ void MakePlotCommand(std::string_view, bool,
 		if (!p.bordercolor.empty()) bd += " linecolor '" + p.bordercolor + "'";
 		if (!bd.empty()) c += " border" + bd;
 	}
+
+	if (p.IsData() || p.IsFile()) return out + usg + c;
+	else return out + c;
 }
 template <class Param>
 	requires derived_from_xt<Param, LabelParam>
-void MakePlotCommand(std::string_view, bool,
-					 const std::map<std::string, std::variant<int, std::string>>& cols,
-					 const Param& p, std::string& c, std::string& usg)
+std::string MakePlotCommand(std::string_view output_name, bool inmemory,
+							const std::map<std::string, std::variant<int, std::string>>& cols,
+							const std::vector<std::string>& labelcols,
+							const Param& p)
 {
 	constexpr bool is_3d = derived_from_xt<Param, LabelParam3D>;
-	c += " labels";
+	std::string c;
+	std::string usg;
+	std::string out;
+
+	MakeOutputNameCommand(inmemory, output_name, p, out);
+	MakeAxisCommand(labelcols, p, c, usg);
+	MakeTitleCommand(p, c);
+	c += " with labels";
 	if (p.IsData() || p.IsFile())
 	{
-		usg += std::format("{}:{}", GetCol(cols.at("x")), GetCol(cols.at("y")));
+		usg += std::format(" using {}:{}", GetCol(cols.at("x")), GetCol(cols.at("y")));
 		if constexpr (is_3d) usg += std::format(":{}", GetCol(cols.at("z")));
 		usg += std::format(":{}", GetCol(cols.at("label")));
 	}
@@ -1609,32 +1902,53 @@ void MakePlotCommand(std::string_view, bool,
 	}
 
 	if (p.labeloffset != std::pair{ 0., 0. }) c += std::format(" offset {}, {}", p.labeloffset.first, p.labeloffset.second);
+
+	if (p.IsData() || p.IsFile()) return out + usg + c;
+	else return out + c;
 }
 template <class Map, class X, class Y>
-void MakePlotCommand(std::string_view output_name, bool inmemory,
-					 const std::map<std::string, std::variant<int, std::string>>& cols,
-					 const ColormapParam<Map, X, Y>& p, std::string& c, std::string& usg)
+std::string MakePlotCommand(std::string_view output_name, bool inmemory,
+							const std::map<std::string, std::variant<int, std::string>>& cols,
+							const std::vector<std::string>& labelcols,
+							const ColormapParam<Map, X, Y>& p)
 {
-	c += " pm3d";
-	if (p.without_surface) c += " nosurface";
+	std::string c;
+	std::string usg;
+	std::string out;
 
-	usg += std::format("{}:{}:{}", GetCol(cols.at("x")), GetCol(cols.at("y")), GetCol(cols.at("map")));
+	if (!p.without_surface)
+	{
+		MakeOutputNameCommand(inmemory, output_name, p, out);
+		MakeAxisCommand(labelcols, p, c, usg);
+		MakeTitleCommand(p, c);
+		c += " with image";
+		usg += std::format(" using {}:{}:{}", GetCol(cols.at("x")), GetCol(cols.at("y")), GetCol(cols.at("map")));
+		if (p.IsData() || p.IsFile()) c = out + usg + c;
+		else c = out + c;
+	}
+	else
+	{
+		//without_surfaceの場合、以前はnosurfaceとしていたが、
+		//単にプロット自体を行わないことにする。
+		if (!p.with_contour) throw InvalidArg("\"without_surface\" and \"with_contour\" are mutually exclusive.");
+	}
 
 	//contourが有効の場合はこれもコマンドに追加する。
 	if (p.with_contour)
 	{
 		if (!p.IsData()) PrintWarning("WARNING : Contour option is only available for data plot mode.");
+		if (!p.without_surface) c += ", ";
 		if (p.with_contour && p.IsData())
 		{
 			if (inmemory)
 			{
-				c += std::format(", {}_cntr with line", output_name);
+				c += std::format("{}_cntr with line", output_name);
 			}
 			else
 			{
 				std::string str = std::format("'{}", output_name);
 				str.erase(str.end() - 3, str.end());
-				c += ", " + str + "cntr.txt' with line";
+				c += str + "cntr.txt' with line";
 			}
 			if (p.title == "notitle") c += " notitle";
 			else c += " title '" + p.title + "'";
@@ -1644,9 +1958,10 @@ void MakePlotCommand(std::string_view output_name, bool inmemory,
 			else if (!p.cntrcolor.empty()) c += " linecolor '" + p.cntrcolor + "'";
 		}
 	}
+	return c;
 }
-template <class Map, class X, class Y>
-std::string MakeContourPlotCommand(std::string_view output_name, bool inmemory, const ColormapParam<Map, X, Y>& p)
+template <class Param>
+std::string MakeContourPlotCommand(std::string_view output_name, bool inmemory, const Param& p)
 {
 	std::string c = "set contour base\n";
 
@@ -1714,58 +2029,8 @@ std::string MakePlotCommandCommon(bool inmemory,
 								  const std::vector<std::string>& labelcols,
 								  const Param& p)
 {
-	std::string out;
-	std::string c;
-	std::string usg = " using ";
-	if (p.IsData())
-	{
-		//from data
-		if (inmemory)
-			//variable name
-			out += std::format(" {}", output_name);
-		else
-			//filename
-			out += std::format(" '{}'", output_name);
-
-		//using
-		//c += " using ";
-		//for (const auto& clm : column) c += std::format("{}:", clm);
-		//c.pop_back();
-	}
-	else if (p.IsFile())
-	{
-		//from file
-		out += std::format(" '{}'", output_name);
-
-		//using
-		//c += " using ";
-		//for (const auto& clm : column) c += std::format("{}:", clm);
-		//c.pop_back();
-
-	}
-	else if (p.IsEquation())
-	{
-		//from equation
-		out += std::format(" {}", output_name);
-	}
-
-	//title
-	if (!p.title.empty())
-	{
-		if (p.title == "notitle") c += " notitle";
-		else c += std::format(" title '{}'", p.title);
-	}
-
-	c += " with";
 	//point、vector、filledcurveなどへ分岐
-	MakePlotCommand(output_name, inmemory, cols, p, c, usg);
-
-	for (const auto& lc : labelcols) usg += std::format(":{}", lc);
-	//axis
-	if (!p.axis.empty()) c += std::format(" axes {}", p.axis);
-
-	if (p.IsData() || p.IsFile()) return out + usg + c;
-	else return out + c;
+	return MakePlotCommand(output_name, inmemory, cols, labelcols, p);
 }
 
 }
