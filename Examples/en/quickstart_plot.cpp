@@ -333,6 +333,47 @@ int example_colormap(const std::string& output_filename, bool enable_in_memory_d
 	return 0;
 }
 
+int example_binscatter(const std::string& output_filename, bool enable_in_memory_data_transfer)
+{
+	int32_t size = 50000;
+	std::vector<double> x(size);
+	std::vector<double> y(size);
+	std::mt19937_64 mt(0);
+	std::normal_distribution<> nd(0., 1.);
+	for (int i = 0; i < size; ++i)
+	{
+		x[i] = nd(mt);
+		y[i] = nd(mt);
+	}
+	namespace plot = adapt::plot;
+
+	adapt::MultiPlot multi(output_filename, 1, 2, 1200, 600);
+	adapt::Canvas2D g1(output_filename + ".tmp0");
+	g1.EnableInMemoryDataTransfer(enable_in_memory_data_transfer);
+	g1.SetXRange(-4, 4);
+	g1.SetYRange(-4, 4);
+	g1.SetSizeRatio(1);
+	g1.SetXLabel("x");
+	g1.SetYLabel("y");
+	g1.SetTitle("example binscatter map");
+	g1.PlotBinscatter(x, -4., 4., 80, y, -4., 4., 80, plot::notitle);
+
+	//sleep for a short time to avoid the output image broken by multiplot.
+	std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+	adapt::Canvas2D g2(output_filename + ".tmp1");
+	g2.EnableInMemoryDataTransfer(enable_in_memory_data_transfer);
+	g2.SetXRange(-4, 4);
+	g2.SetYRange(-4, 4);
+	g2.SetSizeRatio(1);
+	g2.SetXLabel("x");
+	g2.SetYLabel("y");
+	g2.SetTitle("example binscatter points");
+	g2.PlotBinscatter(x, -4., 4., 80, y, -4., 4., 80, plot::notitle, plot::bs_points);
+
+	return 0;
+}
+
 int example_labels_on_colormap(const std::string& output_filename, bool enable_in_memory_data_transfer)
 {
 	std::vector<int> x;
@@ -618,6 +659,9 @@ void QuickstartPlot()
 
 	//example_colormap("PlotExamples/example_colormap.png", false);
 	example_colormap("PlotExamples/example_colormap-inmemory.png", true);
+
+	//example_binscatter("PlotExamples/example_binscatter.png", false);
+	example_binscatter("PlotExamples/example_binscatter-inmemory.png", true);
 
 	//example_surface("PlotExamples/example_surface.png", false);
 	example_surface("PlotExamples/example_surface-inmemory.png", true);

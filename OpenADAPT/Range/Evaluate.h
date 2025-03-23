@@ -306,7 +306,7 @@ private:
 
 template <class Range_, class WithTrav, node_or_placeholder ...NPs>
 class EvaluatingView
-	: public std::ranges::view_interface<EvaluatingView<Range_, NPs...>>
+	: public std::ranges::view_interface<EvaluatingView<Range_, WithTrav, NPs...>>
 {
 	using Range = std::decay_t<Range_>;
 public:

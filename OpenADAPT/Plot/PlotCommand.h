@@ -53,7 +53,7 @@ struct LabelOption {};
 struct ColormapOption {};
 struct SurfaceOption {};
 struct HistogramOption {};
-struct Histogram2DOption {};
+struct BinscatterOption {};
 
 template <class T>
 concept base_option = keyword_arg_tagged_with<T, BaseOption>;
@@ -82,7 +82,7 @@ concept surface_option = keyword_arg_tagged_with<Opt, BaseOption, StyleOption, C
 template <class Opt>
 concept histogram_option = keyword_arg_tagged_with<Opt, BaseOption, HistogramOption, ColorOption, LineOption, PointOption>;
 template <class Opt>
-concept histogram2d_option = keyword_arg_tagged_with<Opt, BaseOption, Histogram2DOption, ColormapOption>;
+concept binscatter_option = keyword_arg_tagged_with<Opt, BaseOption, BinscatterOption, PointOption, ColormapOption>;
 
 template <class Param>
 concept zaxis_param = requires(Param p)
@@ -154,11 +154,24 @@ ADAPT_DEFINE_TAGGED_KEYWORD_OPTION(above, plot_detail::FilledCurveOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION(below, plot_detail::FilledCurveOption)
 
 //HistogramOption
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(xmin, double, plot_detail::HistogramOption);
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(xmax, double, plot_detail::HistogramOption);
-ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(xnbin, size_t, plot_detail::HistogramOption);
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(min, double, plot_detail::HistogramOption);
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(max, double, plot_detail::HistogramOption);
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(nbin, size_t, plot_detail::HistogramOption);
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(data, plot_detail::AnyArithmeticRange, plot_detail::HistogramOption);
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(binerror, BinError, plot_detail::HistogramOption);
+
+//BinscatterOption
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(datax, plot_detail::AnyArithmeticRange, plot_detail::BinscatterOption);
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(datay, plot_detail::AnyArithmeticRange, plot_detail::BinscatterOption);
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(xmin, double, plot_detail::BinscatterOption);
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(xmax, double, plot_detail::BinscatterOption);
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(xnbin, size_t, plot_detail::BinscatterOption);
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(ymin, double, plot_detail::BinscatterOption);
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(ymax, double, plot_detail::BinscatterOption);
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(ynbin, size_t, plot_detail::BinscatterOption);
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION(bs_points, plot_detail::BinscatterOption);//binscatterだが、散布図の各点に密度に対応する色を付与する形で表現する。
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(bs_lower, uint64_t, plot_detail::BinscatterOption);//binscatterの下限値。これ以下の値は白色で表示される。
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(bs_upper, uint64_t, plot_detail::BinscatterOption);//binscatterの上限値。これ以上の値は白色で表示される。
 
 //LabelOption
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(label, plot_detail::AnyAcceptableArg, plot_detail::LabelOption);
@@ -292,6 +305,9 @@ inline constexpr auto he_poisson = (binerror = BinError::poisson68);
 inline constexpr auto he_poisson95 = (binerror = BinError::poisson95);
 inline constexpr auto he_normal = (binerror = BinError::normal68);
 inline constexpr auto he_normal95 = (binerror = BinError::normal95);
+
+inline constexpr auto bs_no_lowlim = (bs_lower = std::numeric_limits<uint64_t>::min());
+
 
 //ラベルの位置指定の短縮版
 inline constexpr auto lp_left = (labelpos = LabelPos::left);
@@ -989,7 +1005,7 @@ struct ColormapParam : PlotParamBase
 	int cntrlinetype = -2;
 	double cntrlinewidth = -1;
 };
-template <colormap_option ...Options>
+template <keyword_arg ...Options>
 auto MakeColormapParam(Options ...ops)
 {
 	auto map = AllView(GetKeywordArg(plot::map, std::ranges::empty_view<std::ranges::empty_view<double>>{}, ops...));
@@ -1116,21 +1132,70 @@ struct HistogramParam
 	}
 
 	template <keyword_arg ...Ops>
-	void SetOptions(Ops ...)
-	{}
+	void SetOptions(Ops ...ops)
+	{
+		if constexpr (KeywordExists(plot::binerror, ops...)) binerror = GetKeywordArg(plot::binerror, ops...);
+	}
 	Range data;
 	double xmin;
 	double xmax;
 	size_t xnbin;
+	BinError binerror;
 };
 template <keyword_arg ...Options>
 auto MakeHistogramParam(Options ...ops)
 {
 	auto data = AllView(GetKeywordArg(plot::data, ops...));
+	auto xmin = GetKeywordArg(plot::min, ops...);
+	auto xmax = GetKeywordArg(plot::max, ops...);
+	auto xnbin = GetKeywordArg(plot::nbin, ops...);
+	return HistogramParam<decltype(data)>(data, xmin, xmax, xnbin, ops...);
+}
+
+template <ranges::arithmetic_range X, ranges::arithmetic_range Y>
+struct BinscatterParam
+{
+	template <keyword_arg ...Ops>
+	BinscatterParam(X x, double xmin, double xmax, size_t xnbin,
+				   Y y, double ymin, double ymax, size_t ynbin,
+				   Ops ...ops)
+		: x(x), xmin(xmin), xmax(xmax), xnbin(xnbin), y(y), ymin(ymin), ymax(ymax), ynbin(ynbin)
+	{
+		SetOptions(ops...);
+	}
+
+	template <keyword_arg ...Ops>
+	void SetOptions(Ops ...ops)
+	{
+		if constexpr (KeywordExists(plot::bs_points, ops...)) bs_points = GetKeywordArg(plot::bs_points, ops...);
+		if constexpr (KeywordExists(plot::bs_lower, ops...)) bs_lower = GetKeywordArg(plot::bs_lower, ops...);
+		if constexpr (KeywordExists(plot::bs_upper, ops...)) bs_upper = GetKeywordArg(plot::bs_upper, ops...);
+	}
+	X x;
+	double xmin;
+	double xmax;
+	size_t xnbin;
+	Y y;
+	double ymin;
+	double ymax;
+	size_t ynbin;
+
+	bool bs_points = false;
+	uint64_t bs_lower = 1;
+	uint64_t bs_upper = std::numeric_limits<uint64_t>::max();
+};
+template <keyword_arg ...Options>
+auto MakeBinscatterParam(Options ...ops)
+{
+	auto x = AllView(GetKeywordArg(plot::datax, ops...));
 	auto xmin = GetKeywordArg(plot::xmin, ops...);
 	auto xmax = GetKeywordArg(plot::xmax, ops...);
 	auto xnbin = GetKeywordArg(plot::xnbin, ops...);
-	return HistogramParam<decltype(data)>(data, xmin, xmax, xnbin, ops...);
+	auto y = AllView(GetKeywordArg(plot::datay, ops...));
+	auto ymin = GetKeywordArg(plot::ymin, ops...);
+	auto ymax = GetKeywordArg(plot::ymax, ops...);
+	auto ynbin = GetKeywordArg(plot::ynbin, ops...);
+	return BinscatterParam<decltype(x), decltype(y)>(x, xmin, xmax, xnbin, y, ymin, ymax, ynbin, ops...);
 }
 
 #undef ADAPT_DETAIL_GET_KEYWORD_ARG_AS_VIEW

@@ -90,7 +90,17 @@ struct PlotBuffer2D
 	template <ranges::arithmetic_range Data, histogram_option ...Options>
 	PlotBuffer2D PlotHistogram(const Data& data, double min, double max, size_t nbin, Options ...ops)
 	{
-		auto p = MakeHistogramParam(plot::data = data, plot::xmin = min, plot::xmax = max, plot::xnbin = nbin, ops...);
+		auto p = MakeHistogramParam(plot::data = data, plot::min = min, plot::max = max, plot::nbin = nbin, ops...);
+		return Plot(p, ops...);
+	}
+	template <ranges::arithmetic_range DataX, ranges::arithmetic_range DataY, binscatter_option ...Options>
+	PlotBuffer2D PlotBinscatter(const DataX& x, double xmin, double xmax, size_t xnbin,
+								const DataY& y, double ymin, double ymax, size_t ynbin,
+								Options ...ops)
+	{
+		auto p = MakeBinscatterParam(plot::datax = x, plot::xmin = xmin, plot::xmax = xmax, plot::xnbin = xnbin,
+									 plot::datay = y, plot::ymin = ymin, plot::ymax = ymax, plot::ynbin = ynbin,
+									 ops...);
 		return Plot(p, ops...);
 	}
 
@@ -262,7 +272,7 @@ protected:
 	PlotBuffer2D Plot(const HistogramParam<Data>& p, Options ...ops)
 	{
 		//histepsなら最後のビンに0を追加する必要はないらしい。
-		std::vector<uint64_t> hist(p.xnbin, 0);
+		std::vector<int64_t> hist(p.xnbin, 0);
 		double wbin = (p.xmax - p.xmin) / p.xnbin;
 		auto ibin = [&p, wbin](double v)
 		{
@@ -279,8 +289,7 @@ protected:
 		std::vector<double> x(p.xnbin);
 		for (size_t i = 0; i < p.xnbin; ++i) x[i] = p.xmin + wbin * (i + 0.5);
 
-		BinError be = BinError::none;
-		if constexpr (KeywordExists(plot::binerror, ops...)) be = GetKeywordArg(plot::binerror, ops...);
+		BinError be = p.binerror;
 
 		if (be != BinError::none)
 		{
@@ -312,6 +321,62 @@ protected:
 		else
 		{
 			auto p2 = MakePointParam(plot::x = x, plot::y = hist, ops..., plot::s_histeps);
+			return Plot(p2);
+		}
+	}
+	template <class X, class Y, class ...Options>
+	PlotBuffer2D Plot(const BinscatterParam<X, Y>& p, Options ...ops)
+	{
+		Matrix<double, 2> hist(p.xnbin, p.ynbin);
+		std::vector<double> vx; vx.reserve(p.x.size());
+		std::vector<double> vy; vy.reserve(p.y.size());
+		double wxbin = (p.xmax - p.xmin) / p.xnbin;
+		double wybin = (p.ymax - p.ymin) / p.ynbin;
+		auto ibin = [&p, wxbin, wybin](double x, double y)
+		{
+			return std::make_pair((int64_t)((x - p.xmin) / wxbin), (int64_t)((y - p.ymin) / wybin));
+		};
+
+		for (auto&& [x, y] : views::Zip(p.x, p.y))
+		{
+			auto [ix, iy] = ibin(x, y);
+			if (ix < 0 || std::cmp_greater_equal(ix, p.xnbin) || iy < 0 || std::cmp_greater_equal(iy, p.ynbin)) continue;
+			++hist[(uint32_t)ix][(uint32_t)iy];
+			if (p.bs_points)
+			{
+				vx.push_back(x);
+				vy.push_back(y);
+			}
+		}
+		if (p.bs_points)
+		{
+			std::vector<double> dens(vx.size(), 0);
+			for (auto&& [x, y, d] : views::Zip(vx, vy, dens))
+			{
+				auto [ix, iy] = ibin(x, y);
+				assert(ix >= 0 && std::cmp_less(ix, p.xnbin) && iy >= 0 && std::cmp_less(iy, p.ynbin));
+				d = hist[(uint32_t)ix][(uint32_t)iy];
+			}
+			auto p2 = MakePointParam(plot::x = vx, plot::y = vy, plot::variable_color = dens, ops..., plot::pt_fcir, plot::ps_ex_small);
+			return Plot(p2);
+		}
+		else
+		{
+			std::pair<double, double> xminmax = { p.xmin + wxbin / 2, p.xmax - wxbin / 2 };
+			std::pair<double, double> yminmax = { p.ymin + wybin / 2, p.ymax - wybin / 2 };
+			if (p.bs_lower != std::numeric_limits<uint64_t>::min() ||
+				p.bs_upper != std::numeric_limits<uint64_t>::max())
+			{
+				for (uint32_t i = 0; i < p.xnbin; ++i)
+				{
+					for (uint32_t j = 0; j < p.ynbin; ++j)
+					{
+						if (hist[i][j] < p.bs_lower) hist[i][j] = std::numeric_limits<double>::quiet_NaN();
+						if (hist[i][j] > p.bs_upper) hist[i][j] = std::numeric_limits<double>::quiet_NaN();
+					}
+				}
+			}
+			auto p2 = MakeColormapParam(plot::map = hist, plot::xminmax = xminmax, plot::yminmax = yminmax, ops...);
 			return Plot(p2);
 		}
 	}
@@ -574,6 +639,15 @@ public:
 	{
 		PlotBuffer2D r(this);
 		return r.PlotHistogram(data, min, max, nbin, ops...);
+	}
+
+	template <ranges::arithmetic_range DataX, ranges::arithmetic_range DataY, binscatter_option ...Options>
+	PlotBuffer2D PlotBinscatter(const DataX& x, double xmin, double xmax, size_t xnbin,
+								const DataY& y, double ymin, double ymax, size_t ynbin,
+								Options ...ops)
+	{
+		PlotBuffer2D r(this);
+		return r.PlotBinscatter(x, xmin, xmax, xnbin, y, ymin, ymax, ynbin, ops...);
 	}
 
 	template <acceptable_arg X, acceptable_arg Y,
@@ -843,7 +917,7 @@ struct PlotBuffer3D
 		label_option ...Options>
 	PlotBuffer3D PlotLabels(const X& x, const Y& y, const Z& z, const L& label, Options ...ops)
 	{
-		auto p = MakeLabelParam3D(plot::x = x, plot::y = y, plot::label = label, ops...);
+		auto p = MakeLabelParam3D(plot::x = x, plot::y = y, plot::z = z, plot::label = label, ops...);
 		return Plot(p);
 	}
 	template <label_option ...Options>
@@ -1163,8 +1237,8 @@ protected:
 				//std::vector<std::string> column{ "1", "2", "5" };
 				std::map<std::string, std::variant<int, std::string>> column{ { "x", 3 }, { "y", 4 }, { "z", 5} };
 				int c = 6;
-				if constexpr (p.HasVariableColor()) column.emplace("variable_color", c), ++c;
-				if constexpr (p.HasVariableSize()) column.emplace("variable_size", c);
+				if constexpr (SurfaceParam<Map, X, Y, VC, VS>::HasVariableColor()) column.emplace("variable_color", c), ++c;
+				if constexpr (SurfaceParam<Map, X, Y, VC, VS>::HasVariableSize()) column.emplace("variable_size", c);
 				std::vector<std::string> labelcolumn;
 				size_t xsize = p.z.size();
 				size_t ysize = p.z.front().size();

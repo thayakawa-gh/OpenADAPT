@@ -458,7 +458,7 @@ class RttiExtractor
 		auto itnode = nodes.begin();
 		if constexpr (AllFieldsFlag)
 		{
-			auto get_srcref = [](const Traverser& t_, LayerType layer_)
+			auto get_srcref = [](const Traverser& t_, [[maybe_unused]] LayerType layer_)
 			{
 				//tはContainerの場合とTraverserの場合がある。
 				//Containerの場合、layerは必ず-1である。
