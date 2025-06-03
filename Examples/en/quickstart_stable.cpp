@@ -117,6 +117,11 @@ void QuickstartSTable()
 	adapt::Bpos oceanside_index = { 5 };
 	std::cout << population_density(usa, oceanside_index) << std::endl;// 174068 / 105.1 = 1655.3
 
+	auto cat_state_county_city = state + " - " + county + " - " + city;
+	static_assert(cat_state_county_city.GetLayer() == 0_layer);
+	static_assert(std::same_as<decltype(cat_state_county_city)::RetType, std::string>);
+	std::cout << cat_state_county_city(usa, baytown_index) << std::endl;// Texas - Harris County - Baytown
+
 	// Get the index of the city with the smallest population.
 	auto index_to_smallest_city_population = index(isleast(city_population));
 	static_assert(index_to_smallest_city_population.GetLayer() == -1);
@@ -132,10 +137,10 @@ void QuickstartSTable()
 
 	// Various operators and functions can be used in combination.
 	// Take the average of the population density of all cities in the usa, and then convert /km^2 to /mi^2.
-	auto average_population_density = mean(city_population / city_area) * 2.589988;
+	auto average_population_density = tostr(mean(city_population / city_area) * 2.589988) + "(/mi^2)";
 	static_assert(average_population_density.GetLayer() == -1);
-	static_assert(std::same_as<decltype(average_population_density)::RetType, double>);
-	std::cout << average_population_density(usa) << "(/mi^2)" << std::endl;
+	static_assert(std::same_as<decltype(average_population_density)::RetType, std::string>);
+	std::cout << average_population_density(usa) << std::endl;
 
 	//Ctti lambda functions can be converted to Rtti lambda functions if the return type is the one declared in adapt::FieldTypes.
 	using Lambda = adapt::eval::RttiFuncNode<STable_>;

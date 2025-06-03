@@ -173,6 +173,10 @@ void QuickstartDTree()
 	adapt::Bpos baytown_index = { 1, 0, 2 };
 	std::cout << population_density(usa, baytown_index).f64() << std::endl;// 83701 / 32.7 = 2559.6
 
+	Lambda cat_state_county_city = state + " - " + county + " - " + city;
+	assert(cat_state_county_city.GetLayer() == 2_layer && cat_state_county_city.GetType() == adapt::FieldType::Str);
+	std::cout << cat_state_county_city(usa, baytown_index).str() << std::endl;// Texas - Harris County - Baytown
+
 	// Make a lambda function to calculate total population in a county.
 	// As the result of "sum", the layer of the lambda function is raised by 1,
 	// because the sum can be calculated from a county (layer 1 element).
@@ -196,9 +200,9 @@ void QuickstartDTree()
 
 	// Various operators and functions can be used in combination.
 	// Take the average of the population density of all cities in the usa, and then convert /km^2 to /mi^2.
-	Lambda average_population_density = mean3(population / area) * 2.589988;
-	assert(average_population_density.GetLayer() == -1_layer && average_population_density.GetType() == adapt::FieldType::F64);
-	std::cout << average_population_density(usa).f64() << "(/mi^2)" << std::endl;
+	Lambda average_population_density = tostr(mean3(population / area) * 2.589988) + "(/mi^2)";
+	assert(average_population_density.GetLayer() == -1_layer && average_population_density.GetType() == adapt::FieldType::Str);
+	std::cout << average_population_density(usa).str() << std::endl;
 
 	// Convert RttiPlaceholder to TypedPlaceholder.
 	auto population_typed = population.i32();

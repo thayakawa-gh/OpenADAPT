@@ -130,6 +130,10 @@ void QuickstartDTable()
 	adapt::Bpos oceanside_index = { 5 };
 	std::cout << population_density(usa, oceanside_index).f64() << std::endl;// 174068 / 105.1 = 1655.3
 
+	Lambda cat_state_county_city = state + " - " + county + " - " + city;
+	assert(cat_state_county_city.GetLayer() == 0_layer && cat_state_county_city.GetType() == adapt::FieldType::Str);
+	std::cout << cat_state_county_city(usa, baytown_index).str() << std::endl;// Texas - Harris County - Baytown
+
 	// Get the index of the city with the smallest population.
 	Lambda index_to_smallest_city_population = index(isleast(city_population));
 	assert(index_to_smallest_city_population.GetLayer() == -1_layer && index_to_smallest_city_population.GetType() == adapt::FieldType::I64);
@@ -143,9 +147,9 @@ void QuickstartDTable()
 
 	// Various operators and functions can be used in combination.
 	// Take the average of the population density of all cities in the usa, and then convert /km^2 to /mi^2.
-	Lambda average_population_density = mean(city_population / city_area) * 2.589988;
-	assert(average_population_density.GetLayer() == -1_layer && average_population_density.GetType() == adapt::FieldType::F64);
-	std::cout << average_population_density(usa).f64() << "(/mi^2)" << std::endl;
+	Lambda average_population_density = tostr(mean(city_population / city_area) * 2.589988) + "(/mi^2)";
+	assert(average_population_density.GetLayer() == -1_layer && average_population_density.GetType() == adapt::FieldType::Str);
+	std::cout << average_population_density(usa).str() << std::endl;
 
 	// Convert RttiPlaceholder to TypedPlaceholder.
 	auto city_population_typed = city_population.i32();

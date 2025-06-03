@@ -177,10 +177,10 @@ They can be used when you want to calculate something from data and filter/conve
 ```cpp
 	auto population_density = population / area;
 	adapt::Bpos baytown_index = { 1, 0, 2 };
-	std::cout << population_density(usa, baytown_index).f64() << std::endl;// 83701 / 32.7 = 2559.6
-
-	auto cat_state_county_city = "state: " + state + ", county: " + county + ", city: " + city";
-	std::cout << cat_state_county_city(usa, baytown_index).str() << std::endl;// state: Texas, county: Harris County, city: Baytown
+	std::cout << population_density(usa, baytown_index).f64() << std::endl;// 83701 / 32.7 = 2559.66
+	
+	auto cat_state_county_city = state + " - " + county + " - " + city;
+	std::cout << cat_state_county_city(usa, baytown_index).str() << std::endl;// Texas - Harris County - Baytown
 
 	auto total_population_in_a_county = sum(population);
 	adapt::Bpos harris_county_index = { 1, 0 };
@@ -189,6 +189,11 @@ They can be used when you want to calculate something from data and filter/conve
 	auto total_population_in_a_state = sum2(population);
 	adapt::Bpos texas_index = { 1 };
 	std::cout << total_population_in_a_state(usa, texas_index).i32() << std::endl;// 2304580 + 151950 + 83701 + 1304379 + 256684 + 246918 = 4348212
+
+	auto average_population_density = tostr(mean3(population / area) * 2.589988) + "(/mi^2)";
+	assert(average_population_density.GetLayer() == -1_layer);
+	// No need to specify the index when the layer of the result is -1, i.e., the root layer.
+	std::cout << average_population_density(usa).str() << std::endl;// 5362.28(/mi^2).
 ```
 
 ### Show

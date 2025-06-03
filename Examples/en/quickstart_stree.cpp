@@ -156,6 +156,11 @@ void QuickstartSTree()
 	adapt::Bpos baytown_index = { 1, 0, 2 };
 	std::cout << population_density(usa, baytown_index) << std::endl;// 83701 / 32.7 = 2559.6
 
+	auto cat_state_county_city = state + " - " + county + " - " + city;
+	static_assert(cat_state_county_city.GetLayer() == 2_layer);
+	static_assert(std::same_as<decltype(cat_state_county_city)::RetType, std::string>);
+	std::cout << cat_state_county_city(usa, baytown_index) << std::endl;// Texas - Harris County - Baytown
+
 	// Make a lambda function to calculate total population in a county.
 	// As the result of "sum", the layer of the lambda function is raised by 1,
 	// because the sum can be calculated by specifying a county (layer 1 element).
@@ -181,10 +186,10 @@ void QuickstartSTree()
 
 	// Various operators and functions can be used in combination.
 	// Take the average of the population density of all cities in the usa, and then convert /km^2 to /mi^2.
-	auto average_population_density = mean3(population / area) * 2.589988;
+	auto average_population_density = tostr(mean3(population / area) * 2.589988) + "(/mi^2)";
 	static_assert(average_population_density.GetLayer() == -1);
-	static_assert(std::same_as<decltype(average_population_density)::RetType, double>);
-	std::cout << average_population_density(usa) << "(/mi^2)" << std::endl;
+	static_assert(std::same_as<decltype(average_population_density)::RetType, std::string>);
+	std::cout << average_population_density(usa) << std::endl;
 
 	// Ctti lambda functions can be converted to Rtti lambda functions if the return type is the one declared in adapt::FieldTypes.
 	using Lambda = adapt::eval::RttiFuncNode<STree_>;
