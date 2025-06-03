@@ -116,15 +116,15 @@ void QuickstartJoin()
 	if constexpr (true) jt.SetKeyJoint<1_rank>(jt0_key_county, t1_key_county.str());
 	else jt.SetKeyJoint<1_rank>(jt0_key_county.str(), t1_key_county.str());
 	// If you want to join with multiple keys, you can give by std::foward_as_tuple.
-	// jt.SetKeyJoint<1_rank>(std::forward_as_tuple(jt0_key_county.str(), ...), std::forward_as_tuple(t2_key_county.str(), ...));
+	// jt.SetKeyJoint<1_rank>(std::forward_as_tuple(jt0_key_county.str(), ...), std::forward_as_tuple(t1_key_county.str(), ...));
 
 	// In the near future, various ways for joining other than KeyJoint will be added.
 
 	// Finally, the hierarchical structure of jt is as follows:
 	//      layer -1     layer 0     layer 1     layer 2
-	// t1   "nation" --- "state" ---"county"--- ("city")
+	// t0   "nation" --- "state" ---"county"--- ("city")
 	//                                  |
-	// t2                           "county"--- citizen
+	// t1                           "county"--- citizen
 
 	// The element in t1 is joined to the element in t0 with the same county, and they are considered as the same layer 1 element.
 	// The "citizen" element in t1 is considered as layer 2 element in jt.
@@ -148,11 +148,11 @@ void QuickstartJoin()
 
 	// Currently operator[] cannot be used for joined containers due to technical limitation.
 	// Instead, you can use GetBranch with adapt::Bpos.
-	adapt::Bpos bpos_to_liam{ 1, 0, 1 };// Texas -> Harris County -> Logan Peterson
-	std::cout << jt.GetBranch(bpos_to_liam)[jt1_name].str() << std::endl;// Logan Peterson
-	std::cout << jt.GetBranch(bpos_to_liam)[jt1_age].i32() << std::endl;// 35
-	std::cout << jt.GetBranch(bpos_to_liam)[jt0_state].str() << std::endl;// Texas
-	std::cout << jt.GetBranch(bpos_to_liam)[jt0_county].str() << std::endl;// Harris County
+	adapt::Bpos bpos_to_logan{ 1, 0, 1 };// Texas -> Harris County -> Logan Peterson
+	std::cout << jt.GetBranch(bpos_to_logan)[jt1_name].str() << std::endl;// Logan Peterson
+	std::cout << jt.GetBranch(bpos_to_logan)[jt1_age].i32() << std::endl;// 18
+	std::cout << jt.GetBranch(bpos_to_logan)[jt0_state].str() << std::endl;// Texas
+	std::cout << jt.GetBranch(bpos_to_logan)[jt0_county].str() << std::endl;// Harris County
 	// std::cout << jt.GetBranch(bpos)[jt0_population].i32();//Error: population is hidden.
 
 	adapt::Bpos bpos_to_dallas{ 1, 1 };//Texas -> Dallas County
@@ -176,7 +176,7 @@ void QuickstartJoin()
 	using Lambda = adapt::eval::RttiFuncNode<decltype(jt)>;
 	// Lambda functions can be used for joined containers in the same way as single containers.
 	Lambda profile = "county: " + jt0_county + ", name: " + jt1_name + ", age: " + tostr(jt1_age);
-	std::cout << profile(jt, bpos_to_liam).str() << std::endl;// county: Harris County, name: Logan Peterson, age: 18
+	std::cout << profile(jt, bpos_to_logan).str() << std::endl;// county: Harris County, name: Logan Peterson, age: 18
 
 	Lambda num_of_citizens_over_30 = count2(jt1_age > 30);
 	adapt::Bpos bpos_to_california{ 0 };// California

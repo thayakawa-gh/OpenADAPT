@@ -23,8 +23,8 @@ adapt::DTree MakeDTree()
 	using enum adapt::FieldType;
 	adapt::DTree t;
 	t.SetTopLayer({ { "nation", Str }, { "capital", Str } });///Set root layer (-1).
-	t.AddLayer({ { "state", Str }, { "state capital", Str } });//Add layer 0.
-	t.AddLayer({ { "county", Str }, { "county seat", Str }});//Add layer 1.
+	t.AddLayer({ { "state", Str }, { "state_capital", Str } });//Add layer 0.
+	t.AddLayer({ { "county", Str }, { "county_seat", Str }});//Add layer 1.
 	t.AddLayer({ { "city", Str }, { "population", I32 }, { "area", F64 } });//Add layer 2.
 	t.VerifyStructure();// Verify if the structure is correct.
 
@@ -107,16 +107,34 @@ void QuickstartDTree()
 	// The default return value of GetPlaceholders for DTree is DTree::RttiPlaceholder, which has runtime type and layer information.
 	// RttiPlaceholder can be converted to TypedPlaceholder using i32(), str(), etc. methods, which has compile-time type information.
 	// The performance of the TypedPlaceholder is better than RttiPlaceholder, especially in the use of lambda functions.
-	auto [nation, state, state_capital, county, county_seat, city, population, area] =
-		usa.GetPlaceholders("nation", "state", "state capital", "county", "county seat", "city", "population", "area");
+	ADAPT_GET_PLACEHOLDERS(usa, nation, state, state_capital, county, county_seat, city, population, area);
+	// ADAPT_GET_PLACEHOLDERS is a macro that expands to the following code:
+	// auto [nation, state, state_capital, county, county_seat, city, population, area] =
+	//	usa.GetPlaceholders("nation", "state", "state_capital", "county", "county_seat", "city", "population", "area");
 	assert(       nation.GetLayer() == -1_layer &&        nation.GetType() == adapt::FieldType::Str);
 	assert(        state.GetLayer() ==  0_layer &&         state.GetType() == adapt::FieldType::Str);
 	assert(state_capital.GetLayer() ==  0_layer && state_capital.GetType() == adapt::FieldType::Str);
-	assert(      county.GetLayer() ==  1_layer &&       county.GetType() == adapt::FieldType::Str);
-	assert( county_seat.GetLayer() ==  1_layer &&  county_seat.GetType() == adapt::FieldType::Str);
+	assert(       county.GetLayer() ==  1_layer &&       county.GetType() == adapt::FieldType::Str);
+	assert(  county_seat.GetLayer() ==  1_layer &&  county_seat.GetType() == adapt::FieldType::Str);
 	assert(         city.GetLayer() ==  2_layer &&          city.GetType() == adapt::FieldType::Str);
 	assert(   population.GetLayer() ==  2_layer &&    population.GetType() == adapt::FieldType::I32);
 	assert(         area.GetLayer() ==  2_layer &&          area.GetType() == adapt::FieldType::F64);
+
+	// Convert RttiPlaceholder to TypedPlaceholder.
+	{
+		auto nation_typed = nation.str();
+		auto state_typed = state.str();
+		auto city_typed = city.str();
+		auto population_typed = population.i32();
+	}
+
+	// You can also obtain CttiPlaceholders from DTree by explicitly providing static types and layers.
+	{
+		auto nation_ctti = usa.GetPlaceholder<-1, std::string>("nation");
+		auto state_ctti = usa.GetPlaceholder<0, std::string>("state");
+		auto city_ctti = usa.GetPlaceholder<2, std::string>("city");
+		auto polulation_ctti = usa.GetPlaceholder<2, int32_t>("population");
+	}
 
 
 
@@ -206,7 +224,14 @@ void QuickstartDTree()
 	{
 		// All the names of states, counties and county seats are output.
 		// During traversal of layer 1, you can access the fields from layer -1 to 1.
-		std::cout << std::format("{:<12} {:<12} {:<12}\n", trav[state].str(), trav[county].str(), trav[county_seat].str());
+		std::cout << std::format("{:<12} {:<20} {:<12}\n", trav[state].str(), trav[county].str(), trav[county_seat].str());
+	}
+	std::cout << std::endl;
+
+	for (const auto& trav : usa.GetRange(2_layer))// Traverse layer 2 = cities.
+	{
+		// All the names of states, counties and cities are output.
+		std::cout << std::format("{:<12} {:<20} {:<12}\n", trav[state].str(), trav[county].str(), trav[city].str());
 	}
 	std::cout << std::endl;
 
@@ -225,6 +250,15 @@ void QuickstartDTree()
 	}
 	std::cout << std::endl;
 
+	// traverse with filter
+	auto population_density2 = population / area;
+	for (const auto& trav : usa | Filter(city == county_seat) | GetRange(2_layer))
+	{
+		// All the names, populations and areas of the cities that are the county seats are output.
+		std::cout << std::format("{:<12} {:<20} {:<12} {:>7.1f}\n",
+								 trav[state].str(), trav[county].str(), trav[city].str(), population_density2(trav).f64());
+	}
+	std::cout << std::endl;
 	// Use lambda functions with traverser.
 	// count the number of cities with a larger population than the current city.
 	Lambda population_rank = count3(population > population.o(0_depth)) + 1;
@@ -248,6 +282,8 @@ void QuickstartDTree()
 
 
 	std::cout << "------Show data------" << std::endl;
+
+	usa | Show(state, county, tostr(sum(area)) + "km^2");
 
 	// Show the data of the cities with the smallest areas in the states.
 	usa | Filter(isleast2(area)) | Show(state, city, population, tostr(area) + "km^2");
@@ -273,11 +309,7 @@ void QuickstartDTree()
 	// Layer[ 2] { { "city", Str } { "population_density", F64 } }
 
 	auto [estate, ecounty, ecity, epopulation_density] = extracted.GetPlaceholders("state", "county", "city", "population_density");
-	for (const auto& trav : extracted.GetRange(2_layer))
-	{
-		std::cout << std::format("{:<12} {:<20} {:<12} {:>7.1f}\n",
-			trav[estate].str(), trav[ecounty].str(), trav[ecity].str(), trav[epopulation_density].f64());
-	}
+	extracted | Show(estate, if_(len(ecounty) >= 16, substr(ecounty, 0, 13) + "...", ecounty), ecity, epopulation_density);
 
 	std::cout << std::endl;
 

@@ -74,14 +74,24 @@ void QuickstartSTable()
 	// Node that you should use _fld literal to get STable::CttiPlaceholder<Type, Layer> that has compile-time type/layer informations.
 	// If no _fld literal name is used, the return type is STable::RttiPlaceholder that has runtime type/layer information.
 	// RttiPlaceholder can also be used for STable, but its performance is lower than CttiPlaceholder, especially in the use of lambda functions.
-	auto [nation, state, county, city, city_population, city_area] =
-		usa.GetPlaceholders("nation"_fld, "state"_fld, "county"_fld, "city"_fld, "city_population"_fld, "city_area"_fld);
+	ADAPT_GET_PLACEHOLDERS(usa, nation, state, county, city, city_population, city_area);
+
+	// ADAPT_GET_PLACEHOLDERS is a macro that expands to the following code:
+	// auto [nation, state, county, city, city_population, city_area] =
+	//	usa.GetPlaceholders("nation"_fld, "state"_fld, "county"_fld, "city"_fld, "city_population"_fld, "city_area"_fld);
+
+	// Confirm the type and layer of CttiPlaceholder are correct.
 	{
-		//Confirm the type and layer of CttiPlaceholder are correct.
 		using type_city_population = std::decay_t<decltype(city_population)>;
 		static_assert(std::same_as<typename type_city_population::RetType, int32_t>);
 		static_assert(type_city_population::Layer == 0);
 	}
+	// You can also obtain RttiPlaceholders by not using _fld literal.
+	{
+		auto [nation_rtti, state_rtti, county_rtti, city_rtti, city_population_rtti, city_area_rtti] =
+			usa.GetPlaceholders("nation", "state", "county", "city", "city_population", "city_area");
+	}
+
 
 
 	std::cout << "------Access------" << std::endl;
@@ -145,7 +155,7 @@ void QuickstartSTable()
 	for (const auto& trav : usa.GetRange(0_layer))// STable has only one layer, so the layer must be 0.
 	{
 		// All the names of the states, counties and cities are output.
-		std::cout << std::format("{:<12} {:<12} {:<12}\n", trav[state], trav[county], trav[city]);
+		std::cout << std::format("{:<12} {:<20} {:<12}\n", trav[state], trav[county], trav[city]);
 	}
 
 	// Lambda functions can also be used to filter data.
@@ -204,11 +214,7 @@ void QuickstartSTable()
 	// Layer[ 0] { { "state", class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > } { "county", class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > } { "city", class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > } { "population_density", double } }
 
 	auto [estate, ecounty, ecity, epopulation_density] = extracted.GetPlaceholders("state"_fld, "county"_fld, "city"_fld, "population_density"_fld);
-	for (const auto& trav : extracted.GetRange(0_layer))
-	{
-		std::cout << std::format("{:<12} {:<20} {:<12} {:>7.1f}\n",
-			trav[estate], trav[ecounty], trav[ecity], trav[epopulation_density]);
-	}
+	extracted | Show(estate, if_(len(ecounty) >= 16, substr(ecounty, 0, 13) + "...", ecounty), ecity, epopulation_density);
 
 	//If no _fld literal names are used, the result of Extract will be a DTree, because the tree structure is not determined statically.
 	adapt::DTree extracted_dtree = usa | Filter(city_area > 500.) | Extract(city.named("city"), (city_population / city_area).named("population_density"));

@@ -83,12 +83,27 @@ void QuickstartDTable()
 		usa.GetPlaceholders("nation", "state", "county", "city", "city_population", "city_area");
 
 	// DTable only contains layer -1 or 0 elements, so all placeholders have layer -1 or 0.
-	assert(        nation.GetLayer() == -1_layer &&          nation.GetType() == adapt::FieldType::Str);
+	assert(         nation.GetLayer() == -1_layer &&          nation.GetType() == adapt::FieldType::Str);
 	assert(          state.GetLayer() == 0_layer &&           state.GetType() == adapt::FieldType::Str);
-	assert(        county.GetLayer() == 0_layer &&         county.GetType() == adapt::FieldType::Str);
+	assert(         county.GetLayer() == 0_layer &&         county.GetType() == adapt::FieldType::Str);
 	assert(           city.GetLayer() == 0_layer &&            city.GetType() == adapt::FieldType::Str);
 	assert(city_population.GetLayer() == 0_layer && city_population.GetType() == adapt::FieldType::I32);
 	assert(      city_area.GetLayer() == 0_layer &&       city_area.GetType() == adapt::FieldType::F64);
+
+	// Convert RttiPlaceholder to TypedPlaceholder.
+	{
+		auto nation_typed = nation.str();
+		auto state_typed = state.str();
+		auto city_typed = city.str();
+		auto city_population_typed = city_population.i32();
+	}
+	// You can also obtain CttiPlaceholders from DTable by explicitly providing static types and layers.
+	{
+		auto nation_ctti = usa.GetPlaceholder<-1, std::string>("nation");
+		auto state_ctti = usa.GetPlaceholder<0, std::string>("state");
+		auto city_ctti = usa.GetPlaceholder<0, std::string>("city");
+		auto city_population_ctti = usa.GetPlaceholder<0, int32_t>("city_population");
+	}
 
 
 
@@ -212,11 +227,7 @@ void QuickstartDTable()
 	// Layer[ 0] { { "state", Str } { "county", Str } { "city", Str } { "population_density", F64 } }
 
 	auto [estate, ecounty, ecity, epopulation_density] = extracted.GetPlaceholders("state", "county", "city", "population_density");
-	for (const auto& trav : extracted.GetRange(0_layer))
-	{
-		std::cout << std::format("{:<12} {:<20} {:<12} {:>7.1f}\n",
-			trav[estate].str(), trav[ecounty].str(), trav[ecity].str(), trav[epopulation_density].f64());
-	}
+	extracted | Show(estate, if_(len(ecounty) >= 16, substr(ecounty, 0, 13) + "...", ecounty), ecity, epopulation_density);
 
 	std::cout << std::endl;
 
