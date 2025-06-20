@@ -251,6 +251,13 @@ concept ranked_placeholder = placeholder<T> && std::remove_cvref_t<T>::MaxRank !
 template <class T>
 concept stat_type_placeholder = typed_placeholder<T> || ctti_placeholder<T>;
 
+// FieldRefやEvalProxyのように、as<Int>()などで値を取得できるもの。
+template <class T>
+concept evaluation_proxy = anything_typed<T> && requires(std::remove_cvref_t<T> t)
+{
+	{ t.template as<FieldType::I32>() };
+};
+
 namespace detail
 {
 template <class T>

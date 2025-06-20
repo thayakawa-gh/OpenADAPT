@@ -8,32 +8,125 @@
 #include <OpenADAPT/Container/Tree.h>
 #include <OpenADAPT/Range/RangeAdapter.h>
 
+#ifndef ADAPT_DISABLE_COMPLEX_FORMATTER
+template <std::floating_point T>
+struct std::formatter<std::complex<T>> : public std::formatter<T>
+{
+	using Base = std::formatter<T>;
+	template <class Out, class Char>
+	auto format(const std::complex<T>& c, std::basic_format_context<Out, Char>& fc) const
+	{
+		auto out = fc.out();
+		*out = '(';
+		++out;
+		fc.advance_to(out);
+		out = Base::format(c.real(), fc);
+		*out = ',';
+		++out;
+		fc.advance_to(out);
+		out = Base::format(c.imag(), fc);
+		*out = ')';
+		++out;
+		return out;
+	}
+};
+#endif
+
+
+template <>
+struct std::formatter<adapt::Bpos> : public std::formatter<adapt::BindexType>
+{
+	using Base = std::formatter<adapt::BindexType>;
+	template <class Out, class Char>
+	auto format(const adapt::Bpos& bpos, std::basic_format_context<Out, Char>& fc) const
+	{
+		auto out = fc.out();
+		*out = '[';
+		++out;
+		fc.advance_to(out);
+		if (bpos.GetLayer() >= 0)
+		{
+			out = Base::format(bpos.GetRow(), fc);
+
+			for (adapt::LayerType l = (adapt::LayerType)1; l <= bpos.GetLayer(); ++l)
+			{
+				*out = ',';
+				++out;
+				fc.advance_to(out);
+				out = Base::format(bpos.GetTpos(l), fc);
+			}
+		}
+		*out = ']';
+		++out;
+		return out;
+	}
+};
+
+template <>
+struct std::formatter<adapt::JBpos> : public std::formatter<adapt::Bpos>
+{
+	using Base = std::formatter<adapt::Bpos>;
+	template <class Out, class Char>
+	auto format(const adapt::JBpos& jbpos, std::basic_format_context<Out, Char>& fc) const
+	{
+		auto out = fc.out();
+		*out = '{';
+		++out;
+		fc.advance_to(out);
+		for (adapt::RankType r = (adapt::RankType)0; r <= jbpos.GetMaxRank(); ++r)
+		{
+			if (r > (adapt::RankType)0)
+			{
+				*out = ',';
+				++out;
+			}
+			fc.advance_to(out);
+			out = Base::format(jbpos[r], fc);
+		}
+		*out = '}';
+		++out;
+		return out;
+	}
+};
+
+// EvalProxyやFieldRefなど、as<FieldType>()で値を取得できるもの。
+template <adapt::evaluation_proxy Proxy>
+struct std::formatter<Proxy>
+{
+	std::string_view m_fmt;
+	template <class Char>
+	constexpr auto parse(std::basic_format_parse_context<Char>& pc)
+	{
+		// parse関数はほとんど何も行わない。フォーマット文字列の該当範囲を保存するだけ。
+		auto it = pc.begin();
+		auto end = pc.end();
+		m_fmt = std::string_view(&(*it), static_cast<size_t>(end - it));
+		while (it != end && *it != '}') ++it;
+		return it;
+	}
+	template <class Out, class Char>
+	auto format(const Proxy& p, std::basic_format_context<Out, Char>& fc) const
+	{
+		using adapt::FieldType;
+		auto visitor = [&fc, this]<FieldType Type>(const Proxy& p, adapt::Number<Type>)
+		{
+			std::basic_format_parse_context<Char> pc(m_fmt);
+			std::formatter<adapt::DFieldInfo::TagTypeToValueType<Type>> formatter;
+			formatter.parse(pc);
+			const auto& v = p.template as<Type>();
+			return formatter.format(v, fc);
+		};
+#define CODE(TYPE) return visitor(p, adapt::Number<TYPE>{});
+		ADAPT_SWITCH_FIELD_TYPE(p.GetType(), CODE, throw adapt::MismatchType("");)
+#undef CODE
+	}
+};
+
 namespace adapt
 {
 
 namespace detail
 {
-
-//左端のスペースを含む幅を返す。
-template <FieldType Type>
-consteval int GetDefaultWidth()
-{
-	using enum FieldType;
-	if constexpr (Type == I08) return 5;
-	else if constexpr (Type == I16) return 7;
-	else if constexpr (Type == I32) return 12;
-	else if constexpr (Type == I64) return 21;
-	else if constexpr (Type == F32) return 10;
-	else if constexpr (Type == F64) return 12;
-	else if constexpr (Type == I16) return 12;
-	else if constexpr (Type == I16) return 12;
-	else if constexpr (Type == I16) return 12;
-	else if constexpr (Type == I16) return 12;
-	else if constexpr (Type == I16) return 12;
-	else if constexpr (Type == I16) return 12;
-	else if constexpr (Type == I16) return 12;
-	else if constexpr (Type == I16) return 12;
-}
 
 inline void WriteAsText_print(std::ostream& out, int8_t i)
 {
@@ -194,12 +287,6 @@ void WriteAsText_print(std::ostream& out, const Trav& trav, NP&& np, [[maybe_unu
 	out.flags(f);
 }
 
-//ヘッダを出力しつつ、各NPの変数名の長さを返す。
-/*template <class Trav, node_or_placeholder ...NPs>
-auto WriteHeaderAsText(std::ostream& out, NPs&& ...nps)
-{
-
-}*/
 
 template <class Trav, node_or_placeholder NP, node_or_placeholder ...NPs>
 void WriteAsText_rec(std::ostream& out, const Trav& trav, NP&& np, NPs&& ...nps)
@@ -239,12 +326,38 @@ void WriteAsText(std::ostream& out, Range&& range, NPs&& ...nps)
 		}
 	}
 }
+template <traversal_range Range, node_or_placeholder ...NPs>
+void WriteAsText(std::ostream& out, std::string_view fmt, Range&& range, NPs&& ...nps)
+{
+	Bpos pos;
+	LayerType max = std::max({ nps.GetLayer()... });
+	max = std::max(max, range.GetTravLayer());
+	range.SetTravLayer(max);
+	pos.Init(max);
+	for (auto& trav : range)
+	{
+		try
+		{
+			std::ostringstream oss;
+			trav.GetBpos(pos);
+			out << std::format("{:>4}", pos);
+			// std::make_format_argsは何故か一時変数を受け取れない仕様になっている。
+			// 仕方ないので一旦tmpに保存しておくことにする。
+			auto tmp = MakeTemporaryTuple(nps(trav)...);
+			out << std::vformat(fmt, std::apply([](auto&& ...args) { return std::make_format_args(std::forward<decltype(args)>(args)...); }, tmp));
+			out << "\n";
+		}
+		catch (const JointError&)
+		{
+		}
+	}
+}
 
 namespace detail
 {
 
 template <class Range>
-class OutputConsumer
+class OutputConversion
 {
 public:
 
@@ -254,21 +367,39 @@ public:
 	{
 		WriteAsText(ost, std::forward<Range_>(range), std::forward<NPs_>(args)...);
 	}
+	template <traversal_range Range_, class Stream, node_or_placeholder ...NPs_>
+		requires (std::convertible_to<Range_, Range>)
+	void Exec(Range_&& range, Stream& ost, std::string_view fmt, NPs_&& ...args)
+	{
+		WriteAsText(ost, fmt, std::forward<Range_>(range), std::forward<NPs_>(args)...);
+	}
 };
 
 }
 
 template <node_or_placeholder ...NPs>
-RangeConversion<detail::OutputConsumer, std::ostream&, NPs...> Show(NPs&& ...nps)
+RangeConversion<detail::OutputConversion, std::ostream&, NPs...> Show(NPs&& ...nps)
 {
-	return RangeConversion<detail::OutputConsumer, std::ostream&, NPs...>(std::cout, std::forward<NPs>(nps)...);
+	return RangeConversion<detail::OutputConversion, std::ostream&, NPs...>(std::cout, std::forward<NPs>(nps)...);
 }
 template <node_or_placeholder ...NPs>
-RangeConversion<detail::OutputConsumer, std::ofstream, NPs...> Write(std::string_view filename, NPs&& ...nps)
+RangeConversion<detail::OutputConversion, std::ostream&, std::string_view, NPs...> Show(std::string_view fmt, NPs&& ...nps)
+{
+	return RangeConversion<detail::OutputConversion, std::ostream&, std::string_view, NPs...>(std::cout, fmt, std::forward<NPs>(nps)...);
+}
+template <node_or_placeholder ...NPs>
+RangeConversion<detail::OutputConversion, std::ofstream, NPs...> Write(std::string_view filename, NPs&& ...nps)
 {
 	std::ofstream ost(filename.data());
 	if (!ost) throw BadFile("file cannot open.");
-	return RangeConversion<detail::OutputConsumer, std::ofstream, NPs...>(std::move(ost), std::forward<NPs>(nps)...);
+	return RangeConversion<detail::OutputConversion, std::ofstream, NPs...>(std::move(ost), std::forward<NPs>(nps)...);
+}
+template <node_or_placeholder ...NPs>
+RangeConversion<detail::OutputConversion, std::ofstream, std::string_view, NPs...> Write(std::string_view filename, std::string_view fmt, NPs&& ...nps)
+{
+	std::ofstream ost(filename.data());
+	if (!ost) throw BadFile("file cannot open.");
+	return RangeConversion<detail::OutputConversion, std::ofstream, std::string_view, NPs...>(std::move(ost), fmt, std::forward<NPs>(nps)...);
 }
 
 

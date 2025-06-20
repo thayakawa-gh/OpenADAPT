@@ -265,6 +265,10 @@ void QuickstartSTree()
 	//[   0,   0,   2]       California         Glendale      196543    79.300000km^2
 	//[   1,   0,   2]            Texas          Baytown       83701    32.700000km^2
 
+	// You can also use Show with format string.
+	usa | Filter(isleast2(area)) | Show("{:>12}, {:>10}, {:>5.1f}x10^3, {:>5.1f}km^2", state, city, population / 1000., area);
+	// [   0,   0,   2]  California,   Glendale, 196.5x10^3,  79.3km^2
+	// [   1,   0,   2]       Texas,    Baytown,  83.7x10^3,  32.7km^2
 	std::cout << std::endl;
 
 

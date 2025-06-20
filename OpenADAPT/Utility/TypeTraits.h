@@ -5,6 +5,7 @@
 #include <type_traits>
 #include <utility>
 #include <complex>
+#include <format>
 
 namespace adapt
 {
@@ -63,7 +64,8 @@ struct CatTypeList<TypeList<T1...>, TypeList<T2...>>
 template <class T1, class T2, class T3, class ...Ts>
 struct CatTypeList<T1, T2, T3, Ts...>
 	: public CatTypeList<typename CatTypeList<T1, T2>::Type, T3, Ts...>
-{};
+{
+};
 template <class ...T>
 using CatTypeList_t = typename CatTypeList<T...>::Type;
 
@@ -118,7 +120,8 @@ struct GetType
 template <size_t N, class ...Types>
 struct GetType<N, TypeList<Types...>>
 	: public GetType<N, Types...>
-{};
+{
+};
 template <size_t N, class ...Args>
 using GetType_t = typename GetType<N, Args...>::Type;
 
@@ -296,12 +299,13 @@ struct DecayRRef<T&&> { using Type = std::decay_t<T>; };
 
 template <auto ...N>
 struct ConstantSequence
-{};
+{
+};
 
 template <class T>
 struct IsComplex : public std::false_type {};
 template <class T>
-struct IsComplex<std::complex<T>> : public std::true_type{};
+struct IsComplex<std::complex<T>> : public std::true_type {};
 
 template <class T>
 inline constexpr bool IsComplex_v = IsComplex<T>::value;
@@ -311,9 +315,9 @@ concept derivative_relation = std::derived_from<T, U> || std::derived_from<U, T>
 
 template <class T, class U>
 concept similar_lvalue_reference =
-	(std::is_lvalue_reference_v<T> && std::is_lvalue_reference_v<U>) &&
-	(std::same_as<std::remove_cvref_t<T>, std::remove_cvref_t<U>> ||
-	 derivative_relation<std::remove_cvref_t<T>, std::remove_cvref_t<U>>);
+(std::is_lvalue_reference_v<T> && std::is_lvalue_reference_v<U>) &&
+(std::same_as<std::remove_cvref_t<T>, std::remove_cvref_t<U>> ||
+ derivative_relation<std::remove_cvref_t<T>, std::remove_cvref_t<U>>);
 
 template <class ...Ts>
 struct CommonRef { using Type = void; };
@@ -442,6 +446,13 @@ concept equal_comparable_with = requires(T a, U b)
 
 template <class T>
 concept arithmetic = std::is_arithmetic_v<T>;
+
+// C++23を使えないときのための、std::formattableの簡易的代用。非常に雑だが取りあえず動く。
+template <class T, class Out, class Char>
+concept formattable = requires(T v, std::formatter<std::remove_cvref_t<T>, Char> f, std::basic_format_context<Out, Char>&fc)
+{
+	{ f.format(v, fc) };
+};
 
 }
 

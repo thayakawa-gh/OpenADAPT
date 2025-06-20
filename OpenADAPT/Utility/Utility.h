@@ -35,6 +35,15 @@ auto TupleAdd([[maybe_unused]] std::tuple<T...> t, U&& u)
 	return detail::TupleAdd_impl(std::move(t), std::forward<U>(u), std::make_index_sequence<sizeof...(T)>());
 }
 
+// 通常、make_tupleは全てコピー、std::tieは全てlvalue ref、std::forwar_as_tupleは完全転送を行う。
+// ただいずれの関数も、「lvalue refはlvalue refで」、「rvalue refはコピーして」保存しておくようなtupleを作ることができない。
+// よって、代用品を用意しておく。
+template <class ...Args>
+std::tuple<Args...> MakeTemporaryTuple(Args&& ...args)
+{
+	return std::tuple<Args...>(std::forward<Args>(args)...);
+}
+
 template<class... Ts> struct Overload : Ts... { using Ts::operator()...; };
 template<class... Ts> Overload(Ts...) -> Overload<Ts...>;
 

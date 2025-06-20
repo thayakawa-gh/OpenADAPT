@@ -200,6 +200,10 @@ void QuickstartSTable()
 	usa | Filter(isleast(city_area)) | Show(state, city, city_population, tostr(city_area) + "km^2");
 	// [   8]            Texas          Baytown       83701    32.700000km^2
 
+	// You can also use Show with format string.
+	usa | Filter(isleast(city_area)) | Show("{:>12}, {:>10}, {:>5.1f}x10^3, {:>5.1f}km^2", state, city, city_population / 1000., city_area);
+	// [   8]       Texas,    Baytown,  83.7x10^3,  32.7km^2
+
 	std::cout << std::endl;
 
 
