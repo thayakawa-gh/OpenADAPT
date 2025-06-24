@@ -94,7 +94,7 @@ auto operator-(Arg1&& a, Arg2&& b)
 }
 struct Multiply
 {
-	auto operator()(const auto& a, const auto& b) const -> decltype(a* b) { return a * b; }
+	auto operator()(const auto& a, const auto& b) const -> decltype(a * b) { return a * b; }
 	auto operator()(auto& buf, const auto& a, const auto& b) const { buf = a; buf *= b; }
 };
 template <class Arg1, class Arg2>
@@ -116,7 +116,7 @@ auto operator/(Arg1&& a, Arg2&& b)
 }
 struct Modulus
 {
-	auto operator()(const auto& a, const auto& b) const -> decltype(a% b) { return a % b; }
+	auto operator()(const auto& a, const auto& b) const -> decltype(a % b) { return a % b; }
 	auto operator()(auto& buf, const auto& a, const auto& b) const { buf = a; buf %= b; }
 };
 template <class Arg1, class Arg2>
@@ -199,7 +199,7 @@ auto operator>=(Arg1&& a, Arg2&& b)
 
 struct OperatorAnd
 {
-	auto operator()(const auto& a, const auto& b) const -> decltype(a&& b) { return a && b; }
+	auto operator()(const auto& a, const auto& b) const -> decltype(a && b) { return a && b; }
 	template <class NodeImpl, class ...Args>
 	decltype(auto) ShortCircuit(const NodeImpl& nodeimpl, Args&& ...args) const
 	{
@@ -631,12 +631,19 @@ auto min(Arg1&& a, Arg2&& b)
 	return detail::MakeFunctionNode(Min{}, std::forward<Arg1>(a), std::forward<Arg2>(b));
 }
 
+template <class A, class B, class C>
+concept if_function_applicable = requires(A a, B b, C c)
+{
+	{ a ? b : c };
+};
 struct IfFunction
 {
-	auto operator()(const auto& a, const auto& b, const auto& c) const -> decltype(a ? b : c)
-	{
-		return a ? b : c;
-	}
+	// -> decltype(a ? b : c)という形式にしてしまうと、
+	// 戻り値が必ずconst&になってしまい、ダングリング参照になる。
+	// よってコンセプトで呼び出しの可否を判定し、戻り値型はautoで取得する。
+	template <class A, class B, class C>
+		requires if_function_applicable<A, B, C>
+	auto operator()(const A& a, const B& b, const C& c) const { return a ? b : c; }
 	template <class NodeImpl, class ...Args>
 	decltype(auto) ShortCircuit(const NodeImpl& n, Args&& ...args) const
 	{
