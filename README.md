@@ -257,7 +257,7 @@ Show the data in the container in a formatted way.
 	{
 		// All the state/county/city names and populations densities of the cities that are the county seats are output.
 		std::cout << std::format("{:<12} {:<12} {:<12} {:>7.1f}\n",
-					　trav[state].str(), trav[county].str(), trav[city].str(), population_density(trav).f64());
+					 trav[state].str(), trav[county].str(), trav[city].str(), population_density(trav).f64());
 	}
 	// Output:
 	// California   Los Angeles County   Los Angeles   3275.7
