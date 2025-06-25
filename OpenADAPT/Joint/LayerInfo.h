@@ -1,5 +1,5 @@
-#ifndef ADAPT_EVALUATOR_LAYERINFO_H
-#define ADAPT_EVALUATOR_LAYERINFO_H
+#ifndef ADAPT_JOINT_LAYERINFO_H
+#define ADAPT_JOINT_LAYERINFO_H
 
 #include <type_traits>
 #include <OpenADAPT/Utility/Exception.h>

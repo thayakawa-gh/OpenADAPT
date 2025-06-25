@@ -5,6 +5,8 @@
 #include <OpenADAPT/Container/JoinedContainer.h>
 
 #include <OpenADAPT/Joint/KeyJoint.h>
+#include <OpenADAPT/Joint/CrossJoint.h>
+#include <OpenADAPT/Joint/JointMethods.h>
 
 #include <OpenADAPT/Traverser/Traverser.h>
 #include <OpenADAPT/Traverser/ExternalTraverser.h>

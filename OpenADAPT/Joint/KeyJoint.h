@@ -1,5 +1,5 @@
-#ifndef ADAPT_EVALUATOR_KEYJOINT_H
-#define ADAPT_EVALUATOR_KEYJOINT_H
+#ifndef ADAPT_JOINT_KEYJOINT_H
+#define ADAPT_JOINT_KEYJOINT_H
 
 #include <map>
 #include <memory>

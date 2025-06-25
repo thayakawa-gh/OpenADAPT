@@ -8,6 +8,7 @@
 #include <OpenADAPT/Traverser/Traverser.h>
 #include <OpenADAPT/Traverser/InternalTraverser.h>
 #include <OpenADAPT/Joint/JointInterface.h>
+#include <OpenADAPT/Joint/JointMethods.h>
 
 namespace adapt
 {
