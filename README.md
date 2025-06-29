@@ -69,7 +69,7 @@ ADAPT provides hierarchically structured containers, STree/DTree, and table cont
 	ADAPT_D_ADD_LAYER(usa, state, Str, state_capital, Str);//Add layer 0.
 	ADAPT_D_ADD_LAYER(usa, county, Str, county_seat, Str);//Add layer 1.
 	ADAPT_D_ADD_LAYER(usa, city, Str, population, I32, area, F64);//Add layer 2.
-	// These helper macros above are equivalent to the following:
+	// The helper macros above are equivalent to the following:
 	// usa.SetTopLayer({ { "nation", adapt::FieldType::Str }, { "capital", adapt::FieldType::Str } });
 	// usa.AddLayer({ { "state", adapt::FieldType::Str }, { "state_capital", adapt::FieldType::Str } });
 	// usa.AddLayer({ { "county", adapt::FieldType::Str }, { "county_seat", adapt::FieldType::Str }});
@@ -81,7 +81,7 @@ ADAPT provides hierarchically structured containers, STree/DTree, and table cont
 	using Layer0 = ADAPT_S_DEFINE_LAYER(state, std::string, state_capital, std::string);
 	using Layer1 = ADAPT_S_DEFINE_LAYER(county, std::string, county_seat, std::string);
 	using Layer2 = ADAPT_S_DEFINE_LAYER(city, std::string, population, int32_t, area, double);
-	// These helper macros are equivalent to the following:
+	// The helper macros are equivalent to the following:
 	// using TopLayer = adapt::NamedTuple<adapt::Named<"nation", std::string>, adapt::Named<"capital", std::string>>;
 	// using Layer0 = adapt::NamedTuple<adapt::Named<"state", std::string>, adapt::Named<"state_capital", std::string>>;
 	// using Layer1 = adapt::NamedTuple<adapt::Named<"county", std::string>, adapt::Named<"county_seat", std::string>>;
