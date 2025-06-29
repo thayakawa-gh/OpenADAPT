@@ -115,12 +115,12 @@ void QuickstartDTree()
 	ADAPT_GET_PLACEHOLDERS(usa, nation, state, state_capital, county, county_seat, city, population, area);
 	// ADAPT_GET_PLACEHOLDERS is a macro that expands to the following code:
 	// auto [nation, state, state_capital, county, county_seat, city, population, area] =
-	//	usa.GetPlaceholders("nation", "state", "state_capital", "county", "county_seat", "city", "population", "area");
+	//	usa.GetPlaceholders("nation"_fld, "state"_fld, "state_capital"_fld, "county"_fld, "county_seat"_fld, "city"_fld, "population"_fld, "area"_fld);
 	assert(       nation.GetLayer() == -1_layer &&        nation.GetType() == adapt::FieldType::Str);
 	assert(        state.GetLayer() ==  0_layer &&         state.GetType() == adapt::FieldType::Str);
 	assert(state_capital.GetLayer() ==  0_layer && state_capital.GetType() == adapt::FieldType::Str);
-	assert(       county.GetLayer() ==  1_layer &&       county.GetType() == adapt::FieldType::Str);
-	assert(  county_seat.GetLayer() ==  1_layer &&  county_seat.GetType() == adapt::FieldType::Str);
+	assert(       county.GetLayer() ==  1_layer &&        county.GetType() == adapt::FieldType::Str);
+	assert(  county_seat.GetLayer() ==  1_layer &&   county_seat.GetType() == adapt::FieldType::Str);
 	assert(         city.GetLayer() ==  2_layer &&          city.GetType() == adapt::FieldType::Str);
 	assert(   population.GetLayer() ==  2_layer &&    population.GetType() == adapt::FieldType::I32);
 	assert(         area.GetLayer() ==  2_layer &&          area.GetType() == adapt::FieldType::F64);

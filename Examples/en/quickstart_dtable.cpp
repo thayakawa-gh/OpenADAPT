@@ -81,16 +81,19 @@ void QuickstartDTable()
 	// The default return value of GetPlaceholders for DTable is DTable::RttiPlaceholder, which has runtime type and layer information.
 	// RttiPlaceholder can be converted to TypedPlaceholder using i32(), str(), etc. methods, which has compile-time type information.
 	// The performance of the TypedPlaceholder is better than RttiPlaceholder, especially in the use of lambda functions.
-	auto [nation, state, county, city, city_population, city_area] =
-		usa.GetPlaceholders("nation", "state", "county", "city", "city_population", "city_area");
+	ADAPT_GET_PLACEHOLDERS(usa, nation, state, county, city, city_population, city_area);
+
+	// ADAPT_GET_PLACEHOLDERS is a macro that expands to the following code:
+	// auto [nation, state, county, city, city_population, city_area] =
+	//	usa.GetPlaceholders("nation"_fld, "state"_fld, "county"_fld, "city"_fld, "city_population"_fld, "city_area"_fld);
 
 	// DTable only contains layer -1 or 0 elements, so all placeholders have layer -1 or 0.
 	assert(         nation.GetLayer() == -1_layer &&          nation.GetType() == adapt::FieldType::Str);
-	assert(          state.GetLayer() == 0_layer &&           state.GetType() == adapt::FieldType::Str);
-	assert(         county.GetLayer() == 0_layer &&         county.GetType() == adapt::FieldType::Str);
-	assert(           city.GetLayer() == 0_layer &&            city.GetType() == adapt::FieldType::Str);
-	assert(city_population.GetLayer() == 0_layer && city_population.GetType() == adapt::FieldType::I32);
-	assert(      city_area.GetLayer() == 0_layer &&       city_area.GetType() == adapt::FieldType::F64);
+	assert(          state.GetLayer() ==  0_layer &&           state.GetType() == adapt::FieldType::Str);
+	assert(         county.GetLayer() ==  0_layer &&          county.GetType() == adapt::FieldType::Str);
+	assert(           city.GetLayer() ==  0_layer &&            city.GetType() == adapt::FieldType::Str);
+	assert(city_population.GetLayer() ==  0_layer && city_population.GetType() == adapt::FieldType::I32);
+	assert(      city_area.GetLayer() ==  0_layer &&       city_area.GetType() == adapt::FieldType::F64);
 
 	// Convert RttiPlaceholder to TypedPlaceholder.
 	{

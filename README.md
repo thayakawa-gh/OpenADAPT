@@ -162,7 +162,7 @@ Please refer to the placeholder section of [quickstart_dtree.cpp](Examples/en/qu
 	ADAPT_GET_PLACEHOLDERS(usa, capital, state, state_capital, county, city, population, area);
 	// The above macro is equivalent to the following code.
 	auto [capital, state, state_capital, county, city, population, area] = 
-		usa.GetPlaceholders("capital"_fld, "state"_fld, "state_capital", "county"_fld, "city"_fld, "population"_fld, "area"_fld);
+		usa.GetPlaceholders("capital"_fld, "state"_fld, "state_capital"_fld, "county"_fld, "city"_fld, "population"_fld, "area"_fld);
 ```
 
 ### Access data using placeholders
