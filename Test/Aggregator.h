@@ -46,10 +46,15 @@ struct Class
 
 class Aggregator : public ::testing::Test
 {
-	using TopLayer = NamedTuple<Named<"school", std::string>>;
-	using Layer0 = NamedTuple<Named<"grade", int8_t>, Named<"class_", int8_t>>;
-	using Layer1 = NamedTuple<Named<"number", int16_t>, Named<"name", std::string>, Named<"date_of_birth", int32_t>, Named<"phone", std::string>, Named<"email", std::string>>;
-	using Layer2 = NamedTuple<Named<"exam", int8_t>, Named<"math", int32_t>, Named<"japanese", int32_t>, Named<"english", int32_t>, Named<"science", int32_t>, Named<"social", int32_t>>;
+	//using TopLayer = NamedTuple<Named<"school", std::string>>;
+	//using Layer0 = NamedTuple<Named<"grade", int8_t>, Named<"class_", int8_t>>;
+	//using Layer1 = NamedTuple<Named<"number", int16_t>, Named<"name", std::string>, Named<"date_of_birth", int32_t>, Named<"phone", std::string>, Named<"email", std::string>>;
+	//using Layer2 = NamedTuple<Named<"exam", int8_t>, Named<"math", int32_t>, Named<"japanese", int32_t>, Named<"english", int32_t>, Named<"science", int32_t>, Named<"social", int32_t>>;
+
+	using TopLayer = ADAPT_S_DEFINE_LAYER(school, std::string);
+	using Layer0 = ADAPT_S_DEFINE_LAYER(grade, int8_t, class_, int8_t);
+	using Layer1 = ADAPT_S_DEFINE_LAYER(number, int16_t, name, std::string, date_of_birth, int32_t, phone, std::string, email, std::string);
+	using Layer2 = ADAPT_S_DEFINE_LAYER(exam, int8_t, math, int32_t, japanese, int32_t, english, int32_t, science, int32_t, social, int32_t);
 
 	using STree_ = STree<TopLayer, Layer0, Layer1, Layer2>;
 	using STable_ = STable<TopLayer, NamedTupleCat_t<Layer0, Layer1, Layer2>>;
@@ -193,13 +198,17 @@ class Aggregator : public ::testing::Test
 	template <class Tree>
 	static void MakeTree(Tree& t, const std::vector<Class>& cs)
 	{
-		using enum FieldType;
+		//using enum FieldType;
 		if constexpr (d_tree<Tree>)
 		{
-			t.AddLayer({ { "grade", I08 }, { "class_", I08 } });
-			t.AddLayer({ { "number", I16 }, { "name", Str }, { "date_of_birth", I32 }, {"phone", Str}, {"email", Str}});
-			t.AddLayer({ { "exam", I08 },  {"math", I32}, {"japanese", I32}, {"english", I32}, {"science", I32}, {"social", I32}});
-			t.SetTopLayer({ { "school", Str } });
+			//t.AddLayer({ { "grade", I08 }, { "class_", I08 } });
+			//t.AddLayer({ { "number", I16 }, { "name", Str }, { "date_of_birth", I32 }, {"phone", Str}, {"email", Str}});
+			//t.AddLayer({ { "exam", I08 },  {"math", I32}, {"japanese", I32}, {"english", I32}, {"science", I32}, {"social", I32}});
+			//t.SetTopLayer({ { "school", Str } });
+			ADAPT_D_SET_TOP_LAYER(t, school, Str);
+			ADAPT_D_ADD_LAYER(t, grade, I08, class_, I08);
+			ADAPT_D_ADD_LAYER(t, number, I16, name, Str, date_of_birth, I32, phone, Str, email, Str);
+			ADAPT_D_ADD_LAYER(t, exam, I08, math, I32, japanese, I32, english, I32, science, I32, social, I32);
 			t.VerifyStructure();
 		}
 

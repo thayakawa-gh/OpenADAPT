@@ -13,12 +13,16 @@ auto MakeSTable()
 
 	// STree supports any types of fields, as long as they are default constructible.
 
-	using adapt::NamedTuple;
-	using adapt::Named;
-	using TopLayer = NamedTuple<Named<"nation", std::string>, Named<"capital", std::string>>;
-	using Layer0 = NamedTuple<Named<"state", std::string>, Named<"county", std::string>,
-		Named<"city", std::string>, Named<"city_population", int32_t>, Named<"city_area", double>>;
-	using STable_ = adapt::STree<TopLayer, Layer0>;
+	using TopLayer = ADAPT_S_DEFINE_LAYER(nation, std::string, capital, std::string);
+	using Layer0   = ADAPT_S_DEFINE_LAYER(state, std::string, county, std::string, city, std::string,
+										  city_population, int32_t, city_area, double);
+	using STable_ = adapt::STable<TopLayer, Layer0>;
+	// The helper macros above are expanded to the following code:
+	// using TopLayer = adapt::NamedTuple<adapt::Named<"nation", std::string>, adapt::Named<"capital", std::string>>;
+	// using Layer0 = adapt::NamedTuple<adapt::Named<"state", std::string>, adapt::Named<"county", std::string>, adapt::Named<"city", std::string>,
+	//									adapt::Named<"city_population", int32_t>, adapt::Named<"city_area", double>>;
+	// using STable_ = adapt::STable<TopLayer, Layer0>;
+
 	STable_ t;
 	t.ShowHierarchy();
 	return t;

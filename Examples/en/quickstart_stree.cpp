@@ -13,12 +13,15 @@ auto MakeSTree()
 
 	// STree supports any types of fields, as long as they are default constructible.
 
-	using adapt::NamedTuple;
-	using adapt::Named;
-	using TopLayer = NamedTuple<Named<"nation", std::string>, Named<"capital", std::string>>;
-	using Layer0 = NamedTuple<Named<"state", std::string>, Named<"state_capital", std::string>>;
-	using Layer1 = NamedTuple<Named<"county", std::string>, Named<"county_seat", std::string>>;
-	using Layer2 = NamedTuple<Named<"city", std::string>, Named<"population", int32_t>, Named<"area", double>>;
+	using TopLayer = ADAPT_S_DEFINE_LAYER(nation, std::string, capital, std::string);
+	using Layer0 = ADAPT_S_DEFINE_LAYER(state, std::string, state_capital, std::string);
+	using Layer1 = ADAPT_S_DEFINE_LAYER(county, std::string, county_seat, std::string);
+	using Layer2 = ADAPT_S_DEFINE_LAYER(city, std::string, population, int32_t, area, double);
+	// The helper macros above are expanded to the following code:
+	// using TopLayer = adapt::NamedTuple<adapt::Named<"nation", std::string>, adapt::Named<"capital", std::string>>;
+	// using Layer0 = adapt::NamedTuple<adapt::Named<"state", std::string>, adapt::Named<"state_capital", std::string>>;
+	// using Layer1 = adapt::NamedTuple<adapt::Named<"county", std::string>, adapt::Named<"county_seat", std::string>>;
+	// using Layer2 = adapt::NamedTuple<adapt::Named<"city", std::string>, adapt::Named<"population", int32_t>, adapt::Named<"area", double>>;
 	using STree_ = adapt::STree<TopLayer, Layer0, Layer1, Layer2>;
 
 	static_assert(adapt::s_hierarchy<STree_>);

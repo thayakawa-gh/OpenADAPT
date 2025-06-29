@@ -19,10 +19,12 @@ adapt::DTable MakeDTable()
 	// Index:           Jbp (adapt::JBpos) ... Something like an index of each layer.
 	// std::chrono::year_month_day and others will be added in the near future.
 
-	using enum adapt::FieldType;
 	adapt::DTable t;
-	t.SetTopLayer({ { "nation", Str }, { "capital", Str } });
-	t.SetLayer(0, { { "state", Str }, { "county", Str }, { "city", Str }, { "city_population", I32 }, { "city_area", F64 } });
+	ADAPT_D_SET_TOP_LAYER(t, nation, Str, capital, Str);
+	ADAPT_D_SET_LAYER(t, 0, state, Str, county, Str, city, Str, city_population, I32, city_area, F64);
+	// These helper macros are equivalent to the following:
+	// t.SetTopLayer({ { "nation", adapt::FieldType::Str }, { "capital", adapt::FieldType::Str } });
+	// t.SetLayer(0, { { "state", adapt::FieldType::Str }, { "county", adapt::FieldType::Str }, { "city", adapt::FieldType::Str }, { "city_population", adapt::FieldType::I32 }, { "city_area", adapt::FieldType::F64 } });
 	t.VerifyStructure();
 
 	t.ShowHierarchy();

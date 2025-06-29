@@ -22,10 +22,15 @@ adapt::DTree MakeDTree()
 
 	using enum adapt::FieldType;
 	adapt::DTree t;
-	t.SetTopLayer({ { "nation", Str }, { "capital", Str } });///Set root layer (-1).
-	t.AddLayer({ { "state", Str }, { "state_capital", Str } });//Add layer 0.
-	t.AddLayer({ { "county", Str }, { "county_seat", Str }});//Add layer 1.
-	t.AddLayer({ { "city", Str }, { "population", I32 }, { "area", F64 } });//Add layer 2.
+	ADAPT_D_SET_TOP_LAYER(t, nation, Str, capital, Str);//Set root layer (-1).
+	ADAPT_D_ADD_LAYER(t, state, Str, state_capital, Str);//Add layer 0.
+	ADAPT_D_ADD_LAYER(t, county, Str, county_seat, Str);//Add layer 1.
+	ADAPT_D_ADD_LAYER(t, city, Str, population, I32, area, F64);//Add layer 2.
+	// These helper macros are equivalent to the following:
+	// t.SetTopLayer({ { "nation", adapt::FieldType::Str }, { "capital", adapt::FieldType::Str } });
+	// t.AddLayer({ { "state", adapt::FieldType::Str }, { "state_capital", adapt::FieldType::Str } });
+	// t.AddLayer({ { "county", adapt::FieldType::Str }, { "county_seat", adapt::FieldType::Str }});
+	// t.AddLayer({ { "city", adapt::FieldType::Str }, { "population", adapt::FieldType::I32 }, { "area", adapt::FieldType::F64 } });
 	t.VerifyStructure();// Verify if the structure is correct.
 
 	t.ShowHierarchy();
