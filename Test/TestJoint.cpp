@@ -6,12 +6,12 @@ using namespace adapt::lit;
 TEST_F(Aggregator, CrossJoint)
 {
 	{
-		auto j = Join(m_dtree, 2_layer, -1_layer, m_dtree);
-		j.SetCrossJoint<1_rank>();
+		auto jt = Join(m_dtree, 2_layer, -1_layer, m_dtree);
+		jt.SetCrossJoint<1_rank>();
 
-		auto [math0, english0, name0] = j.GetPlaceholders<0_rank>("math", "english", "name");
-		auto [math1, english1, name1] = j.GetPlaceholders<1_rank>("math", "english", "name");
-		auto e = j | Filter(english0 - english1 < 20) | Extract(name0 + "-" + name1, math0 - math1);
+		auto [math0, english0, name0] = jt.GetPlaceholders<0_rank>("math", "english", "name");
+		auto [math1, english1, name1] = jt.GetPlaceholders<1_rank>("math", "english", "name");
+		auto e = jt | Filter(english0 - english1 < 20) | Extract(name0 + "-" + name1, math0 - math1);
 		ADAPT_GET_PLACEHOLDERS(e, fld0, fld1);
 		auto trav = e.GetRange(5_layer).begin();
 		for (BindexType i = 0; i < m_class.size(); ++i)
@@ -46,13 +46,13 @@ TEST_F(Aggregator, CrossJoint)
 		EXPECT_TRUE(trav.IsEnd());
 	}
 	{
-		auto j = Join(m_dtree, 1_layer, -1_layer, m_dtree);
-		j.SetCrossJoint<1_rank>();
+		auto jt = Join(m_dtree, 1_layer, -1_layer, m_dtree);
+		jt.SetCrossJoint<1_rank>();
 
 		//SetNumOfThreads(1);
-		auto [math0, english0, name0] = j.GetPlaceholders<0_rank>("math", "english", "name");
-		auto [math1, english1, name1] = j.GetPlaceholders<1_rank>("math", "english", "name");
-		auto e = j | Filter((mean(english0) - mean(english1)) < 20) | Extract(name0 + "-" + name1, mean(math0) - mean(math1));
+		auto [math0, english0, name0] = jt.GetPlaceholders<0_rank>("math", "english", "name");
+		auto [math1, english1, name1] = jt.GetPlaceholders<1_rank>("math", "english", "name");
+		auto e = jt | Filter((mean(english0) - mean(english1)) < 20) | Extract(name0 + "-" + name1, mean(math0) - mean(math1));
 		//auto e = j | Filter((mean(english1)) < 60) | Extract(name0 + "-" + name1, mean(math0) - mean(math1));
 		ADAPT_GET_PLACEHOLDERS(e, fld0, fld1);
 		auto trav = e.GetRange(3_layer).begin();

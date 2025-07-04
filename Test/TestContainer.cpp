@@ -257,3 +257,167 @@ TEST_F(Aggregator, STree_TreeHandling)
 	STree<TopLayerTest, Layer0Test, Layer1Test> tree;
 	TestTreeHandling(tree);
 }
+
+template <any_tree Tree>
+void TestTreeConcat(const Tree& tree, const std::vector<Class>& cls)
+{
+	ADAPT_GET_PLACEHOLDERS(tree, grade, class_, number, name, exam, math, japanese, english, science, social);
+	BindexType clssize = (BindexType)cls.size();
+	for (BindexType i = 0; i < clssize * 2; ++i)
+	{
+		BindexType ii = i >= clssize ? i - clssize : i;
+		const auto& tc = tree[i];
+		const Class& c = cls[ii];
+
+		EXPECT_EQ(tc.GetSize(1_layer), 30);
+		EXPECT_EQ(tc.GetSize(2_layer), 120);
+
+		if constexpr (d_container<Tree>)
+		{
+			EXPECT_EQ(tc[grade].i08(), c.m_grade);
+			EXPECT_EQ(tc[class_].i08(), c.m_class);
+		}
+		else
+		{
+			EXPECT_EQ(tc[grade], c.m_grade);
+			EXPECT_EQ(tc[class_], c.m_class);
+		}
+
+		BindexType stusize = (BindexType)c.m_students.size();
+		for (BindexType j = 0; j < stusize; ++j)
+		{
+			const auto& ts = tc[j];
+			const Student& s = c.m_students[j];
+
+			EXPECT_EQ(ts.GetSize(2_layer), 4);
+
+			if constexpr (d_container<Tree>)
+			{
+				EXPECT_EQ(ts[number].i16(), s.m_number);
+				EXPECT_EQ(ts[name].str(), s.m_name);
+			}
+			else
+			{
+				EXPECT_EQ(ts[number], s.m_number);
+				EXPECT_EQ(ts[name], s.m_name);
+			}
+
+			BindexType recsize = (BindexType)s.m_records.size();
+			for (BindexType k = 0; k < recsize; ++k)
+			{
+				const auto& tr = ts[k];
+				const Record& r = s.m_records[k];
+
+				if constexpr (d_container<Tree>)
+				{
+					EXPECT_EQ(tr[exam].i08(), r.m_exam);
+					EXPECT_EQ(tr[math].i32(), r.m_math);
+					EXPECT_EQ(tr[japanese].i32(), r.m_japanese);
+					EXPECT_EQ(tr[english].i32(), r.m_english);
+					EXPECT_EQ(tr[science].i32(), r.m_science);
+					EXPECT_EQ(tr[social].i32(), r.m_social);
+				}
+				else
+				{
+					EXPECT_EQ(tr[exam], r.m_exam);
+					EXPECT_EQ(tr[math], r.m_math);
+					EXPECT_EQ(tr[japanese], r.m_japanese);
+					EXPECT_EQ(tr[english], r.m_english);
+					EXPECT_EQ(tr[science], r.m_science);
+					EXPECT_EQ(tr[social], r.m_social);
+				}
+			}
+		}
+	}
+}
+
+TEST_F(Aggregator, DTree_Concat)
+{
+	{
+		DTree t1, t2;
+		MakeTree(t1, m_class);
+		MakeTree(t2, m_class);
+		t1.Concat(t2);
+		TestTreeConcat(t1, m_class);
+		EXPECT_EQ(t2.GetSize(0_layer), 4);
+		//0層要素。学年とクラス。
+		auto [grade, class_] = t2.GetPlaceholders("grade", "class_");
+		//1層要素。出席番号、名前、生年月日。
+		auto [number, name] = t2.GetPlaceholders("number", "name");
+		//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
+		auto [exam, math, jpn, eng, sci, soc] = t2.GetPlaceholders("exam", "math", "japanese", "english", "science", "social");
+
+		TestContainer(t2, m_class,
+			std::make_tuple(grade, class_),
+			std::make_tuple(number, name),
+			std::make_tuple(exam, math, jpn, eng, sci, soc));
+	}
+	{
+		DTree t1, t2;
+		MakeTree(t1, m_class);
+		MakeTree(t2, m_class);
+		t1.MoveConcat(std::move(t2));
+		TestTreeConcat(t1, m_class);
+		EXPECT_EQ(t2.GetSize(0_layer), 0);
+
+		//t2の要素は空になっているので、再利用できる。
+		MakeTree(t2, m_class, false);
+
+		//0層要素。学年とクラス。
+		auto [grade, class_] = t2.GetPlaceholders("grade", "class_");
+		//1層要素。出席番号、名前、生年月日。
+		auto [number, name] = t2.GetPlaceholders("number", "name");
+		//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
+		auto [exam, math, jpn, eng, sci, soc] = t2.GetPlaceholders("exam", "math", "japanese", "english", "science", "social");
+
+		TestContainer(t2, m_class,
+			std::make_tuple(grade, class_),
+			std::make_tuple(number, name),
+			std::make_tuple(exam, math, jpn, eng, sci, soc));
+	}
+}
+TEST_F(Aggregator, STree_Concat)
+{
+	{
+		STree_ t1, t2;
+		MakeTree(t1, m_class);
+		MakeTree(t2, m_class);
+		t1.Concat(t2);
+		TestTreeConcat(t1, m_class);
+		EXPECT_EQ(t2.GetSize(0_layer), 4);
+		//0層要素。学年とクラス。
+		auto [grade, class_] = m_stree.GetPlaceholders<"grade", "class_">();
+		//1層要素。出席番号、名前、生年月日。
+		auto [number, name] = m_stree.GetPlaceholders<"number", "name">();
+		//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
+		auto [exam, math, jpn, eng, sci, soc] = m_stree.GetPlaceholders<"exam", "math", "japanese", "english", "science", "social">();
+
+		TestContainer(t2, m_class,
+			std::make_tuple(grade, class_),
+			std::make_tuple(number, name),
+			std::make_tuple(exam, math, jpn, eng, sci, soc));
+	}
+	{
+		STree_ t1, t2;
+		MakeTree(t1, m_class);
+		MakeTree(t2, m_class);
+		t1.MoveConcat(std::move(t2));
+		TestTreeConcat(t1, m_class);
+		EXPECT_EQ(t2.GetSize(0_layer), 0);
+
+		//t2の要素は空になっているので、再利用できる。
+		MakeTree(t2, m_class);
+
+		//0層要素。学年とクラス。
+		auto [grade, class_] = m_stree.GetPlaceholders<"grade", "class_">();
+		//1層要素。出席番号、名前、生年月日。
+		auto [number, name] = m_stree.GetPlaceholders<"number", "name">();
+		//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
+		auto [exam, math, jpn, eng, sci, soc] = m_stree.GetPlaceholders<"exam", "math", "japanese", "english", "science", "social">();
+
+		TestContainer(t2, m_class,
+			std::make_tuple(grade, class_),
+			std::make_tuple(number, name),
+			std::make_tuple(exam, math, jpn, eng, sci, soc));
+	}
+}

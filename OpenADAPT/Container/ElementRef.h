@@ -18,19 +18,6 @@ namespace adapt
 namespace detail
 {
 
-
-template <class Hierarchy, template <class> class Qualifier, class LayerSD>
-class ElementListRef_impl;
-
-template <class Hierarchy, template <class> class Qualifier, class LayerSD>
-class ElementRef_impl;
-
-template <class Hierarchy, template <class> class Qualifier>
-class ElementPtr_impl;
-
-template <class Hierarchy, template <class> class Qualifier>
-class ElementIterator_impl;
-
 template <template <class> class Qualifier>
 class FieldRef_impl : public eval::detail::RttiMethods<FieldRef_impl<Qualifier>, Qualifier>
 {
@@ -200,6 +187,7 @@ class ElementListRef_impl
 
 	template <class Range> friend class CttiExtractor;
 	template <class Range> friend class RttiExtractor;
+	template <class H, template <class> class Q, class L> friend class ElementListRef_impl;
 public:
 
 	using Hierarchy = Hierarchy_;
@@ -307,13 +295,13 @@ public:
 	}
 
 	template <class ...Args>
-		requires IsNonConst
+		requires IsNonConst && (!element_iterator<Args> && ...)
 	void Insert(BindexType index, Args&& ...args) const
 	{
 		m_elements->Insert(GetHierarchy(), GetLayer(), index, std::forward<Args>(args)...);
 	}
 	template <class ...Args>
-		requires IsNonConst
+		requires IsNonConst && (!element_iterator<Args> && ...)
 	void Insert_unsafe(BindexType index, Args&& ...args) const
 	{
 		m_elements->Insert_unsafe(GetHierarchy(), GetLayer(), index, std::forward<Args>(args)...);
@@ -322,6 +310,37 @@ public:
 		requires IsNonConst
 	{
 		m_elements->Erase(GetHierarchy(), GetLayer(), index, size);
+	}
+	//[from, end)の要素をindexの位置に挿入する。
+	//[from, end)の要素はコピーされるのみで、変更等はされない。
+	template <template <class> class SrcQualifier>
+		requires IsNonConst
+	void Insert(BindexType index, const ElementIterator_impl<Hierarchy_, SrcQualifier>& from, const ElementIterator_impl<Hierarchy_, SrcQualifier>& end) const
+	{
+		assert(GetLayer() == from->GetLayer() && GetLayer() == end->GetLayer());
+		m_elements->InsertBlock(GetHierarchy(), GetLayer(), index, from->m_block, end->m_block);
+	}
+	//[from, end)の要素をindexの位置に挿入する。
+	//[from, end)の要素はムーブコンストラクタで移譲された状態となる。
+	void MoveInsert(BindexType index, const ElementIterator_impl<Hierarchy_, std::type_identity_t>& from, const ElementIterator_impl<Hierarchy_, std::type_identity_t>& end) const
+		requires IsNonConst
+	{
+		assert(GetLayer() == from->GetLayer() && GetLayer() == end->GetLayer());
+		m_elements->MoveInsertBlock(GetHierarchy(), GetLayer(), index, from->m_block, end->m_block);
+	}
+
+	template <template <class> class SrcQualifier>
+		requires IsNonConst
+	void Concat(const ElementListRef_impl<Hierarchy_, SrcQualifier, LayerSD>& src) const
+	{
+		Insert(GetSize(), src.begin(), src.end());
+	}
+	void MoveConcat(const ElementListRef_impl<Hierarchy_, std::type_identity_t, LayerSD>& src) const
+		requires IsNonConst
+	{
+		assert(GetLayer() == src.begin()->GetLayer() && GetLayer() == src.begin()->GetLayer());
+		m_elements->MoveAndEraseInsertBlock(GetHierarchy(), GetLayer(), GetSize(), src.begin()->m_block, src.end()->m_block);
+		src.RewriteSize(0);//srcの要素を全て移動し破棄したので、空にする。
 	}
 
 	constexpr LayerType GetLayer() const { return GetLayer(); }
@@ -371,7 +390,7 @@ private:
 		assert(GetSize() == 0);
 		m_elements->Swap(*buf.m_elements);
 	}
-	//Extractorが使う。ユーザーが使うべきではない。
+	//Extractorなどが使う。ユーザーが使うべきではない。
 	//ExtractorによってReserveされた領域の要素を書き込んだ後、
 	//その時点ではサイズが0のままになっているため、
 	//この関数で強制的にサイズを変更する。
@@ -406,6 +425,8 @@ class ElementRef_impl
 {
 	template <class Hierarchy__, template <class> class Qualifier_, class LayerSD_>
 	friend class ElementRef_impl;
+	template <class Hierarchy__, template <class> class Qualifier_, class LayerSD_>
+	friend class ElementListRef_impl;
 	friend class ElementIterator_impl<Hierarchy_, Qualifier>;
 	using ElementBlockPolicy = std::conditional_t<s_hierarchy<Hierarchy_>, SElementBlockPolicy, DElementBlockPolicy>;
 

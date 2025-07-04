@@ -559,6 +559,8 @@ struct JointInfo
 	static constexpr RankType MaxRank = 0;
 	using Container = Container_;
 
+	constexpr bool operator==(const JointInfo&) const { return true; }
+
 	static constexpr RankType GetRank() { return Rank; }
 	static constexpr bool HasRank() { return false; }
 };
@@ -571,6 +573,8 @@ public:
 	using Container = Container_;
 	constexpr JointInfo() = default;
 	constexpr JointInfo(JointLayerArray<MaxRank> j) : m_joint_layers(j) {}
+
+	bool operator==(const JointInfo& that) const { return m_joint_layers == that.m_joint_layers; }
 
 	static constexpr RankType GetRank() { return Rank; }
 	static constexpr bool HasRank() { return true; }
@@ -914,6 +918,17 @@ public:
 		: m_index(index), m_ptr_offset(offs)
 	{}
 
+	bool operator==(const CttiPlaceholder_impl& that) const
+	{
+		return m_index == that.m_index &&
+			m_ptr_offset == that.m_ptr_offset &&
+			JointInfo::operator==(that);
+	}
+	bool operator!=(const CttiPlaceholder_impl& that) const
+	{
+		return !(*this == that);
+	}
+
 	static constexpr FieldType GetType() { return DFieldInfo::GetSameSizeTagType<Type>(); }
 	static constexpr LayerType GetInternalLayer() { return Layer; }
 	constexpr uint16_t GetIndex() const { return m_index; }
@@ -969,6 +984,18 @@ public:
 		requires (joined_container<Container>)
 		: JointInfo(j), m_layer(layer), m_index(index), m_ptr_offset(offs)
 	{}
+
+	bool operator==(const TypedPlaceholder_impl& that) const
+	{
+		return m_layer == that.m_layer &&
+			m_index == that.m_index &&
+			m_ptr_offset == that.m_ptr_offset &&
+			JointInfo::operator==(that);
+	}
+	bool operator!=(const TypedPlaceholder_impl& that) const
+	{
+		return !(*this == that);
+	}
 
 	constexpr LayerType GetInternalLayer() const { return m_layer; }
 	constexpr uint16_t GetIndex() const { return m_index; }
@@ -1030,6 +1057,19 @@ public:
 		requires (joined_container<Container>)
 		: JointInfo(j), m_layer(layer), m_index(index), m_type(type), m_ptr_offset(offs)
 	{}
+
+	bool operator==(const RttiPlaceholder_impl& that) const
+	{
+		return m_layer == that.m_layer &&
+			m_index == that.m_index &&
+			m_type == that.m_type &&
+			m_ptr_offset == that.m_ptr_offset &&
+			JointInfo::operator==(that);
+	}
+	bool operator!=(const RttiPlaceholder_impl& that) const
+	{
+		return !(*this == that);
+	}
 
 	constexpr LayerType GetInternalLayer() const { return m_layer; }
 	constexpr uint16_t GetIndex() const { return m_index; }

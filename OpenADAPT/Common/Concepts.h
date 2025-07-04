@@ -429,6 +429,49 @@ concept sized_traversal_range = traversal_range<T> &&
 	{ r.GetSize(layer) } -> std::same_as<size_t>;
 };
 
+
+namespace detail
+{
+
+template <class Hierarchy, template <class> class Qualifier, class LayerSD>
+class ElementListRef_impl;
+
+template <class Hierarchy, template <class> class Qualifier, class LayerSD>
+class ElementRef_impl;
+
+template <class Hierarchy, template <class> class Qualifier>
+class ElementPtr_impl;
+
+template <class Hierarchy, template <class> class Qualifier>
+class ElementIterator_impl;
+
+template <class ListRef>
+struct IsElementListRef : std::false_type {};
+template <class Hierarchy, template <class> class Qualifier, class LayerSD>
+struct IsElementListRef<ElementListRef_impl<Hierarchy, Qualifier, LayerSD>> : std::true_type {};
+
+template <class Ref>
+struct IsElementRef : std::false_type {};
+template <class Hierarchy, template <class> class Qualifier, class LayerSD>
+struct IsElementRef<ElementRef_impl<Hierarchy, Qualifier, LayerSD>> : std::true_type {};
+
+template <class Iter>
+struct IsElementIterator : std::false_type {};
+template <class Hierarchy, template <class> class Qualifier>
+struct IsElementIterator<detail::ElementIterator_impl<Hierarchy, Qualifier>> : std::true_type {};
+
+}
+
+template <class ListRef>
+concept element_list_ref = detail::IsElementListRef<ListRef>::value;
+
+template <class Ref>
+concept element_ref = detail::IsElementRef<Ref>::value;
+
+template <class Iter>
+concept element_iterator = detail::IsElementIterator<Iter>::value;
+
+
 template <class T>
 concept any_hierarchy = requires(std::remove_cvref_t<T> h, LayerType layer, const std::string & name)
 {

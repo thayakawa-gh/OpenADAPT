@@ -293,7 +293,7 @@ void QuickstartSTree()
 	// Layer[ 1] { { "county", class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > } }
 	// Layer[ 2] { { "city", class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > } { "population_density", double } }
 	auto [estate, ecounty, ecity, epopulation_density] = extracted.GetPlaceholders("state"_fld, "county"_fld, "city"_fld, "population_density"_fld);
-	extracted | Show(estate, if_(len(ecounty) >= 16, substr(ecounty, 0, 13) + "...", ecounty), ecity, epopulation_density);
+	extracted | Show(estate, if_(len(ecounty) >= (size_t)16, substr(ecounty, 0, 13) + "...", ecounty), ecity, epopulation_density);
 
 	//If no _fld literal names are used, the result of Extract will be a DTree, because the tree structure is not determined statically.
 	adapt::DTree extracted_dtree = usa | Filter(area > 500.) | Extract(city.named("city"), (population / area).named("population_density"));

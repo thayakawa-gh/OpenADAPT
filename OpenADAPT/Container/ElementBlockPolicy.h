@@ -181,7 +181,7 @@ public:
 	}
 
 	//fromの各フィールドをtoへとムーブする。
-	//fromのフィールドのデストラクタは呼ばれない。
+	//fromのフィールドのデストラクタは呼ばれず、ムーブコンストラクタで移譲された状態となる。
 	//toはコンストラクタが既に呼ばれた後だと想定している。
 	template <class ...Placeholders, bool IsTotallyTrivial>
 	static void Move(const std::tuple<Placeholders...>& phs, std::bool_constant<IsTotallyTrivial>, char* from, char* to)

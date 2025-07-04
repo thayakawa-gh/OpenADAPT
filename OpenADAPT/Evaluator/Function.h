@@ -643,7 +643,17 @@ struct IfFunction
 	// よってコンセプトで呼び出しの可否を判定し、戻り値型はautoで取得する。
 	template <class A, class B, class C>
 		requires if_function_applicable<A, B, C>
-	auto operator()(const A& a, const B& b, const C& c) const { return a ? b : c; }
+	auto operator()(const A& a, const B& b, const C& c) const
+	{
+		using T1 = std::remove_cvref_t<B>;
+		using T2 = std::remove_cvref_t<C>;
+		if constexpr (IsComplex_v<T1> && std::is_arithmetic_v<T2>)
+			return a ? b : T1(static_cast<typename T1::value_type>(c));
+		else if constexpr (std::is_arithmetic_v<T1> && IsComplex_v<T2>)
+			return a ? T2(static_cast<typename T2::value_type>(b)) : c;
+		else
+			return a ? b : c;
+	}
 	template <class NodeImpl, class ...Args>
 	decltype(auto) ShortCircuit(const NodeImpl& n, Args&& ...args) const
 	{

@@ -159,6 +159,32 @@ public:
 	{
 		GetLowerElements().Erase(index, size);
 	}
+	void Concat(const Tree_base& t)
+	{
+		if constexpr (d_hierarchy<Hierarchy> || f_hierarchy<Hierarchy>)
+		{
+			for (LayerType l = -1_layer; l <= Hierarchy::GetMaxLayer(); ++l)
+			{
+				//構造の完全一致を要求する。
+				if (this->GetPlaceholdersIn(l) != t.GetPlaceholdersIn(l))
+					throw InvalidArg(std::format("Hierarchy structure mismatch at layer {}.", l));
+			}
+		}
+		GetLowerElements().Concat(t.GetLowerElements());
+	}
+	void MoveConcat(Tree_base&& t)
+	{
+		if constexpr (d_hierarchy<Hierarchy> || f_hierarchy<Hierarchy>)
+		{
+			for (LayerType l = -1_layer; l <= Hierarchy::GetMaxLayer(); ++l)
+			{
+				//構造の完全一致を要求する。
+				if (this->GetPlaceholdersIn(l) != t.GetPlaceholdersIn(l))
+					throw InvalidArg(std::format("Hierarchy structure mismatch at layer {}.", l));
+			}
+		}
+		GetLowerElements().MoveConcat(t.GetLowerElements());
+	}
 
 	TopElementRef GetTopElement()
 	{

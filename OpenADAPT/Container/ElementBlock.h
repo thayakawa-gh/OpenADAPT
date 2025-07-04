@@ -178,7 +178,7 @@ public:
 				Policy::MoveConstructAndDestroy(ms, is_totally_trivial, from, to);
 				//もし最下層でない場合、各ブロック末尾には下層ElementBlockオブジェクトが存在する。
 				//これも移動させなければならない。
-				if (!ismaxlayer) MoveConstructAndDestroyElementBlock(from + elmsize, to + elmsize);
+				if (!ismaxlayer) MoveConstructElementBlock(from + elmsize, to + elmsize);
 			}
 		}
 		std::free(oldptr);
@@ -315,9 +315,9 @@ private:
 			//index~size-1番目の要素を後ろにずらす。
 			//注意しなければならないのは、最後の要素だけは未初期化領域へ移動するため、
 			//Policy::MoveではなくMoveConstructを呼ばなければならない点。
-			char* from = m_blocks + (size - 1) * blocksize;
+			char* from = m_blocks + size * blocksize - blocksize;//size == 0の場合に非負整数型の計算が狂うので、(size - 1)にしてはいけない。
 			char* to = m_blocks + size * blocksize;
-			const char* end = m_blocks + index * blocksize - blocksize;//index - 1番目。
+			const char* end = m_blocks + index * blocksize - blocksize;//index - 1番目。(index - 1)にするなよ。
 			Policy::MoveConstruct(ms, is_totally_trivial, from, to);
 			if (!ismaxlayer) MoveElementBlock(from + elmsize, to + elmsize);
 			from -= blocksize;
@@ -357,6 +357,113 @@ public:
 	void Insert_unsafe(HierarchySD h, LayerSD layer, BindexType index, Args&& ...args)
 	{
 		return Insert_impl<true>(h, layer, index, std::forward<Args>(args)...);
+	}
+
+private:
+	template <class LayerSD, class CharPtr, bool MoveFlag, bool EraseFlag>
+		requires(std::same_as<CharPtr, char*> || std::same_as<CharPtr, const char*>)
+	void Insert_impl(HierarchySD h, LayerSD layer, BindexType index, CharPtr srcfrom, CharPtr srcend, std::bool_constant<MoveFlag>, std::bool_constant<EraseFlag>)
+	{
+		static_assert(!(!MoveFlag && EraseFlag));// moveしないのにeraseするのはおかしい。
+		assert(GetSize(h, layer) < std::numeric_limits<BindexType>::max());
+		assert(index <= GetSize(h, layer));
+		//もしキャパシティが不足する場合は再確保する。
+		BindexType size = GetSize(h, layer);
+		BindexType inssize = (BindexType)((srcend - srcfrom) / GetBlockSize(h, layer));
+
+		if (size + inssize > GetCapacity(h, layer)) Reserve(h, layer, size + inssize);
+		auto [ismaxlayer, elmsize, blocksize] = GetBlockTraits(h, layer);
+		const auto& ms = GetPlaceholdersIn(h, layer);
+		auto is_totally_trivial = h.value().IsTotallyTrivial(layer);
+
+		{
+			//index~size-1番目の要素を後ろにずらす。
+			//このとき、size - inssize ~ size - 1番目の要素は未初期化領域へ移動するため、
+			//Policy::MoveではなくMoveConstructを呼ばなければならない。
+			char* from = m_blocks + size * blocksize - blocksize;//(size - 1)にしてはいけない。size == 0のときにバグる。
+			char* to = m_blocks + (size + inssize) * blocksize - blocksize;
+
+			const char* end1 = nullptr;
+			//1. index + inssize >= size: 挿入の結果、挿入される要素はもともとの初期化済み領域よりも外に出る。
+			//したがって、index ~ size - 1の要素はすべて未初期化領域への移動となる。
+			if (index + inssize >= size) end1 = m_blocks + index * blocksize - blocksize;
+			//2. index + inssize < size: 初期化済み領域への移動が発生する。
+			else end1 = m_blocks + (size - inssize - 1) * blocksize;//size - inssize - 1番目。未初期化領域への移動範囲。
+			const char* end2 = m_blocks + index * blocksize - blocksize;//index - 1番目。初期化済み領域への移動範囲。
+
+			for (; from != end1; from -= blocksize, to -= blocksize)
+			{
+				Policy::MoveConstruct(ms, is_totally_trivial, from, to);
+				if (!ismaxlayer) MoveConstructElementBlock(from + elmsize, to + elmsize);
+			}
+			for (; from != end2; from -= blocksize, to -= blocksize)
+			{
+				Policy::Move(ms, is_totally_trivial, from, to);
+				//もし最下層でない場合、各ブロック末尾には下層ElementBlockオブジェクトが存在する。
+				//これも移動させなければならない。
+				if (!ismaxlayer) MoveElementBlock(from + elmsize, to + elmsize);
+			}
+		}
+		{
+			//srcからの挿入を行う。
+			//こちらも上と同様に、index ~ size - 1はMoveConstructによって初期化された領域なのでCopy/Moveでよい。
+			//size ~ index + inssize - 1は未初期化領域なので、CopyConstruct/MoveConstructを呼ぶ。
+			CharPtr from = srcfrom;
+			char* to = m_blocks + index * blocksize;
+			char* end1 = m_blocks + size * blocksize;
+			//もしindex + inssize < sizeの場合、挿入する要素はすべて初期化済み領域内に収まる。
+			if (index + inssize < size) end1 = m_blocks + (index + inssize) * blocksize;
+			char* end2 = m_blocks + (index + inssize) * blocksize;
+			for (; to != end1; from += blocksize, to += blocksize)
+			{
+				if constexpr (MoveFlag)
+				{
+					if constexpr (EraseFlag) Policy::MoveAndDestroy(ms, is_totally_trivial, from, to);
+					else Policy::Move(ms, is_totally_trivial, from, to);
+					if (!ismaxlayer) MoveElementBlock(from + elmsize, to + elmsize);
+				}
+				else
+				{
+					Policy::Copy(ms, is_totally_trivial, from, to);
+					if (!ismaxlayer) CopyConstructElementBlock(h, layer + 1_layer, from + elmsize, to + elmsize);
+				}
+			}
+			for (; to != end2; from += blocksize, to += blocksize)
+			{
+				if constexpr (MoveFlag)
+				{
+					if constexpr (EraseFlag) Policy::MoveConstructAndDestroy(ms, is_totally_trivial, from, to);
+					else Policy::MoveConstruct(ms, is_totally_trivial, from, to);
+					if (!ismaxlayer) MoveConstructElementBlock(from + elmsize, to + elmsize);
+				}
+				else
+				{
+					Policy::CopyConstruct(ms, is_totally_trivial, from, to);
+					if (!ismaxlayer) CopyConstructElementBlock(h, layer + 1_layer, from + elmsize, to + elmsize);
+				}
+			}
+		}
+		m_end += blocksize * inssize;
+	}
+public:
+	//from-endまでの要素をindexにコピー/ムーブ挿入する。
+	//このとき、from-endの要素は全く異なるtree/tableであることを前提とし、
+	//階層構造が完全一致することを要求する。
+	//さらに、srcfrom ~ srcendまでの要素はデストラクタが呼ばれた未初期化状態となる。
+	template <class LayerSD>
+	void InsertBlock(HierarchySD h, LayerSD layer, BindexType index, const char* srcfrom, const char* srcend)
+	{
+		Insert_impl(h, layer, index, srcfrom, srcend, std::false_type{}, std::false_type{});
+	}
+	template <class LayerSD>
+	void MoveInsertBlock(HierarchySD h, LayerSD layer, BindexType index, char* srcfrom, char* srcend)
+	{
+		Insert_impl(h, layer, index, srcfrom, srcend, std::true_type{}, std::false_type{});
+	}
+	template <class LayerSD>
+	void MoveAndEraseInsertBlock(HierarchySD h, LayerSD layer, BindexType index, char* srcfrom, char* srcend)
+	{
+		Insert_impl(h, layer, index, srcfrom, srcend, std::true_type{}, std::true_type{});
 	}
 
 	//index~index+size-1番目の要素の削除。
@@ -433,7 +540,7 @@ public:
 			for (; from != from_.m_end; from += blocksize, to += blocksize)
 			{
 				Policy::MoveConstruct(phs, is_totally_trivial, from, to);
-				if (!ismaxlayer) MoveConstructAndDestroyElementBlock(from + elmsize, to + elmsize);
+				if (!ismaxlayer) MoveConstructElementBlock(from + elmsize, to + elmsize);
 			}
 			//こちらはループによってtoが末尾要素をさしているので、toを代入すればよい。
 			m_end = to;
@@ -496,8 +603,18 @@ public:
 		Policy::Copy(phs, is_totally_trivial, from, to);
 	}
 
+	//from_からthisへと全要素をコピーする。下層要素も再帰的に。
+	template <class LayerSD>
+	static void CopyElementBlock(HierarchySD h, LayerSD layer, const char* from, char* to)
+	{
+		const ElementBlock_impl* e_from = std::launder(reinterpret_cast<ElementBlock_impl*>(from));
+		ElementBlock_impl* e_to = std::launder(reinterpret_cast<ElementBlock_impl*>(to));
+		e_to->Insert(h, layer, 0, e_from->m_blocks, e_from->m_end);
+	}
+
 	//fromのElementBlockをtoへと移動する。fromは全てnullptrの状態になる。
-	//toは初期化済み、コンストラクタが全要素全フィールドに対して呼ばれていると想定している。
+	//toはElementBlock_implとして初期化済みと想定している。
+	//ElementBlock_implはtrivialなので、MoveConstructElementBlockと統合していい気がするが。
 	static void MoveElementBlock(char* from, char* to)
 	{
 		ElementBlock_impl* e_from = std::launder(reinterpret_cast<ElementBlock_impl*>(from));
@@ -526,9 +643,27 @@ public:
 		e_ptr->Destruct(h, layer + 1_layer);
 	}
 
-	//fromのElementBlockをtoへと移動し、fromに対してデストラクタを呼ぶ。
+	template <class Hier, LayerType L>
+		requires s_hierarchy<Hier> || f_hierarchy<Hier>
+	static void CopyConstructElementBlock(HierarchyWrapper<Hier> h, LayerConstant<L> layer, const char* from, char* to)
+	{
+		if constexpr (Hier::GetMaxLayer() < L) return;
+		else
+		{
+			const ElementBlock_impl* e_from = std::launder(reinterpret_cast<const ElementBlock_impl*>(from));
+			ElementBlock_impl* e_to = new (to) ElementBlock_impl();
+			e_to->InsertBlock(h, layer, 0, e_from->m_blocks, e_from->m_end);
+		}
+	}
+	static void CopyConstructElementBlock(HierarchySD h, LayerType layer, const char* from, char* to)
+	{
+		const ElementBlock_impl* e_from = std::launder(reinterpret_cast<const ElementBlock_impl*>(from));
+		ElementBlock_impl* e_to = new (to) ElementBlock_impl();
+		e_to->InsertBlock(h, layer, 0, e_from->m_blocks, e_from->m_end);
+	}
+	//fromのElementBlockをtoへと移動する。
 	//toはメモリを確保しただけの未初期化領域と想定している。
-	static void MoveConstructAndDestroyElementBlock(char* from, char* to)
+	static void MoveConstructElementBlock(char* from, char* to)
 	{
 		ElementBlock_impl* e_from = std::launder(reinterpret_cast<ElementBlock_impl*>(from));
 		new (to) ElementBlock_impl(*e_from);
@@ -543,8 +678,9 @@ public:
 		const auto& phs = GetPlaceholdersIn(h, layer);
 		auto is_totally_trivial = h.value().IsTotallyTrivial(layer);
 		Policy::MoveConstructAndDestroy(phs, is_totally_trivial, from, to);
-		if (!ismaxlayer) MoveConstructAndDestroyElementBlock(from + elmsize, to + elmsize);
+		if (!ismaxlayer) MoveConstructElementBlock(from + elmsize, to + elmsize);
 	}
+
 
 	template <class Hier, LayerType L>
 		requires s_hierarchy<Hier>

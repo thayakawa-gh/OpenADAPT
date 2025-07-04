@@ -46,6 +46,7 @@ struct Class
 
 class Aggregator : public ::testing::Test
 {
+public:
 	//using TopLayer = NamedTuple<Named<"school", std::string>>;
 	//using Layer0 = NamedTuple<Named<"grade", int8_t>, Named<"class_", int8_t>>;
 	//using Layer1 = NamedTuple<Named<"number", int16_t>, Named<"name", std::string>, Named<"date_of_birth", int32_t>, Named<"phone", std::string>, Named<"email", std::string>>;
@@ -196,20 +197,23 @@ class Aggregator : public ::testing::Test
 	}
 
 	template <class Tree>
-	static void MakeTree(Tree& t, const std::vector<Class>& cs)
+	static void MakeTree(Tree& t, const std::vector<Class>& cs, bool def_structure_flag = true)
 	{
 		//using enum FieldType;
 		if constexpr (d_tree<Tree>)
 		{
-			//t.AddLayer({ { "grade", I08 }, { "class_", I08 } });
-			//t.AddLayer({ { "number", I16 }, { "name", Str }, { "date_of_birth", I32 }, {"phone", Str}, {"email", Str}});
-			//t.AddLayer({ { "exam", I08 },  {"math", I32}, {"japanese", I32}, {"english", I32}, {"science", I32}, {"social", I32}});
-			//t.SetTopLayer({ { "school", Str } });
-			ADAPT_D_SET_TOP_LAYER(t, school, Str);
-			ADAPT_D_ADD_LAYER(t, grade, I08, class_, I08);
-			ADAPT_D_ADD_LAYER(t, number, I16, name, Str, date_of_birth, I32, phone, Str, email, Str);
-			ADAPT_D_ADD_LAYER(t, exam, I08, math, I32, japanese, I32, english, I32, science, I32, social, I32);
-			t.VerifyStructure();
+			if (def_structure_flag)
+			{
+				//t.AddLayer({ { "grade", I08 }, { "class_", I08 } });
+				//t.AddLayer({ { "number", I16 }, { "name", Str }, { "date_of_birth", I32 }, {"phone", Str}, {"email", Str}});
+				//t.AddLayer({ { "exam", I08 },  {"math", I32}, {"japanese", I32}, {"english", I32}, {"science", I32}, {"social", I32}});
+				//t.SetTopLayer({ { "school", Str } });
+				ADAPT_D_SET_TOP_LAYER(t, school, Str);
+				ADAPT_D_ADD_LAYER(t, grade, I08, class_, I08);
+				ADAPT_D_ADD_LAYER(t, number, I16, name, Str, date_of_birth, I32, phone, Str, email, Str);
+				ADAPT_D_ADD_LAYER(t, exam, I08, math, I32, japanese, I32, english, I32, science, I32, social, I32);
+				t.VerifyStructure();
+			}
 		}
 
 		t.SetTopFields("胴差県立散布流中学校");
@@ -232,16 +236,23 @@ class Aggregator : public ::testing::Test
 		}
 	}
 	template <class Table>
-	static void MakeTable(Table& t, const std::vector<Class>& cs)
+	static void MakeTable(Table& t, const std::vector<Class>& cs, bool def_structure_flag = true)
 	{
 		using enum FieldType;
 		if constexpr (d_table<Table>)
 		{
-			t.SetLayer(0, { { "grade", I08 }, { "class_", I08 },
-						 { "number", I16 }, { "name", Str }, { "date_of_birth", I32 }, {"phone", Str }, {"email", Str },
-						 { "exam", I08 },  {"math", I32}, {"japanese", I32}, {"english", I32}, {"science", I32}, {"social", I32} });
-			t.SetTopLayer({ { "school", Str } });
-			t.VerifyStructure();
+			if (def_structure_flag)
+			{
+				//t.SetLayer(0, { { "grade", I08 }, { "class_", I08 },
+				//			 { "number", I16 }, { "name", Str }, { "date_of_birth", I32 }, {"phone", Str }, {"email", Str },
+				//			 { "exam", I08 },  {"math", I32}, {"japanese", I32}, {"english", I32}, {"science", I32}, {"social", I32} });
+				//t.SetTopLayer({ { "school", Str } });
+				ADAPT_D_SET_TOP_LAYER(t, school, Str);
+				ADAPT_D_SET_LAYER(t, 0, grade, I08, class_, I08,
+								  number, I16, name, Str, date_of_birth, I32, phone, Str, email, Str,
+								  exam, I08, math, I32, japanese, I32, english, I32, science, I32, social, I32);
+				t.VerifyStructure();
+			}
 		}
 
 		t.SetTopFields("胴差県立散布流中学校");
