@@ -96,13 +96,17 @@ void QuickstartDTree()
 {
 	// Simple example of how to use DTree.
 
+	std::cout << "[[Quickstart DTree]]" << std::endl;
+
 	std::cout <<  "------Create------" << std::endl;
 	adapt::DTree usa = MakeDTree();
+	std::cout << std::endl;
 
 
 
 	std::cout << "------Store data------" << std::endl;
 	StoreData(usa);
+	std::cout << std::endl;
 
 
 
@@ -140,6 +144,7 @@ void QuickstartDTree()
 		auto city_ctti = usa.GetPlaceholder<2, std::string>("city");
 		auto polulation_ctti = usa.GetPlaceholder<2, int32_t>("population");
 	}
+	std::cout << std::endl;
 
 
 
@@ -342,6 +347,8 @@ void QuickstartDTree()
 	c.SetGrid();
 	c.PlotPoints(varea, vpop, plot::pt_cir, plot::ps_med_large, plot::notitle).
 		PlotLabels(varea, vpop, vcity, plot::labelpos = adapt::LabelPos::right, plot::notitle);
+
+	std::cout << std::endl;
 
 	// You can also use Matplot++ to plot the data.
 	/*

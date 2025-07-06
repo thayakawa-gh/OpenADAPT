@@ -641,6 +641,8 @@ int example_for_loop(const std::string& output_filename, bool enable_in_memory_d
 
 void QuickstartPlot()
 {
+	std::cout << "[[Quickstart Plot]]" << std::endl;
+
 	std::filesystem::exists("PlotExamples") || std::filesystem::create_directory("PlotExamples");
 	//example_2d("PlotExamples/example_2d.png", false);
 	example_2d("PlotExamples/example_2d-inmemory.png", true);

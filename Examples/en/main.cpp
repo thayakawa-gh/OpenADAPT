@@ -2,7 +2,8 @@ void QuickstartDTree();
 void QuickstartSTree();
 void QuickstartDTable();
 void QuickstartSTable();
-void QuickstartJoin();
+void QuickstartKeyJoin();
+void QuickstartCrossJoin();
 void DifferenceCttiRttiTyped();
 void QuickstartPlot();
 
@@ -45,7 +46,8 @@ int main()
 	QuickstartSTree();
 	QuickstartDTable();
 	QuickstartSTable();
-	QuickstartJoin();
+	QuickstartKeyJoin();
+	QuickstartCrossJoin();
 	DifferenceCttiRttiTyped();
 	QuickstartPlot();
 	return 0;

@@ -2,6 +2,7 @@
 #include <iostream>
 #include <OpenADAPT/ADAPT.h>
 
+using namespace adapt::lit;
 
 std::pair<adapt::DTree, adapt::DTree> MakeDTrees()
 {
@@ -89,9 +90,9 @@ std::pair<adapt::DTree, adapt::DTree> MakeDTrees()
 	return { std::move(t0), std::move(t1) };
 }
 
-void QuickstartJoin()
+void QuickstartKeyJoin()
 {
-	using namespace adapt::lit;
+	std::cout << "[[Quickstart Key Join]]" << std::endl;
 	// t0 is the same as that in quickstart_dtree/stree.
 	// t1 is a list of citizens for each county.
 	auto [t0, t1] = MakeDTrees();
@@ -269,4 +270,101 @@ void QuickstartJoin()
 
 	// Show, Extract and the other range adapters/conversions can be used in the same way as single containers.
 	jt | Filter(mean(jt1_age) > 35) | Show(jt0_state, substr(jt0_county, 0, 16), substr(jt1_name, 0, 16), jt1_age);
+	std::cout << std::endl;
+}
+
+void QuickstartCrossJoin()
+{
+	std::cout << "[[Quickstart Cross Join]]" << std::endl;
+	auto [t0, t1] = MakeDTrees();
+
+	// Cross join is intended to make a Cartesian product of two containers,
+	// that is, all combinations of elements in two containers.
+
+	auto jt = Join(t0, 1_layer, -1_layer, t1);// The upper joint layer of t1 must be -1 for cross join.
+	jt.SetCrossJoint<1>();
+
+	// The hierarchical structure of jt is as follows:
+	//      layer -1     layer 0     layer 1     layer 2     layer 3
+	// t0   "nation" --- "state" ---"county" ---("city")
+	//                                  |
+	// t1                           "nation" ---"county"---"citizen"
+
+	// Cross join makes all combinations of layer 1 elements in t0: county, and layer 1 elements in t1: citizen.
+	// Thus jt has 4 x 7 = 28 elements in layer 3 including combinations of counties that differ from each other.
+
+	auto [jt0_state, jt0_county] = jt.GetPlaceholders<0_rank>("state", "county");
+	auto [jt1_county, jt1_name] = jt.GetPlaceholders<1_rank>("county", "name");
+
+	jt | Show("{:>12} {:>18} {:>18} {:>18}", jt0_state, jt0_county, jt1_county, jt1_name);
+	/*
+	[   0,   0,   0,   0]  California Los Angeles County Los Angeles County     Ethan Mitchell
+	[   0,   0,   0,   1]  California Los Angeles County Los Angeles County      Olivia Foster
+	[   0,   0,   0,   2]  California Los Angeles County Los Angeles County    Isabella Morgan
+	[   0,   0,   1,   0]  California Los Angeles County      Harris County      Mason Johnson
+	[   0,   0,   1,   1]  California Los Angeles County      Harris County     Logan Peterson
+	[   0,   0,   2,   0]  California Los Angeles County   San Diego County      Liam Reynolds
+	[   0,   0,   3,   0]  California Los Angeles County       Bexar County        Noah Carter
+	[   0,   1,   0,   0]  California   San Diego County Los Angeles County     Ethan Mitchell
+	[   0,   1,   0,   1]  California   San Diego County Los Angeles County      Olivia Foster
+	[   0,   1,   0,   2]  California   San Diego County Los Angeles County    Isabella Morgan
+	[   0,   1,   1,   0]  California   San Diego County      Harris County      Mason Johnson
+	[   0,   1,   1,   1]  California   San Diego County      Harris County     Logan Peterson
+	[   0,   1,   2,   0]  California   San Diego County   San Diego County      Liam Reynolds
+	[   0,   1,   3,   0]  California   San Diego County       Bexar County        Noah Carter
+	[   1,   0,   0,   0]       Texas      Harris County Los Angeles County     Ethan Mitchell
+	[   1,   0,   0,   1]       Texas      Harris County Los Angeles County      Olivia Foster
+	[   1,   0,   0,   2]       Texas      Harris County Los Angeles County    Isabella Morgan
+	[   1,   0,   1,   0]       Texas      Harris County      Harris County      Mason Johnson
+	[   1,   0,   1,   1]       Texas      Harris County      Harris County     Logan Peterson
+	[   1,   0,   2,   0]       Texas      Harris County   San Diego County      Liam Reynolds
+	[   1,   0,   3,   0]       Texas      Harris County       Bexar County        Noah Carter
+	[   1,   1,   0,   0]       Texas      Dallas County Los Angeles County     Ethan Mitchell
+	[   1,   1,   0,   1]       Texas      Dallas County Los Angeles County      Olivia Foster
+	[   1,   1,   0,   2]       Texas      Dallas County Los Angeles County    Isabella Morgan
+	[   1,   1,   1,   0]       Texas      Dallas County      Harris County      Mason Johnson
+	[   1,   1,   1,   1]       Texas      Dallas County      Harris County     Logan Peterson
+	[   1,   1,   2,   0]       Texas      Dallas County   San Diego County      Liam Reynolds
+	[   1,   1,   3,   0]       Texas      Dallas County       Bexar County        Noah Carter
+	*/
+	std::cout << std::endl;
+
+
+	jt | Filter(jt0_county == jt1_county) | Show("{:>12} {:>18} {:>18} {:>18}", jt0_state, jt0_county, jt1_county, jt1_name);
+	/*
+	[   0,   0,   0,   0]  California Los Angeles County Los Angeles County     Ethan Mitchell
+	[   0,   0,   0,   1]  California Los Angeles County Los Angeles County      Olivia Foster
+	[   0,   0,   0,   2]  California Los Angeles County Los Angeles County    Isabella Morgan
+	[   0,   1,   2,   0]  California   San Diego County   San Diego County      Liam Reynolds
+	[   1,   0,   1,   0]       Texas      Harris County      Harris County      Mason Johnson
+	[   1,   0,   1,   1]       Texas      Harris County      Harris County     Logan Peterson
+	*/
+	std::cout << std::endl;
+
+	jt | Filter(jt0_county != jt1_county) | Show("{:>12} {:>18} {:>18} {:>18}", jt0_state, jt0_county, jt1_county, jt1_name);
+	/*
+	[   0,   0,   1,   0]  California Los Angeles County      Harris County      Mason Johnson
+	[   0,   0,   1,   1]  California Los Angeles County      Harris County     Logan Peterson
+	[   0,   0,   2,   0]  California Los Angeles County   San Diego County      Liam Reynolds
+	[   0,   0,   3,   0]  California Los Angeles County       Bexar County        Noah Carter
+	[   0,   1,   0,   0]  California   San Diego County Los Angeles County     Ethan Mitchell
+	[   0,   1,   0,   1]  California   San Diego County Los Angeles County      Olivia Foster
+	[   0,   1,   0,   2]  California   San Diego County Los Angeles County    Isabella Morgan
+	[   0,   1,   1,   0]  California   San Diego County      Harris County      Mason Johnson
+	[   0,   1,   1,   1]  California   San Diego County      Harris County     Logan Peterson
+	[   0,   1,   3,   0]  California   San Diego County       Bexar County        Noah Carter
+	[   1,   0,   0,   0]       Texas      Harris County Los Angeles County     Ethan Mitchell
+	[   1,   0,   0,   1]       Texas      Harris County Los Angeles County      Olivia Foster
+	[   1,   0,   0,   2]       Texas      Harris County Los Angeles County    Isabella Morgan
+	[   1,   0,   2,   0]       Texas      Harris County   San Diego County      Liam Reynolds
+	[   1,   0,   3,   0]       Texas      Harris County       Bexar County        Noah Carter
+	[   1,   1,   0,   0]       Texas      Dallas County Los Angeles County     Ethan Mitchell
+	[   1,   1,   0,   1]       Texas      Dallas County Los Angeles County      Olivia Foster
+	[   1,   1,   0,   2]       Texas      Dallas County Los Angeles County    Isabella Morgan
+	[   1,   1,   1,   0]       Texas      Dallas County      Harris County      Mason Johnson
+	[   1,   1,   1,   1]       Texas      Dallas County      Harris County     Logan Peterson
+	[   1,   1,   2,   0]       Texas      Dallas County   San Diego County      Liam Reynolds
+	[   1,   1,   3,   0]       Texas      Dallas County       Bexar County        Noah Carter
+	*/
+	std::cout << std::endl;
 }

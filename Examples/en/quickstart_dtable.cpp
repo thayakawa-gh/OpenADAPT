@@ -65,13 +65,17 @@ void QuickstartDTable()
 	// Simple example of how to use DTable.
 	// There are few differences between DTable and DTree in terms of how to use them.
 
+	std::cout << "[[Quickstart DTable]]" << std::endl;
+
 	std::cout << "------Create------" << std::endl;
 	adapt::DTable usa = MakeDTable();
+	std::cout << std::endl;
 
 
 
 	std::cout << "------Store data------" << std::endl;
 	StoreData(usa);
+	std::cout << std::endl;
 
 
 
@@ -109,6 +113,7 @@ void QuickstartDTable()
 		auto city_ctti = usa.GetPlaceholder<0, std::string>("city");
 		auto city_population_ctti = usa.GetPlaceholder<0, int32_t>("city_population");
 	}
+	std::cout << std::endl;
 
 
 
@@ -120,6 +125,7 @@ void QuickstartDTable()
 	adapt::Bpos baytown_index = { 8 };
 	auto baytown = usa.GetBranch(baytown_index);
 	std::cout << baytown[city_population].i32() << std::endl;// 83701
+	std::cout << std::endl;
 
 
 
@@ -246,7 +252,7 @@ void QuickstartDTable()
 
 
 
-	std::cout << "------Plot data with Matplot++------" << std::endl;
+	std::cout << "------Plot data------" << std::endl;
 
 	// Plot area vs population of the cities in California.
 	namespace plot = adapt::plot;
@@ -260,6 +266,8 @@ void QuickstartDTable()
 	c.SetGrid();
 	c.PlotPoints(varea, vpop, plot::pt_cir, plot::ps_med_large, plot::notitle).
 		PlotLabels(varea, vpop, vcity, plot::labelpos = adapt::LabelPos::right, plot::notitle);
+
+	std::cout << std::endl;
 
 	// You can also use Matplot++ to plot the data.
 	/*

@@ -226,7 +226,6 @@ struct Bpos final
 	inline void Init(LayerType layer, BindexType index)
 	{		
 		m_row = index;
-		mLayer = layer;
 		BindexType* tpos = nullptr;
 		if (layer != mLayer)
 		{

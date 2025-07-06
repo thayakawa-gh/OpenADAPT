@@ -61,14 +61,18 @@ void QuickstartSTable()
 	// Simple example of how to use STable.
 	// There are few differences between STable and STree in terms of how to use them.
 
+	std::cout << "[[Quickstart STable]]" << std::endl;
+
 	std::cout << "------Create------" << std::endl;
 	auto usa = MakeSTable();
 	using STable_ = decltype(usa);
+	std::cout << std::endl;
 
 
 
 	std::cout << "------Store data------" << std::endl;
 	StoreData(usa);
+	std::cout << std::endl;
 
 
 
@@ -95,6 +99,7 @@ void QuickstartSTable()
 		auto [nation_rtti, state_rtti, county_rtti, city_rtti, city_population_rtti, city_area_rtti] =
 			usa.GetPlaceholders("nation", "state", "county", "city", "city_population", "city_area");
 	}
+	std::cout << std::endl;
 
 
 
@@ -106,6 +111,7 @@ void QuickstartSTable()
 	adapt::Bpos baytown_index = { 8 };
 	auto baytown = usa.GetBranch(baytown_index);
 	std::cout << baytown[city_population] << std::endl;// 83701
+	std::cout << std::endl;
 
 
 
@@ -236,7 +242,7 @@ void QuickstartSTable()
 
 
 
-	std::cout << "------Plot data with Matplot++------" << std::endl;
+	std::cout << "------Plot data------" << std::endl;
 
 	// Plot area vs population of the cities in California.
 	namespace plot = adapt::plot;
@@ -250,6 +256,8 @@ void QuickstartSTable()
 	c.SetGrid();
 	c.PlotPoints(varea, vpop, plot::pt_cir, plot::ps_med_large, plot::notitle).
 		PlotLabels(varea, vpop, vcity, plot::labelpos = adapt::LabelPos::right, plot::notitle);
+
+	std::cout << std::endl;
 
 	// You can also use Matplot++ to plot the data.
 	/*
