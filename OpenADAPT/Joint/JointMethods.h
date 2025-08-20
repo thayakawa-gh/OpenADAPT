@@ -53,7 +53,7 @@ public:
 		const auto& self = static_cast<const Container&>(*this);
 		const auto& cr = self.template GetContainer<Rank>();
 		auto hash = std::apply(
-			[&cr]<class ...Keys>(Keys&& ...keys) { return cr | MakeHashtable(std::forward<Keys>(keys)...); },
+			[&cr]<class ...Keys>(Keys&& ...keys) { return cr | Hash(std::forward<Keys>(keys)...); },
 			std::move(right));
 		std::apply([this, &hash]<class ...Keys>(Keys&& ...keys) mutable
 		{

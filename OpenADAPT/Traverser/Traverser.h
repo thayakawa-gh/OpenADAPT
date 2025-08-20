@@ -70,70 +70,70 @@ private:
 
 
 	template <class Flag>
-	constexpr bool IsFlag() { return std::is_same_v<Flag, ForwardFlag> || std::is_same_v<Flag, BackwardFlag>; }
+	constexpr bool IsFlag() { return std::is_same_v<Flag, ForwardMovement> || std::is_same_v<Flag, BackwardMovement>; }
 
 public:
 	Traverser_impl()
 		: m_fixed_layer((LayerType)-1), m_trav_layer((LayerType)-1), m_container(nullptr)
 	{}
 
-	Traverser_impl(LayerType fixed, Qualifier<Container>& tree, LayerType trav, ForwardFlag = {})
+	Traverser_impl(LayerType fixed, Qualifier<Container>& tree, LayerType trav, ForwardMovement = {})
 		: Traverser_impl()
 	{
-		Init(fixed, tree, trav, ForwardFlag{});
+		Init(fixed, tree, trav, ForwardMovement{});
 	}
-	Traverser_impl(Qualifier<Container>& c, LayerType trav, ForwardFlag = {})
-		: Traverser_impl((LayerType)-1, c, trav, ForwardFlag{})
+	Traverser_impl(Qualifier<Container>& c, LayerType trav, ForwardMovement = {})
+		: Traverser_impl((LayerType)-1, c, trav, ForwardMovement{})
 	{}
-	Traverser_impl(LayerType fixed, Qualifier<Container>& c, ForwardFlag = {})
-		: Traverser_impl(fixed, c, c.GetMaxLayer(), ForwardFlag{})
+	Traverser_impl(LayerType fixed, Qualifier<Container>& c, ForwardMovement = {})
+		: Traverser_impl(fixed, c, c.GetMaxLayer(), ForwardMovement{})
 	{}
-	Traverser_impl(Qualifier<Container>& c, ForwardFlag = {})
-		: Traverser_impl((LayerType)-1, c, c.GetMaxLayer(), ForwardFlag{})
+	Traverser_impl(Qualifier<Container>& c, ForwardMovement = {})
+		: Traverser_impl((LayerType)-1, c, c.GetMaxLayer(), ForwardMovement{})
 	{}
-	Traverser_impl(LayerType fixed, Qualifier<Container>& c, LayerType trav, BackwardFlag)
+	Traverser_impl(LayerType fixed, Qualifier<Container>& c, LayerType trav, BackwardMovement)
 		: Traverser_impl()
 	{
-		Init(fixed, c, trav, BackwardFlag{});
+		Init(fixed, c, trav, BackwardMovement{});
 	}
-	Traverser_impl(Qualifier<Container>& c, LayerType trav, BackwardFlag)
-		: Traverser_impl((LayerType)-1, c, trav, BackwardFlag{})
+	Traverser_impl(Qualifier<Container>& c, LayerType trav, BackwardMovement)
+		: Traverser_impl((LayerType)-1, c, trav, BackwardMovement{})
 	{}
-	Traverser_impl(LayerType fixed, Qualifier<Container>& c, BackwardFlag)
-		: Traverser_impl(fixed, c, c.GetMaxLayer(), BackwardFlag{})
+	Traverser_impl(LayerType fixed, Qualifier<Container>& c, BackwardMovement)
+		: Traverser_impl(fixed, c, c.GetMaxLayer(), BackwardMovement{})
 	{}
-	Traverser_impl(Qualifier<Container>& c, BackwardFlag)
-		: Traverser_impl((LayerType)-1, c, c.GetMaxLayer(), BackwardFlag{})
+	Traverser_impl(Qualifier<Container>& c, BackwardMovement)
+		: Traverser_impl((LayerType)-1, c, c.GetMaxLayer(), BackwardMovement{})
 	{}
 
-	Traverser_impl(LayerType fixed, Qualifier<Container>& c, const Bpos& pos, LayerType trav, ForwardFlag = {})
+	Traverser_impl(LayerType fixed, Qualifier<Container>& c, const Bpos& pos, LayerType trav, ForwardMovement = {})
 		: Traverser_impl()
 	{
-		Init(fixed, c, pos, trav, ForwardFlag{});
+		Init(fixed, c, pos, trav, ForwardMovement{});
 	}
-	Traverser_impl(Qualifier<Container>& c, const Bpos& pos, LayerType trav, ForwardFlag = {})
-		: Traverser_impl((LayerType)-1, c, pos, trav, ForwardFlag{})
+	Traverser_impl(Qualifier<Container>& c, const Bpos& pos, LayerType trav, ForwardMovement = {})
+		: Traverser_impl((LayerType)-1, c, pos, trav, ForwardMovement{})
 	{}
-	Traverser_impl(LayerType fixed, Qualifier<Container>& c, const Bpos& pos, ForwardFlag = {})
-		: Traverser_impl(fixed, c, pos, c.GetMaxLayer(), ForwardFlag{})
+	Traverser_impl(LayerType fixed, Qualifier<Container>& c, const Bpos& pos, ForwardMovement = {})
+		: Traverser_impl(fixed, c, pos, c.GetMaxLayer(), ForwardMovement{})
 	{}
-	Traverser_impl(Qualifier<Container>& c, const Bpos& pos, ForwardFlag = {})
-		: Traverser_impl((LayerType)-1, c, pos, c.GetMaxLayer(), ForwardFlag{})
+	Traverser_impl(Qualifier<Container>& c, const Bpos& pos, ForwardMovement = {})
+		: Traverser_impl((LayerType)-1, c, pos, c.GetMaxLayer(), ForwardMovement{})
 	{}
 
-	Traverser_impl(LayerType fixed, Qualifier<Container>& c, const Bpos& pos, LayerType trav, BackwardFlag)
+	Traverser_impl(LayerType fixed, Qualifier<Container>& c, const Bpos& pos, LayerType trav, BackwardMovement)
 		: Traverser_impl()
 	{
-		Init(fixed, c, pos, trav, BackwardFlag{});
+		Init(fixed, c, pos, trav, BackwardMovement{});
 	}
-	Traverser_impl(Qualifier<Container>& c, const Bpos& pos, LayerType trav, BackwardFlag)
-		: Traverser_impl(-1, c, pos, trav, BackwardFlag{})
+	Traverser_impl(Qualifier<Container>& c, const Bpos& pos, LayerType trav, BackwardMovement)
+		: Traverser_impl(-1, c, pos, trav, BackwardMovement{})
 	{}
-	Traverser_impl(LayerType fixed, Qualifier<Container>& c, const Bpos& pos, BackwardFlag)
-		: Traverser_impl(fixed, c, pos, c.GetMaxLayer(), BackwardFlag{})
+	Traverser_impl(LayerType fixed, Qualifier<Container>& c, const Bpos& pos, BackwardMovement)
+		: Traverser_impl(fixed, c, pos, c.GetMaxLayer(), BackwardMovement{})
 	{}
-	Traverser_impl(Qualifier<Container>& c, const Bpos& pos, BackwardFlag)
-		: Traverser_impl((LayerType)-1, c, pos, c.GetMaxLayer(), BackwardFlag{})
+	Traverser_impl(Qualifier<Container>& c, const Bpos& pos, BackwardMovement)
+		: Traverser_impl((LayerType)-1, c, pos, c.GetMaxLayer(), BackwardMovement{})
 	{}
 
 	Traverser_impl(const Traverser_impl& x) = delete;
@@ -187,7 +187,7 @@ private:
 	template <direction_flag Flag>
 	LayerType Renew(LayerType layer, Flag)
 	{
-		constexpr bool IsForward = std::is_same_v<Flag, ForwardFlag>;
+		constexpr bool IsForward = std::is_same_v<Flag, ForwardMovement>;
 		for (LayerType l = layer; l <= m_trav_layer; ++l)
 		{
 			auto& uit = m_iterators[l];
@@ -225,7 +225,7 @@ private:
 				assert(l > m_fixed_layer && l <= m_trav_layer);
 				auto& uit = m_iterators[l];//l-1層。
 				auto& it = m_iterators[l + 1];//l層。
-				if constexpr (std::is_same_v<Flag, ForwardFlag>)
+				if constexpr (std::is_same_v<Flag, ForwardMovement>)
 				{
 					if ((++it) == uit->end())
 					{
@@ -254,7 +254,7 @@ private:
 	template <direction_flag Flag>
 	void Init_impl(LayerType fixed, Qualifier<Container>& c, LayerType trav, Flag)
 	{
-		static_assert(std::is_same_v<Flag, ForwardFlag> || std::is_same_v<Flag, BackwardFlag>);
+		static_assert(std::is_same_v<Flag, ForwardMovement> || std::is_same_v<Flag, BackwardMovement>);
 		m_fixed_layer = fixed;
 		m_container = &c;
 		m_trav_layer = trav;
@@ -273,7 +273,7 @@ private:
 	template <direction_flag Flag>
 	void Init_impl(LayerType fixed, Qualifier<Container>& c, const Bpos& pos, LayerType trav, Flag)
 	{
-		static_assert(std::is_same_v<Flag, ForwardFlag> || std::is_same_v<Flag, BackwardFlag>);
+		static_assert(std::is_same_v<Flag, ForwardMovement> || std::is_same_v<Flag, BackwardMovement>);
 		m_fixed_layer = fixed;
 		m_container = &c;
 		m_trav_layer = trav;
@@ -296,24 +296,24 @@ private:
 
 public:
 
-	void Init(LayerType fixed, Qualifier<Container>& c, LayerType trav, ForwardFlag = {})
+	void Init(LayerType fixed, Qualifier<Container>& c, LayerType trav, ForwardMovement = {})
 	{
-		return Init_impl(fixed, c, trav, ForwardFlag{});
+		return Init_impl(fixed, c, trav, ForwardMovement{});
 	}
-	void Init(LayerType fixed, Qualifier<Container>& c, LayerType trav, BackwardFlag)
+	void Init(LayerType fixed, Qualifier<Container>& c, LayerType trav, BackwardMovement)
 	{
-		return Init_impl(fixed, c, trav, BackwardFlag{});
+		return Init_impl(fixed, c, trav, BackwardMovement{});
 	}
-	void Init(LayerType fixed, Qualifier<Container>& c, const Bpos& pos, LayerType trav, ForwardFlag = {})
+	void Init(LayerType fixed, Qualifier<Container>& c, const Bpos& pos, LayerType trav, ForwardMovement = {})
 	{
-		return Init_impl(fixed, c, pos, trav, ForwardFlag{});
+		return Init_impl(fixed, c, pos, trav, ForwardMovement{});
 	}
-	void Init(LayerType fixed, Qualifier<Container>& c, const Bpos& pos, LayerType trav, BackwardFlag)
+	void Init(LayerType fixed, Qualifier<Container>& c, const Bpos& pos, LayerType trav, BackwardMovement)
 	{
-		return Init_impl(fixed, c, pos, trav, BackwardFlag{});
+		return Init_impl(fixed, c, pos, trav, BackwardMovement{});
 	}
 	/*template <class Flag>
-	void SetTravLayer(LayerType trav, Flag = ForwardFlag{})
+	void SetTravLayer(LayerType trav, Flag = ForwardMovement{})
 	{
 		Init(m_fixed_layer, *m_container, trav, Flag{});
 	}*/
@@ -323,7 +323,7 @@ public:
 		auto& uit = m_iterators[0];
 		if (i >= uit->GetSize()) return false;
 		m_iterators[1] = uit->begin() + i;
-		return Assign_renew(1, ForwardFlag{});
+		return Assign_renew(1, ForwardMovement{});
 	}
 
 private:
@@ -437,7 +437,7 @@ public:
 	}
 	bool AssignPartially(const Bpos& b, LayerType layer)
 	{
-		return AssignPartially(b, layer, ForwardFlag{});
+		return AssignPartially(b, layer, ForwardMovement{});
 	}
 	//bpos.GetLayer()とtraverse layerの小さい方までをbposの位置に設定し、
 	//それ以上は（もしあれば）先頭または末尾に設定する。
@@ -449,7 +449,7 @@ public:
 	}
 	bool AssignPartially(const Bpos& b)
 	{
-		return AssignPartially(b, ForwardFlag{});
+		return AssignPartially(b, ForwardMovement{});
 	}
 
 	//layerまでをthatの位置に設定し、それ以上は先頭または末尾に設定する。
@@ -472,7 +472,7 @@ public:
 	}
 	bool AssignPartially(const Traverser_impl& that, LayerType layer)
 	{
-		return AssignPartially(that, layer, ForwardFlag{});
+		return AssignPartially(that, layer, ForwardMovement{});
 	}
 	//thisのm_fixed_layerまでをthatの位置に設定し、
 	//それ以上は（もしあれば）先頭または末尾に設定する。
@@ -484,7 +484,7 @@ public:
 	}
 	bool AssignPartially(const Traverser_impl& that)
 	{
-		return AssignPartially(that, ForwardFlag{});
+		return AssignPartially(that, ForwardMovement{});
 	}
 
 protected:
@@ -522,7 +522,7 @@ protected:
 			it = uit->begin() + i;
 		}
 		if (m_fixed_layer == m_trav_layer) return true;
-		return Assign_renew(m_fixed_layer + 1, ForwardFlag{});
+		return Assign_renew(m_fixed_layer + 1, ForwardMovement{});
 	}
 
 public:
@@ -530,7 +530,7 @@ public:
 	//強制的にbeginへ移動させる。fixedまでは固定されているので移動せず、fixed + 1 ~ travをbeginと同等にする。
 	bool MoveToBegin()
 	{
-		return Assign_renew(m_fixed_layer + 1, ForwardFlag{});
+		return Assign_renew(m_fixed_layer + 1, ForwardMovement{});
 	}
 	//強制的にendへ移動させる。fixedまでは固定されているので移動せず、fixed + 1をendと同等にする。
 	bool MoveToEnd()
@@ -546,7 +546,7 @@ private:
 	{
 		assert(layer > m_fixed_layer);
 		assert(layer >= 0_layer);
-		constexpr bool IsForward = std::is_same_v<Flag, ForwardFlag>;
+		constexpr bool IsForward = std::is_same_v<Flag, ForwardMovement>;
 		LayerType move = layer;
 		while (true)
 		{
@@ -587,14 +587,14 @@ public:
 	//IsEnd()==trueの状態のときに呼んではいけない。
 	bool MoveForward(LayerType layer)
 	{
-		return Move_impl2(layer, ForwardFlag{});
+		return Move_impl2(layer, ForwardMovement{});
 	}
 	//layer層を後退させる。他の層はlayer層移動後の末尾の要素を指すようになる。
 	//移動に成功したらtrueを、layer層が最終要素(endの一つ手前)だった場合は移動せずfalseを返す。
 	//IsEnd()==trueのときに呼ぶ場合、layerは必ずm_fixed_layer+1でなければならない。
 	bool MoveBackward(LayerType layer)
 	{
-		return Move_impl2(layer, BackwardFlag{});
+		return Move_impl2(layer, BackwardMovement{});
 	}
 
 	//trav layerを移動する。
@@ -604,7 +604,7 @@ public:
 	template <direction_flag Flag>
 	LayerType IncrDecrOperator(Flag)
 	{
-		constexpr bool IsForward = std::is_same_v<Flag, ForwardFlag>;
+		constexpr bool IsForward = std::is_same_v<Flag, ForwardMovement>;
 		//backwardかつend状態のときはfixed + 1層が末尾であるため、
 		//そこから移動する必要がある。
 		LayerType retry_from = (!IsForward && IsEnd()) ? m_fixed_layer + 1 : m_trav_layer;
@@ -658,12 +658,12 @@ public:
 
 	Traverser_impl& operator++()
 	{
-		IncrDecrOperator(ForwardFlag{});
+		IncrDecrOperator(ForwardMovement{});
 		return *this;
 	}
 	Traverser_impl& operator--()
 	{
-		IncrDecrOperator(BackwardFlag{});
+		IncrDecrOperator(BackwardMovement{});
 		return *this;
 	}
 
@@ -679,8 +679,8 @@ public:
 
 	//実質的な効果はoperator++などと同じ。ただし戻り値は実際に移動した階層である。
 	//例えば、有効な要素が見つかるまで0～2層を繰り返し移動したとき、戻り値は0となる。
-	LayerType Incr() { return IncrDecrOperator(ForwardFlag{}); }
-	LayerType Decr() { return IncrDecrOperator(BackwardFlag{}); }
+	LayerType Incr() { return IncrDecrOperator(ForwardMovement{}); }
+	LayerType Decr() { return IncrDecrOperator(BackwardMovement{}); }
 
 	//全ての位置が一致することを要求する。
 	bool operator==(const Traverser_impl& t) const
@@ -1008,8 +1008,8 @@ public:
 	Traverser begin() const requires (!IsConst)
 	{
 		if (m_trav_layer == -1) throw NotInitialized("");
-		if (m_bpos.has_value()) return Traverser(m_fixed_layer, *m_tree, *m_bpos, m_trav_layer, ForwardFlag{});
-		else return Traverser(m_fixed_layer, *m_tree, m_trav_layer, ForwardFlag{});
+		if (m_bpos.has_value()) return Traverser(m_fixed_layer, *m_tree, *m_bpos, m_trav_layer, ForwardMovement{});
+		else return Traverser(m_fixed_layer, *m_tree, m_trav_layer, ForwardMovement{});
 	}
 	ConstTraverser begin() const requires IsConst
 	{
@@ -1018,8 +1018,8 @@ public:
 	ConstTraverser cbegin() const
 	{
 		if (m_trav_layer == -1) throw NotInitialized("");
-		if (m_bpos.has_value()) return ConstTraverser(m_fixed_layer, *m_tree, *m_bpos, m_trav_layer, ForwardFlag{});
-		else return ConstTraverser(m_fixed_layer, *m_tree, m_trav_layer, ForwardFlag{});
+		if (m_bpos.has_value()) return ConstTraverser(m_fixed_layer, *m_tree, *m_bpos, m_trav_layer, ForwardMovement{});
+		else return ConstTraverser(m_fixed_layer, *m_tree, m_trav_layer, ForwardMovement{});
 	}
 	Sentinel end() const requires (!IsConst)
 	{
@@ -1088,63 +1088,63 @@ public:
 	using CttiPlaceholder = Hierarchy::template CttiPlaceholder<Layer, Type>;
 
 	Traverser_impl() {}
-	Traverser_impl(LayerType fixed, Qualifier<Container>& c, LayerType trav, ForwardFlag = {})
+	Traverser_impl(LayerType fixed, Qualifier<Container>& c, LayerType trav, ForwardMovement = {})
 	{
-		Init(fixed, c, trav, ForwardFlag{});
+		Init(fixed, c, trav, ForwardMovement{});
 	}
-	Traverser_impl(Qualifier<Container>& c, LayerType trav, ForwardFlag = {})
-		: Traverser_impl(-1_layer, c, trav, ForwardFlag{})
+	Traverser_impl(Qualifier<Container>& c, LayerType trav, ForwardMovement = {})
+		: Traverser_impl(-1_layer, c, trav, ForwardMovement{})
 	{}
-	Traverser_impl(LayerType fixed, Qualifier<Container>& c, ForwardFlag = {})
-		: Traverser_impl(fixed, c, 0_layer, ForwardFlag{})
+	Traverser_impl(LayerType fixed, Qualifier<Container>& c, ForwardMovement = {})
+		: Traverser_impl(fixed, c, 0_layer, ForwardMovement{})
 	{}
-	Traverser_impl(Qualifier<Container>& c, ForwardFlag = {})
-		: Traverser_impl(-1_layer, c, 0_layer, ForwardFlag{})
+	Traverser_impl(Qualifier<Container>& c, ForwardMovement = {})
+		: Traverser_impl(-1_layer, c, 0_layer, ForwardMovement{})
 	{}
 
-	Traverser_impl(LayerType fixed, Qualifier<Container>& c, LayerType trav, BackwardFlag)
+	Traverser_impl(LayerType fixed, Qualifier<Container>& c, LayerType trav, BackwardMovement)
 		: Traverser_impl()
 	{
-		Init(fixed, c, trav, BackwardFlag{});
+		Init(fixed, c, trav, BackwardMovement{});
 	}
-	Traverser_impl(Qualifier<Container>& c, LayerType trav, BackwardFlag)
-		: Traverser_impl((LayerType)-1, c, trav, BackwardFlag{})
+	Traverser_impl(Qualifier<Container>& c, LayerType trav, BackwardMovement)
+		: Traverser_impl((LayerType)-1, c, trav, BackwardMovement{})
 	{}
-	Traverser_impl(LayerType fixed, Qualifier<Container>& c, BackwardFlag)
-		: Traverser_impl(fixed, c, 0_layer, BackwardFlag{})
+	Traverser_impl(LayerType fixed, Qualifier<Container>& c, BackwardMovement)
+		: Traverser_impl(fixed, c, 0_layer, BackwardMovement{})
 	{}
-	Traverser_impl(Qualifier<Container>& c, BackwardFlag)
-		: Traverser_impl((LayerType)-1, c, 0_layer, BackwardFlag{})
+	Traverser_impl(Qualifier<Container>& c, BackwardMovement)
+		: Traverser_impl((LayerType)-1, c, 0_layer, BackwardMovement{})
 	{}
 
-	Traverser_impl(LayerType fixed, Qualifier<Container>& c, const Bpos& pos, LayerType trav, ForwardFlag = {})
+	Traverser_impl(LayerType fixed, Qualifier<Container>& c, const Bpos& pos, LayerType trav, ForwardMovement = {})
 		: Traverser_impl()
 	{
-		Init(fixed, c, pos, trav, ForwardFlag{});
+		Init(fixed, c, pos, trav, ForwardMovement{});
 	}
-	Traverser_impl(Qualifier<Container>& c, const Bpos& pos, LayerType trav, ForwardFlag = {})
-		: Traverser_impl((LayerType)-1, c, pos, trav, ForwardFlag{})
+	Traverser_impl(Qualifier<Container>& c, const Bpos& pos, LayerType trav, ForwardMovement = {})
+		: Traverser_impl((LayerType)-1, c, pos, trav, ForwardMovement{})
 	{}
-	Traverser_impl(LayerType fixed, Qualifier<Container>& c, const Bpos& pos, ForwardFlag = {})
-		: Traverser_impl(fixed, c, pos, 0_layer, ForwardFlag{})
+	Traverser_impl(LayerType fixed, Qualifier<Container>& c, const Bpos& pos, ForwardMovement = {})
+		: Traverser_impl(fixed, c, pos, 0_layer, ForwardMovement{})
 	{}
-	Traverser_impl(Qualifier<Container>& c, const Bpos& pos, ForwardFlag = {})
-		: Traverser_impl((LayerType)-1, c, pos, 0_layer, ForwardFlag{})
+	Traverser_impl(Qualifier<Container>& c, const Bpos& pos, ForwardMovement = {})
+		: Traverser_impl((LayerType)-1, c, pos, 0_layer, ForwardMovement{})
 	{}
 
-	Traverser_impl(LayerType fixed, Qualifier<Container>& c, const Bpos& pos, LayerType trav, BackwardFlag)
+	Traverser_impl(LayerType fixed, Qualifier<Container>& c, const Bpos& pos, LayerType trav, BackwardMovement)
 		: Traverser_impl()
 	{
-		Init(fixed, c, pos, trav, BackwardFlag{});
+		Init(fixed, c, pos, trav, BackwardMovement{});
 	}
-	Traverser_impl(Qualifier<Container>& c, const Bpos& pos, LayerType trav, BackwardFlag)
-		: Traverser_impl(-1, c, pos, trav, BackwardFlag{})
+	Traverser_impl(Qualifier<Container>& c, const Bpos& pos, LayerType trav, BackwardMovement)
+		: Traverser_impl(-1, c, pos, trav, BackwardMovement{})
 	{}
-	Traverser_impl(LayerType fixed, Qualifier<Container>& c, const Bpos& pos, BackwardFlag)
-		: Traverser_impl(fixed, c, pos, 0_layer, BackwardFlag{})
+	Traverser_impl(LayerType fixed, Qualifier<Container>& c, const Bpos& pos, BackwardMovement)
+		: Traverser_impl(fixed, c, pos, 0_layer, BackwardMovement{})
 	{}
-	Traverser_impl(Qualifier<Container>& c, const Bpos& pos, BackwardFlag)
-		: Traverser_impl((LayerType)-1, c, pos, 0_layer, BackwardFlag{})
+	Traverser_impl(Qualifier<Container>& c, const Bpos& pos, BackwardMovement)
+		: Traverser_impl((LayerType)-1, c, pos, 0_layer, BackwardMovement{})
 	{}
 
 	//TableTraverserは動的メモリ確保を行わないのでコピー可能にしてもよいのだが、仕様統一のために不可にしておく。
@@ -1183,7 +1183,7 @@ private:
 		m_fixed_layer = fixed;
 		m_container = &c;
 		m_iterators[0] = c.GetTopIterator();
-		if constexpr (std::same_as<ForwardFlag, Flag>)
+		if constexpr (std::same_as<ForwardMovement, Flag>)
 			m_iterators[1] = m_iterators[0]->begin();
 		else
 		{
@@ -1205,21 +1205,21 @@ private:
 		m_iterators[1] = m_iterators[0]->begin() + pos.GetRow();
 	}
 public:
-	void Init(LayerType fixed, Qualifier<Container>& c, LayerType trav, ForwardFlag = {})
+	void Init(LayerType fixed, Qualifier<Container>& c, LayerType trav, ForwardMovement = {})
 	{
-		return Init_impl(fixed, c, trav, ForwardFlag{});
+		return Init_impl(fixed, c, trav, ForwardMovement{});
 	}
-	void Init(LayerType fixed, Qualifier<Container>& c, LayerType trav, BackwardFlag)
+	void Init(LayerType fixed, Qualifier<Container>& c, LayerType trav, BackwardMovement)
 	{
-		return Init_impl(fixed, c, trav, BackwardFlag{});
+		return Init_impl(fixed, c, trav, BackwardMovement{});
 	}
-	void Init(LayerType fixed, Qualifier<Container>& c, const Bpos& pos, LayerType trav, ForwardFlag = {})
+	void Init(LayerType fixed, Qualifier<Container>& c, const Bpos& pos, LayerType trav, ForwardMovement = {})
 	{
-		return Init_impl(fixed, c, pos, trav, ForwardFlag{});
+		return Init_impl(fixed, c, pos, trav, ForwardMovement{});
 	}
-	void Init(LayerType fixed, Qualifier<Container>& c, const Bpos& pos, LayerType trav, BackwardFlag)
+	void Init(LayerType fixed, Qualifier<Container>& c, const Bpos& pos, LayerType trav, BackwardMovement)
 	{
-		return Init_impl(fixed, c, pos, trav, BackwardFlag{});
+		return Init_impl(fixed, c, pos, trav, BackwardMovement{});
 	}
 
 	bool AssignRow(BindexType i) { return Assign(i); }
@@ -1255,7 +1255,7 @@ public:
 		assert(bpos.GetLayer() >= layer);
 		if (layer == -1_layer)
 		{
-			if constexpr (std::same_as<Flag, ForwardFlag>) MoveToBegin();
+			if constexpr (std::same_as<Flag, ForwardMovement>) MoveToBegin();
 			else MoveToEnd();
 			return true;
 		}
@@ -1263,7 +1263,7 @@ public:
 	}
 	bool AssignPartially(const Bpos& b, LayerType layer)
 	{
-		return AssignPartially(b, layer, ForwardFlag{});
+		return AssignPartially(b, layer, ForwardMovement{});
 	}
 	template <direction_flag Flag>
 	bool AssignPartially(const Bpos& bpos, Flag)
@@ -1272,7 +1272,7 @@ public:
 	}
 	bool AssignPartially(const Bpos& b)
 	{
-		return AssignPartially(b, ForwardFlag{});
+		return AssignPartially(b, ForwardMovement{});
 	}
 
 	template <direction_flag Flag>
@@ -1283,7 +1283,7 @@ public:
 		assert(m_container == that.m_container);
 		if (layer == -1_layer)
 		{
-			if constexpr (std::same_as<Flag, ForwardFlag>) MoveToBegin();
+			if constexpr (std::same_as<Flag, ForwardMovement>) MoveToBegin();
 			else MoveToEnd();
 			return true;
 		}
@@ -1291,7 +1291,7 @@ public:
 	}
 	bool AssignPartially(const Traverser_impl& that, LayerType layer)
 	{
-		return AssignPartially(that, layer, ForwardFlag{});
+		return AssignPartially(that, layer, ForwardMovement{});
 	}
 	template <direction_flag Flag>
 	bool AssignPartially(const Traverser_impl& that, Flag)
@@ -1300,7 +1300,7 @@ public:
 	}
 	bool AssignPartially(const Traverser_impl& that)
 	{
-		return AssignPartially(that, ForwardFlag{});
+		return AssignPartially(that, ForwardMovement{});
 	}
 
 protected:
@@ -1355,7 +1355,7 @@ public:
 		assert(layer == 0_layer);
 		auto& uit = m_iterators[0];
 		auto& it = m_iterators[1];
-		if constexpr (std::same_as<Flag, ForwardFlag>)
+		if constexpr (std::same_as<Flag, ForwardMovement>)
 		{
 			auto next = it + 1;
 			if (next == uit->end()) return false;
@@ -1368,8 +1368,8 @@ public:
 		}
 		return true;
 	}
-	bool MoveForward(LayerType layer) { return Move(layer, ForwardFlag{}); }
-	bool MoveBackward(LayerType layer) { return Move(layer, BackwardFlag{}); }
+	bool MoveForward(LayerType layer) { return Move(layer, ForwardMovement{}); }
+	bool MoveBackward(LayerType layer) { return Move(layer, BackwardMovement{}); }
 
 	//0層を移動する。
 	//戻り値は移動した最も上の層。TableTraverserの場合は常に0となる。
@@ -1407,8 +1407,8 @@ public:
 		--(*this);
 	}
 
-	LayerType Incr() { return IncrDecrOperator(ForwardFlag{}); }
-	LayerType Decr() { return IncrDecrOperator(BackwardFlag{}); }
+	LayerType Incr() { return IncrDecrOperator(ForwardMovement{}); }
+	LayerType Decr() { return IncrDecrOperator(BackwardMovement{}); }
 
 	bool operator==(const Traverser_impl& that) const
 	{
@@ -1653,8 +1653,8 @@ public:
 
 	Traverser begin() const requires (!IsConst)
 	{
-		if (m_bpos.has_value()) return Traverser(m_fixed_layer, *m_table, *m_bpos, ForwardFlag{});
-		else return Traverser(m_fixed_layer, *m_table, 0_layer, ForwardFlag{});
+		if (m_bpos.has_value()) return Traverser(m_fixed_layer, *m_table, *m_bpos, ForwardMovement{});
+		else return Traverser(m_fixed_layer, *m_table, 0_layer, ForwardMovement{});
 	}
 	ConstTraverser begin() const requires IsConst
 	{
@@ -1662,8 +1662,8 @@ public:
 	}
 	ConstTraverser cbegin() const
 	{
-		if (m_bpos.has_value()) return ConstTraverser(m_fixed_layer, *m_table, *m_bpos, 0_layer, ForwardFlag{});
-		else return ConstTraverser(m_fixed_layer, *m_table, 0_layer, ForwardFlag{});
+		if (m_bpos.has_value()) return ConstTraverser(m_fixed_layer, *m_table, *m_bpos, 0_layer, ForwardMovement{});
+		else return ConstTraverser(m_fixed_layer, *m_table, 0_layer, ForwardMovement{});
 	}
 	Sentinel end() const requires (!IsConst)
 	{

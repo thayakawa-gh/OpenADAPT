@@ -2,7 +2,7 @@
 #define ADAPT_CONTAINER_ELEMENTBLOCK_H
 
 #include <OpenADAPT/Utility/Utility.h>
-#include <OpenADAPT/Common/Definition.h>
+#include <OpenADAPT/Common/Common.h>
 #include <OpenADAPT/Container/Hierarchy.h>
 #include <OpenADAPT/Container/ElementBlockPolicy.h>
 
@@ -227,6 +227,87 @@ public:
 		}
 		else return;
 	}
+
+	//Hist専用のResize関数。各次元のサイズを指定する。
+	//こちらは縮小する場合も余剰領域を作らないように再確保する。
+	template <class LayerSD, size_t Dim>
+	void Resize(HierarchySD h, LayerSD layer,
+				const BinBaseType* oldmin, const BinBaseType* oldmax,
+				const Bin<Dim>& newmin, const Bin<Dim>& newmax)
+	{
+		BindexType oldsize = 1;
+		BindexType newsize = 1;
+		if (HistIsEmpty<Dim>{}(oldmin, oldmax))
+		{
+			oldsize = 0;
+		}
+		else
+		{
+			for (size_t i = 0; i < Dim; ++i) oldsize *= BindexType(oldmax[i] - oldmin[i] + 1);
+		}
+		for (size_t i = 0; i < Dim; ++i) newsize *= BindexType(newmax[i] - newmin[i] + 1);
+
+		auto equal = [](const BinBaseType* a, const Bin<Dim>& b) -> bool
+		{
+			for (size_t i = 0; i < Dim; ++i)
+				if (a[i] != b[i]) return false;
+			return true;
+		};
+		if (!equal(oldmin, newmin) || !equal(oldmax, newmax))
+		{
+			IndexToBin<Dim> itob;
+			BinToIndex<Dim> btoi;
+			IsInsideRange<Dim> is_inside;
+			auto is_totally_trivial = h.value().IsTotallyTrivial(layer);
+			const auto& ms = GetPlaceholdersIn(h, layer);
+			//理想的な実装としては、重複する部分はmemcpyなどで効率よくコピーするほうが良いのだが、
+			//範囲計算が大変なので、とりあえず要素一つ一つを個別に確認する方向で実装する。
+			auto [ismaxlayer, elmsize, blocksize] = GetBlockTraits(h, layer);
+			assert(ismaxlayer == false);
+			char* newblock = (char*)std::malloc(newsize * blocksize);
+
+			//まずnewblockを初期化する。
+			for (BindexType newindex = 0; newindex < newsize; ++newindex)
+			{
+				char* newpos = newblock + newindex * blocksize;
+				//もしiがoldblockの範囲内であれば、oldblockからデータを移動する。
+				Bin<Dim> newbin = itob(newindex, newmin, newmax);
+				if (is_inside(newbin, oldmin, oldmax))
+				{
+					BindexType oldindex = btoi(newbin, oldmin, oldmax);
+					char* oldpos = m_blocks + oldindex * blocksize;
+					Policy::MoveConstructAndDestroy(ms, is_totally_trivial, oldpos, newpos);
+					MoveConstructElementBlock(oldpos + elmsize, newpos + elmsize);
+				}
+				else
+				{
+					Policy::Create_default(ms, newpos);
+					BinBaseType* newpos_bin = std::launder(reinterpret_cast<BinBaseType*>(newpos));
+					for (size_t i = 0; i < Dim; ++i) newpos_bin[i] = newbin[i];
+					CreateElementBlock(newpos + elmsize);
+				}
+			}
+			//その後、oldblockの余剰領域をデストラクタで破棄する。
+			for (BindexType oldindex = 0; oldindex < oldsize; ++oldindex)
+			{
+				char* oldpos = m_blocks + oldindex * blocksize;
+				Bin<Dim> oldbin = itob(oldindex, oldmin, oldmax);
+
+				//もしoldbinがnewblockの範囲内であれば、すでに上のforループで移動しデストラクタが呼ばれているので、
+				//何もしなくていい。
+				if (is_inside(oldbin, newmin, newmax)) continue;
+				Policy::Destroy(ms, is_totally_trivial, oldpos);
+				DestroyElementBlock(h, layer, oldpos + elmsize);
+
+			}
+			std::free(m_blocks);
+			m_blocks = newblock;
+			m_end = m_blocks + newsize * blocksize;
+			m_cap_end = m_blocks + newsize * blocksize; //capacityはsizeと同じにする。
+		}
+		else return;
+	}
+
 	//capacityがsizeに一致するよう縮小する。
 	template <class LayerSD>
 	void Shrink(HierarchySD /*h*/, LayerSD /*layer*/)

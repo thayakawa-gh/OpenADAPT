@@ -29,7 +29,7 @@ class CttiFilteredTraverser : public Traverser_
 	{
 		LayerType move = CheckConditions<(LayerType)-1>(-1_layer);
 		if (move == -2_layer) return;
-		IncrDecrOperator(ForwardFlag{}, move);
+		IncrDecrOperator(ForwardMovement{}, move);
 	}
 public:
 
@@ -90,7 +90,7 @@ public:
 		if (move != -2_layer)
 		{
 			//条件を満たさなかったので、rowは固定したまま1層以下に限定して満足する要素まで移動する。
-			return Move_impl(1_layer, move, ForwardFlag{});
+			return Move_impl(1_layer, move, ForwardMovement{});
 		}
 		return true;
 	}
@@ -131,11 +131,11 @@ public:
 	//layer層を移動する。
 	bool MoveForward(LayerType layer)
 	{
-		return Move(layer, ForwardFlag{});
+		return Move(layer, ForwardMovement{});
 	}
 	bool MoveBackward(LayerType layer)
 	{
-		return Move(layer, BackwardFlag{});
+		return Move(layer, BackwardMovement{});
 	}
 
 private:
@@ -155,7 +155,7 @@ private:
 				--move;
 				if (move == m_fixed_layer)
 				{
-					if constexpr (std::same_as<Flag, ForwardFlag>) TraverserBase::MoveToEnd();
+					if constexpr (std::same_as<Flag, ForwardMovement>) TraverserBase::MoveToEnd();
 					return m_fixed_layer;
 				}
 				continue;
@@ -173,8 +173,8 @@ public:
 	{
 		return IncrDecrOperator(Flag{}, m_trav_layer);
 	}
-	LayerType Incr() { return IncrDecrOperator(ForwardFlag{}); }
-	LayerType Decr() { return IncrDecrOperator(BackwardFlag{}); }
+	LayerType Incr() { return IncrDecrOperator(ForwardMovement{}); }
+	LayerType Decr() { return IncrDecrOperator(BackwardMovement{}); }
 	CttiFilteredTraverser& operator++()
 	{
 		Incr();
@@ -340,7 +340,7 @@ private:
 	{
 		LayerType move = CheckConditions(-1_layer);
 		if (move == -2_layer) return;
-		IncrDecrOperator(ForwardFlag{}, move);
+		IncrDecrOperator(ForwardMovement{}, move);
 	}
 public:
 
@@ -389,7 +389,7 @@ public:
 		if (move != -2_layer)
 		{
 			//条件を満たさなかったので、rowは固定したまま1層以下に限定して満足する要素まで移動する。
-			return Move_impl(1_layer, move, ForwardFlag{});
+			return Move_impl(1_layer, move, ForwardMovement{});
 		}
 		return true;
 	}
@@ -432,11 +432,11 @@ public:
 	//layer層を移動する。
 	bool MoveForward(LayerType layer)
 	{
-		return Move(layer, ForwardFlag{});
+		return Move(layer, ForwardMovement{});
 	}
 	bool MoveBackward(LayerType layer)
 	{
-		return Move(layer, BackwardFlag{});
+		return Move(layer, BackwardMovement{});
 	}
 
 private:
@@ -456,7 +456,7 @@ private:
 				--move;
 				if (move == m_fixed_layer)
 				{
-					if constexpr (std::same_as<Flag, ForwardFlag>) TraverserBase::MoveToEnd();
+					if constexpr (std::same_as<Flag, ForwardMovement>) TraverserBase::MoveToEnd();
 					return m_fixed_layer;
 				}
 				continue;
@@ -474,8 +474,8 @@ public:
 	{
 		return IncrDecrOperator(Flag{}, m_trav_layer);
 	}
-	LayerType Incr() { return IncrDecrOperator(ForwardFlag{}); }
-	LayerType Decr() { return IncrDecrOperator(BackwardFlag{}); }
+	LayerType Incr() { return IncrDecrOperator(ForwardMovement{}); }
+	LayerType Decr() { return IncrDecrOperator(BackwardMovement{}); }
 	RttiFilteredTraverser& operator++()
 	{
 		Incr();

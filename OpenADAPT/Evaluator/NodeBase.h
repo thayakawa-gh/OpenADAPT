@@ -163,7 +163,7 @@ template <class Node, class ...Nodes>
 	requires node_or_placeholder<Node> && (!ctti_const_node<Node>) && (!rtti_const_node<Node>)
 struct ExtractContainer<Node, Nodes...>
 {
-	using Container = Node::Container;
+	using Container = typename std::remove_cvref_t<Node>::Container;
 };
 
 }
@@ -932,25 +932,47 @@ private:
 
 }
 
-template <any_container Container, node_or_placeholder ...NPs>
-void InitAll(const Container& t, const Bpos& bpos, NPs& ...nps)
+
+template <any_container Container, node_or_placeholder NP>
+void Init(const Container& c, const Bpos& bpos, NP& np)
 {
-	DoNothing((nps.Init(t, bpos), 0)...);
+	if constexpr (any_node<NP>) np.Init(c, bpos);
+}
+template <any_container Container, node_or_placeholder NP>
+void Init(const Container& c, NP& np)
+{
+	if constexpr (any_node<NP>) np.Init(c);
+}
+template <any_traverser Trav, node_or_placeholder NP>
+void Init(const Trav& t, NP& np)
+{
+	if constexpr (any_node<NP>) np.Init(t);
+}
+template <node_or_placeholder NP>
+void Init(NP& np)
+{
+	if constexpr (any_node<NP>) np.Init();
+}
+
+template <any_container Container, node_or_placeholder ...NPs>
+void InitAll(const Container& c, const Bpos& bpos, NPs& ...nps)
+{
+	DoNothing((Init(c, bpos, nps), 0)...);
 }
 template <any_container Container, node_or_placeholder ...NPs>
-void InitAll(const Container& t, NPs& ...nps)
+void InitAll(const Container& c, NPs& ...nps)
 {
-	DoNothing((nps.Init(t), 0)...);
+	DoNothing((Init(c, nps), 0)...);
 }
 template <any_traverser Trav, node_or_placeholder ...NPs>
 void InitAll(const Trav& t, NPs& ...nps)
 {
-	DoNothing((nps.Init(t), 0)...);
+	DoNothing((Init(t, nps), 0)...);
 }
 template <node_or_placeholder ...NPs>
 void InitAll(NPs& ...nps)
 {
-	DoNothing((nps.Init(), 0)...);
+	DoNothing((Init(nps), 0)...);
 }
 
 }

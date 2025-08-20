@@ -738,7 +738,7 @@ class ExtractorRelay
 
 template <size_t I, named_node_or_placeholder NP>
 NP&& AddDefaultName(NP&& np) { return std::forward<NP>(np); }
-template <size_t I, node_or_placeholder NP, StaticString Name = StaticString<"fld">{} + ToStr(Number<I>{}) >
+template <size_t I, node_or_placeholder NP, StaticString Name = StaticString<"fld">{} + ToStr(Number<I>{})>
 auto AddDefaultName(NP&& np)
 {
 	return std::forward<NP>(np).named(Name);

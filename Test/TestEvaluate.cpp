@@ -297,7 +297,7 @@ TEST_F(Aggregator, DJoinedContainer_Evaluate_0)
 {
 	auto a = m_dtree.GetPlaceholder("class_");//MakeHashmapはキーの型を特定する必要があるため、
 	auto b = m_dtree.GetPlaceholder("grade");//これらのPlaceholderは予め型情報を与えなければならない。
-	auto hash = m_dtree | MakeHashtable(a.i08(), b.i08());
+	auto hash = m_dtree | Hash(a.i08(), b.i08());
 
 	auto jtree = Join(m_dtree, 0_layer, 0_layer, m_dtree);
 	//0層要素。学年とクラス。
@@ -321,7 +321,7 @@ TEST_F(Aggregator, DJoinedContainer_Evaluate_1)
 {
 	auto a = m_dtree.GetPlaceholder("number").i16();//MakeHashmapはキーの型を特定する必要があるため、
 	auto b = m_dtree.GetPlaceholder("name").str();//これらのPlaceholderは予め型情報を与えなければならない。
-	auto hash = m_dtree | MakeHashtable(a, b);
+	auto hash = m_dtree | Hash(a, b);
 
 	auto jtree = Join(m_dtree, 1_layer, 1_layer, m_dtree);
 	//0層要素。学年とクラス。
@@ -346,7 +346,7 @@ TEST_F(Aggregator, DJoinedContainer_Evaluate_2)
 	auto a = m_dtree.GetPlaceholder("number").i16();//MakeHashmapはキーの型を特定する必要があるため、
 	auto b = m_dtree.GetPlaceholder("name").str();//これらのPlaceholderは予め型情報を与えなければならない。
 	auto c = m_dtree.GetPlaceholder("exam").i08();
-	auto hash = m_dtree | MakeHashtable(a, b, c);
+	auto hash = m_dtree | Hash(a, b, c);
 
 	auto jtree = Join(m_dtree, 2_layer, 2_layer, m_dtree);
 	//0層要素。学年とクラス。
@@ -371,11 +371,11 @@ TEST_F(Aggregator, DJoinedContainer_Evaluate_0_1)
 {
 	auto c = m_dtree.GetPlaceholder("class_").i08();//MakeHashmapはキーの型を特定する必要があるため、
 	auto g = m_dtree.GetPlaceholder("grade").i08();//これらのPlaceholderは予め型情報を与えなければならない。
-	auto hash1 = m_dtree | MakeHashtable(c, g);
+	auto hash1 = m_dtree | Hash(c, g);
 
 	auto a = m_dtree.GetPlaceholder("number").i16();//MakeHashmapはキーの型を特定する必要があるため、
 	auto b = m_dtree.GetPlaceholder("name").str();//これらのPlaceholderは予め型情報を与えなければならない。
-	auto hash2 = m_dtree | MakeHashtable(a, b);
+	auto hash2 = m_dtree | Hash(a, b);
 
 	auto jtree = Join(m_dtree, 0_layer, 0_layer, m_dtree, 1_layer, 1_layer, m_dtree);
 	//0層要素。学年とクラス。
@@ -399,10 +399,10 @@ TEST_F(Aggregator, DJoinedContainer_Evaluate_1_2)
 {
 	auto a = m_dtree.GetPlaceholder("number").i16();//MakeHashmapはキーの型を特定する必要があるため、
 	auto b = m_dtree.GetPlaceholder("name").str();//これらのPlaceholderは予め型情報を与えなければならない。
-	auto hash1 = m_dtree | MakeHashtable(a, b);
+	auto hash1 = m_dtree | Hash(a, b);
 
 	auto c = m_dtree.GetPlaceholder("exam").i08();
-	auto hash2 = m_dtree | MakeHashtable(a, b, c);
+	auto hash2 = m_dtree | Hash(a, b, c);
 
 	auto jtree = Join(m_dtree, 1_layer, 1_layer, m_dtree, 2_layer, 2_layer, m_dtree);
 	//0層要素。学年とクラス。
@@ -475,7 +475,7 @@ TEST_F(Aggregator, DJoinedTable_Evaluate)
 		auto a = t.GetPlaceholder("number").i16();//MakeHashmapはキーの型を特定する必要があるため、
 		auto b = t.GetPlaceholder("name").str();//これらのPlaceholderは予め型情報を与えなければならない。
 		auto c = t.GetPlaceholder("exam").i08();//これらのPlaceholderは予め型情報を与えなければならない。
-		return t | MakeHashtable(a, b, c);
+		return t | Hash(a, b, c);
 	}();
 
 	auto jtree = Join(t, 0_layer, 0_layer, t);

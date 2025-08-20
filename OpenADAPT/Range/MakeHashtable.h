@@ -11,7 +11,7 @@ namespace detail
 {
 
 template <class Range>
-class HashingConsumer
+class ToHashtable
 {
 	template <class ...NPs>
 	struct HashtableType { using Type = Hashtable<FirstType<FieldVariant, NPs>...>; };
@@ -25,7 +25,7 @@ public:
 	{
 		using Result = HashtableType<NPs...>::Type;
 
-		auto erange = std::forward<Range_>(range) | Evaluate(flags::with_traverser, std::forward<NPs>(nps)...);
+		auto erange = std::forward<Range_>(range) | Evaluate(opts::with_traverser, std::forward<NPs>(nps)...);
 		Result res;
 		Bpos bpos(erange.GetTravLayer());
 		auto emplace = [&bpos, &res]<class Trav, class ...Vs>(const Trav& t, Vs&& ...vs)
@@ -45,9 +45,15 @@ public:
 }
 
 template <node_or_placeholder ...NPs>
-auto MakeHashtable(NPs&& ...nps)
+auto Hash(NPs&& ...nps)
 {
-	return RangeConversion<detail::HashingConsumer, NPs...>(std::forward<NPs>(nps)...);
+	return RangeConversion<detail::ToHashtable, NPs...>(std::forward<NPs>(nps)...);
+}
+// 古い関数名も一応残しておく。
+template <node_or_placeholder ...NPs>
+[[deprecated("plase use Hash(...)")]] auto MakeHashtable(NPs&& ...nps)
+{
+	return Hash(std::forward<NPs>(nps)...);
 }
 
 }

@@ -12,6 +12,13 @@ using BindexType = uint32_t;
 using LayerType = int16_t;
 using RankType = int16_t;
 using DepthType = int32_t;
+using BinBaseType = int32_t;
+template <size_t Dim>
+using Bin = std::array<BinBaseType, Dim>;
+using Bin1D = Bin<1>;
+using Bin2D = Bin<2>;
+using Bin3D = Bin<3>;
+using Bin4D = Bin<4>;
 
 inline constexpr BindexType BindexMax = std::numeric_limits<BindexType>::max();
 
@@ -51,17 +58,18 @@ using Raise = detail::RaiseAndLower_impl<Constant, Up>::Raised;
 template <class Constant, auto Down>
 using Lower = detail::RaiseAndLower_impl<Constant, Down>::Lowered;
 
-//Traverserの挙動に関するフラグ。
-class ForwardFlag {};
-class BackwardFlag {};
-
+//Traverserの挙動に関するオプション。
+// 移動方向
+class ForwardMovement {};
+class BackwardMovement {};
+// Jointの即時/遅延
 class DelayedJoint {};
 class PromptJoint {};
 
-namespace flags
+namespace opts
 {
-inline constexpr ForwardFlag forward = {};
-inline constexpr BackwardFlag backward = {};
+inline constexpr ForwardMovement forward = {};
+inline constexpr BackwardMovement backward = {};
 
 inline constexpr DelayedJoint delayed = {};
 inline constexpr PromptJoint prompt = {};
@@ -70,7 +78,7 @@ inline constexpr PromptJoint prompt = {};
 //Extractにおいて、抽出元の全フィールドを出力するフラグ。
 //現状、container_simplexに対してのみ使用可能。
 struct AllFields {};
-namespace flags
+namespace opts
 {
 inline constexpr AllFields all_fields = {};
 }
@@ -78,7 +86,7 @@ inline constexpr AllFields all_fields = {};
 
 //Evaluateにおいて、戻り値にtraverserを加えるためのフラグ。
 struct WithTraverser {};
-namespace flags
+namespace opts
 {
 inline constexpr WithTraverser with_traverser = {};
 }
@@ -87,7 +95,7 @@ inline constexpr WithTraverser with_traverser = {};
 //ToVectorにおいて、戻り値をstd::tuple<std::vector...>からstd::vector<std::tuple<...>>に変更するためのフラグ。
 struct Combine {};
 
-namespace flags
+namespace opts
 {
 inline constexpr Combine combine = {};
 }

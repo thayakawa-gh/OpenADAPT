@@ -6,6 +6,7 @@
 #include <OpenADAPT/Utility/NamedTuple.h>
 #include <OpenADAPT/Common/Definition.h>
 #include <OpenADAPT/Common/Bpos.h>
+#include <OpenADAPT/Common/Common.h>
 #ifdef USE_ANKERL_UNORDERED_DENSE
 #include <ankerl/unordered_dense.h>
 #endif
@@ -13,122 +14,8 @@
 namespace adapt
 {
 
-//FieldTypeの定義はDefinition.hでは行えない。
-//何故なら、以下のBposとJBposの定義のためにはLayerType、RankTypeの定義が必要で、
-//それらはDefinition.hで定義されているから。
-struct FieldTypeFlag
-{
-	static constexpr uint32_t INT = 0b0000000000000001;
-	static constexpr uint32_t FLT = 0b0000000000000010;
-	static constexpr uint32_t CPX = 0b0000000000000100;
-	static constexpr uint32_t STR = 0b0000000000001000;
-	static constexpr uint32_t YMD = 0b0000000000100000;
-	static constexpr uint32_t JBP = 0b0100000000000000;
-	//static constexpr uint32_t ANY = 0b1000000000000000;
-
-	static constexpr uint32_t NUM = FLT | INT;
-
-	static constexpr uint32_t SIZE_MASK = 0x00ff0000;
-	static constexpr uint32_t ALIGN_MASK = 0xff000000;
-
-	static constexpr uint32_t TRIVIAL = INT | FLT | CPX;
-};
-
-enum class FieldType : uint32_t
-{
-	Emp = 0,
-	I08 = FieldTypeFlag::INT | (sizeof(int8_t) << 16) | (alignof(int8_t) << 24),
-	I16 = FieldTypeFlag::INT | (sizeof(int16_t) << 16) | (alignof(int16_t) << 24),
-	I32 = FieldTypeFlag::INT | (sizeof(int32_t) << 16) | (alignof(int32_t) << 24),
-	I64 = FieldTypeFlag::INT | (sizeof(int64_t) << 16) | (alignof(int64_t) << 24),
-	F32 = FieldTypeFlag::FLT | (sizeof(float) << 16) | (alignof(float) << 24),
-	F64 = FieldTypeFlag::FLT | (sizeof(double) << 16) | (alignof(double) << 24),
-	C32 = FieldTypeFlag::CPX | (sizeof(std::complex<float>) << 16) | (alignof(std::complex<float>) << 24),
-	C64 = FieldTypeFlag::CPX | (sizeof(std::complex<double>) << 16) | (alignof(std::complex<double>) << 24),
-	Str = FieldTypeFlag::STR | (sizeof(std::string) << 16) | (alignof(std::string) << 24),
-	Jbp = FieldTypeFlag::JBP | (sizeof(JBpos) << 16) | (alignof(JBpos) << 24),
-};
-
-#define ADAPT_SWITCH_FIELD_TYPE(FIELD_TYPE, CODE, DEFAULT) \
-	switch (FIELD_TYPE) \
-	{ \
-	case FieldType::I08: CODE(FieldType::I08) break; \
-	case FieldType::I16: CODE(FieldType::I16) break; \
-	case FieldType::I32: CODE(FieldType::I32) break; \
-	case FieldType::I64: CODE(FieldType::I64) break; \
-	case FieldType::F32: CODE(FieldType::F32) break; \
-	case FieldType::F64: CODE(FieldType::F64) break; \
-	case FieldType::C32: CODE(FieldType::C32) break; \
-	case FieldType::C64: CODE(FieldType::C64) break; \
-	case FieldType::Str: CODE(FieldType::Str) break; \
-	case FieldType::Jbp: CODE(FieldType::Jbp) break; \
-	default: DEFAULT \
-	}
-
-
-class FieldVariant;
-
-namespace detail
-{
-template <class Key, size_t Size = std::tuple_size_v<Key>>
-struct Hasher;
-template <class Key>
-struct Hasher<std::tuple<Key>, 1>
-{
-	using is_transparent = void;
-#ifdef USE_ANKERL_UNORDERED_DENSE
-	using is_avalanching = void;
-#endif
-	template <class T>
-		requires std::convertible_to<T, Key>
-	size_t operator()(const T& key) const noexcept
-	{
-		return std::hash<Key>{}(key);
-	}
-	template <class T>
-		requires std::convertible_to<T, Key>
-	size_t operator()(const std::tuple<T>& key) const noexcept
-	{
-		return (*this)(std::get<0>(key));
-	}
-};
-template <class ...Keys, size_t Size>
-struct Hasher<std::tuple<Keys...>, Size>
-{
-	using is_transparent = void;
-#ifdef USE_ANKERL_UNORDERED_DENSE
-	using is_avalanching = void;
-#endif
-private:
-	template <size_t I, class ...Keys_>
-	static size_t Combine(const std::tuple<Keys_...>& v) noexcept
-	{
-		if constexpr (sizeof...(Keys_) == I) return 0;
-		else
-		{
-			size_t seed = Combine<I + 1>(v);
-			using Key = GetType_t<I, Keys...>;
-			return seed ^ (Hasher<std::tuple<Key>>{}(std::get<I>(v)) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
-		}
-	}
-public:
-	size_t operator()(const std::tuple<Keys...>& keys) const noexcept
-	{
-		return Combine<0>(keys);
-	}
-};
-}
-
-#ifdef USE_ANKERL_UNORDERED_DENSE
-template <class ...Types>
-using Hashtable = ankerl::unordered_dense::map<std::tuple<Types...>, Bpos, detail::Hasher<std::tuple<Types...>>>;
-#else
-template <class ...Types>
-using Hashtable = std::unordered_map<std::tuple<Types...>, Bpos, detail::Hasher<std::tuple<Types...>>>;
-#endif
-
 template <class T>
-concept direction_flag = std::is_same_v<ForwardFlag, T> || std::is_same_v<BackwardFlag, T>;
+concept direction_flag = std::is_same_v<ForwardMovement, T> || std::is_same_v<BackwardMovement, T>;
 template <class JointMode>
 concept joint_mode = std::is_same_v<PromptJoint, JointMode> || std::is_same_v<DelayedJoint, JointMode>;
 
@@ -347,13 +234,13 @@ concept stat_type_node_or_placeholder = typed_node_or_placeholder<T> || ctti_nod
 namespace detail
 {
 
-template <class T>
+/*template <class T>
 struct IsNamedNodeOrPlaceholder : std::false_type {};
 template <StaticChar Name_, node_or_placeholder NP>
 struct IsNamedNodeOrPlaceholder<std::tuple<StaticString<Name_>, NP>> : std::true_type {};
 template <node_or_placeholder NP>
 struct IsNamedNodeOrPlaceholder<std::tuple<std::string, NP>> : std::true_type {};
-
+*/
 template <class T>
 struct IsSNamedNodeOrPlaceholder : std::false_type {};
 template <StaticChar Name_, node_or_placeholder NP>
@@ -363,6 +250,10 @@ struct IsDNamedNodeOrPlaceholder : std::false_type {};
 template <node_or_placeholder NP>
 struct IsDNamedNodeOrPlaceholder<std::tuple<std::string, NP>> : std::true_type {};
 
+template <class T>
+struct IsCttiNamedNodeOrPlaceholder : std::false_type {};
+template <class Name, ctti_node_or_placeholder T>
+struct IsCttiNamedNodeOrPlaceholder<std::tuple<Name, T>> : std::true_type {};
 }
 
 template <class T>
@@ -372,6 +263,9 @@ concept d_named_node_or_placeholder = detail::IsDNamedNodeOrPlaceholder<std::dec
 
 template <class T>
 concept named_node_or_placeholder = s_named_node_or_placeholder<T> || d_named_node_or_placeholder<T>;
+
+template <class T>
+concept s_ctti_named_node_or_placeholder = s_named_node_or_placeholder<T> && detail::IsCttiNamedNodeOrPlaceholder<std::decay_t<T>>::value;
 
 template <class T>
 struct GetNodeType { using Type = eval::CttiConstNode<T>; };
@@ -392,14 +286,14 @@ concept any_traverser =
 	{ t.GetFixedLayer() } -> std::same_as<LayerType>;
 	{ t.GetTravLayer() } -> std::same_as<LayerType>;
 	{ t.AssignRow(row) } -> std::same_as<bool>;
-	{ t.Move(layer, ForwardFlag{}) } -> std::same_as<bool>;
-	{ t.Move(layer, BackwardFlag{}) } -> std::same_as<bool>;
+	{ t.Move(layer, ForwardMovement{}) } -> std::same_as<bool>;
+	{ t.Move(layer, BackwardMovement{}) } -> std::same_as<bool>;
 	{ t.MoveForward(layer) } -> std::same_as<bool>;
 	{ t.MoveBackward(layer) } -> std::same_as<bool>;
 	{ t.MoveToBegin() };
 	{ t.MoveToEnd() };
-	{ t.IncrDecrOperator(ForwardFlag{}) } -> std::same_as<LayerType>;
-	{ t.IncrDecrOperator(BackwardFlag{}) } -> std::same_as<LayerType>;
+	{ t.IncrDecrOperator(ForwardMovement{}) } -> std::same_as<LayerType>;
+	{ t.IncrDecrOperator(BackwardMovement{}) } -> std::same_as<LayerType>;
 	{ t.Incr() } -> std::same_as<LayerType>;
 	{ t.Decr() } -> std::same_as<LayerType>;
 };
@@ -524,12 +418,28 @@ concept s_table = s_hierarchy<T> && any_table<T>;
 template <class T>
 concept d_table = f_hierarchy<T> && any_table<T>;
 
+// DimはDHistの場合は実行時に決まるのでここでは分からない。
+// 仕方ないのでBin<1>と固定値にするが、SHistまで一緒くたにBin<1>で判定するのはちょっと意味不明すぎる。
+// どうにかならんか。
+// いずれかのDimが適格となるような[]やResizeが存在する、というような判定はできないのか。
 template <class T>
-concept any_tree = any_container<T> && !any_table<T>;
+concept any_hist = any_container<T> && requires(std::remove_cvref_t<T> t, Bin<1> bin)
+{
+	{ t[bin] } -> element_ref;
+	{ t.Resize(bin, bin) };
+};
+template <class T>
+concept s_hist = s_hierarchy<T> && any_hist<T>;
+template <class T>
+concept d_hist = f_hierarchy<T> && any_hist<T>;
+
+template <class T>
+concept any_tree = any_container<T> && !any_table<T> && !any_hist<T>;
 template <class T>
 concept s_tree = s_hierarchy<T> && any_tree<T>;
 template <class T>
 concept d_tree = d_hierarchy<T> && any_tree<T>;
+
 
 //hierarchyであるものはjoined_containerではない。
 template <class T>

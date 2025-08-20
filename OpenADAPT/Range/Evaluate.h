@@ -140,11 +140,11 @@ private:
 public:
 	bool MoveForward(LayerType layer)
 	{
-		return Move(layer, ForwardFlag{});
+		return Move(layer, ForwardMovement{});
 	}
 	bool MoveBackward(LayerType layer)
 	{
-		return Move(layer, BackwardFlag{});
+		return Move(layer, BackwardMovement{});
 	}
 
 private:
@@ -162,11 +162,11 @@ private:
 public:
 	LayerType Incr()
 	{
-		return IncrDecrOperator(ForwardFlag{});
+		return IncrDecrOperator(ForwardMovement{});
 	}
 	LayerType Decr()
 	{
-		return IncrDecrOperator(BackwardFlag{});
+		return IncrDecrOperator(BackwardMovement{});
 	}
 	EvaluatingTraverser& operator++()
 	{

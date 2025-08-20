@@ -49,11 +49,21 @@ auto[__VA_ARGS__] =\
 
 //----------named関数のヘルパー----------
 
-#define ADAPT_DETAIL_CONV_NAMED_FLD(x) x.named(#x)
+#define ADAPT_DETAIL_CONV_NAMED_FLD(x) (x).named(#x##_fld)
 
 //Extract実行時に、c | Filter(...) | Extract(ADAPT_NAMED_FIELDS(a, b, c, d, e));とすると、
 //Extract(a.named("a"), b.named("b"), c.named("c"), d.named("d"), e.named("e"));と展開され、
 //Extractの各引数a～eに変数名と同様の名前が割り当てられる。
 #define ADAPT_NAMED_FIELDS(...) ADAPT_DETAIL_EXPAND_CONV(ADAPT_DETAIL_CONV_NAMED_FLD, __VA_ARGS__)
+
+#define ADAPT_EXTRACT(...) Extract(ADAPT_NAMED_FIELDS(__VA_ARGS__))
+
+#define ADAPT_DETAIL_CONV_AXIS_ATTR(name, wbin) adapt::AxisArgs{ (name).named(#name##_fld), wbin }
+
+#define ADAPT_NAMED_AXES(...) std::forward_as_tuple(ADAPT_DETAIL_EXPAND_CONV_PAIR(ADAPT_DETAIL_CONV_AXIS_ATTR, __VA_ARGS__))
+
+#define ADAPT_NAMED_VARS(...) std::forward_as_tuple(ADAPT_NAMED_FIELDS(__VA_ARGS__))
+
+#define ADAPT_HASH(...) Hash(ADAPT_NAMED_AXES(...))
 
 #endif

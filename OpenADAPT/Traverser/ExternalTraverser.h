@@ -150,7 +150,7 @@ public:
 	//走査層まで全てをthatの位置で初期化する。
 	bool Assign(const ExternalTraverser& that)
 	{
-		return Assign_impl<0>(that, ForwardFlag{}, DelayedJoint{});
+		return Assign_impl<0>(that, ForwardMovement{}, DelayedJoint{});
 	}
 
 private:
@@ -242,9 +242,9 @@ protected:
 public:
 	template <direction_flag Flag>
 	bool AssignPartially(const ExternalTraverser& that, Flag) { return AssignPartially(that, Flag{}, DelayedJoint{}); }
-	bool AssignPartially(const ExternalTraverser& that) { return AssignPartially(that, ForwardFlag{}, DelayedJoint{}); }
+	bool AssignPartially(const ExternalTraverser& that) { return AssignPartially(that, ForwardMovement{}, DelayedJoint{}); }
 
-	bool AssignPartially(const Bpos& bpos) { return AssignPartially(bpos, ForwardFlag{}, DelayedJoint{}); }
+	bool AssignPartially(const Bpos& bpos) { return AssignPartially(bpos, ForwardMovement{}, DelayedJoint{}); }
 
 	//第0位のTraverserの0層のみを引数の値に割り当てる。
 	//それより下の階層は最初の要素。
@@ -266,7 +266,7 @@ public:
 	}
 	template <direction_flag Flag>
 	bool AssignRow(BindexType row, Flag) { return AssignRow(row, Flag{}, DelayedJoint{}); }
-	bool AssignRow(BindexType row) { return AssignRow(row, ForwardFlag{}, DelayedJoint{}); }
+	bool AssignRow(BindexType row) { return AssignRow(row, ForwardMovement{}, DelayedJoint{}); }
 
 private:
 	template <RankType Rank, joint_mode JointMode>
@@ -398,18 +398,18 @@ public:
 	bool Move(LayerType layer, Flag) { return Move(layer, Flag{}, DelayedJoint{}); }
 
 	template <joint_mode JointMode>
-	bool MoveForward(LayerType layer, JointMode) { return Move(layer, ForwardFlag{}, JointMode{}); }
+	bool MoveForward(LayerType layer, JointMode) { return Move(layer, ForwardMovement{}, JointMode{}); }
 	template <joint_mode JointMode>
-	bool MoveBackward(LayerType layer, JointMode) { return Move(layer, BackwardFlag{}, JointMode{}); }
+	bool MoveBackward(LayerType layer, JointMode) { return Move(layer, BackwardMovement{}, JointMode{}); }
 
-	bool MoveForward(LayerType layer) { return Move(layer, ForwardFlag{}, DelayedJoint{}); }
-	bool MoveBackward(LayerType layer) { return Move(layer, BackwardFlag{}, DelayedJoint{}); }
+	bool MoveForward(LayerType layer) { return Move(layer, ForwardMovement{}, DelayedJoint{}); }
+	bool MoveBackward(LayerType layer) { return Move(layer, BackwardMovement{}, DelayedJoint{}); }
 
 private:
 	template <RankType Rank, direction_flag Flag>
 	LayerType IncrDecrOperator(Flag, PromptJoint)
 	{
-		constexpr bool IsForward = std::is_same_v<Flag, ForwardFlag>;
+		constexpr bool IsForward = std::is_same_v<Flag, ForwardMovement>;
 		if constexpr (Rank >= 0)
 		{
 			auto& i = std::get<Rank>(m_internals);
@@ -456,7 +456,7 @@ private:
 	template <RankType Rank, direction_flag Flag>
 	LayerType IncrDecrOperator(Flag, DelayedJoint)
 	{
-		constexpr bool IsForward = std::is_same_v<Flag, ForwardFlag>;
+		constexpr bool IsForward = std::is_same_v<Flag, ForwardMovement>;
 		if constexpr (Rank >= 0)
 		{
 			auto& i = std::get<Rank>(m_internals);
@@ -504,12 +504,12 @@ public:
 	template <direction_flag Flag, joint_mode JointMode>
 	LayerType IncrDecrOperator(Flag, JointMode)
 	{
-		if constexpr (std::same_as<Flag, BackwardFlag>)
+		if constexpr (std::same_as<Flag, BackwardMovement>)
 		{
 			//backwardの場合、IsEnd==trueのときは0位がEnd状態なので、
 			//まずこれを一つ前に戻す必要がある。
-			if (IsEnd()) return IncrDecrOperator<0>(BackwardFlag{}, JointMode{});
-			else return IncrDecrOperator<MaxRank>(BackwardFlag{}, JointMode{});
+			if (IsEnd()) return IncrDecrOperator<0>(BackwardMovement{}, JointMode{});
+			else return IncrDecrOperator<MaxRank>(BackwardMovement{}, JointMode{});
 		}
 		else return IncrDecrOperator<MaxRank>(Flag{}, JointMode{});
 	}
@@ -517,9 +517,9 @@ public:
 	LayerType IncrDecrOperator(Flag) { return IncrDecrOperator(Flag{}, DelayedJoint{}); }
 
 	template <joint_mode JointMode>
-	LayerType Incr(JointMode) { return IncrDecrOperator(ForwardFlag{}, JointMode{}); }
+	LayerType Incr(JointMode) { return IncrDecrOperator(ForwardMovement{}, JointMode{}); }
 	template <joint_mode JointMode>
-	LayerType Decr(JointMode) { return IncrDecrOperator(BackwardFlag{}, JointMode{}); }
+	LayerType Decr(JointMode) { return IncrDecrOperator(BackwardMovement{}, JointMode{}); }
 
 	LayerType Incr() { return Incr(DelayedJoint{}); }
 	LayerType Decr() { return Decr(DelayedJoint{}); }
@@ -618,7 +618,7 @@ public:
 	}
 	bool MatchPartially(const JBpos& jbp, RankType rank, LayerType intlayer) const
 	{
-		return MatchPartially(jbp, rank, intlayer, ForwardFlag{}, DelayedJoint{});
+		return MatchPartially(jbp, rank, intlayer, ForwardMovement{}, DelayedJoint{});
 	}
 
 	template <RankType Rank, direction_flag Flag>
@@ -636,9 +636,9 @@ public:
 		return JoinRecursively<Rank>(Flag{}, DelayedJoint{});
 	}
 	template <RankType Rank>
-	bool TryJoin() const { return TryJoin<Rank>(ForwardFlag{}); }
+	bool TryJoin() const { return TryJoin<Rank>(ForwardMovement{}); }
 	template <RankType Rank>
-	bool TryJoin(RankConstant<Rank>) const { return TryJoin<Rank>(ForwardFlag{}); }
+	bool TryJoin(RankConstant<Rank>) const { return TryJoin<Rank>(ForwardMovement{}); }
 
 	const ExternalTraverser& operator*() const { return *this; }
 	const ExternalTraverser* operator->() const { return this; }
@@ -661,10 +661,10 @@ public:
 	template <class Placeholder, direction_flag Flag>
 	decltype(auto) GetField(const Placeholder& ph, Flag) const { return GetField(ph, Flag{}, DelayedJoint{}); }
 	template <class Placeholder>
-	decltype(auto) GetField(const Placeholder& ph) const { return GetField(ph, ForwardFlag{}, DelayedJoint{}); }
+	decltype(auto) GetField(const Placeholder& ph) const { return GetField(ph, ForwardMovement{}, DelayedJoint{}); }
 
 	template <class Placeholder>
-	decltype(auto) operator[](const Placeholder& ph) const { return GetField(ph, ForwardFlag{}, DelayedJoint{}); }
+	decltype(auto) operator[](const Placeholder& ph) const { return GetField(ph, ForwardMovement{}, DelayedJoint{}); }
 
 protected:
 	template <class Placeholder, direction_flag Flag, joint_mode JointMode, std::integral ...Inds>
@@ -683,7 +683,7 @@ public:
 	template <class Placeholder, direction_flag Flag, std::integral ...Inds>
 	decltype(auto) GetField(const Placeholder& ph, Flag, Inds ...is) const { return GetField(ph, Flag{}, DelayedJoint{}, is...); }
 	template <class Placeholder, std::integral ...Inds>
-	decltype(auto) GetField(const Placeholder& ph, Inds ...is) const { return GetField(ph, ForwardFlag{}, DelayedJoint{}, is...); }
+	decltype(auto) GetField(const Placeholder& ph, Inds ...is) const { return GetField(ph, ForwardMovement{}, DelayedJoint{}, is...); }
 
 protected:
 	template <RankType Rank, direction_flag Flag, joint_mode JointMode>
@@ -763,17 +763,17 @@ public:
 	BindexType GetRow() const { return std::get<0>(m_internals).GetRow(); }
 	template <direction_flag Flag>
 	BindexType GetPos(LayerType layer, Flag) const { return GetPos_rec<(RankType)0>(layer, Flag{}, DelayedJoint{}); }
-	BindexType GetPos(LayerType layer) const { return GetPos(layer, ForwardFlag{}); }
+	BindexType GetPos(LayerType layer) const { return GetPos(layer, ForwardMovement{}); }
 
 	//std::min(trav layer, bpos.GetLayer())までを自身のposで初期化する。
 	//もしbpos.GetLayer() > trav layerの場合、余剰分は0で初期化する。
 	template <direction_flag Flag>
 	void GetBpos(Bpos& bpos, Flag) const { return GetBpos_rec<0_layer>(bpos, 0_layer, std::min(bpos.GetLayer(), GetTravLayer()), Flag{}, DelayedJoint{}); }
-	void GetBpos(Bpos& bpos) const { return GetBpos(bpos, ForwardFlag{}); }
+	void GetBpos(Bpos& bpos) const { return GetBpos(bpos, ForwardMovement{}); }
 
 	template <direction_flag Flag>
 	void GetJBpos(JBpos& jbp, Flag) const { GetJBpos_rec<(RankType)0>(jbp, Flag{}, DelayedJoint{}); }
-	void GetJBpos(JBpos& jbp) const { GetJBpos(jbp, ForwardFlag{}); }
+	void GetJBpos(JBpos& jbp) const { GetJBpos(jbp, ForwardMovement{}); }
 	//void ResetJBpos(JBpos& jbp) const { jbp.Init(MaxRank); ResetJBpos_rec<(RankType)0>(jbp); }
 
 protected:
@@ -810,7 +810,7 @@ public:
 	template <RankType Rank, direction_flag Flag>
 	bool Join(Flag) const { return Join(Flag{}, DelayedJoint{}); }
 	template <RankType Rank>
-	bool Join() const { return Join(ForwardFlag{}, DelayedJoint{}); }
+	bool Join() const { return Join(ForwardMovement{}, DelayedJoint{}); }
 
 protected:
 	//1位からRank位までを順にJoinする。
@@ -837,7 +837,7 @@ public:
 	template <RankType Rank, direction_flag Flag>
 	bool JoinRecursively(Flag) const { return JoinRecursively<Rank>(Flag{}, DelayedJoint{}); }
 	template <RankType Rank>
-	bool JoinRecursively() const { return JoinRecursively<Rank>(ForwardFlag{}); }
+	bool JoinRecursively() const { return JoinRecursively<Rank>(ForwardMovement{}); }
 
 private:
 	template <RankType Rank, direction_flag Flag>
@@ -849,7 +849,7 @@ private:
 		//Rank + 1のJoinが失敗した場合は次へ移動する。
 		//自身が末尾に達した場合も同様に上位の移動処理へ回す。
 		static_assert(Rank != 0);
-		constexpr bool IsForward = std::is_same_v<Flag, ForwardFlag>;
+		constexpr bool IsForward = std::is_same_v<Flag, ForwardMovement>;
 		if constexpr (Rank <= MaxRank)
 		{
 			//auto& j = this->GetJoint<Rank>();
@@ -991,14 +991,14 @@ public:
 
 	template <direction_flag Flag>
 	bool Assign(const ExternalTraverser_prompt& that, Flag) { return Base::Assign(that, Flag{}, PromptJoint{}); }
-	bool Assign(const ExternalTraverser_prompt& that) { return Base::Assign(that, ForwardFlag{}, PromptJoint{}); }
+	bool Assign(const ExternalTraverser_prompt& that) { return Base::Assign(that, ForwardMovement{}, PromptJoint{}); }
 
 	template <direction_flag Flag>
 	bool AssignPartially(const ExternalTraverser_prompt& that, Flag) { return Base::AssignPartially(that, Flag{}, PromptJoint{}); }
-	bool AssignPartially(const ExternalTraverser_prompt& that) { return Base::AssignPartially(that, ForwardFlag{}, PromptJoint{}); }
+	bool AssignPartially(const ExternalTraverser_prompt& that) { return Base::AssignPartially(that, ForwardMovement{}, PromptJoint{}); }
 
-	bool MoveForward(LayerType layer) { return Base::Move(layer, ForwardFlag{}, PromptJoint{}); }
-	bool MoveBackward(LayerType layer) { return Base::Move(layer, BackwardFlag{}, PromptJoint{}); }
+	bool MoveForward(LayerType layer) { return Base::Move(layer, ForwardMovement{}, PromptJoint{}); }
+	bool MoveBackward(LayerType layer) { return Base::Move(layer, BackwardMovement{}, PromptJoint{}); }
 
 	ExternalTraverser_prompt& operator++() { Base::Incr(PromptJoint{}); return *this; }
 	ExternalTraverser_prompt& operator--() { Base::Decr(PromptJoint{}); return *this; }
@@ -1015,24 +1015,24 @@ public:
 	template <class Placeholder, direction_flag Flag>
 	decltype(auto) GetField(const Placeholder& ph, Flag) const { return Base::GetField(ph, Flag{}, PromptJoint{}); }
 	template <class Placeholder>
-	decltype(auto) GetField(const Placeholder& ph) const { return Base::GetField(ph, ForwardFlag{}, PromptJoint{}); }
+	decltype(auto) GetField(const Placeholder& ph) const { return Base::GetField(ph, ForwardMovement{}, PromptJoint{}); }
 
 	//template <class Placeholder, direction_flag Flag>
 	//decltype(auto) operator[](const Placeholder& ph, Flag) const { return Base::GetField(ph, Flag{}, PromptJoint{}); }
 	template <class Placeholder>
-	decltype(auto) operator[](const Placeholder& ph) const { return Base::GetField(ph, ForwardFlag{}, PromptJoint{}); }
+	decltype(auto) operator[](const Placeholder& ph) const { return Base::GetField(ph, ForwardMovement{}, PromptJoint{}); }
 
 	template <class Placeholder, direction_flag Flag, std::integral ...Indices>
 	decltype(auto) GetField(const Placeholder& ph, Flag, Indices ...is) const { return Base::GetField(ph, Flag{}, PromptJoint{}, is...); }
 	template <class Placeholder, std::integral ...Indices>
-	decltype(auto) GetField(const Placeholder& ph, Indices ...is) const { return Base::GetField(ph, ForwardFlag{}, PromptJoint{}, is...); }
+	decltype(auto) GetField(const Placeholder& ph, Indices ...is) const { return Base::GetField(ph, ForwardMovement{}, PromptJoint{}, is...); }
 
 	template <direction_flag Flag>
 	BindexType GetPos(LayerType layer, Flag) const { return Base::template GetPos_rec<(RankType)0>(layer, Flag{}, PromptJoint{}); }
-	BindexType GetPos(LayerType layer) const { return Base::template GetPos_rec<(RankType)0>(layer, ForwardFlag{}, PromptJoint{}); }
+	BindexType GetPos(LayerType layer) const { return Base::template GetPos_rec<(RankType)0>(layer, ForwardMovement{}, PromptJoint{}); }
 	template <direction_flag Flag>
 	void GetJBpos(JBpos& jbp, Flag) const { Base::template GetJBpos_rec<(RankType)0>(jbp, Flag{}, PromptJoint{}); }
-	void GetJBpos(JBpos& jbp) const { Base::template GetJBpos_rec<(RankType)0>(jbp, ForwardFlag{}, PromptJoint{}); }
+	void GetJBpos(JBpos& jbp) const { Base::template GetJBpos_rec<(RankType)0>(jbp, ForwardMovement{}, PromptJoint{}); }
 
 };
 

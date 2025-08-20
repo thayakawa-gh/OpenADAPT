@@ -43,6 +43,16 @@ std::tuple<Args...> MakeTemporaryTuple(Args&& ...args)
 {
 	return std::tuple<Args...>(std::forward<Args>(args)...);
 }
+// tupleの中身を全てコピーし、参照等はdecayする。
+// Argsがrvalue referenceでもlvalue referenceでも無視してコピーする。
+template <class ...Args>
+std::tuple<std::decay_t<Args>...> MakeDecayedCopy(const std::tuple<Args...>& t)
+{
+	return std::apply([](const auto& ...args)
+	{
+		return std::tuple<std::decay_t<Args>...>(args...);
+	}, t);
+}
 
 template<class... Ts> struct Overload : Ts... { using Ts::operator()...; };
 template<class... Ts> Overload(Ts...) -> Overload<Ts...>;

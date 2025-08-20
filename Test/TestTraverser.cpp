@@ -84,7 +84,7 @@ void TestTraverser(Container& tree, const std::vector<Class>& cls,
 				if constexpr (joined_container<Container>)
 				{
 					constexpr RankType MaxRank = std::decay_t<decltype(tree)>::MaxRank;
-					trav.template TryJoin<MaxRank>(BackwardFlag{});
+					trav.template TryJoin<MaxRank>(BackwardMovement{});
 				}
 
 				EXPECT_EQ(i, trav.GetPos(0));
@@ -159,7 +159,7 @@ void TestTraverser(Container& tree, const std::vector<Class>& cls,
 				if constexpr (joined_container<Container>)
 				{
 					constexpr RankType MaxRank = std::decay_t<decltype(tree)>::MaxRank;
-					trav.template TryJoin<MaxRank>(BackwardFlag{});
+					trav.template TryJoin<MaxRank>(BackwardMovement{});
 				}
 				EXPECT_EQ(i, trav.GetPos(0));
 				EXPECT_EQ(j, trav.GetPos(1));

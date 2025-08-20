@@ -8,9 +8,9 @@ find_package(Matplot++ REQUIRED)
 find_package(unordered_dense)
 
 add_executable(${PROJECT_NAME}
-	"TestLayerInfo.cpp" "TestContainer.cpp"
+	"TestLayerInfo.cpp" "TestTree.cpp"
 	"TestEvaluate.cpp" "TestExtract.cpp" "TestShow.cpp" "TestFilter.cpp"
-	"TestTraverser.cpp" "TestUserFunc.cpp" "TestPlot.cpp" "TestMatrix.cpp" "TestJoint.cpp")
+	"TestTraverser.cpp" "TestUserFunc.cpp" "TestPlot.cpp" "TestMatrix.cpp" "TestJoint.cpp" "TestHist.cpp")
 
 if(${unordered_dense_FOUND})
 	message("unordered_dense found")

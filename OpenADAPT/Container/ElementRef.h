@@ -271,6 +271,13 @@ public:
 	{
 		m_elements->Resize(GetHierarchy(), GetLayer(), size);
 	}
+	template <size_t Dim>
+	void Resize(const BinBaseType* oldmin, const BinBaseType* oldmax,
+		const Bin<Dim>& newmin, const Bin<Dim>& newmax)
+	{
+		m_elements->Resize(GetHierarchy(), GetLayer(), oldmin, oldmax, newmin, newmax);
+	}
+
 	template <class ...Args>
 		requires IsNonConst
 	void Push(Args&& ...args) const
@@ -428,10 +435,17 @@ class ElementRef_impl
 	template <class Hierarchy__, template <class> class Qualifier_, class LayerSD_>
 	friend class ElementListRef_impl;
 	friend class ElementIterator_impl<Hierarchy_, Qualifier>;
-	using ElementBlockPolicy = std::conditional_t<s_hierarchy<Hierarchy_>, SElementBlockPolicy, DElementBlockPolicy>;
+
+	template <class Container_, class Hierarchy_, class ElementBlockPolicy_>
+	friend class Tree_base;
+	template <class DimType, class Container_, class Hierarchy_, class ElementBlockPolicy_>
+	friend class Hist_base;
 
 	template <class Range> friend class CttiExtractor;
 	template <class Range> friend class RttiExtractor;
+
+	using ElementBlockPolicy = std::conditional_t<s_hierarchy<Hierarchy_>, SElementBlockPolicy, DElementBlockPolicy>;
+
 public:
 
 	using Hierarchy = Hierarchy_;
@@ -626,6 +640,13 @@ public:
 	{
 		return GetLowerElements().Resize(size);
 	}
+	template <size_t Dim>
+	void Resize(const BinBaseType* oldmin, const BinBaseType* oldmax,
+				const Bin<Dim>& newmin, const Bin<Dim>& newmax)
+	{
+		return GetLowerElements().Resize(oldmin, oldmax, newmin, newmax);
+	}
+
 	template <class ...Args>
 		requires IsNonConst
 	void Push(Args&& ...args)
@@ -637,6 +658,11 @@ public:
 	void Push_unsafe(Args&& ...args)
 	{
 		return GetLowerElements().Push_unsafe(std::forward<Args>(args)...);
+	}
+	void PushDefaultElement() const
+		requires IsNonConst
+	{
+		return GetLowerElements().PushDefaultElement();
 	}
 	void Pop() const
 		requires IsNonConst
@@ -661,6 +687,50 @@ public:
 			m_block, std::forward<Args>(args)...);
 	}
 
+	template <class ...Args>
+		requires IsNonConst && (!element_iterator<Args> && ...)
+	void Insert(BindexType index, Args&& ...args) const
+	{
+		GetLowerElements().Insert(index, std::forward<Args>(args)...);
+	}
+	template <class ...Args>
+		requires IsNonConst && (!element_iterator<Args> && ...)
+	void Insert_unsafe(BindexType index, Args&& ...args) const
+	{
+		GetLowerElements().Insert_unsafe(index, std::forward<Args>(args)...);
+	}
+	void Erase(BindexType index, BindexType size) const
+		requires IsNonConst
+	{
+		GetLowerElements().Erase(index, size);
+	}
+	//[from, end)の要素をindexの位置に挿入する。
+	//[from, end)の要素はコピーされるのみで、変更等はされない。
+	template <template <class> class SrcQualifier>
+		requires IsNonConst
+	void Insert(BindexType index, const ElementIterator_impl<Hierarchy_, SrcQualifier>& from, const ElementIterator_impl<Hierarchy_, SrcQualifier>& end) const
+	{
+		GetLowerElements().Insert(index, from, end);
+	}
+	//[from, end)の要素をindexの位置に挿入する。
+	//[from, end)の要素はムーブコンストラクタで移譲された状態となる。
+	void MoveInsert(BindexType index, const ElementIterator_impl<Hierarchy_, std::type_identity_t>& from, const ElementIterator_impl<Hierarchy_, std::type_identity_t>& end) const
+		requires IsNonConst
+	{
+		GetLowerElements().MoveInsert(index, from, end);
+	}
+
+	template <template <class> class SrcQualifier>
+		requires IsNonConst
+	void Concat(const ElementRef_impl<Hierarchy_, SrcQualifier, LayerSD>& src) const
+	{
+		GetLowerElements().Concat(src.GetLowerElements());
+	}
+	void MoveConcat(const ElementRef_impl<Hierarchy_, std::type_identity_t, LayerSD>& src) const
+		requires IsNonConst
+	{
+		GetLowerElements().MoveConcat(src.GetLowerElements());
+	}
 	//const Hierarchy* GetHierarchy() const { return m_hierarchy.value(); }
 	//LayerType GetLayer() const requires (!HasStaticLayer) { return m_layer; }
 	//static constexpr LayerType GetLayer() requires HasStaticLayer { return LayerSD{}; }
@@ -774,6 +844,8 @@ private:
 	static consteval HierarchyRef GetHierarchy() requires s_hierarchy<Hierarchy> { return HierarchyRef{}; }
 	LayerType GetLayer() const requires (!HasStaticLayer) { return m_layer; }
 	static consteval LayerSD GetLayer() requires HasStaticLayer { return {}; }
+
+	char* GetBlock() requires IsNonConst { return m_block; }
 
 	Qualifier<char>* m_block = nullptr;
 	[[no_unique_address]] LayerSD m_layer;//LayerSDはLayerTypeまたはLayerConstant。

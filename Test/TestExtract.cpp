@@ -184,7 +184,7 @@ void TestExtract(Container& s, const std::vector<Class>& clses, Layer0 l0, Layer
 		//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
 		auto [exam, math, jpn, eng, sci, soc] = l2;
 
-		auto e = s | Extract(flags::all_fields, math + jpn + eng + sci + soc);
+		auto e = s | Extract(opts::all_fields, math + jpn + eng + sci + soc);
 		auto [egrade, eclass_] = e.GetPlaceholders("grade"_fld, "class_"_fld);
 		auto [enumber, ename] = e.GetPlaceholders("number"_fld, "name"_fld);
 		auto [eexam, emath, ejpn, eeng, esci, esoc, fld0] = e.GetPlaceholders("exam"_fld, "math"_fld, "japanese"_fld, "english"_fld, "science"_fld, "social"_fld, "fld0"_fld);
@@ -218,7 +218,7 @@ void TestExtract(Container& s, const std::vector<Class>& clses, Layer0 l0, Layer
 		//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
 		auto [exam, math, jpn, eng, sci, soc] = l2;
 
-		auto e = s | Filter(soc < 60) | Extract(flags::all_fields, math + jpn + eng + sci + soc);
+		auto e = s | Filter(soc < 60) | Extract(opts::all_fields, math + jpn + eng + sci + soc);
 		auto [egrade, eclass_] = e.GetPlaceholders("grade"_fld, "class_"_fld);
 		auto [enumber, ename] = e.GetPlaceholders("number"_fld, "name"_fld);
 		auto [eexam, emath, ejpn, eeng, esci, esoc, fld0] = e.GetPlaceholders("exam"_fld, "math"_fld, "japanese"_fld, "english"_fld, "science"_fld, "social"_fld, "fld0"_fld);
