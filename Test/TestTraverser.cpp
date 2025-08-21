@@ -211,7 +211,7 @@ TEST_F(Aggregator, DJoinedContainer_Traverser)
 {
 	auto a = m_dtree.GetPlaceholder("number").i16();//MakeHashmapはキーの型を特定する必要があるため、
 	auto b = m_dtree.GetPlaceholder("name").str();//これらのPlaceholderは予め型情報を与えなければならない。
-	auto hash = m_dtree | MakeHashtable(a, b);
+	auto hash = m_dtree | Hash(a, b);
 
 	auto jtree = Join(m_dtree, 1_layer, 1_layer, m_dtree);
 	//0層要素。学年とクラス。

@@ -34,6 +34,8 @@ class Hist_base : public Tree_base<Container_, Hierarchy_, ElementBlockPolicy_>
 {
 public:
 	using Base = Tree_base<Container_, Hierarchy_, ElementBlockPolicy_>;
+	using TopElementRef = typename Base::TopElementRef;
+	using TopConstElementRef = typename Base::TopConstElementRef;
 	using ElementRef_0 = typename Base::ElementRef_0;
 	using ConstElementRef_0 = typename Base::ConstElementRef_0;
 	using ElementRef_1 = typename Base::template ElementRefF<1>;
@@ -60,7 +62,7 @@ private:
 	template <class Attr>
 	void SetAttr_impl(const std::vector<Attr>& attr)
 	{
-		auto top = Base::GetTopElement();
+		TopElementRef top = Base::GetTopElement();
 		const auto& top_phs = Base::GetPlaceholdersIn(-1);
 		for (size_t i = 0; i < m_dim; ++i)
 		{
@@ -70,10 +72,10 @@ private:
 			auto& max_ph = top_phs[i + m_dim];
 			auto& wbin_ph = top_phs[i + m_dim * 2];
 			auto& cbin_ph = top_phs[i + m_dim * 3];
-			top.ConstructFieldFrom<FieldType::I32>(min_ph, std::numeric_limits<BinBaseType>::max());
-			top.ConstructFieldFrom<FieldType::I32>(max_ph, std::numeric_limits<BinBaseType>::min());
-			top.ConstructFieldFrom<FieldType::F64>(wbin_ph, attr[i].wbin);
-			top.ConstructFieldFrom<FieldType::F64>(cbin_ph, attr[i].cbin);
+			top.template ConstructFieldFrom<FieldType::I32>(min_ph, std::numeric_limits<BinBaseType>::max());
+			top.template ConstructFieldFrom<FieldType::I32>(max_ph, std::numeric_limits<BinBaseType>::min());
+			top.template ConstructFieldFrom<FieldType::F64>(wbin_ph, attr[i].wbin);
+			top.template ConstructFieldFrom<FieldType::F64>(cbin_ph, attr[i].cbin);
 		}
 	}
 public:
@@ -142,7 +144,7 @@ public:
 		UpdateMinMax(min, max);
 	}
 	template <size_t Dim>
-	void Rebin(const std::array<double, Dim>& wbin)
+	void Rebin(const std::array<double, Dim>&)
 	{
 		HIST_ASSERT(Dim)
 

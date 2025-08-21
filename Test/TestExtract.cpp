@@ -279,7 +279,7 @@ TEST_F(Aggregator, DJoinedContainer_Extract_1)
 {
 	auto a = m_dtree.GetPlaceholder("number").i16();//MakeHashmapはキーの型を特定する必要があるため、
 	auto b = m_dtree.GetPlaceholder("name").str();//これらのPlaceholderは予め型情報を与えなければならない。
-	auto hash = m_dtree | MakeHashtable(a, b);
+	auto hash = m_dtree | Hash(a, b);
 
 	auto jtree = Join(m_dtree, 1_layer, 1_layer, m_dtree);
 	//0層要素。学年とクラス。
@@ -362,7 +362,7 @@ TEST_F(Aggregator, DJoinedTable_Extract)
 		auto a = t.GetPlaceholder("number").i16();//MakeHashmapはキーの型を特定する必要があるため、
 		auto b = t.GetPlaceholder("name").str();//これらのPlaceholderは予め型情報を与えなければならない。
 		auto c = t.GetPlaceholder("exam").i08();//これらのPlaceholderは予め型情報を与えなければならない。
-		return t | MakeHashtable(a, b, c);
+		return t | Hash(a, b, c);
 	}();
 	jt.SetKeyJoint<1>(std::move(hash), number, name, exam0);
 
@@ -390,7 +390,7 @@ TEST_F(Aggregator, TryJoinInEvaluator)
 	auto hash = [&dtree_even]()
 	{
 		auto [number, name] = dtree_even.GetPlaceholders("number", "name");
-		return dtree_even | MakeHashtable(number.i16(), name.str());
+		return dtree_even | Hash(number.i16(), name.str());
 	}();
 	auto jt = Join(m_dtree, 1_layer, 1_layer, dtree_even);
 	auto [jgrade, jclass, jnumber, jname] = jt.GetPlaceholders<0>("grade", "class_", "number", "name");

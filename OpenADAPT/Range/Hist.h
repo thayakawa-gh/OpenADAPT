@@ -136,7 +136,7 @@ class ToHistogram
 				if constexpr (typed_node_or_placeholder<decltype(np)> || ctti_node_or_placeholder<decltype(np)>) return np.Evaluate(t);
 				else return np.Evaluate(t, type);
 			};
-			auto set_var = [&t, &back, &eval](const auto& ph, auto&& np) -> int32_t
+			auto set_var = [&back, &eval](const auto& ph, auto&& np) -> int32_t
 			{
 				// !AllStatなので出力はDHistなのだが、
 				// npの方はCttiやTypedの可能性があるので、evalで分岐する必要がある。
@@ -243,10 +243,6 @@ public:
 		}
 		else
 		{
-			auto dup_tuple = []<class ...T, size_t ...I>(const std::tuple<T...>&t, std::index_sequence<I...>)
-			{
-				return std::make_tuple(std::get<I>(t)...);
-			};
 			std::vector<HistRes> bufs(nth);
 			std::vector<std::thread> threads;
 			threads.reserve(nth);
@@ -323,7 +319,6 @@ auto AddDefaultName(AxisArgs<NP>&& ax) { return AxisArgs{ std::move(ax.axis).nam
 template <similar_to_xt<std::tuple> TupleAxes, similar_to_xt<std::tuple> TupleVars, size_t ...Is, size_t ...Js>
 auto Hist_impl2(TupleAxes&& axes, TupleVars&& vars, std::index_sequence<Is...>, std::index_sequence<Js...>)
 {
-	using Container = typename eval::detail::ExtractContainer<decltype(std::get<1>(std::get<Is>(axes).axis))..., decltype(std::get<1>(std::get<Js>(vars)))...>::Container;
 	// 全てのaxes、varsがstatistically_namedかつCttiであれば、出力はSHistになる。
 	// Histの場合は階層構造が固定されているため、原理的にはCttiでなくTypedでもSHistにできるのだが、
 	// Extractと仕様を揃えたほうがいいような気がする。

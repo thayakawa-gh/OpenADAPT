@@ -220,7 +220,7 @@ public:
 	}
 
 	template <LayerType Layer>
-	static consteval auto GetPlaceholdersIn(LayerConstant<Layer>)
+	static constexpr auto GetPlaceholdersIn(LayerConstant<Layer>)
 	{
 		return std::get<Layer + 1_layer>(PlaceholderList);
 	}

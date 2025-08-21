@@ -436,9 +436,9 @@ class ElementRef_impl
 	friend class ElementListRef_impl;
 	friend class ElementIterator_impl<Hierarchy_, Qualifier>;
 
-	template <class Container_, class Hierarchy_, class ElementBlockPolicy_>
+	template <class Container_, class Hierarchy__, class ElementBlockPolicy_>
 	friend class Tree_base;
-	template <class DimType, class Container_, class Hierarchy_, class ElementBlockPolicy_>
+	template <class DimType, class Container_, class Hierarchy__, class ElementBlockPolicy_>
 	friend class Hist_base;
 
 	template <class Range> friend class CttiExtractor;
