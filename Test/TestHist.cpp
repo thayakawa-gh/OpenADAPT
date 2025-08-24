@@ -89,7 +89,7 @@ void TestHistFromTree(const Tree& tree, const std::vector<Class>& cls)
 		ADAPT_GET_PLACEHOLDERS(tree, english, math, name, exam);
 		auto fmath = cast_f64(math);
 		auto feng = cast_f64(english);
-		auto h = tree | Hist(ADAPT_NAMED_AXES(fmath, 5., feng, 5.), ADAPT_NAMED_VARS(name, exam));
+		auto h = tree | ADAPT_HIST(fmath, 5., 0., feng, 5., 0., name, exam);
 		EXPECT_EQ(h.GetSize(0_layer), 441);
 		EXPECT_EQ(h.GetSize(1_layer), 480);
 		return h;

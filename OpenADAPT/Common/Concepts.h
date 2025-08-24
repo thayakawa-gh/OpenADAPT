@@ -143,6 +143,7 @@ template <class T>
 concept evaluation_proxy = anything_typed<T> && requires(std::remove_cvref_t<T> t)
 {
 	{ t.template as<FieldType::I32>() };
+	{ t.GetType() } -> std::same_as<FieldType>;
 };
 
 namespace detail
@@ -265,7 +266,11 @@ template <class T>
 concept named_node_or_placeholder = s_named_node_or_placeholder<T> || d_named_node_or_placeholder<T>;
 
 template <class T>
+concept named_or_anon_node_or_placeholder = node_or_placeholder<T> || named_node_or_placeholder<T>;
+
+template <class T>
 concept s_ctti_named_node_or_placeholder = s_named_node_or_placeholder<T> && detail::IsCttiNamedNodeOrPlaceholder<std::decay_t<T>>::value;
+
 
 template <class T>
 struct GetNodeType { using Type = eval::CttiConstNode<T>; };

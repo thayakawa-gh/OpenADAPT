@@ -194,6 +194,14 @@ public:
 		}
 		return true;
 	}
+	template <size_t Dim>
+	adapt::Bpos BinToBpos(const Bin<Dim>& bin) const
+	{
+		HIST_ASSERT(Dim)
+		const BinBaseType* min_list = GetMinList();
+		const BinBaseType* max_list = GetMaxList();
+		return Bpos{ BinToIndex<Dim>{}(bin , min_list, max_list) };
+	}
 
 	// 最初のm_dim個の要素はヒストグラムの軸の値に用いられる。
 	template <class ...Axes, class ...Vars>

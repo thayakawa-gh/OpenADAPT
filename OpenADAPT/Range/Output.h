@@ -88,6 +88,32 @@ struct std::formatter<adapt::JBpos> : public std::formatter<adapt::Bpos>
 		return out;
 	}
 };
+template <size_t Dim>
+struct std::formatter<adapt::Bin<Dim>> : public std::formatter<adapt::BinBaseType>
+{
+	using Base = std::formatter<adapt::BinBaseType>;
+	template <class Out, class Char>
+	auto format(const adapt::Bin<Dim>& bin, std::basic_format_context<Out, Char>& fc) const
+	{
+		static_assert(Dim > 0, "Dim must be greater than 0.");
+		auto out = fc.out();
+		*out = '[';
+		++out;
+		fc.advance_to(out);
+		out = Base::format(bin[0], fc);
+
+		for (size_t ax = 1; ax < Dim; ++ax)
+		{
+			*out = ',';
+			++out;
+			fc.advance_to(out);
+			out = Base::format(bin[ax], fc);
+		}
+		*out = ']';
+		++out;
+		return out;
+	}
+};
 
 // EvalProxyやFieldRefなど、as<FieldType>()で値を取得できるもの。
 template <adapt::evaluation_proxy Proxy>

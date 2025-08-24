@@ -396,11 +396,16 @@ protected:
 		else if constexpr (!std::same_as<Bpos_, std::nullptr_t>) b = trav->AssignPartially(bpos);
 		else trav->MoveToBegin();
 
-		//ここでbがfalseということはありえない、と言いたいが、絶対ではない気がする。
+		//ここでbがfalseということは、走査層が空であるか、下記のようにJoinに失敗した場合。
 		//例えば、Rank==0までが有効なouterによって、ujoint==fixedであるようなRank==1のTraverserを走査するとき。
 		//Rank==0へのアクセス時点では問題なくても、上のAssignPartiallyでRank==1にJoinして初めて失敗する可能性はある。
-		//この場合、この階層関数そのものの処理をキャンセルする。
-		if (!b) throw NoElements();
+		//この場合、上昇関数なら要素数0として結果を返す。
+		//is関数の場合、そもそも戻り値層が同一である以上、要素数0で計算が実行されるはずはない。
+		if (!b)
+		{
+			if constexpr (Func::IsRaisingFunc) return m_func.GetResult();
+			else throw NoElements();
+		}
 
 		[[maybe_unused]] auto eval_cond = []([[maybe_unused]] const Cond& cond, [[maybe_unused]] const Trav* trav)
 		{

@@ -239,7 +239,7 @@ public:
 	const RetType& Evaluate(const ConstTraverser& t) const
 		requires HasBuffer
 	{
-		m_func.Exec(this->m_buffer, *this, t);
+		m_func.ExecWithBuf(this->m_buffer, *this, t);
 		return this->m_buffer;
 	}
 

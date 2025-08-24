@@ -133,16 +133,31 @@ class ToHistogram
 			typename Hist::ElementRef_1 back;
 			auto eval = [&t](auto&& np, [[maybe_unused]] auto type)
 			{
-				if constexpr (typed_node_or_placeholder<decltype(np)> || ctti_node_or_placeholder<decltype(np)>) return np.Evaluate(t);
-				else return np.Evaluate(t, type);
+				if constexpr (typed_node_or_placeholder<decltype(np)> || ctti_node_or_placeholder<decltype(np)>)
+				{
+					return np.Evaluate(t);
+				}
+				else
+					return np.Evaluate(t, type);
 			};
-			auto set_var = [&back, &eval](const auto& ph, auto&& np) -> int32_t
+			auto set_var = [&back, &t](const auto& ph, auto&& np) -> int32_t
 			{
 				// !AllStatなので出力はDHistなのだが、
-				// npの方はCttiやTypedの可能性があるので、evalで分岐する必要がある。
-#define CASE(T) back[ph].template as_unsafe<T>() = eval(np, Number<T>{});
-				ADAPT_SWITCH_FIELD_TYPE(np.GetType(), CASE, throw MismatchType("");)
+				// npの方はCttiやTypedの可能性があるので、分岐する必要がある。
+				// この分岐はevalではできない。なぜなら、
+				// switch文中でcase I08: back[ph].as_unsafe<I08>() = ...;のように展開されたとき、
+				// evalの戻り値がstd::stringだったりするとエラーになるため。
+				if constexpr (typed_node_or_placeholder<decltype(np)> || ctti_node_or_placeholder<decltype(np)>)
+				{
+					constexpr FieldType type = np.GetType();
+					back[ph].template as_unsafe<type>() = np.Evaluate(t);
+				}
+				else
+				{
+#define CASE(T) back[ph].template as_unsafe<T>() = np.Evaluate(t, Number<T>{});
+					ADAPT_SWITCH_FIELD_TYPE(np.GetType(), CASE, throw MismatchType("");)
 #undef CASE
+				}
 					return 0;
 			};
 			try
@@ -304,8 +319,6 @@ public:
 	}
 };
 
-
-
 template <size_t I, named_node_or_placeholder NP>
 AxisArgs<NP>&& AddDefaultName(AxisArgs<NP>&& ax) { return std::move(ax); }
 template <size_t I, named_node_or_placeholder NP>
@@ -325,7 +338,7 @@ auto Hist_impl2(TupleAxes&& axes, TupleVars&& vars, std::index_sequence<Is...>, 
 	using DAxes = std::remove_cvref_t<TupleAxes>;
 	using DVars = std::remove_cvref_t<TupleVars>;
 	constexpr bool all_stat =
-		(s_ctti_named_node_or_placeholder<decltype(std::tuple_element_t<Is, DAxes>::axis)> && ...) &&
+		(s_ctti_named_node_or_placeholder<decltype(std::remove_cvref_t<std::tuple_element_t<Is, DAxes>>::axis)> && ...) &&
 		(s_ctti_named_node_or_placeholder<std::tuple_element_t<Js, DVars>> && ...);
 	return RangeConversion<ToHistogram, std::bool_constant<all_stat>, TupleAxes, TupleVars>
 		(std::bool_constant<all_stat>{}, axes, vars);
@@ -334,9 +347,11 @@ auto Hist_impl2(TupleAxes&& axes, TupleVars&& vars, std::index_sequence<Is...>, 
 template <similar_to_xt<std::tuple> TupleAxes, similar_to_xt<std::tuple> TupleVars, size_t ...Is, size_t ...Js>
 auto Hist_impl(TupleAxes&& axes, TupleVars&& vars, std::index_sequence<Is...> is, std::index_sequence<Js...> js)
 {
+	// Hist_impl2に送るときは、std::tupleのrvalue refを外して値に変換しておく。
+	// 受け取った引数が一時変数だった場合に、寿命が尽きてしまうのを避けるために。
 	return Hist_impl2(
-		std::make_tuple(AddDefaultName<Is>(std::get<Is>(axes))...),
-		std::make_tuple(AddDefaultName<Js>(std::get<Js>(vars))...), is, js);
+		MakeTemporaryTuple(AddDefaultName<Is>(std::get<Is>(std::forward<TupleAxes>(axes)))...),
+		MakeTemporaryTuple(AddDefaultName<Js>(std::get<Js>(std::forward<TupleVars>(vars)))...), is, js);
 }
 
 }
@@ -345,12 +360,57 @@ template <similar_to_xt<std::tuple> TupleAxes, similar_to_xt<std::tuple> TupleVa
 auto Hist(TupleAxes&& axes, TupleVars&& vars)
 {
 	return detail::Hist_impl(std::forward<TupleAxes>(axes), std::forward<TupleVars>(vars),
-							 std::make_index_sequence<std::tuple_size_v<TupleAxes>>{}, std::make_index_sequence<std::tuple_size_v<TupleVars>>{});
+							 std::make_index_sequence<std::tuple_size_v<std::remove_cvref_t<TupleAxes>>>{},
+							 std::make_index_sequence<std::tuple_size_v<std::remove_cvref_t<TupleVars>>>{});
 }
 template <similar_to_xt<AxisArgs> ...Axes>
 auto Hist(Axes&& ...axes)
 {
 	return Hist(std::forward_as_tuple(std::forward<Axes>(axes)...), std::make_tuple());
+}
+
+namespace detail
+{
+template <similar_to_xt<std::tuple> AxesTuple, named_or_anon_node_or_placeholder NP, named_or_anon_node_or_placeholder ...Args>
+auto Hist_impl(AxesTuple&& axes, NP&& np, double wbin, Args&& ...args)
+{
+	// AxisArgsの寿命が尽きるとaxes2の中身が空になってしまうので、ここはforward_as_tupleは使わずmake_tuple。
+	auto axes2 = std::tuple_cat(std::forward<AxesTuple>(axes), std::make_tuple(AxisArgs(std::forward<NP>(np), wbin)));
+	// argsの残りはextra fieldsなので、Histにわたす。
+	return Hist(std::move(axes2), std::forward_as_tuple(std::forward<Args>(args)...));
+}
+template <similar_to_xt<std::tuple> AxesTuple, named_or_anon_node_or_placeholder NP, named_or_anon_node_or_placeholder ...Args>
+auto Hist_impl(AxesTuple&& axes, NP&& np, double wbin, double cbin, Args&& ...args)
+{
+	// AxisArgsの寿命が尽きるとaxes2の中身が空になってしまうので、ここはforward_as_tupleは使わずmake_tuple。
+	auto axes2 = std::tuple_cat(std::forward<AxesTuple>(axes), std::make_tuple(AxisArgs(std::forward<NP>(np), wbin, cbin)));
+	// argsの残りはextra fieldsなので、Histにわたす。
+	return Hist(std::move(axes2), std::forward_as_tuple(std::forward<Args>(args)...));
+}
+template <similar_to_xt<std::tuple> AxesTuple, named_or_anon_node_or_placeholder NP, named_or_anon_node_or_placeholder Next, class ...Args>
+	requires (std::convertible_to<Args, double> || ...)
+auto Hist_impl(AxesTuple&& axes, NP&& np, double wbin, Next&& next, Args&& ...args)
+{
+	// AxisArgsの寿命が尽きるとaxes2の中身が空になってしまうので、ここはforward_as_tupleは使わずmake_tuple。
+	auto axes2 = std::tuple_cat(std::forward<AxesTuple>(axes), std::make_tuple(AxisArgs(std::forward<NP>(np), wbin)));
+	// argsの中にはまだdouble類似型が残っている、つまりaxesに渡すべきものが残っている。
+	return Hist_impl(std::move(axes2), std::forward<Next>(next), std::forward<Args>(args)...);
+}
+template <similar_to_xt<std::tuple> AxesTuple, named_or_anon_node_or_placeholder NP, named_or_anon_node_or_placeholder Next, class ...Args>
+	requires (std::convertible_to<Args, double> || ...)
+auto Hist_impl(AxesTuple&& axes, NP&& np, double wbin, double cbin, Next&& next, Args&& ...args)
+{
+	// AxisArgsの寿命が尽きるとaxes2の中身が空になってしまうので、ここはforward_as_tupleは使わずmake_tuple。
+	auto axes2 = std::tuple_cat(std::forward<AxesTuple>(axes), std::make_tuple(AxisArgs(std::forward<NP>(np), wbin, cbin)));
+	// argsの中にはまだdouble類似型が残っている、つまりaxesに渡すべきものが残っている。
+	return Hist_impl(std::move(axes2), std::forward<Next>(next), std::forward<Args>(args)...);
+}
+}
+template <named_or_anon_node_or_placeholder NP, class ...Args>
+	requires ((named_or_anon_node_or_placeholder<Args> || std::convertible_to<Args, double>) && ...)
+auto Hist(NP&& np, double wbin, Args&& ...args)
+{
+	return detail::Hist_impl(std::make_tuple(), std::forward<NP>(np), wbin, std::forward<Args>(args)...);
 }
 
 }

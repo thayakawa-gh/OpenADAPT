@@ -735,6 +735,16 @@ class ExtractorRelay
 	//
 };
 
+// 無名のnodeかplaceholderに対しては与えられた名前を付与し、そうでない場合は何もしない。
+// ADAPT_EXTRACTやADAPT_HISTで、明示的に名前を与えるか否かを識別したり、axisのdouble型引数に名前を与えないよう分岐するための処理。
+template <class T, StaticChar Name>
+decltype(auto) AddNameIfNP(T&& t, StaticString<Name>)
+{
+	if constexpr (node_or_placeholder<T>)
+		return std::forward<T>(t).named(StaticString<Name>{});
+	else
+		return std::forward<T>(t);
+}
 
 template <size_t I, named_node_or_placeholder NP>
 NP&& AddDefaultName(NP&& np) { return std::forward<NP>(np); }
