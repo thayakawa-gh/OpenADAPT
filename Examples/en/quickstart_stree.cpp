@@ -1,7 +1,6 @@
 #include <format>
 #include <iostream>
 #include <OpenADAPT/ADAPT.h>
-#include <matplot/matplot.h>
 
 using namespace adapt::lit;
 
@@ -303,6 +302,35 @@ void QuickstartSTree()
 
 	//If no _fld literal names are used, the result of Extract will be a DTree, because the tree structure is not determined statically.
 	adapt::DTree extracted_dtree = usa | Filter(area > 500.) | Extract(city.named("city"), (population / area).named("population_density"));
+
+	std::cout << std::endl;
+
+
+
+	std::cout << "------Hist------" << std::endl;
+	// Create a SHist by binning the data in the STree.
+	// The following code creates a 2-dimensional SHist with city population and area as the x-y axes.
+	// The x-axis bin width is 500,000 and the center is 0.
+	// The y-axis bin width is 200. In this case the y-axis center is not specified, so it is set to 0. by default.
+	// "city" at the end is not used as an axis, but is used as an additional field.
+	// Note that the type of the axis is required to be double.
+	auto hist = usa | Hist(cast_f64(population), 500000., 0., cast_f64(area), 200., city);
+	hist.ShowHierarchy();
+	// Layer[-1] { { "min0", int } { "min1", int } { "max0", int } { "max1", int } { "wbin0", double } { "wbin1", double } { "cbin0", double } { "cbin1", double } }
+	// Layer[ 0] { { "ibin0", int } { "ibin1", int } }
+	// Layer[ 1] { { "axis0", double } { "axis1", double } { "fld0", class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > } }
+
+	// The details of the SHist are described in "quickstart_shist.cpp".
+
+	auto fpopulation = cast_f64(population); // Convert to F64 for histogram.
+	auto farea = cast_f64(area); // Convert to F64 for histogram.
+	// You can specity the names of the axes and the additional fields in the same way as Extract.
+	auto hist2 = usa | Hist(fpopulation.named("fpopulation"_fld), 500000., 0., farea.named("farea"_fld), 200., city.named("city"_fld));
+	auto hist3 = usa | ADAPT_HIST(fpopulation, 500000., 0., farea, 200., city);// Equivalent to the above code.
+	hist2.ShowHierarchy();
+	// Layer[-1] { { "min0", int } { "min1", int } { "max0", int } { "max1", int } { "wbin0", double } { "wbin1", double } { "cbin0", double } { "cbin1", double } }
+	// Layer[ 0] { { "ibin0", int } { "ibin1", int } }
+	// Layer[ 1] { { "fpopulation", double } { "farea", double } { "city", class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > } }
 
 	std::cout << std::endl;
 

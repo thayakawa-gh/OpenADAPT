@@ -1,7 +1,6 @@
 #include <format>
 #include <iostream>
 #include <OpenADAPT/ADAPT.h>
-#include <matplot/matplot.h>
 
 using namespace adapt::lit;
 
@@ -195,7 +194,9 @@ void QuickstartDTable()
 	for (const auto& trav : usa.GetRange(0_layer) | Filter(state == "Texas"))
 	{
 		// All the names, populations and areas of the cities in Texas are output.
-		std::cout << std::format("{:<12} {:>8} {:>7.1f}\n", trav[city].str(), trav[city_population].i32(), trav[city_area].f64());
+		// Hint: results of accessing with rtti placeholders or calculating with rtti lambda functions
+		//       can be used in std::format without any type conversion.
+		std::cout << std::format("{:<12} {:>8} {:>7.1f}\n", trav[city], trav[city_population], trav[city_area]);
 	}
 	std::cout << std::endl;
 
@@ -204,7 +205,7 @@ void QuickstartDTable()
 	Lambda population_rank = count(city_population > city_population.o(0_depth)) + 1;
 	for (const auto& trav : usa.GetRange(0_layer))
 	{
-		std::cout << std::format("{:<12} {:>8} {:>7.1f} {:>2}\n", trav[city].str(), trav[city_population].i32(), trav[city_area].f64(), population_rank(trav).i64());
+		std::cout << std::format("{:<12} {:>8} {:>7.1f} {:>2}\n", trav[city], trav[city_population], trav[city_area], population_rank(trav));
 	}
 	std::cout << std::endl;
 
@@ -247,6 +248,40 @@ void QuickstartDTable()
 
 	auto [estate, ecounty, ecity, epopulation_density] = extracted.GetPlaceholders("state", "county", "city", "population_density");
 	extracted | Show(estate, if_(len(ecounty) >= 16, substr(ecounty, 0, 13) + "...", ecounty), ecity, epopulation_density);
+
+	// Instead of using named("...") to specify field names, you can also use ADAPT_EXTRACT macro.
+	adapt::DTree extracted2 = usa | Filter(city_area > 500.) | ADAPT_EXTRACT(state, county, city, city_population / city_area);
+	// This macro is equivalent to the following code:
+	// adapt::DTree extracted2 = usa | Filter(city_area > 500.) | Extract((state).named("state"_fld), (county).named("county"_fld), (city).named("city"_fld), (city_population / city_area).named("city_population / city_area"_fld));
+
+	std::cout << std::endl;
+
+
+
+	std::cout << "------Hist------" << std::endl;
+	// Create a DHist by binning the data in the DTable.
+	// The following code creates a 2-dimensional DHist with city population and area as the x-y axes.
+	// The x-axis bin width is 500,000 and the center is 0.
+	// The y-axis bin width is 200. In this case the y-axis center is not specified, so it is set to 0. by default.
+	// "city" at the end is not used as an axis, but is used as an additional field.
+	// Note that the type of the axis is required to be F64 (double).
+	adapt::DHist hist = usa | Hist(cast_f64(city_population), 500000., 0., cast_f64(city_area), 200., city);
+	hist.ShowHierarchy();
+	// Layer[-1] { { "min0", I32 } { "min1", I32 } { "max0", I32 } { "max1", I32 } { "wbin0", F64 } { "wbin1", F64 } { "cbin0", F64 } { "cbin1", F64 } }
+	// Layer[ 0] { { "ibin0", I32 } { "ibin1", I32 } }
+	// Layer[ 1] { { "axis0", F64 } { "axis1", F64 } { "fld0", Str } }
+
+	// The details of the DHist are described in "quickstart_dhist.cpp".
+
+	auto fpopulation = cast_f64(city_population); // Convert to F64 for histogram.
+	auto farea = cast_f64(city_area); // Convert to F64 for histogram.
+	// You can specity the names of the axes and the additional fields in the same way as Extract.
+	adapt::DHist hist2 = usa | Hist(fpopulation.named("fpopulation"), 500000., 0., farea.named("farea"), 200., city.named("city"));
+	adapt::DHist hist3 = usa | ADAPT_HIST(fpopulation, 500000., 0., farea, 200., city);// Equivalent to the above code.
+	hist2.ShowHierarchy();
+	/*
+	
+	*/
 
 	std::cout << std::endl;
 

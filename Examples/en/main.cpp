@@ -2,6 +2,8 @@ void QuickstartDTree();
 void QuickstartSTree();
 void QuickstartDTable();
 void QuickstartSTable();
+void QuickstartDHist();
+void QuickstartSHist();
 void QuickstartKeyJoin();
 void QuickstartCrossJoin();
 void DifferenceCttiRttiTyped();
@@ -18,7 +20,10 @@ int main()
 	// * STree/STable are optimized for fast access and calculation and can contain any types of data.
 	// * DTree/DTable are available without any templates, but slower than STree/STable and can only contain types declared in adapt::FieldType.
 	//
-	// STable/DTable cannot have a hierarchical structure, but faster than STree/DTree.
+	// * STable/DTable cannot have a hierarchical structure, but faster than STree/DTree.
+
+	// In addition to them, ADAPT provides histogram-like containers, SHist/DHist.
+	// Its hierarchical structures are 
 
 	// The containers in ADAPT are designed to be row-oriented for usability and operability,
 	// rather than the column-oriented structure that is popular these days.
@@ -46,6 +51,8 @@ int main()
 	QuickstartSTree();
 	QuickstartDTable();
 	QuickstartSTable();
+	QuickstartDHist();
+	QuickstartSHist();
 	QuickstartKeyJoin();
 	QuickstartCrossJoin();
 	DifferenceCttiRttiTyped();

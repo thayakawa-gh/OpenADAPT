@@ -3,7 +3,7 @@
 template <class Container>
 void StoreData(Container& t)
 {
-	t.SetTopFields(0);
+	t.SetTopFields(3.0);
 
 	t.Reserve(1);
 	t.Push(1.0, 2.0);
@@ -106,27 +106,27 @@ void DifferenceCttiRttiTyped()
 		std::cout << container[0][b_ctti] << std::endl;// get the value of "a" in the 1st element of STree.
 		// Also no need for Typed placeholders.
 		std::cout << container[0][b_typed] << std::endl;
-		// But you have to call i32(), f64() etc. for Rtti placeholders.
+		// But you have to call i32(), f64() etc. for Rtti placeholders since they have no compile-time type infos.
 		std::cout << container[0][b_rtti].f64() << std::endl;
 
 		// Lambda functions created from Ctti placeholders are Ctti.
 		auto lambda_ctti = a_ctti * b_ctti;
-		std::cout << lambda_ctti(container, adapt::Bpos{ 0 }) << std::endl;
+		std::cout << "a * b = " << lambda_ctti(container, adapt::Bpos{0}) << std::endl;
 
 		// If the components of the lambda function includes at least one Rtti placeholder, the lambda function becomes Rtti.
-		// All Rtti lambda functions have the same type, adapt::eval::RttiFuncNode<Container>, Container is STree, etc.
+		// All Rtti lambda functions have the same type, adapt::eval::RttiFuncNode<Container>, where Container is STree, etc.
 		// When you call the lambda function, you have to call i32(), f64() etc. for the return value.
 		using Container = std::decay_t<decltype(container)>;
 		adapt::eval::RttiFuncNode<Container> lambda_rtti = a_rtti * b_ctti;
-		std::cout << lambda_rtti(container, adapt::Bpos{ 0 }).f64() << std::endl;
+		std::cout << "a * b = " << lambda_rtti(container, adapt::Bpos{ 0 }).f64() << std::endl;
 
 		// If the components of the lambda function includes at least one Typed placeholder, and the others are Ctti,
 		// the lambda function becomes Typed.
 		auto lambda_typed = a_typed * b_ctti;
-		std::cout << lambda_typed(container, adapt::Bpos{ 0 }) << std::endl;
+		std::cout << "a * b = " << lambda_typed(container, adapt::Bpos{ 0 }) << std::endl;
 
 		// You can also convert Rtti lambda functions to pseudo Typed ones.
-		// But it is just for giving the static type. The performance is the same as Rtti.
+		// But it is just for giving the static type in advance. The performance is the same as Rtti.
 		auto lambda_typed_from_rtti = lambda_rtti.f64();
 		std::cout << lambda_typed_from_rtti(container, adapt::Bpos{ 0 }) << std::endl;
 	};
