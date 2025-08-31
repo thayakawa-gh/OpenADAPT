@@ -14,7 +14,7 @@ int main()
 	// Examples of how to use ADAPT.
 	// ADAPT provides hierarchically structured containers, STree/DTree, and table containers, STable/DTable.
 	// 
-	// * STree/STable have static structure defined by templates.
+	// * STree/STable have compile-time structure defined by templates.
 	// * DTree/DTable have run-time structure defined by functions.
 	// 
 	// * STree/STable are optimized for fast access and calculation and can contain any types of data.
@@ -22,8 +22,9 @@ int main()
 	//
 	// * STable/DTable cannot have a hierarchical structure, but faster than STree/DTree.
 
-	// In addition to them, ADAPT provides histogram-like containers, SHist/DHist.
-	// Its hierarchical structures are 
+	// In addition to them, ADAPT provides SHist/DHist, which have a binned structure similar to N-dimensional histogram.
+	// Its layer 0 element corresponds to a bin of the histogram, and each bin contains the list of layer 1 elements that fall into that bin.
+	// They derive from STree/DTree, and have additional functionalities for histogram, such as automatic binning when storing data and access with bin indices.
 
 	// The containers in ADAPT are designed to be row-oriented for usability and operability,
 	// rather than the column-oriented structure that is popular these days.
@@ -43,7 +44,7 @@ int main()
 
 	// Any type of container and placeholder/lambda function can be used almost the same way.
 
-	// Basically, we recommend you to use DTree/DTable with Rtti/Typed and STree/STable with Ctti.
+	// Basically, we recommend you to use DTree/DTable/DHist with Rtti/Typed and STree/STable/SHist with Ctti.
 	// But you can use them in any way you want.
 
 

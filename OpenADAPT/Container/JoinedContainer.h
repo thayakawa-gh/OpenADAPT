@@ -709,7 +709,7 @@ auto DJoin_impl(LayerType upper, Container&& t)
 {
 	static_assert(Rank != 0);
 	auto l = JointLayerArray<Rank>{};
-	l[Rank] = { upper, -1 };
+	l[Rank] = { upper, (LayerType)-1 };
 	auto s = std::make_tuple(&t);
 	constexpr auto isconst = std::bool_constant<std::is_const_v<std::remove_reference_t<Container>>>{};
 	return std::make_tuple(l, s, isconst);
@@ -731,7 +731,7 @@ auto DJoin_impl(Container&& t, LayerType lower, Args&& ...args)
 	static_assert(Rank == 0);
 	auto [l, s, isc] = DJoin_impl<1>(std::forward<Args>(args)...);
 	constexpr bool lower_is_const = std::decay_t<decltype(isc)>::value;
-	l[Rank] = { -1, lower };
+	l[Rank] = { (LayerType)-1, lower };
 	auto c = std::tuple_cat(std::make_tuple(&t), s);
 	constexpr auto isconst = std::bool_constant<(lower_is_const || std::is_const_v<std::remove_reference_t<Container>>)>{};
 	using SList = DJoin_DecayedContainers<std::remove_cvref_t<decltype(c)>>::Type;

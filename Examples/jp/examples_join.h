@@ -1,5 +1,4 @@
 #include <OpenADAPT/ADAPT.h>
-#include <matplot/matplot.h>
 
 using namespace adapt::lit;
 

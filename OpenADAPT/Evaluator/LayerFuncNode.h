@@ -1309,7 +1309,7 @@ DEFINE_LAYER_FUNCTION_IF(NAME, NAME_ID##10, 10)
 //size
 //引数を取得できた要素の数。引数の値は完全に無視する。戻り値型はint64_t/I64。
 //The number of elements that can obtain the arguments. The value of the argument is completely ignored.
-//The return type is int64_t.
+//The return type is int64_t/I64.
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncSize, size)
 //exist
 //引数が真であるような要素が存在するか否か。戻り値型はbool/I08。
@@ -1318,15 +1318,15 @@ DEFINE_LAYER_FUNCTION_10(detail::LayerFuncSize, size)
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncExist, exist)
 //count
 //引数が真であるような要素の数。戻り値型はint64_t/I64。
-//The number of elements that the argument is true.
-//The return type is int64_t.
+//The number of elements that the argument is true (non-zero).
+//The return type is int64_t/I64.
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncCount, count)
 //sum
 //引数の合計値。戻り値型は引数型と同じ。+=演算が可能な型に対してのみ呼び出せる。
 //要素が一つもない場合は値初期化によるデフォルト値が返る。
 //The sum of the arguments. The return type is the same as the argument type.
 //This can only be called for types that can be added with +=.
-//If there are no elements, the default value is returned.
+//If there are no elements, the default value by value-initialization (zero, empty string, etc.) is returned.
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncSum, sum)
 DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncSum, sum_if)
 //mean
@@ -1362,29 +1362,29 @@ DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncGreatest, greatest_if)
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncLeast, least)
 DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncLeast, least_if)
 //first
-//引数のうち取得できた最初の値を返す。
+//引数のうち取得できた最初の値を返す。戻り値型は引数型と同じ。
 //要素が一つもない場合は値取得失敗となる。
-//The first value that can be obtained from the arguments.
+//The first value that can be obtained from the arguments. The return type is the same as the argument type.
 //If there are no elements, the value acquisition fails.
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncFirst, first)
 DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncFirst, first_if)
 //last
-//引数のうち取得できた最後の値を返す。
+//引数のうち取得できた最後の値を返す。戻り値型は引数型と同じ。
 //要素が一つもない場合は値取得失敗となる。
-//The last value that can be obtained from the arguments.
+//The last value that can be obtained from the arguments. The return type is the same as the argument type.
 //If there are no elements, the value acquisition fails.
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncLast, last)
 DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncLast, last_if)
 //index
-//引数が真であるような最初の要素が、走査対象要素の中で何番目かを返す。
+//引数が真であるような最初の要素が、走査対象要素の中で何番目かを返す。戻り値型はint64_t/I64。
 //要素が一つもない場合は-1を返す。
-//The index of the first element that is true in the argument.
+//The index of the first element that is true in the argument. The return type is int64_t/I64.
 //If there are no elements, -1 is returned.
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncIndex, index)
 //lastindex
-//引数が真であるような最後の要素が、走査対象要素の中で何番目かを返す。
+//引数が真であるような最後の要素が、走査対象要素の中で何番目かを返す。戻り値型はint64_t/I64。
 //要素が一つもない場合は-1を返す。
-//The index of the last element that is true in the argument.
+//The index of the last element that is true in the argument. The return type is int64_t/I64.
 //If there are no elements, -1 is returned.
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncLastIndex, lastindex)
 
@@ -1399,12 +1399,12 @@ DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncIsFirst, isfirst_if)
 //Returns true when the current calculation target points to the last element that can get the value of the argument.
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncIsLast, islast)
 DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncIsLast, islast_if)
-//islast
+//isgreatest
 //現在の計算対象が、走査対象のうち引数が最大となるような要素を指している時、trueを返す。
 //Returns true when the current calculation target points to an element that is the maximum of the arguments among the traversal targets.
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncIsGreatest, isgreatest)
 DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncIsGreatest, isgreatest_if)
-//islast
+//isleast
 //現在の計算対象が、走査対象のうち引数が最小となるような要素を指している時、trueを返す。
 //Returns true when the current calculation target points to an element that is the minimum of the arguments among the traversal targets.
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncIsLeast, isleast)

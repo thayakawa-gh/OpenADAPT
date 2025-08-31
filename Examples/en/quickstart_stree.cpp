@@ -169,15 +169,23 @@ void QuickstartSTree()
 	static_assert(std::same_as<decltype(cat_state_county_city)::RetType, std::string>);
 	std::cout << cat_state_county_city(usa, baytown_index) << std::endl;// Texas - Harris County - Baytown
 
-	// Make a lambda function to calculate total population in a county.
-	// As the result of "sum", the layer of the lambda function is raised by 1,
-	// because the sum can be calculated by specifying a county (layer 1 element).
+	// Make a lambda function to check if the population of a city is smaller than 100000.
+	auto smaller_population = population < 100000;
+	static_assert(smaller_population.GetLayer() == 2_layer);
+	static_assert(std::same_as<decltype(smaller_population)::RetType, bool>);
+	std::cout << smaller_population(usa, baytown_index) << std::endl;// 1 (true)
+
+	// Make a lambda function to calculate the total population in a county.
+	// "sum", "mean", "greatest" and the other similar functions are called "raising functions".
+	// These functions traverse child elements belonging to the same parent element and return an aggregated value.
+	// Consequently the layer of the lambda function is raised by 1.
 	auto total_population_in_a_county = sum(population);
 	static_assert(total_population_in_a_county.GetLayer() == 1);
 	static_assert(std::same_as<decltype(total_population_in_a_county)::RetType, int32_t>);
 	std::cout << total_population_in_a_county(usa, harris_index) << std::endl;// 2304580 + 151950 + 83701 = 2540231
 
-	// Make a lambda function to calculate total population in a state.
+	// Make a lambda function to calculate the total population in a state.
+	// Raising funcions with a postfix number (N) traverse child element belonging to the same N-th ancestor element.
 	// In general, the sumN and the other similar functions raise the layer by N, except the case of outer field access.
 	auto total_population_in_a_state = sum2(population);
 	static_assert(total_population_in_a_state.GetLayer() == 0);
@@ -185,6 +193,10 @@ void QuickstartSTree()
 	adapt::Bpos california_index = { 0 };
 	std::cout << total_population_in_a_state(usa, california_index) << std::endl;// 3976322 + 466742 + 196543 + 1386932 + 275487 + 174068 = 6476094
 
+	// Make a lambda function to calculate the total population in a nation.
+	// This time, the layer is raised by 3 and becomes -1, that is, the top layer.
+	// If the layer of a lambda function is -1, the lambda function can be called without a Bpos,
+	// because there is only one layer -1 element, usa.
 	auto total_population_in_a_nation = sum3(population);
 	static_assert(total_population_in_a_nation.GetLayer() == -1);
 	static_assert(std::same_as<decltype(total_population_in_a_nation)::RetType, int32_t>);
@@ -192,14 +204,55 @@ void QuickstartSTree()
 	//because there is only one layer -1 element, usa.
 	std::cout << total_population_in_a_nation(usa) << std::endl;// 6476094 + 1304379 + 256684 + 246918 = 8286975
 
+	// Make a lambda function to calculate the average population density of cities with an area larger than 100.0 km^2.
+	// "sum_if", "mean_if" and the other similar functions can take a condition as a second argument.
+	auto average_population_density_of_cities_with_large_area = mean_if(population / area, area > 100.0);
+	static_assert(average_population_density_of_cities_with_large_area.GetLayer() == 1);
+	static_assert(std::same_as<decltype(average_population_density_of_cities_with_large_area)::RetType, double>);
+	std::cout << average_population_density_of_cities_with_large_area(usa, harris_index) << std::endl;// (2304580/1500.7 + 151950/114.4) / 2 = 1431.95
+
+	// Make a lambda function to check if a city has the largest population in a county.
+	// The functions whose names start with "is" do not raise the layer.
+	auto is_max_population_city_in_a_county = isgreatest(population);
+	auto is_max_population_city_in_a_state = isgreatest2(population);
+	static_assert(is_max_population_city_in_a_county.GetLayer() == 2);
+	static_assert(std::same_as<decltype(is_max_population_city_in_a_county)::RetType, bool>);
+	static_assert(is_max_population_city_in_a_state.GetLayer() == 2);
+	static_assert(std::same_as<decltype(is_max_population_city_in_a_state)::RetType, bool>);
+	std::cout << is_max_population_city_in_a_county(usa, baytown_index) << std::endl;// 0
+	std::cout << is_max_population_city_in_a_state(usa, baytown_index) << std::endl;// 0
+	adapt::Bpos dallas_index = { 1, 1, 0 };
+	std::cout << is_max_population_city_in_a_county(usa, dallas_index) << std::endl;// 1
+	std::cout << is_max_population_city_in_a_state(usa, dallas_index) << std::endl;// 0
+	adapt::Bpos houston_index = { 1, 0, 0 };
+	std::cout << is_max_population_city_in_a_county(usa, houston_index) << std::endl;// 1
+	std::cout << is_max_population_city_in_a_state(usa, houston_index) << std::endl;// 1
+
 	// Various operators and functions can be used in combination.
 	// Take the average of the population density of all cities in the usa, and then convert /km^2 to /mi^2.
 	auto average_population_density = tostr(mean3(population / area) * 2.589988) + "(/mi^2)";
 	static_assert(average_population_density.GetLayer() == -1);
 	static_assert(std::same_as<decltype(average_population_density)::RetType, std::string>);
-	std::cout << average_population_density(usa) << std::endl;
+	std::cout << average_population_density(usa) << std::endl;// 5362.277094(/mi^2)
+
+	// If there is no function/operator for lambda functions that you want to use,
+	// you can make your own function by adapt::UserFunc.
+	// The functions given to UserFunc are required to be default constructible and copyable.
+	// Please be careful not to use lambda expressions with captures, which are not default constructible and not copyable.
+
+	// Define a user function that takes two double arguments and returns their sum.
+	adapt::UserFunc your_func(
+		[](int32_t p, double a)
+	{
+		return p / a * 2.589988;// return population density in (/mi^2).
+	});
+	auto population_density_str = tostr(your_func(population, area)) + "(/mi^2)";
+	static_assert(population_density_str.GetLayer() == 2_layer);
+	static_assert(std::same_as<decltype(population_density_str)::RetType, std::string>);
+	std::cout << population_density_str(usa, baytown_index) << std::endl;// 6629.498030(/mi^2)
 
 	// Ctti lambda functions can be converted to Rtti lambda functions if the return type is the one declared in adapt::FieldTypes.
+	// Note that this conversion causes slight performance degradation because of an overhead of a virtual function call.
 	using Lambda = adapt::eval::RttiFuncNode<STree_>;
 	Lambda average_population_density_rtti = ConvertToRttiFuncNode(mean3(population / area) * 2.589988);
 	std::cout << average_population_density_rtti(usa).f64() << "(/mi^2)" << std::endl;// Need to call f64() to get the result since the compile-time type info is lost.
@@ -302,6 +355,14 @@ void QuickstartSTree()
 
 	//If no _fld literal names are used, the result of Extract will be a DTree, because the tree structure is not determined statically.
 	adapt::DTree extracted_dtree = usa | Filter(area > 500.) | Extract(city.named("city"), (population / area).named("population_density"));
+
+	// Instead of using named("...") to specify field names, you can also use ADAPT_EXTRACT macro.
+	// The following code is equivalent to the above code.
+	// This macro automatically names the fields with the argument names.
+	// If desired, you can also rename the fields by named("...") after the arguments.
+	auto extracted2 = usa | Filter(area > 500.) |
+		ADAPT_EXTRACT(state, county, city, (population / area).named("population_density"));
+	extracted2.ShowHierarchy();
 
 	std::cout << std::endl;
 

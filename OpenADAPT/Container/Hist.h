@@ -22,8 +22,8 @@ struct AxisAttr
 	AxisAttr& operator=(AxisAttr&&) = default;
 
 	std::string name;
-	double wbin = 0.;
-	double cbin = 0.;
+	double wbin = 0.;// bin width
+	double cbin = 0.;// bin center
 };
 
 namespace detail

@@ -187,11 +187,13 @@ void QuickStart_dtree()
 	//[   0,   0,   0] 濃伊田美衣子          32          44          24
 	//[   0,   0,   1] 濃伊田美衣子          24          44          24
 
-	//Matplot++で後期中間試験の国語の点数をヒストグラムにする。
-	matplot::figure_handle f = matplot::figure(true);
+	// Canvas2Dでヒストグラムを描画する。
+	namespace plot = adapt::plot;
 	std::vector<double> v_jpn = t | ToVector(cast_f64(jpn.at(2)).f64());
-	matplot::hist(v_jpn);
-	matplot::save("quickstart_dtree.png");
+	adapt::Canvas2D g("quickstart_dtree.png");
+	// 100-120点の範囲を6区間に分けてヒストグラムを描画する。
+	// 最後のビンは100点のみが含まれる。
+	g.PlotHistogram(v_jpn, 0, 120, 6, plot::notitle);
 }
 
 void QuickStart_stree()
@@ -238,11 +240,13 @@ void QuickStart_stree()
 	//[   0,   0,   0] 濃伊田美衣子          32          44          24
 	//[   0,   0,   1] 濃伊田美衣子          24          44          24
 
-	//Matplot++で後期中間試験の国語の点数をヒストグラムにする。
-	matplot::figure_handle f = matplot::figure(true);
+	// Canvas2Dでヒストグラムを描画する。
+	namespace plot = adapt::plot;
 	std::vector<double> v_jpn = t | ToVector(cast_f64(jpn.at(2)));
-	matplot::hist(v_jpn);
-	matplot::save("quickstart_stree.png");
+	adapt::Canvas2D g("quickstart_stree.png");
+	// 100-120点の範囲を6区間に分けてヒストグラムを描画する。
+	// 最後のビンは100点のみが含まれる。
+	g.PlotHistogram(v_jpn, 0, 120, 6, plot::notitle);
 }
 
 void QuickStart_join()

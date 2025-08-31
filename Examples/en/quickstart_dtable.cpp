@@ -161,6 +161,24 @@ void QuickstartDTable()
 	assert(average_population_density.GetLayer() == -1_layer && average_population_density.GetType() == adapt::FieldType::Str);
 	std::cout << average_population_density(usa).str() << std::endl;
 
+	// If there is no function/operator for lambda functions that you want to use,
+	// you can make your own function by adapt::UserFunc.
+	// The functions given to UserFunc are required to be default constructible and copyable.
+	// Please be careful not to use lambda expressions with captures, which are not default constructible and not copyable.
+
+	// Define a user function that takes two double arguments and returns their sum.
+	// When defining a user function for Rtti lambda functions,
+	// it is preferable to use std::integral, std::floating_point or other concepts as argument types
+	// instead of specific types like int32_t or double in order to suppress type conversion warnings.
+	adapt::UserFunc your_func(
+		[](std::integral auto p, std::floating_point auto a)
+	{
+		return p / a * 2.589988;// return population density in (/mi^2).
+	});
+	Lambda population_density_str = tostr(your_func(city_population, city_area)) + " (/mi^2)";
+	assert(population_density_str.GetLayer() == 0_layer && population_density_str.GetType() == adapt::FieldType::Str);
+	std::cout << population_density_str(usa, baytown_index).str() << std::endl;// 6629.498030(/mi^2)
+
 	// Convert RttiPlaceholder to TypedPlaceholder.
 	auto city_population_typed = city_population.i32();
 	auto city_area_typed = city_area.f64();
@@ -169,6 +187,12 @@ void QuickstartDTable()
 	auto average_population_density_typed = mean(city_population_typed / city_area_typed) * 2.589988;
 	// average_population_density_typed has compile-time type information, but runtime layer information.
 	static_assert(std::same_as<typename decltype(average_population_density_typed)::RetType, double>);
+	std::cout << average_population_density_typed(usa) << "(/mi^2)" << std::endl;// No need to call f64() since the lambda function knows its own type.
+
+	// Or you can also convert rtti lambda functions to pseudo-typed ones using f32(), f64(), i32(), etc. methods.
+	// Note that the performance is not improved by this conversion.
+	auto average_population_density_typed2 = (mean(city_population / city_area) * 2.589988).f64();
+	static_assert(std::same_as<typename decltype(average_population_density_typed2)::RetType, double>);
 	std::cout << average_population_density_typed(usa) << "(/mi^2)" << std::endl;// No need to call f64() since the lambda function knows its own type.
 
 	// The functions and operators available in the lambda functions are defined
@@ -250,9 +274,12 @@ void QuickstartDTable()
 	extracted | Show(estate, if_(len(ecounty) >= 16, substr(ecounty, 0, 13) + "...", ecounty), ecity, epopulation_density);
 
 	// Instead of using named("...") to specify field names, you can also use ADAPT_EXTRACT macro.
-	adapt::DTree extracted2 = usa | Filter(city_area > 500.) | ADAPT_EXTRACT(state, county, city, city_population / city_area);
-	// This macro is equivalent to the following code:
-	// adapt::DTree extracted2 = usa | Filter(city_area > 500.) | Extract((state).named("state"_fld), (county).named("county"_fld), (city).named("city"_fld), (city_population / city_area).named("city_population / city_area"_fld));
+	// The following code is equivalent to the above code.
+	// This macro automatically names the fields with the argument names.
+	// If desired, you can also rename the fields by named("...") after the arguments.
+	adapt::DTree extracted2 = usa | Filter(city_area > 500.) |
+		ADAPT_EXTRACT(state, county, city, (city_population / city_area).named("population_density"));
+	extracted2.ShowHierarchy();
 
 	std::cout << std::endl;
 
@@ -279,9 +306,9 @@ void QuickstartDTable()
 	adapt::DHist hist2 = usa | Hist(fpopulation.named("fpopulation"), 500000., 0., farea.named("farea"), 200., city.named("city"));
 	adapt::DHist hist3 = usa | ADAPT_HIST(fpopulation, 500000., 0., farea, 200., city);// Equivalent to the above code.
 	hist2.ShowHierarchy();
-	/*
-	
-	*/
+	// Layer[-1] { { "min0", I32 } { "min1", I32 } { "max0", I32 } { "max1", I32 } { "wbin0", F64 } { "wbin1", F64 } { "cbin0", F64 } { "cbin1", F64 } }
+	// Layer[ 0] { { "ibin0", I32 } { "ibin1", I32 } }
+	// Layer[ 1] { { "fpopulation", F64 } { "farea", F64 } { "city", Str } }
 
 	std::cout << std::endl;
 

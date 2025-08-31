@@ -151,6 +151,22 @@ void QuickstartSTable()
 	static_assert(std::same_as<decltype(average_population_density)::RetType, std::string>);
 	std::cout << average_population_density(usa) << std::endl;
 
+	// If there is no function/operator for lambda functions that you want to use,
+	// you can make your own function by adapt::UserFunc.
+	// The functions given to UserFunc are required to be default constructible and copyable.
+	// Please be careful not to use lambda expressions with captures, which are not default constructible and not copyable.
+
+	// Define a user function that takes two double arguments and returns their sum.
+	adapt::UserFunc your_func(
+		[](int32_t p, double a)
+	{
+		return p / a * 2.589988;// return population density in (/mi^2).
+	});
+	auto population_density_str = tostr(your_func(city_population, city_area)) + "(/mi^2)";
+	static_assert(population_density_str.GetLayer() == 0_layer);
+	static_assert(std::same_as<decltype(population_density_str)::RetType, std::string>);
+	std::cout << population_density_str(usa, baytown_index) << std::endl;// 6629.498030(/mi^2)
+
 	//Ctti lambda functions can be converted to Rtti lambda functions if the return type is the one declared in adapt::FieldTypes.
 	using Lambda = adapt::eval::RttiFuncNode<STable_>;
 	Lambda average_population_density_rtti = ConvertToRttiFuncNode(mean(city_population / city_area) * 2.589988);
@@ -236,6 +252,14 @@ void QuickstartSTable()
 
 	//If no _fld literal names are used, the result of Extract will be a DTree, because the tree structure is not determined statically.
 	adapt::DTree extracted_dtree = usa | Filter(city_area > 500.) | Extract(city.named("city"), (city_population / city_area).named("population_density"));
+
+	// Instead of using named("...") to specify field names, you can also use ADAPT_EXTRACT macro.
+	// The following code is equivalent to the above code.
+	// This macro automatically names the fields with the argument names.
+	// If desired, you can also rename the fields by named("...") after the arguments.
+	auto extracted2 = usa | Filter(city_area > 500.) |
+		ADAPT_EXTRACT(state, county, city, (city_population / city_area).named("population_density"_fld));
+	extracted2.ShowHierarchy();
 
 	std::cout << std::endl;
 

@@ -92,6 +92,8 @@ void QuickstartDHist()
 
 	std::cout << std::endl;
 
+
+
 	std::cout << "------Show histogram data------" << std::endl;
 	ADAPT_GET_PLACEHOLDERS(usa, ibin0, ibin1, population, area, name);
 	usa | Show(" bin[{:>1},{:>1}] size:{:>2}", ibin0, ibin1, size(area));
@@ -188,4 +190,5 @@ void QuickstartDHist()
 		// Irving        1474.3
 		// Garland       1669.5
 	}
+	std::cout << std::endl;
 }

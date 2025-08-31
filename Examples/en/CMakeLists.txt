@@ -2,12 +2,10 @@ set(PROJECT_NAME Examples_en)
 
 project(${PROJECT_NAME})
 
-find_package(Matplot++ REQUIRED)
-
 add_executable(${PROJECT_NAME} "main.cpp" "quickstart_dtree.cpp" "quickstart_stree.cpp" "quickstart_dtable.cpp" "quickstart_stable.cpp"
 							   "quickstart_join.cpp" "ctti_rtti_typed.cpp" "quickstart_plot.cpp" "quickstart_dhist.cpp" "quickstart_shist.cpp")
 
-target_link_libraries(${PROJECT_NAME} OpenADAPT Matplot++::matplot)
+target_link_libraries(${PROJECT_NAME} OpenADAPT)
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 

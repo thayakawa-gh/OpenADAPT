@@ -3,7 +3,7 @@
 template <class Container>
 void StoreData(Container& t)
 {
-	t.SetTopFields(3.0);
+	t.SetTopFields(3);
 
 	t.Reserve(1);
 	t.Push(1.0, 2.0);

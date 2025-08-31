@@ -2,11 +2,9 @@ set(PROJECT_NAME Examples_jp)
 
 project(${PROJECT_NAME})
 
-find_package(Matplot++ REQUIRED)
-
 add_executable(${PROJECT_NAME} "main.cpp" "examples_plot.h")
 
-target_link_libraries(${PROJECT_NAME} OpenADAPT Matplot++::matplot)
+target_link_libraries(${PROJECT_NAME} OpenADAPT)
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 

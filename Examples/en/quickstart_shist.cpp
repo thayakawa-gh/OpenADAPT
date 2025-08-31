@@ -12,13 +12,14 @@ auto MakeSHist()
 	// Users can define the axes fields of the histogram using SetAxesAttr method.
 
 	// For example, the following code defines a SHist with two axes: "population" and "area", and an additional field: "name".
+	// First, the layer 1 fields are defined using ADAPT_S_DEFINE_LAYER macro.
 	// Note that the type of the axes is required to be double for SHist.
 	using Layer1 = ADAPT_S_DEFINE_LAYER(population, double, area, double, name, std::string);
 	// Then the SHist is defined using the Layer1 type and its dimensions (2 in this case).
 	using SHist_ = adapt::SHist<2, Layer1>;
 
 	// SHist also requires the axes attributes to be set, which define the binning of the histogram.
-	// Unlike DHist, SHist does not require the axes names to be specified.
+	// Unlike DHist, SHist already knows the field names and their types, thus it only needs the bin width and center of each axis.
 	std::vector<adapt::AxisAttr> axis{ { 500000. }, { 200. } };
 	SHist_ usa;
 	usa.SetAxesAttr(axis);
@@ -72,7 +73,7 @@ void QuickstartSHist()
 	std::cout << std::endl;
 
 	// You can also create a SHist from another container by using Hist (or ADAPT_HIST macro) range conversion.
-	// Please pay attention that all the placeholders or lambdas used in Hist must be Ctti,
+	// Please make sure that all the placeholders or lambdas used in Hist are Ctti,
 	// that is, they must have compile-time type and layer information.
 	// auto [stree_population, stree_area] = stree.GetPlaceholders("population"_fld, "area"_fld);// Get Ctti placeholders.
 	// auto fpopulation = cast_f64(dtree_population);
@@ -191,4 +192,5 @@ void QuickstartSHist()
 		// Irving        1474.3
 		// Garland       1669.5
 	}
+	std::cout << std::endl;
 }
