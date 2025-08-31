@@ -16,6 +16,8 @@ Its primary objective is to enable C++ to perform the kind of analysis and manip
 
 ADAPT is a header-only library, so simply clone and add the `OpenADAPT` directory to your project's include directries.
 
+### Install with CMake (optional)
+
 If needed, it can be built and installed with CMake using the following commands:
 ```cmake
 git clone https://github.com/thayakawa-gh/OpenADAPT.git
@@ -34,9 +36,6 @@ target_link_libraries(YOUR_PACKAGE_NAME PRIVATE OpenADAPT::OpenADAPT)
 
 The test and example codes are built by adding `-DBUILD_TEST=ON` and `-DBUILD_EXAMPLES=ON` to the cmake command, respectively. Note that GTest, yaml-cpp and matplot++ are required for these builds.
 
-## Quickstart
-
-For more detailed examples and explanations, please see [Examples/en](Examples/en).
 
 ### Include ADAPT
 ```cpp
@@ -45,7 +44,9 @@ For more detailed examples and explanations, please see [Examples/en](Examples/e
 using namespace adapt::lit;// Import the ADAPT literals, such as "_fld" for field names.
 ```
 
-### Define container structure
+## [For the detailed examples and explanations, please see Examples/en](Examples/en).
+
+## Container basics
 
 ADAPT provides hierarchically structured containers, STree/DTree, and table containers, STable/DTable.
 
@@ -61,6 +62,8 @@ ADAPT provides hierarchically structured containers, STree/DTree, and table cont
 |DTree|dynamic|SHRT_MAX|dynamic|slower|
 |STable|static|0|static|faster|
 |DTable|dynamic|0|dynamic|slightly faster|
+
+### Define container structure
 
 ```cpp
 	// DTree/DTable
@@ -144,6 +147,8 @@ Store data in the containers using various methods:
 	dallas_county.Push("Garland", 246918, 147.9);
 ```
 
+## Data access and calculation using placeholders and lambda functions
+
 ### Get placeholders
 Placeholders are used to access/calculate data stored in containers.
 GetPlaceholders returns:
@@ -178,7 +183,7 @@ Please refer to the placeholder section of [quickstart_dtree.cpp](Examples/en/qu
 	std::cout << san_diego[population] << std::endl;
 ```
 
-### Calculate using placeholders
+### Calculate using lambda functions
 Lambda functions are made from placeholders.
 They can be used when you want to calculate something from data and filter/convert data like `<ranges>` library.
 ```cpp
@@ -203,6 +208,60 @@ They can be used when you want to calculate something from data and filter/conve
 	std::cout << average_population_density(usa).str() << std::endl;// 5362.28(/mi^2).
 ```
 
+## Data processing based on range adapters
+
+### Traverse
+```cpp
+	// Use traversers to iterate over the data.
+	for (const auto& trav : usa | GetRange(1_layer))// Traverse layer 1.
+	{
+		// All the names of states, counties and county seats are output.
+		// During traversal of layer 1, you can access the fields from layer -1 to 1.
+		std::cout << std::format("{:<12} {:<12} {:<12}\n", trav[state], trav[county], trav[county_seat]);
+	}
+	// Output:
+	// California   Los Angeles County   Los Angeles
+	// California   San Diego County     San Diego
+	// Texas        Harris County        Houston
+	// Texas        Dallas County        Dallas
+
+	for (const auto& trav : usa | GetRange(2_layer))// Traverse layer 2 = cities.
+	{
+		// All the names of states, counties and cities are output.
+		std::cout << std::format("{:<12} {:<12} {:<12}\n", trav[state], trav[county], trav[city]);
+	}
+	// Output:
+	// California   Los Angeles County   Los Angeles
+	// California   Los Angeles County   Long Beach
+	// California   Los Angeles County   Glendale
+	// California   San Diego County     San Diego
+	// California   San Diego County     Chula Vista
+	// California   San Diego County     Oceanside
+	// Texas        Harris County        Houston
+	// Texas        Harris County        Pasadena
+	// Texas        Harris County        Baytown
+	// Texas        Dallas County        Dallas
+	// Texas        Dallas County        Irving
+	// Texas        Dallas County        Garland
+```
+
+### Filter
+```cpp
+	// traverse with filter
+	auto population_density = population / area;
+	for (const auto& trav : usa | Filter(city == county_seat) | GetRange(2_layer))
+	{
+		// All the state/county/city names and populations densities of the cities that are the county seats are output.
+		std::cout << std::format("{:<12} {:<12} {:<12} {:>7.1f}\n",
+					 trav[state], trav[county], trav[city], population_density(trav));
+	}
+	// Output:
+	// California   Los Angeles County   Los Angeles   3275.7
+	// California   San Diego County     San Diego     1646.8
+	// Texas        Harris County        Houston       1535.7
+	// Texas        Dallas County        Dallas        1470.2
+```
+
 ### Show
 Show the data in the container in a formatted way.
 `Show` range adapter accepts placeholders or lambda functions as arguments.
@@ -222,55 +281,6 @@ Show the data in the container in a formatted way.
 	usa | Filter(isleast2(area)) | Show("{:>12}, {:>10}, {:>5.1f}x10^3, {:>5.1f}km^2", state, city, population / 1000., area);
 	// [   0,   0,   2]  California,   Glendale, 196.5x10^3,  79.3km^2
 	// [   1,   0,   2]       Texas,    Baytown,  83.7x10^3,  32.7km^2
-```
-
-### Traverse
-```cpp
-	// Use traversers to iterate over the data.
-	for (const auto& trav : usa | GetRange(1_layer))// Traverse layer 1.
-	{
-		// All the names of states, counties and county seats are output.
-		// During traversal of layer 1, you can access the fields from layer -1 to 1.
-		std::cout << std::format("{:<12} {:<12} {:<12}\n", trav[state].str(), trav[county].str(), trav[county_seat].str());
-	}
-	// Output:
-	// California   Los Angeles County   Los Angeles
-	// California   San Diego County     San Diego
-	// Texas        Harris County        Houston
-	// Texas        Dallas County        Dallas
-
-	for (const auto& trav : usa | GetRange(2_layer))// Traverse layer 2 = cities.
-	{
-		// All the names of states, counties and cities are output.
-		std::cout << std::format("{:<12} {:<12} {:<12}\n", trav[state].str(), trav[county].str(), trav[city].str());
-	}
-	// Output:
-	// California   Los Angeles County   Los Angeles
-	// California   Los Angeles County   Long Beach
-	// California   Los Angeles County   Glendale
-	// California   San Diego County     San Diego
-	// California   San Diego County     Chula Vista
-	// California   San Diego County     Oceanside
-	// Texas        Harris County        Houston
-	// Texas        Harris County        Pasadena
-	// Texas        Harris County        Baytown
-	// Texas        Dallas County        Dallas
-	// Texas        Dallas County        Irving
-	// Texas        Dallas County        Garland
-
-	// traverse with filter
-	auto population_density = population / area;
-	for (const auto& trav : usa | Filter(city == county_seat) | GetRange(2_layer))
-	{
-		// All the state/county/city names and populations densities of the cities that are the county seats are output.
-		std::cout << std::format("{:<12} {:<12} {:<12} {:>7.1f}\n",
-					 trav[state].str(), trav[county].str(), trav[city].str(), population_density(trav).f64());
-	}
-	// Output:
-	// California   Los Angeles County   Los Angeles   3275.7
-	// California   San Diego County     San Diego     1646.8
-	// Texas        Harris County        Houston       1535.7
-	// Texas        Dallas County        Dallas        1470.2
 ```
 
 ### Extract
@@ -302,7 +312,9 @@ and the hierarchical structure is automatically determined by the layers of the 
 	// [   1,   1,   0]            Texas    Dallas County           Dallas      1470.219793
 ```
 
-### Plot
+## Data visualization powered by gnuplot
+
+### Plot data
 ```cpp
 	// Plot area vs population of the cities in California.
 	namespace plot = adapt::plot;
@@ -317,9 +329,9 @@ and the hierarchical structure is automatically determined by the layers of the 
 	c.PlotPoints(varea, vpop, plot::pt_cir, plot::ps_med_large, plot::notitle).
 		PlotLabels(varea, vpop, vcity, plot::labelpos = adapt::LabelPos::right, plot::notitle);
 ```
-![examples_en_dtree](https://github.com/user-attachments/assets/598bf0f5-110d-4d30-bfaa-329d448e2c99)
+<img width="480" alt="Area vs Population of Cities in California" src="https://github.com/user-attachments/assets/598bf0f5-110d-4d30-bfaa-329d448e2c99">
 
-
+### Other plotting functionalities
 <table>
 	<thead>
 		<tr><th scope="col" colspan="3">plot examples</th></tr>
