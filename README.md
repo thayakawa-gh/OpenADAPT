@@ -12,7 +12,7 @@ ADAPT is a header-only data analysis and processing library for C++ offering the
 Its primary objective is to enable C++ to perform the kind of analysis and manipulation that Pandas achieves in Python, albeit with a unique conceptual approach distinct from Pandas.
 
 
-## Install and use in your project
+## Installation
 
 ADAPT is a header-only library, so simply clone and add the `OpenADAPT` directory to your project's include directries.
 
@@ -34,7 +34,7 @@ find_package(OpenADAPT REQUIRED)
 target_link_libraries(YOUR_PACKAGE_NAME PRIVATE OpenADAPT::OpenADAPT)
 ```
 
-The test and example codes are built by adding `-DBUILD_TEST=ON` and `-DBUILD_EXAMPLES=ON` to the cmake command, respectively. Note that GTest, yaml-cpp and matplot++ are required for these builds.
+The test and example codes are built by adding `-DBUILD_TEST=ON` and `-DBUILD_EXAMPLES=ON` to the cmake command, respectively. Note that GTest and yaml-cpp are required for these builds.
 
 
 ### Include ADAPT
@@ -208,7 +208,7 @@ They can be used when you want to calculate something from data and filter/conve
 	std::cout << average_population_density(usa).str() << std::endl;// 5362.28(/mi^2).
 ```
 
-## Data processing based on range adapters
+## Data processing based on ranges
 
 ### Traverse
 ```cpp
@@ -251,7 +251,7 @@ They can be used when you want to calculate something from data and filter/conve
 	auto population_density = population / area;
 	for (const auto& trav : usa | Filter(city == county_seat) | GetRange(2_layer))
 	{
-		// All the state/county/city names and populations densities of the cities that are the county seats are output.
+		// All the state/county/city names and population densities of the cities that are the county seats are output.
 		std::cout << std::format("{:<12} {:<12} {:<12} {:>7.1f}\n",
 					 trav[state], trav[county], trav[city], population_density(trav));
 	}
@@ -290,10 +290,10 @@ and the hierarchical structure is automatically determined by the layers of the 
 ```cpp
 	auto population_density = population / area;
 	// Create a new container with the fields state, county, city and population_density.
-	// When ADAPT_NAMED_FIELDS is used, the names of the fields are automatically determined from the variable names,
+	// When ADAPT_EXTRACT is used, the names of the fields are automatically determined from the variable names,
 	// or you can also specify the names individually like `Extract(state.named("foo"), county.named("bar"), ...)`.
 	// If no names are specified, like `Extract(state, county, city, population_density)`, default names "fld0", "fld1", "fld2", "fld3" are used.
-	auto extracted = usa | Filter(area > 500.) | Extract(ADAPT_NAMED_FIELDS(state, county, city, population_density));
+	auto extracted = usa | Filter(area > 500.) | ADAPT_EXTRACT(state, county, city, population_density);
 	// If all the arguments of Extract are Ctti, the return value is an STree.
 	// Otherwise, the return value is a DTree.
 	extracted.ShowHierarchy();
@@ -372,7 +372,7 @@ and the hierarchical structure is automatically determined by the layers of the 
 			<th scope="col">
 				<figure>
 					<img width="720" height="540" alt="example_string_label-inmemory" src="https://github.com/user-attachments/assets/5281afb1-db81-4db4-b084-dca516ec02d6">
-					<figurecaption><a href="https://github.com/thayakawa-gh/OpenADAPT/blob/62ad5419371d3a279c9a8d432f45ea6b03715032/Examples/en/quickstart_plot.cpp#L595">example string label</a></figurecaption>
+					<figurecaption><a href="https://github.com/thayakawa-gh/OpenADAPT/blob/62ad5419371d3a279c9a8d432f45ea6b03715032/Examples/en/quickstart_plot.cpp#L595">example string</a></figurecaption>
 				</figure>
 			</th>
 		</tr>
