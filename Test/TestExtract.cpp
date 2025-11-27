@@ -184,6 +184,38 @@ void TestExtract(Container& s, const std::vector<Class>& clses, Layer0 l0, Layer
 		//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
 		auto [exam, math, jpn, eng, sci, soc] = l2;
 
+		auto e = s | Extract(opts::all_fields);
+		auto [egrade, eclass_] = e.GetPlaceholders("grade"_fld, "class_"_fld);
+		auto [enumber, ename] = e.GetPlaceholders("number"_fld, "name"_fld);
+		auto [eexam, emath, ejpn, eeng, esci, esoc] = e.GetPlaceholders("exam"_fld, "math"_fld, "japanese"_fld, "english"_fld, "science"_fld, "social"_fld);
+
+		auto school = s.GetPlaceholder("school"_fld);
+		auto eschool = e.GetPlaceholder("school"_fld);
+		for (auto [st, et] : views::Zip(s.GetRange(2_layer), e.GetRange(2_layer)))
+		{
+			EXPECT_EQ(Evaluate(Number<Str>{}, st, school), Evaluate(Number<Str>{}, et, eschool));
+			EXPECT_EQ(Evaluate(Number<I08>{}, st, grade), Evaluate(Number<I08>{}, et, egrade));
+			EXPECT_EQ(Evaluate(Number<I08>{}, st, class_), Evaluate(Number<I08>{}, et, eclass_));
+			EXPECT_EQ(Evaluate(Number<I16>{}, st, number), Evaluate(Number<I16>{}, et, enumber));
+			EXPECT_EQ(Evaluate(Number<Str>{}, st, name), Evaluate(Number<Str>{}, et, ename));
+			EXPECT_EQ(Evaluate(Number<I08>{}, st, exam), Evaluate(Number<I08>{}, et, eexam));
+			EXPECT_EQ(Evaluate(Number<I32>{}, st, math), Evaluate(Number<I32>{}, et, emath));
+			EXPECT_EQ(Evaluate(Number<I32>{}, st, jpn), Evaluate(Number<I32>{}, et, ejpn));
+			EXPECT_EQ(Evaluate(Number<I32>{}, st, eng), Evaluate(Number<I32>{}, et, eeng));
+			EXPECT_EQ(Evaluate(Number<I32>{}, st, sci), Evaluate(Number<I32>{}, et, esci));
+			EXPECT_EQ(Evaluate(Number<I32>{}, st, soc), Evaluate(Number<I32>{}, et, esoc));
+		}
+	}
+	//all_fields + something
+	if constexpr (adapt::container_simplex<Container>)
+	{
+		//0層要素。学年とクラス。
+		auto [grade, class_] = l0;
+		//1層要素。出席番号、名前、生年月日。
+		auto [number, name] = l1;
+		//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
+		auto [exam, math, jpn, eng, sci, soc] = l2;
+
 		auto e = s | Extract(opts::all_fields, math + jpn + eng + sci + soc);
 		auto [egrade, eclass_] = e.GetPlaceholders("grade"_fld, "class_"_fld);
 		auto [enumber, ename] = e.GetPlaceholders("number"_fld, "name"_fld);

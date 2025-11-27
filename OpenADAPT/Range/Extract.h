@@ -729,10 +729,29 @@ public:
 template <class Range>
 class ExtractorRelay
 {
+public:
 	//all_fieldsのオプションを有効にしているとき、他に一切nodeやplaceholderを与えていないと
 	//CttiとRttiのどちらを使うべきかが判定できない。
 	//Extractorクラスからメンバ関数等も一切排除してしまった今、RttiとCttiの実装を別クラスに分ける意味はそれほどないのだが、
 	//
+	template <traversal_range Range_, bool AllFieldsFlag, named_node_or_placeholder ...NPs_>
+	auto Exec(Range_&& range, std::bool_constant<AllFieldsFlag> b, NPs_&& ...nps)
+	{
+		constexpr bool all_stat =
+			(s_named_node_or_placeholder<NPs_> && ...) &&
+			(ctti_node_or_placeholder<std::tuple_element_t<1, std::decay_t<NPs_>>> && ...);
+		constexpr bool s_cont = s_container<typename std::remove_cvref_t<Range_>::Container>;
+		if constexpr (all_stat && (!AllFieldsFlag || s_cont))
+		{
+			CttiExtractor<Range> extractor;
+			return extractor.Exec(std::forward<Range_>(range), b, std::forward<NPs_>(nps)...);
+		}
+		else
+		{
+			RttiExtractor<Range> extractor;
+			return extractor.Exec(std::forward<Range_>(range), b, std::forward<NPs_>(nps)...);
+		}
+	}
 };
 
 // 無名のnodeかplaceholderに対しては与えられた名前を付与し、そうでない場合は何もしない。
@@ -757,7 +776,7 @@ auto AddDefaultName(NP&& np)
 template <bool AllFieldsFlag, class ...Vars>
 auto Extract_impl2(std::bool_constant<AllFieldsFlag> b, Vars&& ...named_vars)
 {
-	using Container = eval::detail::ExtractContainer<std::remove_cvref_t<decltype(std::get<1>(named_vars))>...>::Container;
+	/*using Container = eval::detail::ExtractContainer<std::remove_cvref_t<decltype(std::get<1>(named_vars))>...>::Container;
 	constexpr bool all_stat =
 		(s_named_node_or_placeholder<Vars> && ...) &&
 		(ctti_node_or_placeholder<std::tuple_element_t<1, std::decay_t<Vars>>> && ...) &&
@@ -765,7 +784,8 @@ auto Extract_impl2(std::bool_constant<AllFieldsFlag> b, Vars&& ...named_vars)
 	if constexpr (all_stat)
 		return RangeConversion<CttiExtractor, std::bool_constant<AllFieldsFlag>, Vars...>(b, std::forward<Vars>(named_vars)...);
 	else
-		return RangeConversion<RttiExtractor, std::bool_constant<AllFieldsFlag>, Vars...>(b, std::forward<Vars>(named_vars)...);
+		return RangeConversion<RttiExtractor, std::bool_constant<AllFieldsFlag>, Vars...>(b, std::forward<Vars>(named_vars)...);*/
+	return RangeConversion<ExtractorRelay, std::bool_constant<AllFieldsFlag>, Vars...>(b, std::forward<Vars>(named_vars)...);
 }
 template <bool AllFieldsFlag, size_t ...Is, class ...Vars>
 auto Extract_impl(std::bool_constant<AllFieldsFlag> b, std::index_sequence<Is...>, Vars&& ...named_vars)
