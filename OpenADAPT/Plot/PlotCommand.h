@@ -52,6 +52,7 @@ struct FilledCurveOption {};
 struct LabelOption {};
 struct ColormapOption {};
 struct SurfaceOption {};
+struct WeightOption {};
 struct HistogramOption {};
 struct BinscatterOption {};
 
@@ -80,9 +81,9 @@ template <class Opt>
 concept surface_option = keyword_arg_tagged_with<Opt, BaseOption, StyleOption, ColorOption, LineOption, PointOption, SurfaceOption>;
 
 template <class Opt>
-concept histogram_option = keyword_arg_tagged_with<Opt, BaseOption, HistogramOption, ColorOption, LineOption, PointOption>;
+concept histogram_option = keyword_arg_tagged_with<Opt, BaseOption, WeightOption, HistogramOption, ColorOption, LineOption, PointOption>;
 template <class Opt>
-concept binscatter_option = keyword_arg_tagged_with<Opt, BaseOption, BinscatterOption, PointOption, ColormapOption>;
+concept binscatter_option = keyword_arg_tagged_with<Opt, BaseOption, WeightOption, BinscatterOption, PointOption, ColormapOption>;
 
 template <class Param>
 concept zaxis_param = requires(Param p)
@@ -152,6 +153,9 @@ ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(baseline, std::string_view, plot_d
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION(closed, plot_detail::FilledCurveOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION(above, plot_detail::FilledCurveOption)
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION(below, plot_detail::FilledCurveOption)
+
+//Weight option for histogram and binscatter
+ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(weight, plot_detail::AnyAcceptableArg, plot_detail::WeightOption);// データに重み付けする。
 
 //HistogramOption
 ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(min, double, plot_detail::HistogramOption);
@@ -300,21 +304,24 @@ inline constexpr auto as_nofilled = (arrowfill = ArrowFill::nofilled);
 inline constexpr auto as_empty = (arrowfill = ArrowFill::empty);
 
 
-//ヒストグラムのビンのエラーバーの短縮版
+// ヒストグラムのビンのエラーバーの短縮版
 inline constexpr auto he_poisson = (binerror = BinError::poisson68);
 inline constexpr auto he_poisson95 = (binerror = BinError::poisson95);
 inline constexpr auto he_normal = (binerror = BinError::normal68);
 inline constexpr auto he_normal95 = (binerror = BinError::normal95);
+inline constexpr auto he_none = (binerror = BinError::none);
 
+// binscatterの下限無効化の短縮版
+// デフォルトではビン内の点数が0だと白色で表示されるようになっているが、これを無効化する。
 inline constexpr auto bs_no_lowlim = (bs_lower = std::numeric_limits<uint64_t>::min());
 
 
-//ラベルの位置指定の短縮版
+// ラベルの位置指定の短縮版
 inline constexpr auto lp_left = (labelpos = LabelPos::left);
 inline constexpr auto lp_center = (labelpos = LabelPos::center);
 inline constexpr auto lp_right = (labelpos = LabelPos::right);
 
-//ラベル回転指定の短縮版
+// ラベル回転指定の短縮版
 inline constexpr auto lr_0 = (labelrotate = 0.0);
 inline constexpr auto lr_45 = (labelrotate = 45.0);
 inline constexpr auto lr_90 = (labelrotate = 90.0);
@@ -324,11 +331,11 @@ inline constexpr auto lr_m45 = (labelrotate = -45.0);
 inline constexpr auto lr_m90 = (labelrotate = -90.0);
 inline constexpr auto lr_m135 = (labelrotate = -135.0);
 
-//ラベルオーバーレイ指定の短縮版
+// ラベルオーバーレイ指定の短縮版
 inline constexpr auto lo_front = (labeloverlay = LabelOverlay::front);
 inline constexpr auto lo_back = (labeloverlay = LabelOverlay::back);
 
-//PM3Dの位置指定の短縮版
+// PM3Dの位置指定の短縮版
 inline constexpr auto pm3d_bottom = (pm3d_at = Pm3dPosition::bottom);
 inline constexpr auto pm3d_surface = (pm3d_at = Pm3dPosition::surface);
 inline constexpr auto pm3d_top = (pm3d_at = Pm3dPosition::top);
@@ -1121,12 +1128,12 @@ auto MakeSurfaceParam(Options ...ops)
 		(z, xrange, yrange, xminmax, yminmax, vc, vs, ops...);
 }
 
-template <ranges::arithmetic_range Range>
+template <ranges::arithmetic_range Data, acceptable_arg Weight>
 struct HistogramParam
 {
 	template <keyword_arg ...Ops>
-	HistogramParam(Range data, double xmin, double xmax, size_t xnbin, Ops ...ops)
-		: data(data), xmin(xmin), xmax(xmax), xnbin(xnbin)
+	HistogramParam(Data data, double xmin, double xmax, size_t xnbin, Weight weight, Ops ...ops)
+		: data(data), xmin(xmin), xmax(xmax), xnbin(xnbin), weight(weight)
 	{
 		SetOptions(ops...);
 	}
@@ -1136,11 +1143,12 @@ struct HistogramParam
 	{
 		if constexpr (KeywordExists(plot::binerror, ops...)) binerror = GetKeywordArg(plot::binerror, ops...);
 	}
-	Range data;
+	Data data;
 	double xmin;
 	double xmax;
 	size_t xnbin;
 	BinError binerror;
+	[[no_unique_address]] Weight weight;
 };
 template <keyword_arg ...Options>
 auto MakeHistogramParam(Options ...ops)
@@ -1149,17 +1157,18 @@ auto MakeHistogramParam(Options ...ops)
 	auto xmin = GetKeywordArg(plot::min, ops...);
 	auto xmax = GetKeywordArg(plot::max, ops...);
 	auto xnbin = GetKeywordArg(plot::nbin, ops...);
-	return HistogramParam<decltype(data)>(data, xmin, xmax, xnbin, ops...);
+	auto weight = AllView(GetKeywordArg(plot::weight, std::ranges::empty_view<double>{}, ops...));
+	return HistogramParam<decltype(data), decltype(weight)>(data, xmin, xmax, xnbin, weight, ops...);
 }
 
-template <ranges::arithmetic_range X, ranges::arithmetic_range Y>
+template <ranges::arithmetic_range X, ranges::arithmetic_range Y, acceptable_arg Weight>
 struct BinscatterParam
 {
 	template <keyword_arg ...Ops>
 	BinscatterParam(X x, double xmin, double xmax, size_t xnbin,
-				   Y y, double ymin, double ymax, size_t ynbin,
-				   Ops ...ops)
-		: x(x), xmin(xmin), xmax(xmax), xnbin(xnbin), y(y), ymin(ymin), ymax(ymax), ynbin(ynbin)
+					Y y, double ymin, double ymax, size_t ynbin,
+					Weight weight, Ops ...ops)
+		: x(x), xmin(xmin), xmax(xmax), xnbin(xnbin), y(y), ymin(ymin), ymax(ymax), ynbin(ynbin), weight(weight)
 	{
 		SetOptions(ops...);
 	}
@@ -1183,6 +1192,8 @@ struct BinscatterParam
 	bool bs_points = false;
 	uint64_t bs_lower = 1;
 	uint64_t bs_upper = std::numeric_limits<uint64_t>::max();
+
+	[[no_unique_address]] Weight weight;
 };
 template <keyword_arg ...Options>
 auto MakeBinscatterParam(Options ...ops)
@@ -1195,7 +1206,8 @@ auto MakeBinscatterParam(Options ...ops)
 	auto ymin = GetKeywordArg(plot::ymin, ops...);
 	auto ymax = GetKeywordArg(plot::ymax, ops...);
 	auto ynbin = GetKeywordArg(plot::ynbin, ops...);
-	return BinscatterParam<decltype(x), decltype(y)>(x, xmin, xmax, xnbin, y, ymin, ymax, ynbin, ops...);
+	auto weight = AllView(GetKeywordArg(plot::weight, std::ranges::empty_view<double>{}, ops...));
+	return BinscatterParam<decltype(x), decltype(y), decltype(weight)>(x, xmin, xmax, xnbin, y, ymin, ymax, ynbin, weight, ops...);
 }
 
 #undef ADAPT_DETAIL_GET_KEYWORD_ARG_AS_VIEW

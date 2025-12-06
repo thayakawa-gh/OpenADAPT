@@ -13,6 +13,105 @@ namespace adapt
 namespace detail
 {
 
+template <class TrueBound>
+struct RepeatBound;
+template <>
+struct RepeatBound<void>
+{
+	using difference_type = ptrdiff_t;
+	RepeatBound() = default;
+	RepeatBound(const RepeatBound&) = default;
+	RepeatBound(RepeatBound&&) = default;
+	RepeatBound& operator=(const RepeatBound&) = default;
+	RepeatBound& operator=(RepeatBound&&) = default;
+	void operator++() {}
+	bool operator==(const RepeatBound&) const { return false; }
+};
+template <>
+struct RepeatBound<size_t>
+{
+	using difference_type = ptrdiff_t;
+	explicit RepeatBound() : m_count(0) {}
+	explicit RepeatBound(size_t count) : m_count(count) {}
+	RepeatBound(const RepeatBound&) = default;
+	RepeatBound(RepeatBound&&) = default;
+	RepeatBound& operator=(const RepeatBound&) = default;
+	RepeatBound& operator=(RepeatBound&&) = default;
+	void operator++() { ++m_count; }
+	bool operator==(const RepeatBound& that) const { return m_count == that.m_count; }
+	bool operator!=(const RepeatBound& that) const { return !(*this == that); }
+	size_t GetCount() const { return m_count; }
+private:
+	size_t m_count;
+};
+
+}
+
+template <class Type, class Bound>
+struct RepeatIterator
+{
+	using iterator_category = std::input_iterator_tag;
+	using difference_type = std::ptrdiff_t;
+	using value_type = Type;
+	using reference = const Type&;
+
+	RepeatIterator() = default;
+	explicit RepeatIterator(const Type& value) : m_value(value) {}
+	explicit RepeatIterator(Type&& value) : m_value(std::move(value)) {}
+	RepeatIterator(const RepeatIterator&) = default;
+	RepeatIterator(RepeatIterator&&) = default;
+	RepeatIterator& operator=(const RepeatIterator&) = default;
+	RepeatIterator& operator=(RepeatIterator&&) = default;
+
+	RepeatIterator& operator++() { ++m_count; return *this; }
+	RepeatIterator operator++(int) { ++m_count; return *this; }
+	const Type& operator*() const noexcept { return m_value; }
+	friend bool operator==(const RepeatIterator& self, const detail::RepeatBound<Bound>& that) { return self.m_count == that; }
+	friend bool operator==(const detail::RepeatBound<Bound>& that, const RepeatIterator& self) { return self.m_count == that; }
+	friend bool operator!=(const RepeatIterator& self, const detail::RepeatBound<Bound>& that) { return !(self == that); }
+	friend bool operator!=(const detail::RepeatBound<Bound>& that, const RepeatIterator& self) { return !(self == that); }
+
+private:
+	Type m_value;
+	[[no_unique_address]] detail::RepeatBound<Bound> m_count;
+};
+
+template <class Type, class Bound>
+struct RepeatView
+	: public std::ranges::view_interface<RepeatView<Type, Bound>>
+{
+	using iterator = RepeatIterator<Type, Bound>;
+	using sentinel = detail::RepeatBound<Bound>;
+	RepeatView() = default;
+	explicit RepeatView(const Type& value) : m_value(value) {}
+	explicit RepeatView(const Type& value, size_t bound) : m_value(value), m_bound(bound) {}
+	iterator begin() const& { return iterator(m_value); }
+	iterator begin() && { return iterator(std::move(m_value)); }
+	sentinel end() const { return m_bound; }
+private:
+	Type m_value;
+	[[no_unique_address]] detail::RepeatBound<Bound> m_bound;
+};
+
+namespace views
+{
+
+template <class Type>
+RepeatView<Type, void> Repeat(Type&& v)
+{
+	return RepeatView<std::decay_t<Type>, void>(std::forward<Type>(v));
+}
+template <class Type>
+RepeatView<Type, size_t> Repeat(Type&& v, size_t bound)
+{
+	return RepeatView<std::decay_t<Type>, size_t>(std::forward<Type>(v), bound);
+}
+
+}
+
+namespace detail
+{
+
 template <class Iterators, class IndexSequence>
 class ZippedIterator_impl;
 template <class Iterators, class IndexSequence>

@@ -268,22 +268,44 @@ protected:
 		m_commands.push_back(command);
 		return std::move(*this);
 	}
-	template <class Data, class ...Options>
-	PlotBuffer2D Plot(const HistogramParam<Data>& p, Options ...ops)
+	template <class Data, class Weight, class ...Options>
+	PlotBuffer2D Plot(const HistogramParam<Data, Weight>& p, Options ...ops)
 	{
+		constexpr bool HasWeight = !std::same_as<std::ranges::empty_view<double>, Weight>;
 		//histepsなら最後のビンに0を追加する必要はないらしい。
 		std::vector<int64_t> hist(p.xnbin, 0);
+		[[maybe_unused]] std::vector<double> weighted_errors(p.xnbin, 0.);
 		double wbin = (p.xmax - p.xmin) / p.xnbin;
 		auto ibin = [&p, wbin](double v)
 		{
 			return (int64_t)((v - p.xmin) / wbin);
 		};
 
-		for (auto&& v : p.data)
+		if constexpr (HasWeight)
 		{
-			int64_t i = ibin(v);
-			if (i < 0 || std::cmp_greater_equal(i, p.xnbin)) continue;
-			++hist[i];
+			auto weight_ = [](const auto& w)
+			{
+				if constexpr (arithmetic<std::remove_cvref_t<decltype(w)>>)
+					return views::Repeat(w);
+				else
+					return w;
+			} (p.weight);
+			for (auto [v, w] : views::Zip(p.data, weight_))
+			{
+				int64_t i = ibin(v);
+				if (i < 0 || std::cmp_greater_equal(i, p.xnbin)) continue;
+				hist[i] += w;
+				weighted_errors[i] += (w * w);
+			}
+		}
+		else
+		{
+			for (auto&& v : p.data)
+			{
+				int64_t i = ibin(v);
+				if (i < 0 || std::cmp_greater_equal(i, p.xnbin)) continue;
+				++hist[i];
+			}
 		}
 
 		std::vector<double> x(p.xnbin);
@@ -295,6 +317,8 @@ protected:
 		{
 			if (be == BinError::poisson68 || be == BinError::poisson95)
 			{
+				if constexpr (HasWeight)
+					PrintWarning("WARNING : weight option is not supported for Poisson confidence interval error bars. Ignoring weight.");
 				std::vector<double> yerrlow(p.xnbin), yerrhigh(p.xnbin);
 				for (size_t i = 0; i < p.xnbin; ++i)
 				{
@@ -311,7 +335,10 @@ protected:
 				std::vector<double> yerr(p.xnbin);
 				for (size_t i = 0; i < p.xnbin; ++i)
 				{
-					yerr[i] = std::sqrt(hist[i]);
+					if constexpr (HasWeight)
+						yerr[i] = std::sqrt(weighted_errors[i]);
+					else
+						yerr[i] = std::sqrt(hist[i]);
 					if (be == BinError::normal95) yerr[i] *= 1.96;
 				}
 				auto p2 = MakePointParam(plot::x = x, plot::y = hist, ops..., plot::s_points, plot::xerrorbar = wbin / 2., plot::yerrorbar = yerr);
@@ -324,9 +351,10 @@ protected:
 			return Plot(p2);
 		}
 	}
-	template <class X, class Y, class ...Options>
-	PlotBuffer2D Plot(const BinscatterParam<X, Y>& p, Options ...ops)
+	template <class X, class Y, class Weight, class ...Options>
+	PlotBuffer2D Plot(const BinscatterParam<X, Y, Weight>& p, Options ...ops)
 	{
+		constexpr bool HasWeight = !std::same_as<std::ranges::empty_view<double>, Weight>;
 		Matrix<double, 2> hist(p.xnbin, p.ynbin);
 		std::vector<double> vx; vx.reserve(p.x.size());
 		std::vector<double> vy; vy.reserve(p.y.size());
@@ -336,12 +364,13 @@ protected:
 		{
 			return std::make_pair((int64_t)((x - p.xmin) / wxbin), (int64_t)((y - p.ymin) / wybin));
 		};
-
-		for (auto&& [x, y] : views::Zip(p.x, p.y))
+		auto w_ = [&p]() { if constexpr (HasWeight) return p.weight; else return views::Repeat(0.); } ();
+		for ([[maybe_unused]] auto&& [x, y, w] : views::Zip(p.x, p.y, w_))
 		{
 			auto [ix, iy] = ibin(x, y);
 			if (ix < 0 || std::cmp_greater_equal(ix, p.xnbin) || iy < 0 || std::cmp_greater_equal(iy, p.ynbin)) continue;
-			++hist[(uint32_t)ix][(uint32_t)iy];
+			if constexpr (HasWeight) hist[(uint32_t)ix][(uint32_t)iy] += w;
+			else ++hist[(uint32_t)ix][(uint32_t)iy];
 			if (p.bs_points)
 			{
 				vx.push_back(x);
