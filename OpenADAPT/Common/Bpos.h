@@ -9,7 +9,6 @@
 
 namespace adapt
 {
-
 struct Bpos final
 {
 	static constexpr int msMaxSmallLayer = 2;

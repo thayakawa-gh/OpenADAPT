@@ -459,6 +459,36 @@ public:
 		return eval::detail::MakeTryJoinNode<Rank>(*this);
 	}
 
+	//DJoinedContainerのノード類は原理的にCtti化できないので、LayerConnstantの方は不要。
+	eval::CttiPosNode<LayerType, Container> pos(LayerType layer) const
+	{
+		return eval::CttiPosNode<LayerType, Container>(layer, static_cast<const Container&>(*this));
+	}
+	auto pos0() const { return pos(0_layer); }
+	auto pos1() const { return pos(1_layer); }
+	auto pos2() const { return pos(2_layer); }
+	auto pos3() const { return pos(3_layer); }
+	auto pos4() const { return pos(4_layer); }
+	auto pos5() const { return pos(5_layer); }
+	auto pos6() const { return pos(6_layer); }
+	auto pos7() const { return pos(7_layer); }
+	auto pos8() const { return pos(8_layer); }
+	auto pos9() const { return pos(9_layer); }
+
+	//size関数をJoinedContainerに実装するのは難しく、階層関数と比較して大きなパフォーマンス向上も見込めない可能性が高いので、
+	//ひとまず実装は見送ることにする。
+	/*
+	template <LayerType From, LayerType To>
+	eval::CttiSizeNode<LayerConstant<From>, LayerConstant<To>, Container> size(LayerConstant<From> from, LayerConstant<To> to) const
+	{
+		throw Forbidden("cannot use size(from, to) function in DJoinedContainer.");
+	}
+	eval::CttiSizeNode<LayerType, LayerType, Container> size(LayerType from, LayerType to) const
+	{
+		throw Forbidden("cannot use size(from, to) function in DJoinedContainer.");
+	}
+	*/
+
 	template <RankType Rank>
 	Qualifier<IContainer<Rank>>& GetContainer() const { return *std::get<Rank>(m_containers); }
 
@@ -508,7 +538,7 @@ public:
 	Traverser begin() const requires (!IsConst)
 	{
 		LayerInfo<MaxRank> l(m_container->GetJointLayers());
-		l.EnableAndSetTravLayer(m_trav_layer);
+		l.EnableAndSetTravLayer(m_trav_layer, true);
 		Traverser res(*m_container, l);
 		auto clone_joints = [this, &res]<auto N>(auto self, Number<N>)
 		{
@@ -538,7 +568,7 @@ public:
 	ConstTraverser cbegin() const
 	{
 		LayerInfo<MaxRank> l(m_container->GetJointLayers());
-		l.EnableAndSetTravLayer(m_trav_layer);
+		l.EnableAndSetTravLayer(m_trav_layer, true);
 		ConstTraverser res(*m_container, l);
 		auto clone_joints = [this, &res]<auto N>(auto self, Number<N>)
 		{
@@ -602,7 +632,7 @@ public:
 	Traverser begin() const requires (!IsConst)
 	{
 		LayerInfo<MaxRank> l(m_container->GetJointLayers());
-		l.EnableAndSetTravLayer(m_trav_layer);
+		l.EnableAndSetTravLayer(m_trav_layer, true);
 		Traverser res(*m_container, l);
 		auto clone_joints = [this, &res]<auto N>(auto self, Number<N>)
 		{
@@ -632,7 +662,7 @@ public:
 	ConstTraverser cbegin() const
 	{
 		LayerInfo<MaxRank> l(m_container->GetJointLayers());
-		l.EnableAndSetTravLayer(m_trav_layer);
+		l.EnableAndSetTravLayer(m_trav_layer, true);
 		ConstTraverser res(*m_container, l);
 		auto clone_joints = [this, &res]<auto N>(auto self, Number<N>)
 		{

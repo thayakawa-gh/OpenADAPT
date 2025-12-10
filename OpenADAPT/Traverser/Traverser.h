@@ -788,6 +788,12 @@ public:
 		}
 	}
 
+	//from層を固定し、そこからto層までの全要素数を数えて返す。
+	size_t GetSize(LayerType from, LayerType to) const
+	{
+		return m_iterators[from + 1_layer]->GetSize(to);
+	}
+
 private:
 	template <bool SizeCheck, std::integral Index, std::integral ...Indices>
 	FieldRef GetField_rec(const RttiPlaceholder& m, const ElementIterator& it, Index i, Indices ...is) const
@@ -814,8 +820,8 @@ public:
 	FieldRef GetField(const RttiPlaceholder& m, Indices ...is) const
 	{
 		static_assert(sizeof...(Indices) <= std::numeric_limits<LayerType>::max());//常識的に考えて要らんけど、一応。
-		assert((LayerType)sizeof...(Indices) <= this->GetTravLayer());
-		assert((LayerType)sizeof...(Indices) <= m.GetInternalLayer());
+		assert((LayerType)sizeof...(Indices) - 1_layer <= this->GetTravLayer());
+		assert((LayerType)sizeof...(Indices) - 1_layer <= m.GetInternalLayer());
 		auto& it = this->GetIterator(m.GetInternalLayer() - sizeof...(Indices));
 		return GetField_rec<true>(m, it, is...);
 	}
@@ -849,8 +855,8 @@ public:
 	Qualifier<Type>& GetField(const TypedPlaceholder<Type>& m, Indices ...is) const
 	{
 		static_assert(sizeof...(Indices) <= std::numeric_limits<LayerType>::max());//常識的に考えて要らんけど、一応。
-		assert((LayerType)sizeof...(Indices) <= this->GetTravLayer());
-		assert((LayerType)sizeof...(Indices) <= m.GetInternalLayer());
+		assert((LayerType)sizeof...(Indices) - 1_layer <= this->GetTravLayer());
+		assert((LayerType)sizeof...(Indices) - 1_layer <= m.GetInternalLayer());
 		auto& it = this->GetIterator(m.GetInternalLayer() - sizeof...(Indices));
 		return GetField_rec<true>(m, it, is...);
 	}
@@ -884,8 +890,8 @@ public:
 	Qualifier<Type>& GetField(const CttiPlaceholder<Layer, Type>& m, Indices ...is) const
 	{
 		static_assert(sizeof...(Indices) <= std::numeric_limits<LayerType>::max());//常識的に考えて要らんけど、一応。
-		assert((LayerType)sizeof...(Indices) <= this->GetTravLayer());
-		assert((LayerType)sizeof...(Indices) <= m.GetInternalLayer());
+		assert((LayerType)sizeof...(Indices) - 1_layer <= this->GetTravLayer());
+		assert((LayerType)sizeof...(Indices) - 1_layer <= m.GetInternalLayer());
 		auto& it = this->GetIterator(m.GetInternalLayer() - sizeof...(Indices));
 		return GetField_rec<true>(m, it, is...);
 	}

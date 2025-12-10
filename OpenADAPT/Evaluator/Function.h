@@ -7,6 +7,8 @@
 #include <OpenADAPT/Common/Concepts.h>
 #include <OpenADAPT/Evaluator/ConstNode.h>
 #include <OpenADAPT/Evaluator/FuncNode.h>
+#include <OpenADAPT/Evaluator/TryJoinNode.h>
+#include <OpenADAPT/Evaluator/TravInfoNode.h>
 #include <OpenADAPT/Joint/LayerInfo.h>
 
 namespace adapt

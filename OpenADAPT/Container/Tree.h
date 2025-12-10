@@ -4,6 +4,7 @@
 #include <OpenADAPT/Utility/NamedTuple.h>
 #include <OpenADAPT/Container/ElementRef.h>
 #include <OpenADAPT/Traverser/Traverser.h>
+#include <OpenADAPT/Evaluator/TravInfoNode.h>
 
 namespace adapt
 {
@@ -357,6 +358,73 @@ public:
 		//else
 		//	return ElementListRef_impl<Hierarchy, std::type_identity_t, LayerType>(this, 0_layer, GetBlockOneLayerDown());
 	}
+
+	template <LayerType Layer>
+	eval::CttiPosNode<LayerConstant<Layer>, Container> pos(LayerConstant<Layer> layer) const
+	{
+		if constexpr (f_hierarchy<Container> || s_hierarchy<Container>) static_assert(Layer <= Hierarchy::GetMaxLayer());
+		else assert(Layer <= Hierarchy::GetMaxLayer());
+		return eval::CttiPosNode<LayerConstant<Layer>, Container>(layer, static_cast<const Container&>(*this));
+	}
+	eval::CttiPosNode<LayerType, Container> pos(LayerType layer) const
+	{
+		assert(layer <= Hierarchy::GetMaxLayer());
+		return eval::CttiPosNode<LayerType, Container>(layer, static_cast<const Container&>(*this));
+	}
+	auto pos0() const { return pos(0_layer); }
+	auto pos1() const { return pos(1_layer); }
+	auto pos2() const { return pos(2_layer); }
+	auto pos3() const { return pos(3_layer); }
+	auto pos4() const { return pos(4_layer); }
+	auto pos5() const { return pos(5_layer); }
+	auto pos6() const { return pos(6_layer); }
+	auto pos7() const { return pos(7_layer); }
+	auto pos8() const { return pos(8_layer); }
+	auto pos9() const { return pos(9_layer); }
+
+	template <LayerType From, LayerType To>
+	eval::CttiSizeNode<LayerConstant<From>, LayerConstant<To>, Container> size(LayerConstant<From> from, LayerConstant<To> to) const
+	{
+		if constexpr (f_hierarchy<Container> || s_hierarchy<Container>) static_assert(To <= Hierarchy::GetMaxLayer());
+		static_assert(From < To);
+		return eval::CttiSizeNode<LayerConstant<From>, LayerConstant<To>, Container>(from, to, static_cast<const Container&>(*this));
+	}
+	eval::CttiSizeNode<LayerType, LayerType, Container> size(LayerType from, LayerType to) const
+	{
+		assert(to <= Hierarchy::GetMaxLayer());
+		assert(from < to);
+		return eval::CttiSizeNode<LayerType, LayerType, Container>(from, to, static_cast<const Container&>(*this));
+	}
+	template <LayerType To>
+	auto size(LayerConstant<To> to) const { return size(to - 1_layer, to); }
+	auto size(LayerType to) const { return size(to - 1_layer, to); }
+	template <LayerType To>
+	auto size1(LayerConstant<To> to) const { return size(to - 1_layer, to); }
+	auto size1(LayerType to) const { return size(to - 1_layer, to); }
+	template <LayerType To>
+	auto size2(LayerConstant<To> to) const { return size(to - 2_layer, to); }
+	auto size2(LayerType to) const { return size(to - 2_layer, to); }
+	template <LayerType To>
+	auto size3(LayerConstant<To> to) const { return size(to - 3_layer, to); }
+	auto size3(LayerType to) const { return size(to - 3_layer, to); }
+	template <LayerType To>
+	auto size4(LayerConstant<To> to) const { return size(to - 4_layer, to); }
+	auto size4(LayerType to) const { return size(to - 4_layer, to); }
+	template <LayerType To>
+	auto size5(LayerConstant<To> to) const { return size(to - 5_layer, to); }
+	auto size5(LayerType to) const { return size(to - 5_layer, to); }
+	template <LayerType To>
+	auto size6(LayerConstant<To> to) const { return size(to - 6_layer, to); }
+	auto size6(LayerType to) const { return size(to - 6_layer, to); }
+	template <LayerType To>
+	auto size7(LayerConstant<To> to) const { return size(to - 7_layer, to); }
+	auto size7(LayerType to) const { return size(to - 7_layer, to); }
+	template <LayerType To>
+	auto size8(LayerConstant<To> to) const { return size(to - 8_layer, to); }
+	auto size8(LayerType to) const { return size(to - 8_layer, to); }
+	template <LayerType To>
+	auto size9(LayerConstant<To> to) const { return size(to - 9_layer, to); }
+	auto size9(LayerType to) const { return size(to - 9_layer, to); }
 
 private:
 

@@ -342,8 +342,8 @@ public:
 
 	//走査する連結後の階層を与える。
 	//このとき、例えばlayerがある順位のupper_joint_layerに相当する場合、
-	//階層関数などでは無効の場合もあるが、この関数では無条件に有効化する。
-	constexpr void EnableAndSetTravLayer(LayerType extlayer)
+	//bがtrueの場合は有効に、falseの場合は無効のままにする。
+	constexpr void EnableAndSetTravLayer(LayerType extlayer, bool b)
 	{
 		LayerType exttop = -1;
 		for (RankType r = 0; r < MaxRank; ++r)
@@ -357,6 +357,7 @@ public:
 			{
 				i.Enable();
 				i.SetTravLayer(i.GetLJointLayer());
+				if (exttop + diff == extlayer && !b) return;
 				exttop += diff;
 			}
 			else

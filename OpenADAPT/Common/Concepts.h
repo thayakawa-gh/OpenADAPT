@@ -494,6 +494,8 @@ concept s_container = s_tree<T> || s_table<T> || s_joined_container<T>;
 //template <class T>
 //concept any_container = container_simplex<T> || joined_container<T>;
 
+template <class T>
+concept joined_traverser = any_traverser<T> && derived_from_nxt<std::remove_cvref_t<T>, detail::JointMethods>;
 
 namespace detail
 {

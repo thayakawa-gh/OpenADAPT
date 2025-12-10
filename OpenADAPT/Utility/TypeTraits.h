@@ -20,7 +20,7 @@ struct IntegralConstant : std::integral_constant<Type, N>
 	template <Type X>
 	constexpr auto operator+(Derived<X>) const { return Derived<Type(N + X)>{}; }
 	template <Type X>
-	constexpr auto operator-(Derived<X>) const { return Derived<Type(N + X)>{}; }
+	constexpr auto operator-(Derived<X>) const { return Derived<Type(N - X)>{}; }
 
 	constexpr Type operator+(Type x) const { return Type(N + x); }
 	constexpr Type operator-(Type x) const { return Type(N - x); }

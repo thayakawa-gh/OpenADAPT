@@ -40,6 +40,7 @@
 
 #define ADAPT_DETAIL_SELECT_MACRO_NUM_TRIO(MACRO, CONV, ...) ADAPT_EXPAND_VARS(ADAPT_CONCAT, (MACRO, ADAPT_GET_NUM_ARGS_TRIO(__VA_ARGS__)))(CONV, __VA_ARGS__)
 
+#define ADAPT_DECL_IF(COND, DECL) [&]() { if constexpr (COND) { return DECL; } else { return EmptyClass{}; } } ()
 
 //MSVCとclang/gccで記述統一ができなかった。
 #ifdef _MSC_VER
