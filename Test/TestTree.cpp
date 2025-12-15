@@ -21,7 +21,7 @@ void TestContainer(Container& tree, const std::vector<Class>& cls,
 	EXPECT_EQ(tree.GetSize(1_layer), 120);
 	EXPECT_EQ(tree.GetSize(2_layer), 480);
 
-	size_t clssize = cls.size();
+	BindexType clssize = (BindexType)cls.size();
 	for (BindexType i = 0; i < clssize; ++i)
 	{
 		const auto& tc = tree[i];
@@ -41,7 +41,7 @@ void TestContainer(Container& tree, const std::vector<Class>& cls,
 			EXPECT_EQ(tc[class_], c.m_class);
 		}
 
-		size_t stusize = c.m_students.size();
+		BindexType stusize = (BindexType)c.m_students.size();
 		for (BindexType j = 0; j < stusize; ++j)
 		{
 			const auto& ts = tc[j];
@@ -60,7 +60,7 @@ void TestContainer(Container& tree, const std::vector<Class>& cls,
 				EXPECT_EQ(ts[name], s.m_name);
 			}
 
-			size_t recsize = s.m_records.size();
+			BindexType recsize = (BindexType)s.m_records.size();
 			for (BindexType k = 0; k < recsize; ++k)
 			{
 				const auto& tr = ts[k];
@@ -124,19 +124,19 @@ void TestTreeHandling(Tree& tree)
 	auto [i00, i01, i10, i11] = tree.GetPlaceholders("i00", "i01", "i10", "i11");
 	{
 		tree.Resize(10);
-		for (BindexType i = 0; i < 10; ++i)
+		for (int32_t i = 0; i < 10; ++i)
 			tree[i].Assign(i, i);
 		EXPECT_EQ(tree.GetSize(), 10);
 		EXPECT_EQ(tree.GetCapacity(), 10);
-		for (BindexType i = 0; i < 10; ++i)
+		for (int32_t i = 0; i < 10; ++i)
 		{
 			auto x = tree[i];
 			EXPECT_EQ(x[i00].i32(), i);
 			EXPECT_EQ(x[i01].i32(), i);
 			x.Resize(5);
-			for (BindexType j = 0; j < 5; ++j)
+			for (int32_t j = 0; j < 5; ++j)
 				x[j].Assign(i, j);
-			for (BindexType j = 0; j < 5; ++j)
+			for (int32_t j = 0; j < 5; ++j)
 			{
 				auto y = x[j];
 				EXPECT_EQ(y[i10].i32(), i);
@@ -145,11 +145,11 @@ void TestTreeHandling(Tree& tree)
 			EXPECT_EQ(x.GetSize(), 5);
 			EXPECT_EQ(x.GetCapacity(), 5);
 		}
-		for (BindexType i = 0; i < 10; ++i)
+		for (int32_t i = 0; i < 10; ++i)
 			tree.Push(i + 10, i + 10);
 		EXPECT_EQ(tree.GetSize(), 20);
 		EXPECT_EQ(tree.GetCapacity(), 21);
-		for (BindexType i = 0; i < 20; ++i)
+		for (int32_t i = 0; i < 20; ++i)
 		{
 			auto x = tree[i];
 			EXPECT_EQ(x[i00].i32(), i);
@@ -157,7 +157,7 @@ void TestTreeHandling(Tree& tree)
 			if (i < 10)
 			{
 				EXPECT_EQ(x.GetSize(), 5);
-				for (BindexType j = 0; j < 5; ++j)
+				for (int32_t j = 0; j < 5; ++j)
 				{
 					auto y = x[j];
 					EXPECT_EQ(y[i10].i32(), i);
@@ -172,7 +172,7 @@ void TestTreeHandling(Tree& tree)
 		tree.Erase(2, 3);
 		EXPECT_EQ(tree.GetSize(), 17);
 		EXPECT_EQ(tree.GetCapacity(), 21);
-		for (BindexType i = 0; i < 17; ++i)
+		for (int32_t i = 0; i < 17; ++i)
 		{
 			auto x = tree[i];
 			if (i < 2)
@@ -180,7 +180,7 @@ void TestTreeHandling(Tree& tree)
 				EXPECT_EQ(x[i00].i32(), i);
 				EXPECT_EQ(x[i01].i32(), i);
 				EXPECT_EQ(x.GetSize(), 5);
-				for (BindexType j = 0; j < 5; ++j)
+				for (int32_t j = 0; j < 5; ++j)
 				{
 					auto y = x[j];
 					EXPECT_EQ(y[i10].i32(), i);
@@ -192,7 +192,7 @@ void TestTreeHandling(Tree& tree)
 				EXPECT_EQ(x[i00].i32(), i + 3);
 				EXPECT_EQ(x[i01].i32(), i + 3);
 				EXPECT_EQ(x.GetSize(), 5);
-				for (BindexType j = 0; j < 5; ++j)
+				for (int32_t j = 0; j < 5; ++j)
 				{
 					auto y = x[j];
 					EXPECT_EQ(y[i10].i32(), i + 3);
@@ -207,26 +207,26 @@ void TestTreeHandling(Tree& tree)
 		tree.Insert(2, 2, 2);
 		tree.Insert(3, 3, 3);
 		tree.Insert(4, 4, 4);
-		for (BindexType i = 2; i < 5; ++i)
+		for (int32_t i = 2; i < 5; ++i)
 		{
 			auto x = tree[i];
-			for (BindexType j = 0; j < 5; ++j)
+			for (int32_t j = 0; j < 5; ++j)
 				x.Push(i, j);
 			EXPECT_EQ(x.GetSize(), 5);
 			EXPECT_EQ(x.GetCapacity(), 7);
 		}
 		EXPECT_EQ(tree.GetSize(), 20);
 		EXPECT_EQ(tree.GetCapacity(), 21);
-		for (BindexType i = 0; i < 15; ++i) tree.Pop();
+		for (int32_t i = 0; i < 15; ++i) tree.Pop();
 		EXPECT_EQ(tree.GetSize(), 5);
 		EXPECT_EQ(tree.GetCapacity(), 21);
-		for (BindexType i = 0; i < 5; ++i)
+		for (int32_t i = 0; i < 5; ++i)
 		{
 			auto x = tree[i];
 			EXPECT_EQ(x[i00].i32(), i);
 			EXPECT_EQ(x[i01].i32(), i);
 			EXPECT_EQ(x.GetSize(), 5);
-			for (BindexType j = 0; j < 5; ++j)
+			for (int32_t j = 0; j < 5; ++j)
 			{
 				auto y = x[j];
 				EXPECT_EQ(y[i10].i32(), i);

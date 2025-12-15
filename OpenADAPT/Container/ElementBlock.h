@@ -104,28 +104,28 @@ public:
 	char* GetBlock(HierarchySD h, LayerSD layer, BindexType index)
 	{
 		ptrdiff_t ptrpos = GetPtrDiff(h, layer, index);
-		if ((size_t)index >= GetSize(h, layer)) return nullptr;
+		if (index >= GetSize(h, layer)) return nullptr;
 		return m_blocks + ptrpos;
 	}
 	template <class LayerSD>
 	const char* GetBlock(HierarchySD h, LayerSD layer, BindexType index) const
 	{
 		ptrdiff_t ptrpos = GetPtrDiff(h, layer, index);
-		if ((size_t)index >= GetSize(h, layer)) return nullptr;
+		if (index >= GetSize(h, layer)) return nullptr;
 		return m_blocks + ptrpos;
 	}
 	template <class LayerSD>
 	char* GetBlock_unsafe(HierarchySD h, LayerSD layer, BindexType index)
 	{
 		ptrdiff_t ptrpos = GetPtrDiff(h, layer, index);
-		assert((size_t)index < GetSize(h, layer));
+		assert(index < GetSize(h, layer));
 		return m_blocks + ptrpos;
 	}
 	template <class LayerSD>
 	const char* GetBlock_unsafe(HierarchySD h, LayerSD layer, BindexType index) const
 	{
 		ptrdiff_t ptrpos = GetPtrDiff(h, layer, index);
-		assert((size_t)index < GetSize(h, layer));
+		assert(index < GetSize(h, layer));
 		return m_blocks + ptrpos;
 	}
 

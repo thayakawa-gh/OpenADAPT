@@ -29,17 +29,17 @@ void TestTraverser(Container& tree, const std::vector<Class>& cls,
 	Bpos buf(2);
 
 	//正順
-	size_t clssize = cls.size();
+	BindexType clssize = (BindexType)cls.size();
 	for (BindexType i = 0; i < clssize; ++i)
 	{
 		cur[0] = i;
 		const Class& c = cls[i];
-		size_t stusize = c.m_students.size();
+		BindexType stusize = (BindexType)c.m_students.size();
 		for (BindexType j = 0; j < stusize; ++j)
 		{
 			cur[1] = j;
 			const Student& s = c.m_students[j];
-			size_t recsize = s.m_records.size();
+			BindexType recsize = (BindexType)s.m_records.size();
 			for (BindexType k = 0; k < recsize; ++k)
 			{
 				cur[2] = k;
@@ -48,7 +48,7 @@ void TestTraverser(Container& tree, const std::vector<Class>& cls,
 				EXPECT_EQ(j, trav.GetPos(1));
 				EXPECT_EQ(k, trav.GetPos(2));
 				trav.GetBpos(buf);
-				EXPECT_TRUE(cur.MatchPerfectly(buf));
+				EXPECT_TRUE(cur == buf);
 
 				EXPECT_EQ(get_field(Number<I08>{}, trav, class_), c.m_class);
 				EXPECT_EQ(get_field(Number<Str>{}, trav, name), s.m_name);
@@ -61,18 +61,18 @@ void TestTraverser(Container& tree, const std::vector<Class>& cls,
 	EXPECT_EQ(trav, range.end());
 
 	//逆順
-	for (int32_t i = (int32_t)clssize - 1; i >= 0; --i)
+	for (BindexType i = (BindexType)clssize - 1; i >= 0; --i)
 	{
 		//forループをBindexTypeで回してはいけない。unsignedなのでi >= 0の判定が意味をなさない。
 		cur[0] = i;
 		const Class& c = cls[i];
 		size_t stusize = c.m_students.size();
-		for (int32_t j = (int32_t)stusize - 1; j >= 0; --j)
+		for (BindexType j = (BindexType)stusize - 1; j >= 0; --j)
 		{
 			cur[1] = j;
 			const Student& s = c.m_students[j];
 			size_t recsize = s.m_records.size();
-			for (int32_t k = (int32_t)recsize - 1; k >= 0; --k)
+			for (BindexType k = (BindexType)recsize - 1; k >= 0; --k)
 			{
 				--trav;
 
@@ -91,7 +91,7 @@ void TestTraverser(Container& tree, const std::vector<Class>& cls,
 				EXPECT_EQ(j, trav.GetPos(1));
 				EXPECT_EQ(k, trav.GetPos(2));
 				trav.GetBpos(buf);
-				EXPECT_TRUE(cur.MatchPerfectly(buf));
+				EXPECT_TRUE(cur == buf);
 
 				EXPECT_EQ(get_field(Number<I08>{}, trav, class_), c.m_class);
 				EXPECT_EQ(get_field(Number<Str>{}, trav, name), s.m_name);
@@ -106,12 +106,12 @@ void TestTraverser(Container& tree, const std::vector<Class>& cls,
 	{
 		cur[0] = i;
 		const Class& c = cls[i];
-		size_t stusize = c.m_students.size();
+		BindexType stusize = (BindexType)c.m_students.size();
 		for (BindexType j = 0; j < stusize; ++j)
 		{
 			cur[1] = j;
 			const Student& s = c.m_students[j];
-			size_t recsize = s.m_records.size();
+			BindexType recsize = (BindexType)s.m_records.size();
 			for (BindexType k = 0; k < recsize; ++k)
 			{
 				cur[2] = k;
@@ -120,7 +120,7 @@ void TestTraverser(Container& tree, const std::vector<Class>& cls,
 				EXPECT_EQ(j, trav.GetPos(1));
 				EXPECT_EQ(k, trav.GetPos(2));
 				trav.GetBpos(buf);
-				EXPECT_TRUE(cur.MatchPerfectly(buf));
+				EXPECT_TRUE(cur == buf);
 
 				EXPECT_EQ(get_field(Number<I08>{}, trav, class_), c.m_class);
 				EXPECT_EQ(get_field(Number<Str>{}, trav, name), s.m_name);
@@ -138,18 +138,18 @@ void TestTraverser(Container& tree, const std::vector<Class>& cls,
 	EXPECT_EQ(trav.GetPos(2), 3);
 
 	//MoveBackward
-	for (int32_t i = (int32_t)clssize - 1; i >= 0; --i)
+	for (BindexType i = (BindexType)clssize - 1; i >= 0; --i)
 	{
 		//forループをBindexTypeで回してはいけない。unsignedなのでi >= 0の判定が意味をなさない。
 		cur[0] = i;
 		const Class& c = cls[i];
 		size_t stusize = c.m_students.size();
-		for (int32_t j = (int32_t)stusize - 1; j >= 0; --j)
+		for (BindexType j = (BindexType)stusize - 1; j >= 0; --j)
 		{
 			cur[1] = j;
 			const Student& s = c.m_students[j];
 			size_t recsize = s.m_records.size();
-			for (int32_t k = (int32_t)recsize - 1; k >= 0; --k)
+			for (BindexType k = (BindexType)recsize - 1; k >= 0; --k)
 			{
 				cur[2] = k;
 				const Record& r = s.m_records[k];
@@ -165,7 +165,7 @@ void TestTraverser(Container& tree, const std::vector<Class>& cls,
 				EXPECT_EQ(j, trav.GetPos(1));
 				EXPECT_EQ(k, trav.GetPos(2));
 				trav.GetBpos(buf);
-				EXPECT_TRUE(cur.MatchPerfectly(buf));
+				EXPECT_TRUE(cur == buf);
 
 				EXPECT_EQ(get_field(Number<I08>{}, trav, class_), c.m_class);
 				EXPECT_EQ(get_field(Number<Str>{}, trav, name), s.m_name);
@@ -253,17 +253,17 @@ void TestTraverser(Container& tree, const std::vector<Class>& cls,
 	Bpos buf(2);
 
 	//正順
-	size_t clssize = cls.size();
+	BindexType clssize = (BindexType)cls.size();
 	for (BindexType i = 0; i < clssize; ++i)
 	{
 		cur[0] = i;
 		const Class& c = cls[i];
-		size_t stusize = c.m_students.size();
+		BindexType stusize = (BindexType)c.m_students.size();
 		for (BindexType j = 0; j < stusize; ++j)
 		{
 			cur[1] = j;
 			const Student& s = c.m_students[j];
-			size_t recsize = s.m_records.size();
+			BindexType recsize = (BindexType)s.m_records.size();
 			for (BindexType k = 0; k < recsize; ++k)
 			{
 				cur[2] = k;
@@ -280,18 +280,18 @@ void TestTraverser(Container& tree, const std::vector<Class>& cls,
 	EXPECT_EQ(trav, range.end());
 
 	//逆順
-	for (int32_t i = (int32_t)clssize - 1; i >= 0; --i)
+	for (BindexType i = (BindexType)clssize - 1; i >= 0; --i)
 	{
 		//forループをBindexTypeで回してはいけない。unsignedなのでi >= 0の判定が意味をなさない。
 		cur[0] = i;
 		const Class& c = cls[i];
 		size_t stusize = c.m_students.size();
-		for (int32_t j = (int32_t)stusize - 1; j >= 0; --j)
+		for (BindexType j = (BindexType)stusize - 1; j >= 0; --j)
 		{
 			cur[1] = j;
 			const Student& s = c.m_students[j];
 			size_t recsize = s.m_records.size();
-			for (int32_t k = (int32_t)recsize - 1; k >= 0; --k)
+			for (BindexType k = (BindexType)recsize - 1; k >= 0; --k)
 			{
 				--trav;
 

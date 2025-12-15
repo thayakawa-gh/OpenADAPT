@@ -18,7 +18,7 @@ public:
 	using Traverser = Container::Traverser;
 	using ConstTraverser = Container::ConstTraverser;
 
-	using RetType = int64_t;
+	using RetType = BindexType;
 
 	static constexpr RankType MaxRank = Container::MaxRank;
 
@@ -94,7 +94,7 @@ public:
 	using Traverser = Container::Traverser;
 	using ConstTraverser = Container::ConstTraverser;
 
-	using RetType = int64_t;
+	using RetType = BindexType;
 
 	static constexpr RankType MaxRank = Container::MaxRank;
 

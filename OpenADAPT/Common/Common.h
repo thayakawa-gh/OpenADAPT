@@ -180,8 +180,8 @@ struct IndexToBin
 		BindexType tmp = index;
 		for (size_t i = Dim; i > 0; --i)
 		{
-			BindexType size = BindexType(max[i - 1] - min[i - 1] + 1);
-			res[i - 1] = tmp % size + (BindexType)min[i - 1];
+			int32_t size = max[i - 1] - min[i - 1] + 1;
+			res[i - 1] = (int32_t)(tmp % size + min[i - 1]);
 			tmp /= size;
 		}
 		return res;

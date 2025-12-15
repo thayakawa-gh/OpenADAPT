@@ -14,22 +14,22 @@ TEST_F(Aggregator, CrossJoint)
 		auto e = jt | Filter(english0 - english1 < 20) | Extract(name0 + "-" + name1, math0 - math1);
 		ADAPT_GET_PLACEHOLDERS(e, fld0, fld1);
 		auto trav = e.GetRange(5_layer).begin();
-		for (BindexType i = 0; i < m_class.size(); ++i)
+		for (BindexType i = 0; i < (BindexType)m_class.size(); ++i)
 		{
 			auto& c0 = m_class[i];
-			for (BindexType j = 0; j < c0.m_students.size(); ++j)
+			for (BindexType j = 0; j < (BindexType)c0.m_students.size(); ++j)
 			{
 				auto& st0 = c0.m_students[j];
-				for (BindexType k = 0; k < st0.m_records.size(); ++k)
+				for (BindexType k = 0; k < (BindexType)st0.m_records.size(); ++k)
 				{
 					auto& r0 = st0.m_records[k];
-					for (BindexType l = 0; l < m_class.size(); ++l)
+					for (BindexType l = 0; l < (BindexType)m_class.size(); ++l)
 					{
 						auto& c1 = m_class[l];
-						for (BindexType m = 0; m < c1.m_students.size(); ++m)
+						for (BindexType m = 0; m < (BindexType)c1.m_students.size(); ++m)
 						{
 							auto& st1 = c1.m_students[m];
-							for (BindexType n = 0; n < st1.m_records.size(); ++n)
+							for (BindexType n = 0; n < (BindexType)st1.m_records.size(); ++n)
 							{
 								auto& r1 = st1.m_records[n];
 								if (r0.m_english - r1.m_english >= 20) continue;
@@ -62,16 +62,16 @@ TEST_F(Aggregator, CrossJoint)
 			for (const auto& r : s.m_records) sum += (int32_t)(r.*sub);
 			return int32_t(sum / s.m_records.size());
 		};
-		for (BindexType i = 0; i < m_class.size(); ++i)
+		for (BindexType i = 0; i < (BindexType)m_class.size(); ++i)
 		{
 			auto& c0 = m_class[i];
-			for (BindexType j = 0; j < c0.m_students.size(); ++j)
+			for (BindexType j = 0; j < (BindexType)c0.m_students.size(); ++j)
 			{
 				auto& st0 = c0.m_students[j];
-				for (BindexType l = 0; l < m_class.size(); ++l)
+				for (BindexType l = 0; l < (BindexType)m_class.size(); ++l)
 				{
 					auto& c1 = m_class[l];
-					for (BindexType m = 0; m < c1.m_students.size(); ++m)
+					for (BindexType m = 0; m < (BindexType)c1.m_students.size(); ++m)
 					{
 						auto& st1 = c1.m_students[m];
 						if (get_mean(st0, &Record::m_english) - get_mean(st1, &Record::m_english) >= 20) continue;

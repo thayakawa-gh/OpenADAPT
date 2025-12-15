@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <memory>
 #include <OpenADAPT/Utility/Verbose.h>
 #include <OpenADAPT/Common/Concepts.h>
 

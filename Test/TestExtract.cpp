@@ -77,13 +77,13 @@ void TestExtract(Container& s, const std::vector<Class>& clses, Layer0 l0, Layer
 		auto range = s | Filter(sum >= 300) | GetRange(2_layer);
 		auto trav = range.begin();
 
-		for (BindexType i = 0; i < clses.size(); ++i)
+		for (BindexType i = 0; i < (BindexType)clses.size(); ++i)
 		{
 			auto& c = clses[i];
-			for (BindexType j = 0; j < c.m_students.size(); ++j)
+			for (BindexType j = 0; j < (BindexType)c.m_students.size(); ++j)
 			{
 				auto& st = c.m_students[j];
-				for (BindexType k = 0; k < st.m_records.size(); ++k)
+				for (BindexType k = 0; k < (BindexType)st.m_records.size(); ++k)
 				{
 					auto& r = st.m_records[k];
 					if (r.m_math + r.m_japanese + r.m_english + r.m_science + r.m_social < 300) continue;

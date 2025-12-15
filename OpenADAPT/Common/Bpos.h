@@ -9,6 +9,9 @@
 
 namespace adapt
 {
+
+#ifdef ADAPT_USE_32BIT_BINDEX
+
 struct Bpos final
 {
 	static constexpr int msMaxSmallLayer = 2;
@@ -349,6 +352,247 @@ protected:
 	};
 };
 
+#else
+
+struct Bpos final
+{
+	static constexpr LayerType msMaxSmallLayer = 2_layer;
+
+	Bpos() : m_layer(-1), m_small{ 0 }  {}
+	explicit Bpos(LayerType l)
+		: m_layer(l), m_small{ 0 }
+	{
+		Init(l);
+	}
+	Bpos(std::initializer_list<BindexType> init)
+		: m_layer((LayerType)init.size() - 1), m_small{ 0 }
+	{
+		if (m_layer <= msMaxSmallLayer) std::copy(init.begin(), init.end(), m_small.m_pos.begin());
+		else
+		{
+			std::copy(init.begin(), init.begin() + 2, m_big.m_pos.begin());
+			m_big.m_pos_ptr = new BindexType[m_layer - 1];
+			std::copy(init.begin() + 2, init.end(), m_big.m_pos_ptr);
+		}
+	}
+
+	Bpos(const Bpos& b) : Bpos()
+	{
+		*this = b;
+	}
+	Bpos(Bpos&& b) noexcept : Bpos()
+	{
+		*this = std::move(b);
+	}
+	~Bpos()
+	{
+		if (m_layer > msMaxSmallLayer) delete[]  m_big.m_pos_ptr;
+	}
+
+	Bpos& operator=(const Bpos& b)
+	{
+		if (b.m_layer <= msMaxSmallLayer)
+		{
+			if (m_layer > msMaxSmallLayer) delete[] m_big.m_pos_ptr;
+			m_small = b.m_small;
+		}
+		else
+		{
+			if (m_layer <= msMaxSmallLayer) m_big.m_pos_ptr = new BindexType[b.m_layer - 1];
+			m_big.m_pos = b.m_big.m_pos;
+			std::copy(b.m_big.m_pos_ptr, b.m_big.m_pos_ptr + (b.m_layer - 1_layer), m_big.m_pos_ptr);
+		}
+		m_layer = b.m_layer;
+		return *this;
+	}
+	Bpos& operator=(Bpos&& b) noexcept
+	{
+		if (b.m_layer <= msMaxSmallLayer)
+		{
+			if (m_layer > msMaxSmallLayer) delete[] m_big.m_pos_ptr;
+			m_small = b.m_small;
+		}
+		else
+		{
+			m_big.m_pos = b.m_big.m_pos;
+			m_big.m_pos_ptr = b.m_big.m_pos_ptr;
+			b.m_big.m_pos_ptr = nullptr;
+		}
+		m_layer = b.m_layer;
+		return *this;
+	}
+
+	BindexType& operator[](LayerType layer)
+	{
+		assert(0 <= layer && layer <= m_layer);
+		if (m_layer <= msMaxSmallLayer) return m_small.m_pos[layer];
+		if (layer <= 1_layer) return m_big.m_pos[layer];
+		else return m_big.m_pos_ptr[layer - 1_layer];
+	}
+	const BindexType& operator[](LayerType layer) const
+	{
+		assert(0 <= layer && layer <= m_layer);
+		if (m_layer <= msMaxSmallLayer) return m_small.m_pos[layer];
+		if (layer <= 1_layer) return m_big.m_pos[layer];
+		else return m_big.m_pos_ptr[layer - 1_layer];
+	}
+	LayerType GetLayer() const
+	{
+		return (LayerType)m_layer;
+	}
+
+	/*
+	layerと位置が全て一致した場合にtrueを返す。
+	*/
+	bool operator==(const Bpos& b) const
+	{
+		if (m_layer != b.m_layer) return false;
+		for (LayerType l = 0_layer; l <= m_layer; ++l)
+		{
+			if ((*this)[l] != b[l]) return false;
+		}
+		return true;
+	}
+	bool operator!=(const Bpos& b) const
+	{
+		return !(*this == b);
+	}
+	//こちらはmaxlayerまでが一致するかどうかを調べる。maxlayerより下は無視される。
+	//これ自身とb、双方がmaxlayer以上の層数を持つ必要がある。
+	bool MatchPartially(const Bpos& b, LayerType maxlayer) const
+	{
+		assert(m_layer >= maxlayer && b.m_layer >= maxlayer);
+		for (LayerType l = 0_layer; l <= maxlayer; ++l)
+		{
+			if ((*this)[l] != b[l]) return false;
+		}
+		return true;
+	}
+	/*
+	thisとthatの大小関係は以下のような感じ。
+	1. std::min(GetLayer(), that.GetLayer())までを比較したとき、より上層の数値が小さい方
+	2. それらが全て等しい場合、より層数の小さい方
+	が小さいとする。例えば次のように並ぶ。
+	[0]
+	[0, 0]
+	[0, 1]
+	[0, 1, 0]
+	[0, 1, 1]
+	[0, 2]
+	[0, 2, 1]
+	[1]
+	[1, 0]
+	*/
+	bool operator<(const Bpos& b) const
+	{
+		LayerType maxlayer = std::min(m_layer, b.m_layer);
+		for (LayerType l = 0_layer; l <= maxlayer; ++l)
+		{
+			BindexType a_pos = (*this)[l];
+			BindexType b_pos = b[l];
+			if (a_pos == b_pos) continue;
+			return a_pos < b_pos;
+		}
+		return m_layer < b.m_layer;
+	}
+	bool operator<=(const Bpos& b) const
+	{
+		LayerType maxlayer = std::min(m_layer, b.m_layer);
+		for (LayerType l = 0_layer; l <= maxlayer; ++l)
+		{
+			BindexType a_pos = (*this)[l];
+			BindexType b_pos = b[l];
+			if (a_pos == b_pos) continue;
+			return a_pos < b_pos;
+		}
+		return m_layer <= b.m_layer;
+	}
+	bool operator>(const Bpos& b) const
+	{
+		return !(*this <= b);
+	}
+	bool operator>=(const Bpos& b) const
+	{
+		return !(*this < b);
+	}
+
+	//階層をlayerに変更し、全階層の位置を0で初期化する。
+	void Init(LayerType layer)
+	{
+		Init(layer, 0);
+	}
+	//階層をlayerに変更し、全階層の位置をindexで初期化する。
+	void Init(LayerType layer, BindexType index)
+	{
+		if (layer != m_layer && m_layer > msMaxSmallLayer) delete[] m_big.m_pos_ptr;
+		if (layer > msMaxSmallLayer)
+		{
+			if (layer != m_layer) m_big.m_pos_ptr = new BindexType[layer - 1];
+			std::fill(m_big.m_pos.begin(), m_big.m_pos.end(), index);
+			std::fill(m_big.m_pos_ptr, m_big.m_pos_ptr + (layer - 1_layer), index);
+		}
+		else
+		{
+			//layerが-1のとき、begin() - 1はエラーになるので、(layer + 1)と先に演算しておく必要がある。
+			std::fill(m_small.m_pos.begin(), m_small.m_pos.begin() + (layer + 1), index);
+			//こちらも同様。
+			std::fill(m_small.m_pos.begin() + (layer + 1), m_small.m_pos.end(), (BindexType)0);
+		}
+		m_layer = layer;
+	}
+
+	//自身の階層は変化させず、layerまでをbの値で初期化する。
+	//layer <= std::min(this.GetLayer(), b.GetLayer())である必要がある。
+	void Assign(const Bpos& b, int layer)
+	{
+		assert(m_layer >= layer && b.m_layer >= layer);
+		for (LayerType l = 0_layer; l <= layer; ++l) (*this)[l] = b[l];
+	}
+	//自身の階層は変化させず、より浅い（階層数の小さい）方の階層数までをbの値で初期化する。
+	void Assign(const Bpos& b)
+	{
+		int min = std::min(m_layer, b.m_layer);
+		Assign(b, min);
+	}
+
+	//各層の位置を引数で与えられた値で初期化する。
+	//
+	template <std::integral ...Args>
+	void Assign(Args ...args)
+	{
+		assert(m_layer == sizeof...(Args) - 1);
+		LayerType l = 0_layer;
+		(((*this)[l++] = args), ...);
+	}
+
+	//全ての層の位置をposにする。
+	void AssignAll(BindexType pos)
+	{
+		for (LayerType l = 0_layer; l <= GetLayer(); ++l) (*this)[l] = pos;
+	}
+
+private:
+
+	struct SmallObj
+	{
+		std::array<BindexType, msMaxSmallLayer + 1> m_pos;
+	};
+	struct BigObj
+	{
+		std::array<BindexType, msMaxSmallLayer> m_pos;
+		BindexType* m_pos_ptr = nullptr;
+	};
+
+	LayerType m_layer;
+	union
+	{
+		SmallObj m_small;
+		BigObj m_big;
+	};
+};
+
+#endif
+
 class JBpos
 {
 	template <RankType Rank>
@@ -420,15 +664,13 @@ public:
 		m_max_rank = rank;
 	}
 
-	/*bool MatchPartially(const JBpos& b) const
+	bool operator==(const JBpos& b) const
 	{
-		RankType min_1 = std::min(GetMaxRank(), b.GetMaxRank()) - 1;
-		for (RankType i = 0; i < min_1; ++i)
-		{
-			if (!m_bpos[i].MatchPerfectly(b.m_bpos[i])) return false;
-		}
-		return m_bpos[min_1].MatchPartially(b.m_bpos[min_1]);
-	}*/
+		RankType size = GetMaxRank();
+		if (size != b.GetMaxRank()) return false;
+		return std::equal(m_bpos, m_bpos + size + 1, b.m_bpos);
+	}
+
 	//maxrank-1位まではPerfectMatch、
 	//maxrank位についてはPartialMatch(bpos, maxlayer)
 	//を判定する。
@@ -438,7 +680,7 @@ public:
 		assert(maxrank <= m_max_rank && maxrank <= b.m_max_rank);
 		for (RankType i = 0; i < maxrank; ++i)
 		{
-			if (!m_bpos[i].MatchPerfectly(b.m_bpos[i])) return false;
+			if (m_bpos[i] != (b.m_bpos[i])) return false;
 		}
 		return m_bpos[maxrank].MatchPartially(b.m_bpos[maxrank], maxlayer);
 	}
@@ -467,16 +709,6 @@ public:
 			{
 				if (b[l] != bpos[eupp + l - ujoint]) return false;
 			}
-		}
-		return true;
-	}
-	bool MatchPerfectly(const JBpos& b) const
-	{
-		RankType size = GetMaxRank();
-		if (size != b.GetMaxRank()) return false;
-		for (RankType i = 0; i < size; ++i)
-		{
-			if (!m_bpos[i].MatchPerfectly(b.m_bpos[i])) return false;
 		}
 		return true;
 	}

@@ -377,7 +377,7 @@ public:
 									 std::ref(global), std::ref(locals[i]));
 			}
 			for (auto& th : threads) th.join();
-			BindexType total = std::accumulate(global.order.begin(), global.order.end(), 0, [](BindexType sum, const Order& o) { return sum + o.count; });
+			BindexType total = std::accumulate(global.order.begin(), global.order.end(), (BindexType)0, [](BindexType sum, const Order& o) { return sum + o.count; });
 			res.Reserve(total);
 			res.GetLowerElements().RewriteSize(total);//デフォルトコンストラクタを呼ぶことなく、強制的にサイズを変更する。
 			for (int32_t i = 0; i < nth; ++i)
@@ -714,7 +714,7 @@ public:
 			}
 			Exec_eval(b, -1_layer, res.GetTopElement(), src, res.GetPlaceholdersIn(-1_layer), locals[0].nodes[0]);
 			for (auto& th : threads) th.join();
-			BindexType total = std::accumulate(global.order.begin(), global.order.end(), 0, [](BindexType sum, const Order& o) { return sum + o.count; });
+			BindexType total = std::accumulate(global.order.begin(), global.order.end(), (BindexType)0, [](BindexType sum, const Order& o) { return sum + o.count; });
 			res.Reserve(total);
 			res.GetLowerElements().RewriteSize(total);//デフォルトコンストラクタを呼ぶことなく、強制的にサイズを変更する。
 			for (int32_t i = 0; i < nth; ++i)

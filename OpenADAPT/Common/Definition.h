@@ -8,7 +8,11 @@
 namespace adapt
 {
 
+#ifdef ADAPT_USE_32BIT_BINDEX
 using BindexType = uint32_t;
+#else
+using BindexType = int64_t;
+#endif
 using LayerType = int16_t;
 using RankType = int16_t;
 using DepthType = int32_t;

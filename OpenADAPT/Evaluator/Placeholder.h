@@ -721,10 +721,7 @@ public:
 		if (GetType() != that.GetType()) return false;
 		auto visitor = [&that]<class T>(const T & v)
 		{
-			if constexpr (!std::same_as<T, JBpos>)
-				return v == that.as<DFieldInfo::ValueTypeToTagType<T>()>();
-			else
-				return v.MatchPerfectly(that.as<DFieldInfo::Jbp>());
+			return v == that.as<DFieldInfo::ValueTypeToTagType<T>()>();
 		};
 		return Visit(visitor);
 	}
@@ -734,10 +731,7 @@ public:
 	{
 		constexpr FieldType type = DFieldInfo::GetSameSizeTagType<T>();
 		if (self.GetType() != type) return false;
-		if constexpr (!std::same_as<T, JBpos>)
-			return self.as<type>() == that;
-		else
-			return self.as<FieldType::Jbp>().MatchPerfectly(that);
+		return self.as<type>() == that;
 	}
 	template <class T>
 		requires (!std::same_as<T, FieldVariant>&& DFieldInfo::IsConvertibleToTagType<T>())

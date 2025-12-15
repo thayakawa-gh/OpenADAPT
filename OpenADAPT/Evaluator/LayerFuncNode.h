@@ -771,17 +771,17 @@ template <boolean_testable ArgType_, class>
 struct LayerFuncCount
 {
 	using ArgType = ArgType_;
-	using RetType = int64_t;
+	using RetType = BindexType;
 	static constexpr bool IsRaisingFunc = true;
 	LayerFuncCount() : m_result(0) {}
 	void Init() { m_result = 0; }
 	template <class Trav>
-	void First(const ArgType& v, const Trav&) { m_result = (int64_t)(v != 0); }
+	void First(const ArgType& v, const Trav&) { m_result = (BindexType)(v != 0); }
 	template <class Trav>
-	void Exec(const ArgType& v, const Trav&) { m_result += (int64_t)(v != 0); }
-	const int64_t& GetResult() const { return m_result; }
+	void Exec(const ArgType& v, const Trav&) { m_result += (BindexType)(v != 0); }
+	const BindexType& GetResult() const { return m_result; }
 private:
-	int64_t m_result;
+	RetType m_result;
 };
 template <summable ArgType_, class>
 struct LayerFuncSum
@@ -943,7 +943,7 @@ template <boolean_testable ArgType_, class>
 struct LayerFuncIndex
 {
 	using ArgType = ArgType_;
-	using RetType = int64_t;
+	using RetType = BindexType;
 	static constexpr bool IsRaisingFunc = true;
 	LayerFuncIndex() : m_result(-1), m_count(0) {}
 	void Init() { m_result = -1; m_count = 0; }
@@ -963,7 +963,7 @@ template <boolean_testable ArgType_, class>
 struct LayerFuncLastIndex
 {
 	using ArgType = ArgType_;
-	using RetType = int64_t;
+	using RetType = BindexType;
 	static constexpr bool IsRaisingFunc = true;
 	LayerFuncLastIndex() : m_result(-1), m_count(0) {}
 	void Init() { m_result = -1; m_count = 0; }
@@ -1144,7 +1144,17 @@ auto MakeRttiLayerFuncNode_impl(long, Node&&, LayerType)
 template <template <class, class> class Func, any_node Node>
 auto MakeRttiLayerFuncNode(Node&& node, LayerType up)
 {
-	if (node.IsI08())
+#define ADAPT_DETAIL_MAKE_RTTI_LAYER_FUNC_NODE(TYPE)\
+	return MakeRttiLayerFuncNode_impl<Func, TYPE>(1, std::forward<Node>(node), up);
+
+	ADAPT_SWITCH_FIELD_TYPE(
+		node.GetType(),
+		ADAPT_DETAIL_MAKE_RTTI_LAYER_FUNC_NODE,
+		throw MismatchType(DFieldInfo::GetTagTypeString<FieldType::Emp>().GetChar());
+	)
+
+#undef ADAPT_DETAIL_MAKE_RTTI_LAYER_FUNC_NODE
+	/*if (node.IsI08())
 		return MakeRttiLayerFuncNode_impl<Func, FieldType::I08>(1, std::forward<Node>(node), up);
 	else if (node.IsI16())
 		return MakeRttiLayerFuncNode_impl<Func, FieldType::I16>(1, std::forward<Node>(node), up);
@@ -1164,7 +1174,7 @@ auto MakeRttiLayerFuncNode(Node&& node, LayerType up)
 		return MakeRttiLayerFuncNode_impl<Func, FieldType::Str>(1, std::forward<Node>(node), up);
 	else if (node.IsJbp())
 		return MakeRttiLayerFuncNode_impl<Func, FieldType::Jbp>(1, std::forward<Node>(node), up);
-	throw MismatchType(DFieldInfo::GetTagTypeString<FieldType::Emp>().GetChar());
+	throw MismatchType(DFieldInfo::GetTagTypeString<FieldType::Emp>().GetChar());*/
 }
 #ifdef _MSC_VER
 #pragma warning(pop)
@@ -1198,6 +1208,7 @@ template <template <class, class> class Func, any_node Node, any_node Cond>
 auto MakeRttiLayerFuncNode(Node&& node, Cond&& cond, LayerType up)
 {
 	if (!cond.IsI08()) throw MismatchType(DFieldInfo::GetTagTypeString(cond.GetType()));
+	/*
 	if (node.IsI08())
 		return MakeRttiLayerFuncNode_impl<Func, FieldType::I08>(1, std::forward<Node>(node), std::forward<Cond>(cond), up);
 	else if (node.IsI16())
@@ -1219,6 +1230,17 @@ auto MakeRttiLayerFuncNode(Node&& node, Cond&& cond, LayerType up)
 	else if (node.IsJbp())
 		return MakeRttiLayerFuncNode_impl<Func, FieldType::Jbp>(1, std::forward<Node>(node), std::forward<Cond>(cond), up);
 	throw MismatchType(DFieldInfo::GetTagTypeString<FieldType::Emp>().GetChar());
+	*/
+#define ADAPT_DETAIL_MAKE_RTTI_LAYER_FUNC_NODE_COND(TYPE)\
+	return MakeRttiLayerFuncNode_impl<Func, TYPE>(1, std::forward<Node>(node), std::forward<Cond>(cond), up);
+
+	ADAPT_SWITCH_FIELD_TYPE(
+		node.GetType(),
+		ADAPT_DETAIL_MAKE_RTTI_LAYER_FUNC_NODE_COND,
+		throw MismatchType(DFieldInfo::GetTagTypeString<FieldType::Emp>().GetChar());
+	)
+
+#undef ADAPT_DETAIL_MAKE_RTTI_LAYER_FUNC_NODE_COND
 }
 #ifdef _MSC_VER
 #pragma warning(pop)

@@ -182,18 +182,15 @@ void TestEvaluate(Container& tree, const std::vector<Class>& cls,
 		static_assert(std::is_same_v<typename decltype(type_test1_total_score)::RetType, int32_t>);
 		static_assert(std::is_same_v<typename decltype(type_test2_total_score)::RetType, int32_t>);
 	}
-	size_t clssize = cls.size();
-	for (BindexType i = 0; i < clssize; ++i)
+	for (BindexType i = 0; i < (BindexType)cls.size(); ++i)
 	{
 		bpos[0] = i;
 		const Class& c = cls[i];
-		size_t stusize = c.m_students.size();
-		for (BindexType j = 0; j < stusize; ++j)
+		for (BindexType j = 0; j < (BindexType)c.m_students.size(); ++j)
 		{
 			bpos[1] = j;
 			const Student& s = c.m_students[j];
-			size_t recsize = s.m_records.size();
-			for (BindexType k = 0; k < recsize; ++k)
+			for (BindexType k = 0; k < (BindexType)s.m_records.size(); ++k)
 			{
 				bpos[2] = k;
 				const Record& r = s.m_records[k];
@@ -274,14 +271,14 @@ void TestIndexAndSize(const Tree& t, const Layer0& l0, const Layer1& l1, const L
 	auto pos1 = t.pos(1_layer);
 	auto pos2 = t.pos(2_layer);
 	auto current_math = math.at(pos0, pos1, pos2);// 常にmathそれ自体と等しい。
-	if constexpr (!IsJoinedContainer) EXPECT_EQ(size_vs_size.GetType(), FieldType::I08);
-	if constexpr (!IsJoinedContainer) EXPECT_EQ(size2.GetType(), FieldType::I08);
+	if constexpr (!IsJoinedContainer) { EXPECT_EQ(size_vs_size.GetType(), FieldType::I08); }
+	if constexpr (!IsJoinedContainer) { EXPECT_EQ(size2.GetType(), FieldType::I08); }
 	EXPECT_EQ(pos0.GetType(), FieldType::I64);
 	EXPECT_EQ(pos1.GetType(), FieldType::I64);
 	EXPECT_EQ(pos2.GetType(), FieldType::I64);
 	EXPECT_EQ(current_math.GetType(), FieldType::I32);
-	if constexpr (!IsJoinedContainer) EXPECT_EQ(size_vs_size.GetLayer(), 1_layer);
-	if constexpr (!IsJoinedContainer) EXPECT_EQ(size2.GetLayer(), 0_layer);
+	if constexpr (!IsJoinedContainer) { EXPECT_EQ(size_vs_size.GetLayer(), 1_layer); }
+	if constexpr (!IsJoinedContainer) { EXPECT_EQ(size2.GetLayer(), 0_layer); }
 	EXPECT_EQ(pos0.GetLayer(), 0_layer);
 	EXPECT_EQ(pos1.GetLayer(), 1_layer);
 	EXPECT_EQ(pos2.GetLayer(), 2_layer);
@@ -298,8 +295,8 @@ void TestIndexAndSize(const Tree& t, const Layer0& l0, const Layer1& l1, const L
 	using enum FieldType;
 	for (const auto& trav : t.GetRange(2_layer))
 	{
-		if constexpr (!IsJoinedContainer) EXPECT_TRUE(Evaluate_trav(Number<I08>{}, trav, size_vs_size));
-		if constexpr (!IsJoinedContainer) EXPECT_TRUE(Evaluate_trav(Number<I08>{}, trav, size2));
+		if constexpr (!IsJoinedContainer) { EXPECT_TRUE(Evaluate_trav(Number<I08>{}, trav, size_vs_size)); }
+		if constexpr (!IsJoinedContainer) { EXPECT_TRUE(Evaluate_trav(Number<I08>{}, trav, size2)); }
 		EXPECT_EQ(Evaluate_trav(Number<I64>{}, trav, pos0), trav.GetPos(0));
 		EXPECT_EQ(Evaluate_trav(Number<I64>{}, trav, pos1), trav.GetPos(1));
 		EXPECT_EQ(Evaluate_trav(Number<I64>{}, trav, pos2), trav.GetPos(2));

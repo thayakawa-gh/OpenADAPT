@@ -305,8 +305,7 @@ private:
 				//ただし、ここからさらに本関数のbposから自身の位置情報を取り出し、
 				//m_access_bufに与えなければならない。
 				//このスコープではupper joint layerは0以下である。
-				abuf.GetRow() = res.GetRow();
-				for (LayerType l = 1_layer; l <= ujoint; ++l) abuf.GetTpos(l) = res.GetTpos(l);
+				for (LayerType l = 0_layer; l <= ujoint; ++l) abuf[l] = res[l];
 			}
 		}
 		//さらに、bposから該当する位置を取り出す。
@@ -346,8 +345,7 @@ private:
 				auto& j = this->template GetJoint<TargetRank>();
 				auto& res = m_find_bufs[TargetRank];
 				if (!j->Find(*this, bpos, res)) throw JointError();
-				abuf.GetRow() = res.GetRow();
-				for (LayerType l = 1_layer; l <= ujoint; ++l) abuf.GetTpos(l);
+				for (LayerType l = 0_layer; l <= ujoint; ++l) abuf[l] = res[l];
 			}
 		}
 		//bposから該当する位置を取り出す。ただしindex指定があるので、その分は除く。

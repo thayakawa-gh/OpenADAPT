@@ -24,13 +24,13 @@ void TestFilter(Container& tree, const std::vector<Class>& clses,
 		if constexpr (stat_type_node_or_placeholder<NP>) return np.Evaluate(t);
 		else return np.Evaluate(t).template as<Type>();
 	};
-	for (BindexType i = 0; i < clses.size(); ++i)
+	for (BindexType i = 0; i < (BindexType)clses.size(); ++i)
 	{
 		auto& c = clses[i];
-		for (BindexType j = 0; j < c.m_students.size(); ++j)
+		for (BindexType j = 0; j < (BindexType)c.m_students.size(); ++j)
 		{
 			auto& s = c.m_students[j];
-			for (BindexType k = 0; k < s.m_records.size(); ++k)
+			for (BindexType k = 0; k < (BindexType)s.m_records.size(); ++k)
 			{
 				auto& r = s.m_records[k];
 				if (r.m_math >= 60) continue;
@@ -54,14 +54,14 @@ void TestFilter(Container& tree, const std::vector<Class>& clses,
 	auto range2 = tree | Filter(mean_math >= 60, eng >= 60) | GetRange(2_layer);
 	auto trav2 = range2.begin();
 	InitAll(trav2, mean_math);
-	for (BindexType i = 0; i < clses.size(); ++i)
+	for (BindexType i = 0; i < (BindexType)clses.size(); ++i)
 	{
 		auto& c = clses[i];
-		for (BindexType j = 0; j < c.m_students.size(); ++j)
+		for (BindexType j = 0; j < (BindexType)c.m_students.size(); ++j)
 		{
 			auto& s = c.m_students[j];
 			if (AvgMath(s) < 60) continue;
-			for (BindexType k = 0; k < s.m_records.size(); ++k)
+			for (BindexType k = 0; k < (BindexType)s.m_records.size(); ++k)
 			{
 				auto& r = s.m_records[k];
 				if (r.m_english < 60) continue;
@@ -124,13 +124,13 @@ void TestFilter(Container& table, const std::vector<Class>& clses, const Layer& 
 		if constexpr (stat_type_node_or_placeholder<NP>) return np.Evaluate(t);
 		else return np.Evaluate(t).template as<Type>();
 	};
-	for (BindexType i = 0; i < clses.size(); ++i)
+	for (BindexType i = 0; i < (BindexType)clses.size(); ++i)
 	{
 		auto& c = clses[i];
-		for (BindexType j = 0; j < c.m_students.size(); ++j)
+		for (BindexType j = 0; j < (BindexType)c.m_students.size(); ++j)
 		{
 			auto& s = c.m_students[j];
-			for (BindexType k = 0; k < s.m_records.size(); ++k)
+			for (BindexType k = 0; k < (BindexType)s.m_records.size(); ++k)
 			{
 				auto& r = s.m_records[k];
 				if (r.m_exam != 1) continue;

@@ -46,14 +46,14 @@ struct std::formatter<adapt::Bpos> : public std::formatter<adapt::BindexType>
 		fc.advance_to(out);
 		if (bpos.GetLayer() >= 0)
 		{
-			out = Base::format(bpos.GetRow(), fc);
+			out = Base::format(bpos[0], fc);
 
 			for (adapt::LayerType l = (adapt::LayerType)1; l <= bpos.GetLayer(); ++l)
 			{
 				*out = ',';
 				++out;
 				fc.advance_to(out);
-				out = Base::format(bpos.GetTpos(l), fc);
+				out = Base::format(bpos[l], fc);
 			}
 		}
 		*out = ']';

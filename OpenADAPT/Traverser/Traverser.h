@@ -706,8 +706,7 @@ public:
 	{
 		assert(m_trav_layer == bpos.GetLayer());
 		assert(bpos.GetLayer() >= 0);
-		if (GetPos(0) != bpos.GetRow()) return false;
-		for (LayerType l = 1; l <= m_trav_layer; ++l) if (GetPos(l) != bpos.GetTpos(l)) return false;
+		for (LayerType l = 0; l <= m_trav_layer; ++l) if (GetPos(l) != bpos[l]) return false;
 		return true;
 	}
 
@@ -892,7 +891,7 @@ public:
 		static_assert(sizeof...(Indices) <= std::numeric_limits<LayerType>::max());//常識的に考えて要らんけど、一応。
 		assert((LayerType)sizeof...(Indices) - 1_layer <= this->GetTravLayer());
 		assert((LayerType)sizeof...(Indices) - 1_layer <= m.GetInternalLayer());
-		auto& it = this->GetIterator(m.GetInternalLayer() - sizeof...(Indices));
+		auto& it = this->GetIterator((LayerType)(m.GetInternalLayer() - sizeof...(Indices)));
 		return GetField_rec<true>(m, it, is...);
 	}
 
@@ -1207,8 +1206,8 @@ private:
 		m_fixed_layer = fixed;
 		m_container = &c;
 		m_iterators[0] = c.GetTopIterator();
-		assert(pos.GetRow() < m_iterators[0]->GetSize());
-		m_iterators[1] = m_iterators[0]->begin() + pos.GetRow();
+		assert(pos[0] < m_iterators[0]->GetSize());
+		m_iterators[1] = m_iterators[0]->begin() + pos[0];
 	}
 public:
 	void Init(LayerType fixed, Qualifier<Container>& c, LayerType trav, ForwardMovement = {})
@@ -1265,7 +1264,7 @@ public:
 			else MoveToEnd();
 			return true;
 		}
-		else return Assign(bpos.GetRow());
+		else return Assign(bpos[0]);
 	}
 	bool AssignPartially(const Bpos& b, LayerType layer)
 	{
@@ -1428,7 +1427,7 @@ public:
 	bool operator==(const Bpos& bpos) const
 	{
 		assert(bpos.GetLayer() == 0_layer);
-		return GetPos(0_layer) == bpos.GetRow();
+		return GetPos(0_layer) == bpos[0];
 	}
 
 	bool Match(const Traverser_impl& o) const
@@ -1462,7 +1461,7 @@ public:
 	}
 	bool MatchPartially(const Bpos& bpos, LayerType max) const
 	{
-		return (max == -1_layer) || GetPos(0) == bpos.GetRow();
+		return (max == -1_layer) || GetPos(0) == bpos[0];
 	}
 
 	bool IsEnd() const
@@ -1484,9 +1483,9 @@ public:
 	void GetBpos(Bpos& bpos) const
 	{
 		assert(bpos.GetLayer() >= 0_layer);
-		bpos.GetRow() = GetPos(0_layer);
+		bpos[0] = GetPos(0_layer);
 		LayerType max = bpos.GetLayer();
-		for (LayerType l = 1_layer; l <= max; ++l) bpos.GetTpos(l) = 0;
+		for (LayerType l = 1_layer; l <= max; ++l) bpos[l] = 0;
 	}
 
 	FieldRef operator[](const RttiPlaceholder& m) const

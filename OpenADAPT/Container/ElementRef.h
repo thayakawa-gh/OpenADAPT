@@ -240,22 +240,22 @@ public:
 
 	template <LayerType Layer>
 		requires HasStaticLayer
-	size_t GetSize(LayerConstant<Layer> layer) const
+	BindexType GetSize(LayerConstant<Layer> layer) const
 	{
 		if constexpr (Layer == GetLayer()) return GetSize();
 		else
 		{
-			size_t res = 0;
+			BindexType res = 0;
 			for (auto&& e : *this) res += e.GetSize(layer);
 			return res;
 		}
 	}
-	size_t GetSize(LayerType layer) const
+	BindexType GetSize(LayerType layer) const
 	{
 		if (layer == GetLayer()) return GetSize();
 		else
 		{
-			size_t res = 0;
+			BindexType res = 0;
 			for (auto&& e : *this) res += e.GetSize(layer);
 			return res;
 		}
@@ -608,7 +608,7 @@ public:
 	}
 	template <LayerType Layer>
 		requires HasStaticLayer
-	size_t GetSize(LayerConstant<Layer> layer) const
+	BindexType GetSize(LayerConstant<Layer> layer) const
 	{
 		if constexpr (s_hierarchy<Hierarchy> || f_hierarchy<Hierarchy>)
 			static_assert(Layer <= Hierarchy::GetMaxLayer());
@@ -616,7 +616,7 @@ public:
 			assert(layer <= GetHierarchy().value().GetMaxLayer());
 		return GetLowerElements().GetSize(layer);
 	}
-	size_t GetSize(LayerType layer) const
+	BindexType GetSize(LayerType layer) const
 	{
 		assert(layer <= GetHierarchy().value().GetMaxLayer());
 		return GetLowerElements().GetSize(layer);
