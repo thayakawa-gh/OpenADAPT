@@ -428,14 +428,14 @@ struct Bpos final
 		assert(0 <= layer && layer <= m_layer);
 		if (m_layer <= msMaxSmallLayer) return m_small.m_pos[layer];
 		if (layer <= 1_layer) return m_big.m_pos[layer];
-		else return m_big.m_pos_ptr[layer - 1_layer];
+		else return m_big.m_pos_ptr[layer - 2_layer];
 	}
 	inline const BindexType& operator[](LayerType layer) const
 	{
 		assert(0 <= layer && layer <= m_layer);
 		if (m_layer <= msMaxSmallLayer) return m_small.m_pos[layer];
 		if (layer <= 1_layer) return m_big.m_pos[layer];
-		else return m_big.m_pos_ptr[layer - 1_layer];
+		else return m_big.m_pos_ptr[layer - 2_layer];
 	}
 	inline LayerType GetLayer() const
 	{

@@ -104,7 +104,8 @@
       </CustomListItems>
     </Expand>
   </Type>
-  
+
+  <!--
   <Type Name="adapt::Bpos">
     <DisplayString Condition="mLayer==-1">{{ layer = {mLayer}, [ none ] }}</DisplayString>
     <DisplayString Condition="mLayer==0">{{ layer = {mLayer}, [ {mRow} ] }}</DisplayString>
@@ -125,6 +126,32 @@
     </DisplayString>
     <DisplayString Condition="mLayer==6">
       {{ Layer = {mLayer}, [ {mRow}, {mTposPtr[0]}, {mTposPtr[1]}, {mTposPtr[2]}, {mTposPtr[3]}, {mTposPtr[4]}, {mTposPtr[5]} ] }}
+    </DisplayString>
+    <Expand>
+    </Expand>
+  </Type>
+  -->
+
+  <Type Name="adapt::Bpos">
+    <DisplayString Condition="m_layer==-1">{{ layer = {m_layer}, [ none ] }}</DisplayString>
+    <DisplayString Condition="m_layer==0">{{ layer = {m_layer}, [ {m_small.m_pos[0]} ] }}</DisplayString>
+    <DisplayString Condition="m_layer==1">
+      {{ Layer = {m_layer}, [ {m_small.m_pos[0]}, {m_small.m_pos[1]} ] }}
+    </DisplayString>
+    <DisplayString Condition="m_layer==2">
+      {{ Layer = {m_layer}, [ {m_small.m_pos[0]}, {m_small.m_pos[1]}, {m_small.m_pos[2]} ] }}
+    </DisplayString>
+    <DisplayString Condition="m_layer==3">
+      {{ Layer = {m_layer}, [ {m_big.m_pos[0]}, {m_big.m_pos[1]}, {m_big.m_pos_ptr[0]}, {m_big.m_pos_ptr[1]} ] }}
+    </DisplayString>
+    <DisplayString Condition="m_layer==4">
+      {{ Layer = {m_layer}, [ {m_big.m_pos[0]}, {m_big.m_pos[1]}, {m_big.m_pos_ptr[0]}, {m_big.m_pos_ptr[1]}, {m_big.m_pos_ptr[2]} ] }}
+    </DisplayString>
+    <DisplayString Condition="m_layer==5">
+      {{ Layer = {m_layer}, [ {m_big.m_pos[0]}, {m_big.m_pos[1]}, {m_big.m_pos_ptr[0]}, {m_big.m_pos_ptr[1]}, {m_big.m_pos_ptr[2]}, {m_big.m_pos_ptr[3]} ] }}
+    </DisplayString>
+    <DisplayString Condition="m_layer==6">
+      {{ Layer = {m_layer}, [ {m_big.m_pos[0]}, {m_big.m_pos[1]}, {m_big.m_pos_ptr[0]}, {m_big.m_pos_ptr[1]}, {m_big.m_pos_ptr[2]}, {m_big.m_pos_ptr[3]}, {m_big.m_pos_ptr[4]} ] }}
     </DisplayString>
     <Expand>
     </Expand>
