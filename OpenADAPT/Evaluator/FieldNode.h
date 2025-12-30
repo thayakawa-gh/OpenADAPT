@@ -14,6 +14,7 @@ namespace adapt
 namespace eval
 {
 
+ADAPT_EXPORT
 template <class Placeholder_>
 struct CttiFieldNode : public detail::CttiMethods<CttiFieldNode<Placeholder_>, std::type_identity_t>
 {
@@ -152,6 +153,7 @@ protected:
 	Placeholder m_placeholder;
 };
 
+ADAPT_EXPORT
 template <class Placeholder_, class Nodes, class Indices = std::make_index_sequence<Nodes::size>>
 struct CttiIndexedFieldNode;
 template <class Placeholder_, class ...Nodes, size_t ...Indices>
@@ -407,6 +409,7 @@ protected:
 	bool m_init_flag = true;
 };
 
+ADAPT_EXPORT
 template <class Base_, DepthType Depth>
 struct CttiOuterFieldNode : public Base_
 {

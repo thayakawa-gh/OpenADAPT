@@ -378,11 +378,13 @@ template <class Range, node_or_placeholder ...NPs>
 using EvaluatingViewWithTrav = EvaluatingView<Range, std::true_type, NPs...>;
 }
 
+ADAPT_EXPORT
 template <node_or_placeholder ...NPs>
 RangeReceiver<detail::EvaluatingViewWithoutTrav, std::decay_t<NPs>...> Evaluate(NPs&& ...nps)
 {
 	return RangeReceiver<detail::EvaluatingViewWithoutTrav, std::decay_t<NPs>...>(std::forward<NPs>(nps)...);
 }
+ADAPT_EXPORT
 template <node_or_placeholder ...NPs>
 RangeReceiver<detail::EvaluatingViewWithTrav, std::decay_t<NPs>...> Evaluate(WithTraverser, NPs&& ...nps)
 {

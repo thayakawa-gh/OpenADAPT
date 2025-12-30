@@ -1,6 +1,7 @@
 #ifndef ADAPT_COMMOM_COMMON_H
 #define ADAPT_COMMOM_COMMON_H
 
+#include <complex>
 #include <OpenADAPT/Common/Definition.h>
 #include <OpenADAPT/Common/Bpos.h>
 #ifdef USE_ANKERL_UNORDERED_DENSE
@@ -13,6 +14,7 @@ namespace adapt
 //FieldTypeの定義はDefinition.hでは行えない。
 //何故なら、以下のBposとJBposの定義のためにはLayerType、RankTypeの定義が必要で、
 //それらはDefinition.hで定義されているから。
+ADAPT_EXPORT
 struct FieldTypeFlag
 {
 	static constexpr uint32_t INT = 0b0000000000000001;
@@ -31,6 +33,7 @@ struct FieldTypeFlag
 	static constexpr uint32_t TRIVIAL = INT | FLT | CPX;
 };
 
+ADAPT_EXPORT
 enum class FieldType : uint32_t
 {
 	Emp = 0,
@@ -63,6 +66,7 @@ enum class FieldType : uint32_t
 	}
 
 
+ADAPT_EXPORT
 class FieldVariant;
 
 namespace detail

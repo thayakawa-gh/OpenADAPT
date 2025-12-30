@@ -5,6 +5,7 @@
 #include <memory>
 #include <cassert>
 #include <typeindex>
+#include <OpenADAPT/Utility/Common.h>
 #include <OpenADAPT/Utility/TypeTraits.h>
 #include <OpenADAPT/Utility/Exception.h>
 
@@ -441,8 +442,11 @@ private:
 
 }
 
+ADAPT_EXPORT
 using Any = detail::Any_impl<24, true>;
+ADAPT_EXPORT
 using DynamicAny = detail::Any_impl<0, true>;
+ADAPT_EXPORT
 template <size_t Size>
 using StaticAny = detail::Any_impl<Size, false>;
 
@@ -451,6 +455,7 @@ using StaticAny = detail::Any_impl<Size, false>;
 //通常のコピーはshared_ptrと同じようにshallow copyするだけで、
 //完全に複製するにはClone関数を呼ぶ必要がある。
 //循環参照対策をしていないので注意。
+ADAPT_EXPORT
 class ShareableAny
 {
 	class PlaceHolder
@@ -608,6 +613,7 @@ private:
 	PlaceHolder* m_content;
 };
 
+ADAPT_EXPORT
 class AnyURef
 {
 protected:
@@ -647,7 +653,7 @@ protected:
 
 public:
 
-	AnyURef(EmptyClass = EmptyClass())
+	inline AnyURef(EmptyClass = EmptyClass())
 	{
 		//こちらだとGCC10.1以降、-std=c++17を有効にしたとき何故かコンパイルエラーになる。
 		//new ((void*)&m_storage) Holder<EmptyClass>;
@@ -731,6 +737,7 @@ private:
 	std::aligned_storage_t<16> m_storage;
 };
 
+ADAPT_EXPORT
 class AnyRef : public AnyURef
 {
 	using Base = AnyURef;
@@ -769,6 +776,7 @@ public:
 	template <class Type>
 	bool Is() const { return Base::Is<Type&>(); }
 };
+ADAPT_EXPORT
 class AnyCRef : public AnyURef
 {
 	using Base = AnyURef;
@@ -806,6 +814,7 @@ public:
 	template <class Type>
 	bool Is() const { return Base::Is<const Type&>(); }
 };
+ADAPT_EXPORT
 class AnyRRef : public AnyURef
 {
 	using Base = AnyURef;

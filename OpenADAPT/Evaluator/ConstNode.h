@@ -14,7 +14,7 @@ namespace adapt
 namespace eval
 {
 
-
+ADAPT_EXPORT
 template <class Type>
 struct CttiConstNode : public detail::CttiMethods<CttiConstNode<Type>, std::add_const_t>
 {
@@ -79,6 +79,7 @@ private:
 	Type m_value;
 };
 
+ADAPT_EXPORT
 struct RttiConstNode
 {
 	RttiConstNode() {}

@@ -2,6 +2,7 @@
 #define ADAPT_UTILITY_KEYWORD_ARGS_H
 
 #include <tuple>
+#include <OpenADAPT/Utility/Common.h>
 #include <OpenADAPT/Utility/TypeTraits.h>
 #include <OpenADAPT/Utility/Utility.h>
 #include <OpenADAPT/Utility/Macros.h>
@@ -13,9 +14,11 @@ namespace detail
 {
 template <class> struct AlwaysTrue {};
 }
+ADAPT_EXPORT
 template <template <class> class Concept = detail::AlwaysTrue>
 class AnyTypeKeyword {};
 
+ADAPT_EXPORT
 template <class Name_, class Type_, class Tag_>
 struct KeywordValue
 {
@@ -31,6 +34,7 @@ private:
 	Type m_value;
 };
 
+ADAPT_EXPORT
 template <class Name, class Type, class Tag>
 struct KeywordName;
 template <class Name_, class Type_, class Tag_>
@@ -70,20 +74,26 @@ struct KeywordName<Name_, bool, Tag_>
 	constexpr Value operator=(bool v) const { return Value(v); }
 };
 
+ADAPT_EXPORT
 template <class Name>
 concept keyword_name = derived_from_xt<std::remove_cvref_t<Name>, KeywordName>;
 
+ADAPT_EXPORT
 template <class Option>
 concept keyword_value = derived_from_xt<std::remove_cvref_t<Option>, KeywordValue>;
+ADAPT_EXPORT
 template <class Option>
 concept keyword_name_of_bool = keyword_name<Option> && std::same_as<typename std::remove_cvref_t<Option>::Type, bool>;
 
+ADAPT_EXPORT
 template <class Option>
 concept keyword_arg = keyword_value<Option> || keyword_name_of_bool<Option>;
 
+ADAPT_EXPORT
 template <class Option, class ...Tags>
 concept keyword_arg_tagged_with = keyword_arg<Option> && (std::same_as<typename std::remove_cvref_t<Option>::Tag, std::remove_cvref_t<Tags>> || ...);
 
+ADAPT_EXPORT
 template <class Option, class KeywordName>
 concept keyword_arg_named = keyword_name<KeywordName> && keyword_arg<Option> &&
 std::same_as<typename std::remove_cvref_t<KeywordName>::Name, typename std::remove_cvref_t<Option>::Name>;
@@ -115,6 +125,7 @@ constexpr decltype(auto) GetKeywordArg_impl(KeywordName name, [[maybe_unused]] D
 
 }
 
+ADAPT_EXPORT
 template <keyword_name KeywordName, keyword_arg ...Args>
 constexpr bool KeywordExists(KeywordName name, Args&& ...args)
 {
@@ -123,16 +134,19 @@ constexpr bool KeywordExists(KeywordName name, Args&& ...args)
 
 //該当するキーワードから値を取り出して返す。
 //同じキーワードが複数与えられている場合、先のもの（左にあるもの）が優先される。
+ADAPT_EXPORT
 template <keyword_name KeywordName, keyword_arg ...Args>
 constexpr decltype(auto) GetKeywordArg(KeywordName name, Args&& ...args)// -> typename KeywordName::Type
 {
 	return detail::GetKeywordArg_impl(name, EmptyClass{}, std::forward<Args>(args)...);
 }
+ADAPT_EXPORT
 template <keyword_name KeywordName, keyword_arg ...Args>
 constexpr decltype(auto) GetKeywordArg(KeywordName name, std::tuple<Args...> args)
 {
 	std::apply([&name](auto&& ...args) { return GetKeywordArg(name, std::forward<decltype(args)>(args)...); }, args);
 }
+ADAPT_EXPORT
 template <keyword_name KeywordName, class Default, keyword_arg ...Args> requires (!keyword_arg<std::decay_t<Default>>)
 constexpr decltype(auto) GetKeywordArg(KeywordName k, Default&& default_, Args&& ...args)// -> typename KeywordName::Type
 {
@@ -141,6 +155,7 @@ constexpr decltype(auto) GetKeywordArg(KeywordName k, Default&& default_, Args&&
 	return detail::GetKeywordArg_impl(k, std::forward<Default>(default_), std::forward<Args>(args)...);
 }
 
+ADAPT_EXPORT
 template <keyword_name Name, keyword_arg ...Options>
 struct GetKeywordType
 {
@@ -148,17 +163,5 @@ struct GetKeywordType
 };
 
 }
-
-#define ADAPT_DEFINE_KEYWORD_OPTION(NAME)\
-constexpr auto NAME = adapt::KeywordName<struct _##NAME, bool, void>();
-
-#define ADAPT_DEFINE_TAGGED_KEYWORD_OPTION(NAME, TAG)\
-constexpr auto NAME = adapt::KeywordName<struct _##NAME, bool, TAG>();
-
-#define ADAPT_DEFINE_KEYWORD_OPTION_WITH_VALUE(NAME, TYPE)\
-constexpr auto NAME = adapt::KeywordName<struct _##NAME, TYPE, void>();
-
-#define ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(NAME, TYPE, TAG)\
-constexpr auto NAME = adapt::KeywordName<struct _##NAME, TYPE, TAG>();
 
 #endif

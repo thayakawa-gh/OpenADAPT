@@ -1,6 +1,9 @@
 #ifndef ADAPT_UTILITY_MACROS_H
 #define ADAPT_UTILITY_MACROS_H
 
+//これはincludeしない方が良い。ADAPT_EXPORTマクロが定義されてしまうため。
+//#include <OpenADAPT/Utility/Common.h>
+
 #define ADAPT_TIE_ARGS(...) __VA_ARGS__
 
 
@@ -333,7 +336,17 @@
 
 #define ADAPT_DETAIL_EXPAND_CONV_SEMICOLON(CONV, ...) ADAPT_DETAIL_SELECT_MACRO_NUM(ADAPT_DETAIL_EXPAND_CONV_SEMICOLON_, CONV, __VA_ARGS__)
 
+#define ADAPT_DEFINE_KEYWORD_OPTION(NAME)\
+constexpr auto NAME = adapt::KeywordName<struct _##NAME, bool, void>();
 
+#define ADAPT_DEFINE_TAGGED_KEYWORD_OPTION(NAME, TAG)\
+constexpr auto NAME = adapt::KeywordName<struct _##NAME, bool, TAG>();
+
+#define ADAPT_DEFINE_KEYWORD_OPTION_WITH_VALUE(NAME, TYPE)\
+constexpr auto NAME = adapt::KeywordName<struct _##NAME, TYPE, void>();
+
+#define ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(NAME, TYPE, TAG)\
+constexpr auto NAME = adapt::KeywordName<struct _##NAME, TYPE, TAG>();
 
 
 #endif

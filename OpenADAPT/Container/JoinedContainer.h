@@ -14,11 +14,14 @@ namespace adapt
 //コンパイル時にストレージ構造を完全に決定できるので、出力もstaticにできる。
 //template <template <class> class Qualifier, class ...Containers>
 //class SJoinedContainer {};
+ADAPT_EXPORT
 template <RankType MaxRank>
 class SJointLayerInfo {};
 
+ADAPT_EXPORT
 template <template <class> class Qualifier, container_simplex ...IContainers>
 class DJoinedRange;
+ADAPT_EXPORT
 template <template <class> class Qualifier, container_simplex ...IContainers>
 class DJoinedRange_prompt;
 
@@ -33,6 +36,7 @@ CttiTryJoinNode<Rank, Container> MakeTryJoinNode(const Container& c);
 }
 }
 
+ADAPT_EXPORT
 template <RankType MaxRank>
 class DJointLayerInfo
 {
@@ -78,10 +82,11 @@ private:
 
 //DJoinedContainerは連結層が実行時に決定されるか、もしくは構成ストレージの中にDynamicなものを含む場合に用いられる。
 //いずれか片方がstaticでなくなった時点でExtractの出力が
+ADAPT_EXPORT
 template <template <class> class Qualifier, class ...IContainers>
 class DJoinedContainer
 	: public detail::JointMethods<sizeof...(IContainers) - 1, DJoinedContainer<Qualifier, IContainers...>>,
-	  public DJointLayerInfo<RankType(sizeof...(IContainers) - 1)>
+	public DJointLayerInfo<RankType(sizeof...(IContainers) - 1)>
 {
 
 	using JointLayerInfo = DJointLayerInfo<RankType(sizeof...(IContainers) - 1)>;
@@ -518,10 +523,12 @@ public:
 
 	DJoinedRange(const Container& s)
 		: m_container(&s), m_trav_layer(-1)
-	{}
+	{
+	}
 	DJoinedRange(const Container& s, LayerType trav)
 		: m_container(&s), m_trav_layer(trav)
-	{}
+	{
+	}
 
 	DJoinedRange(const DJoinedRange&) = default;
 	DJoinedRange(DJoinedRange&&) noexcept = default;
@@ -612,10 +619,12 @@ public:
 
 	DJoinedRange_prompt(const Container& s)
 		: m_container(&s), m_trav_layer(-1)
-	{}
+	{
+	}
 	DJoinedRange_prompt(const Container& s, LayerType trav)
 		: m_container(&s), m_trav_layer(trav)
-	{}
+	{
+	}
 
 	DJoinedRange_prompt(const DJoinedRange_prompt&) = default;
 	DJoinedRange_prompt(DJoinedRange_prompt&&) noexcept = default;
@@ -685,6 +694,18 @@ private:
 	const Container* m_container;
 	LayerType m_trav_layer;
 };
+
+}
+
+
+template <template <class> class Qualifier, adapt::container_simplex ...IContainers>
+inline constexpr bool std::ranges::enable_borrowed_range<adapt::DJoinedRange<Qualifier, IContainers...>> = true;
+template <template <class> class Qualifier, adapt::container_simplex ...IContainers>
+inline constexpr bool std::ranges::enable_borrowed_range<adapt::DJoinedRange_prompt<Qualifier, IContainers...>> = true;
+
+namespace adapt
+{
+
 namespace detail
 {
 
@@ -779,6 +800,7 @@ auto Join(Tree& t, LayerConstant<Lower> lower, Args&& ...args)
 		detail::LayerInfoInitializer<std::pair<LayerType, LayerType>(-1, lower)>(),
 		std::forward<Args>(args)...);
 }*/
+ADAPT_EXPORT
 template <container_simplex Container, class ...Args>
 auto Join(Container& t, LayerType lower, Args&& ...args)
 {

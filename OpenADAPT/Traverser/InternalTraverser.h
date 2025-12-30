@@ -24,7 +24,7 @@ class InternalTraverser : public Base
 public:
 
 	InternalTraverser()
-		: m_state(InternalLayerInfo::DISABLED), m_ext_ujoint_layer(-1),
+		: m_state(InternalLayerInfo::State::DISABLED), m_ext_ujoint_layer(-1),
 		m_ujoint_layer(-1), m_ljoint_layer(-1), m_is_joined(false)
 	{}
 	InternalTraverser(const InternalTraverser&) = delete;
@@ -167,11 +167,11 @@ public:
 
 	bool IsJoined(DelayedJoint) const { return m_is_joined; }
 
-	bool IsPseudoTop() const { return m_state == InternalLayerInfo::PSEUDOTOP; }
-	bool IsIgnored() const { return m_state == InternalLayerInfo::IGNORED; }
-	bool IsEnabled() const { return m_state == InternalLayerInfo::ENABLED; }
-	bool IsDisabled() const { return m_state == InternalLayerInfo::DISABLED; }
-	bool IsFixed() const { return m_state == InternalLayerInfo::FIXED; }
+	bool IsPseudoTop() const { return m_state == InternalLayerInfo::State::PSEUDOTOP; }
+	bool IsIgnored() const { return m_state == InternalLayerInfo::State::IGNORED; }
+	bool IsEnabled() const { return m_state == InternalLayerInfo::State::ENABLED; }
+	bool IsDisabled() const { return m_state == InternalLayerInfo::State::DISABLED; }
+	bool IsFixed() const { return m_state == InternalLayerInfo::State::FIXED; }
 
 	template <class RankedPlaceholder>
 	decltype(auto) operator[](const RankedPlaceholder& ph) const

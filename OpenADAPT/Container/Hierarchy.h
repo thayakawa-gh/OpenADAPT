@@ -51,6 +51,7 @@ constexpr auto GetPlaceholderList(TypeList<Elements...>)
 }
 
 
+ADAPT_EXPORT
 template <class Container_, named_tuple ...LayerElements>
 class SHierarchy
 {
@@ -537,6 +538,7 @@ public:
 	}
 };*/
 
+ADAPT_EXPORT
 template <class Container>
 class DHierarchy
 {
@@ -742,6 +744,7 @@ private:
 
 //型は実行時だが、階層の最大値だけが与えられている構造。
 //DTable, DHashなどに使う。STableとSHashはSHierarchyにすべきだろう。
+ADAPT_EXPORT
 template <class Container_, LayerType MaxLayer_>
 class FHierarchy
 {

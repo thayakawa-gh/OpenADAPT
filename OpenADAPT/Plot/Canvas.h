@@ -1556,7 +1556,9 @@ public:
 
 }
 
+ADAPT_EXPORT
 using Canvas2D = plot_detail::Canvas2D;
+ADAPT_EXPORT
 using Canvas3D = plot_detail::Canvas3D;
 
 }

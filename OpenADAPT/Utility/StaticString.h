@@ -4,11 +4,14 @@
 #include <string_view>
 #include <array>
 #include <utility>
+#include <cstddef>
+#include <OpenADAPT/Utility/Common.h>
 #include <OpenADAPT/Utility/Utility.h>
 
 namespace adapt
 {
 
+ADAPT_EXPORT
 template <size_t N>
 struct StaticChar
 {
@@ -43,6 +46,7 @@ struct StaticChar
 	char m_char[N];
 };
 
+ADAPT_EXPORT
 template <StaticChar Chars_>
 struct StaticString
 {
@@ -93,6 +97,7 @@ constexpr std::array<char, ND + 1> ToString_impl(T num)
 	return res;
 };
 }
+ADAPT_EXPORT
 template <auto Num>
 	requires std::integral<decltype(Num)>
 consteval auto ToStr(Number<Num>)

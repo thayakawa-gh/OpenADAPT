@@ -354,17 +354,18 @@ protected:
 
 #else
 
+ADAPT_EXPORT
 struct Bpos final
 {
 	static constexpr LayerType msMaxSmallLayer = 2_layer;
 
-	Bpos() : m_layer(-1), m_small{ 0 }  {}
-	explicit Bpos(LayerType l)
+	inline Bpos() : m_layer(-1), m_small{ 0 }  {}
+	inline explicit Bpos(LayerType l)
 		: m_layer(l), m_small{ 0 }
 	{
 		Init(l);
 	}
-	Bpos(std::initializer_list<BindexType> init)
+	inline Bpos(std::initializer_list<BindexType> init)
 		: m_layer((LayerType)init.size() - 1), m_small{ 0 }
 	{
 		if (m_layer <= msMaxSmallLayer) std::copy(init.begin(), init.end(), m_small.m_pos.begin());
@@ -376,20 +377,20 @@ struct Bpos final
 		}
 	}
 
-	Bpos(const Bpos& b) : Bpos()
+	inline Bpos(const Bpos& b) : Bpos()
 	{
 		*this = b;
 	}
-	Bpos(Bpos&& b) noexcept : Bpos()
+	inline Bpos(Bpos&& b) noexcept : Bpos()
 	{
 		*this = std::move(b);
 	}
-	~Bpos()
+	inline ~Bpos()
 	{
 		if (m_layer > msMaxSmallLayer) delete[]  m_big.m_pos_ptr;
 	}
 
-	Bpos& operator=(const Bpos& b)
+	inline Bpos& operator=(const Bpos& b)
 	{
 		if (b.m_layer <= msMaxSmallLayer)
 		{
@@ -405,7 +406,7 @@ struct Bpos final
 		m_layer = b.m_layer;
 		return *this;
 	}
-	Bpos& operator=(Bpos&& b) noexcept
+	inline Bpos& operator=(Bpos&& b) noexcept
 	{
 		if (b.m_layer <= msMaxSmallLayer)
 		{
@@ -422,21 +423,21 @@ struct Bpos final
 		return *this;
 	}
 
-	BindexType& operator[](LayerType layer)
+	inline BindexType& operator[](LayerType layer)
 	{
 		assert(0 <= layer && layer <= m_layer);
 		if (m_layer <= msMaxSmallLayer) return m_small.m_pos[layer];
 		if (layer <= 1_layer) return m_big.m_pos[layer];
 		else return m_big.m_pos_ptr[layer - 1_layer];
 	}
-	const BindexType& operator[](LayerType layer) const
+	inline const BindexType& operator[](LayerType layer) const
 	{
 		assert(0 <= layer && layer <= m_layer);
 		if (m_layer <= msMaxSmallLayer) return m_small.m_pos[layer];
 		if (layer <= 1_layer) return m_big.m_pos[layer];
 		else return m_big.m_pos_ptr[layer - 1_layer];
 	}
-	LayerType GetLayer() const
+	inline LayerType GetLayer() const
 	{
 		return (LayerType)m_layer;
 	}
@@ -444,7 +445,7 @@ struct Bpos final
 	/*
 	layerと位置が全て一致した場合にtrueを返す。
 	*/
-	bool operator==(const Bpos& b) const
+	inline bool operator==(const Bpos& b) const
 	{
 		if (m_layer != b.m_layer) return false;
 		for (LayerType l = 0_layer; l <= m_layer; ++l)
@@ -453,13 +454,13 @@ struct Bpos final
 		}
 		return true;
 	}
-	bool operator!=(const Bpos& b) const
+	inline bool operator!=(const Bpos& b) const
 	{
 		return !(*this == b);
 	}
 	//こちらはmaxlayerまでが一致するかどうかを調べる。maxlayerより下は無視される。
 	//これ自身とb、双方がmaxlayer以上の層数を持つ必要がある。
-	bool MatchPartially(const Bpos& b, LayerType maxlayer) const
+	inline bool MatchPartially(const Bpos& b, LayerType maxlayer) const
 	{
 		assert(m_layer >= maxlayer && b.m_layer >= maxlayer);
 		for (LayerType l = 0_layer; l <= maxlayer; ++l)
@@ -483,7 +484,7 @@ struct Bpos final
 	[1]
 	[1, 0]
 	*/
-	bool operator<(const Bpos& b) const
+	inline bool operator<(const Bpos& b) const
 	{
 		LayerType maxlayer = std::min(m_layer, b.m_layer);
 		for (LayerType l = 0_layer; l <= maxlayer; ++l)
@@ -495,7 +496,7 @@ struct Bpos final
 		}
 		return m_layer < b.m_layer;
 	}
-	bool operator<=(const Bpos& b) const
+	inline bool operator<=(const Bpos& b) const
 	{
 		LayerType maxlayer = std::min(m_layer, b.m_layer);
 		for (LayerType l = 0_layer; l <= maxlayer; ++l)
@@ -507,22 +508,22 @@ struct Bpos final
 		}
 		return m_layer <= b.m_layer;
 	}
-	bool operator>(const Bpos& b) const
+	inline bool operator>(const Bpos& b) const
 	{
 		return !(*this <= b);
 	}
-	bool operator>=(const Bpos& b) const
+	inline bool operator>=(const Bpos& b) const
 	{
 		return !(*this < b);
 	}
 
 	//階層をlayerに変更し、全階層の位置を0で初期化する。
-	void Init(LayerType layer)
+	inline void Init(LayerType layer)
 	{
 		Init(layer, 0);
 	}
 	//階層をlayerに変更し、全階層の位置をindexで初期化する。
-	void Init(LayerType layer, BindexType index)
+	inline void Init(LayerType layer, BindexType index)
 	{
 		if (layer != m_layer && m_layer > msMaxSmallLayer) delete[] m_big.m_pos_ptr;
 		if (layer > msMaxSmallLayer)
@@ -543,13 +544,13 @@ struct Bpos final
 
 	//自身の階層は変化させず、layerまでをbの値で初期化する。
 	//layer <= std::min(this.GetLayer(), b.GetLayer())である必要がある。
-	void Assign(const Bpos& b, int layer)
+	inline void Assign(const Bpos& b, int layer)
 	{
 		assert(m_layer >= layer && b.m_layer >= layer);
 		for (LayerType l = 0_layer; l <= layer; ++l) (*this)[l] = b[l];
 	}
 	//自身の階層は変化させず、より浅い（階層数の小さい）方の階層数までをbの値で初期化する。
-	void Assign(const Bpos& b)
+	inline void Assign(const Bpos& b)
 	{
 		int min = std::min(m_layer, b.m_layer);
 		Assign(b, min);
@@ -566,7 +567,7 @@ struct Bpos final
 	}
 
 	//全ての層の位置をposにする。
-	void AssignAll(BindexType pos)
+	inline void AssignAll(BindexType pos)
 	{
 		for (LayerType l = 0_layer; l <= GetLayer(); ++l) (*this)[l] = pos;
 	}
@@ -609,34 +610,34 @@ class JBpos
 
 public:
 
-	JBpos() : m_max_rank(-1), m_bpos(nullptr) {}
-	explicit JBpos(RankType rank)
+	inline JBpos() : m_max_rank(-1), m_bpos(nullptr) {}
+	inline explicit JBpos(RankType rank)
 		: m_max_rank(rank), m_bpos(new Bpos[rank + 1])
 	{}
 	template <class ...BPOSES>
-	requires (std::is_convertible_v<BPOSES, Bpos> && ...)
+		requires (std::is_convertible_v<BPOSES, Bpos> && ...)
 	explicit JBpos(BPOSES&& ...bs)
 		: m_max_rank((RankType)sizeof...(BPOSES) - 1), m_bpos(new Bpos[sizeof...(BPOSES)])
 	{
 		Construct<0>(std::forward<BPOSES>(bs)...);
 	}
-	~JBpos()
+	inline ~JBpos()
 	{
 		if (m_bpos) delete[] m_bpos;
 	}
 
-	JBpos(const JBpos& that)
+	inline JBpos(const JBpos& that)
 		: m_max_rank(that.m_max_rank), m_bpos(new Bpos[that.m_max_rank + (RankType)1])
 	{
 		for (RankType r = 0; r <= m_max_rank; ++r) m_bpos[r] = that.m_bpos[r];
 	}
-	JBpos(JBpos&& that) noexcept
+	inline JBpos(JBpos&& that) noexcept
 		: m_max_rank(that.m_max_rank), m_bpos(that.m_bpos)
 	{
 		that.m_max_rank = -1;
 		that.m_bpos = nullptr;
 	}
-	JBpos& operator=(const JBpos& that)
+	inline JBpos& operator=(const JBpos& that)
 	{
 		if (m_max_rank != that.m_max_rank)
 		{
@@ -647,7 +648,7 @@ public:
 		for (RankType r = 0; r <= m_max_rank; ++r) m_bpos[r] = that.m_bpos[r];
 		return *this;
 	}
-	JBpos& operator=(JBpos&& that) noexcept
+	inline JBpos& operator=(JBpos&& that) noexcept
 	{
 		delete[] m_bpos;
 		m_max_rank = that.m_max_rank;
@@ -657,14 +658,14 @@ public:
 		return *this;
 	}
 
-	void Init(RankType rank)
+	inline void Init(RankType rank)
 	{
 		if (m_bpos) delete[] m_bpos;
 		if (rank >= 0) m_bpos = new Bpos[rank + 1];
 		m_max_rank = rank;
 	}
 
-	bool operator==(const JBpos& b) const
+	inline bool operator==(const JBpos& b) const
 	{
 		RankType size = GetMaxRank();
 		if (size != b.GetMaxRank()) return false;
@@ -675,7 +676,7 @@ public:
 	//maxrank位についてはPartialMatch(bpos, maxlayer)
 	//を判定する。
 	//maxlayerにはmaxrank位のInternalLayer（連結前階層）を与える。
-	bool MatchPartially(const JBpos& b, RankType maxrank, LayerType maxlayer) const
+	inline bool MatchPartially(const JBpos& b, RankType maxrank, LayerType maxlayer) const
 	{
 		assert(maxrank <= m_max_rank && maxrank <= b.m_max_rank);
 		for (RankType i = 0; i < maxrank; ++i)
@@ -713,13 +714,13 @@ public:
 		return true;
 	}
 
-	RankType GetMaxRank() const
+	inline RankType GetMaxRank() const
 	{
 		return m_max_rank;
 	}
 
-	Bpos& operator[](RankType rank) { return m_bpos[rank]; }
-	const Bpos& operator[](RankType rank) const { return m_bpos[rank]; }
+	inline Bpos& operator[](RankType rank) { return m_bpos[rank]; }
+	inline const Bpos& operator[](RankType rank) const { return m_bpos[rank]; }
 
 private:
 
@@ -728,6 +729,7 @@ private:
 };
 
 
+ADAPT_EXPORT
 inline std::ostream& operator<<(std::ostream& out, const Bpos& bpos)
 {
 	LayerType layer = bpos.GetLayer();
@@ -740,6 +742,7 @@ inline std::ostream& operator<<(std::ostream& out, const Bpos& bpos)
 	}
 }
 
+ADAPT_EXPORT
 inline std::ostream& operator<<(std::ostream& out, const JBpos& jbpos)
 {
 	RankType rank = jbpos.GetMaxRank();

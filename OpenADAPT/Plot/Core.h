@@ -15,18 +15,21 @@
 namespace adapt
 {
 
-enum class Style : int16_t { none, lines, points, linespoints, dots, impulses, boxes, steps, fsteps, histeps, pm3d, };
-enum class Smooth : int16_t { none, unique, frequency, cumulative, cnormal, kdensity, csplines, acsplines, bezier, sbezier, };
-enum class ArrowHead : int16_t { none, head, heads, nohead, };
-enum class ArrowFill : int16_t { none, filled, empty, nofilled, noborder, };
-enum class LabelPos : int16_t { none, left, center, right, };
-enum class LabelOverlay : int16_t { none, front, back, };
-enum class Pm3dPosition : int16_t { none, bottom, surface, top, };
+ADAPT_EXPORT enum class Style : int16_t { none, lines, points, linespoints, dots, impulses, boxes, steps, fsteps, histeps, pm3d, };
+ADAPT_EXPORT enum class Smooth : int16_t { none, unique, frequency, cumulative, cnormal, kdensity, csplines, acsplines, bezier, sbezier, };
+ADAPT_EXPORT enum class ArrowHead : int16_t { none, head, heads, nohead, };
+ADAPT_EXPORT enum class ArrowFill : int16_t { none, filled, empty, nofilled, noborder, };
+ADAPT_EXPORT enum class LabelPos : int16_t { none, left, center, right, };
+ADAPT_EXPORT enum class LabelOverlay : int16_t { none, front, back, };
+ADAPT_EXPORT enum class Pm3dPosition : int16_t { none, bottom, surface, top, };
 
-enum BinError : int16_t { none, poisson68, poisson95, normal68, normal95, };
+ADAPT_EXPORT enum BinError : int16_t { none, poisson68, poisson95, normal68, normal95, };
 
-enum class Contour : int16_t { none, base, surface, both, };
-enum class CntrSmooth : int16_t { none, linear, cubicspline, bspline };
+ADAPT_EXPORT enum class Contour : int16_t { none, base, surface, both, };
+ADAPT_EXPORT enum class CntrSmooth : int16_t { none, linear, cubicspline, bspline };
+
+ADAPT_EXPORT
+class MultiPlot;
 
 class Canvas
 {
@@ -357,7 +360,6 @@ protected:
 	inline static FILE* ms_global_pipe = nullptr;
 
 };
-
 
 
 class MultiPlot

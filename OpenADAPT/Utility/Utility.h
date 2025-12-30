@@ -1,15 +1,20 @@
 #ifndef ADAPT_UTILITY_UTILITY_H
 #define ADAPT_UTILITY_UTILITY_H
 
+#include <tuple>
+#include <OpenADAPT/Utility/Common.h>
+
 namespace adapt
 {
 
+ADAPT_EXPORT
 struct Default
 {
 	template <class T>
 	operator T() const { return T{}; }
 };
 
+ADAPT_EXPORT
 template <auto I>
 struct Number
 {
@@ -17,6 +22,7 @@ struct Number
 	static constexpr Type value = I;
 };
 
+ADAPT_EXPORT
 class EmptyClass {};
 
 //tuple_catは要素にrvalue referenceを含む場合に使えないらしい。
@@ -29,6 +35,7 @@ auto TupleAdd_impl([[maybe_unused]] std::tuple<T...> t, U&& u, std::index_sequen
 	return std::forward_as_tuple(std::get<Indices>(std::move(t))..., std::forward<U>(u));
 }
 }
+ADAPT_EXPORT
 template <class ...T, class U>
 auto TupleAdd([[maybe_unused]] std::tuple<T...> t, U&& u)
 {
@@ -38,6 +45,7 @@ auto TupleAdd([[maybe_unused]] std::tuple<T...> t, U&& u)
 // 通常、make_tupleは全てコピー、std::tieは全てlvalue ref、std::forwar_as_tupleは完全転送を行う。
 // ただいずれの関数も、「lvalue refはlvalue refで」、「rvalue refはコピーして」保存しておくようなtupleを作ることができない。
 // よって、代用品を用意しておく。
+ADAPT_EXPORT
 template <class ...Args>
 std::tuple<Args...> MakeTemporaryTuple(Args&& ...args)
 {
@@ -45,6 +53,7 @@ std::tuple<Args...> MakeTemporaryTuple(Args&& ...args)
 }
 // tupleの中身を全てコピーし、参照等はdecayする。
 // Argsがrvalue referenceでもlvalue referenceでも無視してコピーする。
+ADAPT_EXPORT
 template <class ...Args>
 std::tuple<std::decay_t<Args>...> MakeDecayedCopy(const std::tuple<Args...>& t)
 {

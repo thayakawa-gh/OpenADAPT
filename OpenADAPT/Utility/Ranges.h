@@ -4,6 +4,7 @@
 #include <ranges>
 #include <iterator>
 #include <optional>
+#include <OpenADAPT/Utility/Common.h>
 #include <OpenADAPT/Utility/TypeTraits.h>
 #include <OpenADAPT/Utility/Function.h>
 
@@ -47,6 +48,7 @@ private:
 
 }
 
+ADAPT_EXPORT
 template <class Type, class Bound>
 struct RepeatIterator
 {
@@ -76,6 +78,7 @@ private:
 	[[no_unique_address]] detail::RepeatBound<Bound> m_count;
 };
 
+ADAPT_EXPORT
 template <class Type, class Bound>
 struct RepeatView
 	: public std::ranges::view_interface<RepeatView<Type, Bound>>
@@ -96,11 +99,13 @@ private:
 namespace views
 {
 
+ADAPT_EXPORT
 template <class Type>
 RepeatView<Type, void> Repeat(Type&& v)
 {
 	return RepeatView<std::decay_t<Type>, void>(std::forward<Type>(v));
 }
+ADAPT_EXPORT
 template <class Type>
 RepeatView<Type, size_t> Repeat(Type&& v, size_t bound)
 {
@@ -218,12 +223,15 @@ private:
 
 }
 
+ADAPT_EXPORT
 template <class ...Iterators>
 using ZippedIterator = detail::ZippedIterator_impl<std::tuple<Iterators...>, std::make_index_sequence<sizeof...(Iterators)>>;
+ADAPT_EXPORT
 template <class ...Sentinels>
 using ZippedSentinel = detail::ZippedSentinel_impl<std::tuple<Sentinels...>, std::make_index_sequence<sizeof...(Sentinels)>>;
 
 
+ADAPT_EXPORT
 template <class ...Iterators>
 class ZippedIteratorWithIndex
 	: public ZippedIterator<Iterators...>
@@ -261,6 +269,7 @@ private:
 };
 
 //sentinelの方にindexの情報は必要ないので、ZippedSentinelをそのまま使う。
+ADAPT_EXPORT
 template <class ...Iterators>
 using ZippedSentinelWithIndex = ZippedSentinel<Iterators...>;
 
@@ -349,6 +358,7 @@ protected:
 
 }
 
+ADAPT_EXPORT
 template <std::ranges::input_range ...Containers>
 class ZipView : public detail::Zip_impl<std::tuple<Containers...>, std::make_index_sequence<sizeof...(Containers)>>
 {
@@ -361,6 +371,7 @@ public:
 namespace views
 {
 
+ADAPT_EXPORT
 template <class ...Range>
 ZipView<Range...> Zip(Range&& ...ranges)
 {
@@ -400,6 +411,7 @@ public:
 namespace views
 {
 
+ADAPT_EXPORT
 template <std::ranges::input_range ...Containers>
 class Enumerate : public detail::Enumerate_impl<std::tuple<Containers...>, std::make_index_sequence<sizeof...(Containers)>>
 {
@@ -415,12 +427,16 @@ template <std::ranges::input_range ...C> Enumerate(C&& ...) -> Enumerate<C...>;
 namespace ranges
 {
 
+ADAPT_EXPORT
 template <class Range>
 concept arithmetic_range = std::ranges::input_range<Range> && arithmetic<std::ranges::range_value_t<Range>>;
+ADAPT_EXPORT
 template <class Range>
 concept string_range = std::ranges::input_range<Range> && std::convertible_to<std::ranges::range_value_t<Range>, std::string>;
+ADAPT_EXPORT
 template <class Range>
 concept range_of_range = std::ranges::input_range<Range> && std::ranges::input_range<std::ranges::range_value_t<Range>>;
+ADAPT_EXPORT
 template <class Range>
 concept arithmetic_matrix_range = ranges::range_of_range<Range> && std::ranges::sized_range<Range> &&
 ranges::arithmetic_range<std::ranges::range_value_t<Range>> && std::ranges::sized_range<std::ranges::range_value_t<Range>>;

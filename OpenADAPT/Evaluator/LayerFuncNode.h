@@ -508,7 +508,6 @@ protected:
 }
 
 //--------Ctti--------
-
 template <class Func_, class Node_, RankType FixRank, DepthType Depth, LayerType Up, class Cond_>
 struct CttiLayerFuncNode<Func_, Node_, FixRank, DepthConstant<Depth>, LayerConstant<Up>, Cond_>
 	: public detail::LayerFuncBase<CttiLayerFuncNode<Func_, Node_, FixRank, DepthConstant<Depth>, LayerConstant<Up>, Cond_>,
@@ -1248,6 +1247,7 @@ auto MakeRttiLayerFuncNode(Node&& node, Cond&& cond, LayerType up)
 }
 
 #define DEFINE_LAYER_FUNCTION(NAME, NAME_ID, UP)\
+ADAPT_EXPORT \
 template <node_or_placeholder NP>\
 auto NAME_ID(NP&& np)\
 {\
@@ -1286,6 +1286,7 @@ DEFINE_LAYER_FUNCTION(NAME, NAME_ID##9, 9)\
 DEFINE_LAYER_FUNCTION(NAME, NAME_ID##10, 10)
 
 #define DEFINE_LAYER_FUNCTION_IF(NAME, NAME_ID, UP)\
+ADAPT_EXPORT \
 template <node_or_placeholder NP, node_or_placeholder Cond>\
 auto NAME_ID(NP&& np, Cond&& cond)\
 {\

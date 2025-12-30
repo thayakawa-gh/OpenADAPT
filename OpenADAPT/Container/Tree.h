@@ -455,6 +455,28 @@ private:
 
 }
 
+ADAPT_EXPORT
+template <named_tuple TopLayer, named_tuple Layer0>
+class STable : public detail::Tree_base<STable<TopLayer, Layer0>,
+	SHierarchy<STable<TopLayer, Layer0>, TopLayer, Layer0>,
+	detail::SElementBlockPolicy>
+{
+public:
+	using Base = detail::Tree_base<STable<TopLayer, Layer0>,
+		SHierarchy<STable<TopLayer, Layer0>, TopLayer, Layer0>,
+		detail::SElementBlockPolicy>;
+	using Base::Base;
+};
+
+ADAPT_EXPORT
+class DTable : public detail::Tree_base<DTable, FHierarchy<DTable, 0>, detail::DElementBlockPolicy>
+{
+public:
+	using Base = detail::Tree_base<DTable, FHierarchy<DTable, 0>, detail::DElementBlockPolicy>;
+	using Base::Base;
+};
+
+ADAPT_EXPORT
 template <named_tuple ...LayerElements>
 class STree : public detail::Tree_base<STree<LayerElements...>,
 									   SHierarchy<STree<LayerElements...>, LayerElements...>,
@@ -467,29 +489,11 @@ public:
 	using Base::Base;
 };
 
+ADAPT_EXPORT
 class DTree : public detail::Tree_base<DTree, DHierarchy<DTree>, detail::DElementBlockPolicy>
 {
 public:
 	using Base = detail::Tree_base<DTree, DHierarchy<DTree>, detail::DElementBlockPolicy>;
-	using Base::Base;
-};
-
-template <named_tuple TopLayer, named_tuple Layer0>
-class STable : public detail::Tree_base<STable<TopLayer, Layer0>,
-										SHierarchy<STable<TopLayer, Layer0>, TopLayer, Layer0>,
-										detail::SElementBlockPolicy>
-{
-public:
-	using Base = detail::Tree_base<STable<TopLayer, Layer0>,
-								   SHierarchy<STable<TopLayer, Layer0>, TopLayer, Layer0>,
-								   detail::SElementBlockPolicy>;
-	using Base::Base;
-};
-
-class DTable : public detail::Tree_base<DTable, FHierarchy<DTable, 0>, detail::DElementBlockPolicy>
-{
-public:
-	using Base = detail::Tree_base<DTable, FHierarchy<DTable, 0>, detail::DElementBlockPolicy>;
 	using Base::Base;
 };
 

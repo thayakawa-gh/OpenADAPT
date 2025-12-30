@@ -10,6 +10,7 @@ namespace eval
 {
 
 //
+ADAPT_EXPORT
 template <RankType Rank, class Container_>
 class CttiTryJoinNode : public detail::CttiMethods<CttiTryJoinNode<Rank, Container_>, std::add_const_t>
 {

@@ -1,5 +1,4 @@
 #include <Test/Aggregator.h>
-#include <OpenADAPT/Utility/KeywordArgs.h>
 
 namespace args
 {

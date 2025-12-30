@@ -44,6 +44,23 @@ The test and example codes are built by adding `-DBUILD_TEST=ON` and `-DBUILD_EX
 using namespace adapt::lit;// Import the ADAPT literals, such as "_fld" for field names.
 ```
 
+### Module support (experimental)
+
+C++20 modules are experimentally supported for Clang >= 20 and GCC >= 15. MSVC (tested with VS 2026 18.1.1) currently causes internal compilation errors due to "sorry: not yet implemented".  
+Simply add `-ENABLE_MODULE=ON` to the cmake command, and then it can be incorpolated as follows:
+
+```cmake
+find_package(OpenADAPT REQUIRED)
+target_link_libraries(YOUR_PACKAGE_NAME PRIVATE OpenADAPT::Module)
+```
+
+```cpp
+#include <OpenADAPT/Macros.h>// Import macros which are not imported by the above module.
+import adapt;// Import the module.
+
+using namespace adapt::lit;// Import the ADAPT literals, such as "_fld" for field names.
+```
+
 ## [For the detailed examples and explanations, please see Examples/en](Examples/en).
 
 ## Container basics

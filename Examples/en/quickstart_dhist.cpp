@@ -1,6 +1,18 @@
 #include <format>
 #include <iostream>
+#include <vector>
+#include <cassert>
+#include <cmath>
+#include <complex>
+#include <ranges>
+#include <array>
+#include <fstream>
+#ifdef ADAPT_IMPORT_MODULE
+#include <OpenADAPT/Macros.h>
+import adapt;
+#else
 #include <OpenADAPT/ADAPT.h>
+#endif
 
 using namespace adapt::lit;
 

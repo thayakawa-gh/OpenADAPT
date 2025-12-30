@@ -1,6 +1,4 @@
 #include <Test/Aggregator.h>
-#include <OpenADAPT/Plot/Canvas.h>
-
 
 TEST_F(Aggregator, Plot_xyerrorbars)
 {

@@ -2,6 +2,7 @@
 #define ADAPT_UTILITY_PRINT_H
 
 #include <iostream>
+#include <OpenADAPT/Utility/Common.h>
 
 namespace adapt
 {
@@ -246,17 +247,22 @@ const char* ConvStringToCharPtr(Type&& v) { return v.c_str(); }
 
 }
 
+ADAPT_EXPORT
 template <int ...N>
 inline constexpr detail::Delimiter<N...> delim = detail::Delimiter<N...>();
+ADAPT_EXPORT
 template <int ...N>
 inline constexpr detail::End<N...> end = detail::End<N...>();
+ADAPT_EXPORT
 template <bool B>
 inline constexpr detail::Flush<B> flush = detail::Flush<B>();
+ADAPT_EXPORT
 template <bool B>
 inline constexpr detail::Quote<B> quote = detail::Quote<B>();
 
 }
 
+ADAPT_EXPORT
 template <class ...Args>
 void Print(FILE* fp, Args&& ...args)
 {
@@ -270,6 +276,7 @@ void Print(FILE* fp, Args&& ...args)
 	std::apply(&fprintf, std::tuple_cat(std::make_tuple(fp), std::make_tuple(fmt.data()), GetFormerNArgs<n>(print::detail::ConvStringToCharPtr(std::forward<Args>(args))...)));
 	print::detail::Flush_<decltype(f)>(fp);
 }
+ADAPT_EXPORT
 template <class ...Args>
 void Print(char* str, Args&& ...args)
 {
@@ -282,6 +289,7 @@ void Print(char* str, Args&& ...args)
 	constexpr auto fmt = print::detail::MakeFormatStr<decltype(d), decltype(e), decltype(q), GetFormerNTypes_t<n, std::decay_t<Args>...>>::apply();
 	std::apply(&sprintf, std::tuple_cat(std::make_tuple(str), std::make_tuple(fmt.data()), GetFormerNArgs<n>(print::detail::ConvStringToCharPtr(std::forward<Args>(args))...)));
 }
+ADAPT_EXPORT
 template <class ...Args>
 void Print(std::ostream& ost, Args&& ...args)
 {

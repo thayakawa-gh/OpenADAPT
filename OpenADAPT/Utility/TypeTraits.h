@@ -6,11 +6,13 @@
 #include <utility>
 #include <complex>
 #include <format>
+#include <OpenADAPT/Utility/Common.h>
 
 namespace adapt
 {
 
 //各種演算子を使えるようにしたintegral_constant。
+ADAPT_EXPORT
 template <class Type, Type N, template <Type> class Derived>
 struct IntegralConstant : std::integral_constant<Type, N>
 {
@@ -44,11 +46,13 @@ constexpr Type operator+(Type x, IntegralConstant<Type, N, Derived>) { return Ty
 template <class Type, Type N, template <Type> class Derived>
 constexpr Type operator-(Type x, IntegralConstant<Type, N, Derived>) { return Type(x - N); }
 
+ADAPT_EXPORT
 template <class ...T>
 struct TypeList
 {
 	static constexpr size_t size = sizeof...(T);
 };
+ADAPT_EXPORT
 template <class ...T>
 struct CatTypeList;
 template <class ...T1>
@@ -66,15 +70,18 @@ struct CatTypeList<T1, T2, T3, Ts...>
 	: public CatTypeList<typename CatTypeList<T1, T2>::Type, T3, Ts...>
 {
 };
+ADAPT_EXPORT
 template <class ...T>
 using CatTypeList_t = typename CatTypeList<T...>::Type;
 
 
+ADAPT_EXPORT
 template <template <class...> class ...T>
 struct UnarguedList
 {
 	static constexpr size_t size = sizeof...(T);
 };
+ADAPT_EXPORT
 template <auto ...V>
 struct ValueList
 {
@@ -82,13 +89,17 @@ struct ValueList
 };
 
 
+ADAPT_EXPORT
 template <auto N, class T>
 struct PseudoIndexed { using Type = T; };
+ADAPT_EXPORT
 template <auto N, class T>
 using PseudoIndexed_t = PseudoIndexed<N, T>::Type;
 
+ADAPT_EXPORT
 template <class X, class T>
 struct PseudoArgued { using Type = T; };
+ADAPT_EXPORT
 template <class X, class T>
 using PseudoArgued_t = PseudoArgued<X, T>::Type;
 
@@ -108,6 +119,7 @@ struct GetType_impl<std::index_sequence<Indices...>, TypeList<Types...>>
 {};
 }
 
+ADAPT_EXPORT
 template <size_t N, class ...Types>
 	requires (N < sizeof...(Types))
 struct GetType
@@ -122,6 +134,7 @@ struct GetType<N, TypeList<Types...>>
 	: public GetType<N, Types...>
 {
 };
+ADAPT_EXPORT
 template <size_t N, class ...Args>
 using GetType_t = typename GetType<N, Args...>::Type;
 
@@ -139,6 +152,7 @@ struct FindType_impl<std::index_sequence<Indices...>, TypeList<Types...>>
 	: public FindType_impl_s<Indices, Types>...
 {};
 }
+ADAPT_EXPORT
 template <class Type, class ...Types>
 struct FindType
 {
@@ -165,12 +179,15 @@ public:
 	static constexpr bool value = Exist::value;
 };
 
+ADAPT_EXPORT
 template <class Type, class ...Types>
 inline constexpr size_t FindType_v = FindType<Type, Types...>::Index;
 
+ADAPT_EXPORT
 template <class Type, class ...Types>
 using FirstType = Type;
 
+ADAPT_EXPORT
 template <size_t Index, class ...Types>
 struct GetFormerNTypes;
 template <>
@@ -188,9 +205,11 @@ struct GetFormerNTypes<Index, Head, Types...>
 {
 	using Type = CatTypeList_t<TypeList<Head>, typename GetFormerNTypes<Index - 1, Types...>::Type>;
 };
+ADAPT_EXPORT
 template <size_t Index, class ...Types>
 using GetFormerNTypes_t = typename GetFormerNTypes<Index, Types...>::Type;
 
+ADAPT_EXPORT
 template <size_t Index, auto ...Values>
 constexpr auto GetValue()
 {
@@ -198,6 +217,7 @@ constexpr auto GetValue()
 	return std::get<Index>(tup);
 }
 
+ADAPT_EXPORT
 template <template <class> class Base, class Derived>
 struct IsBaseOf_T
 {
@@ -210,9 +230,11 @@ public:
 	static constexpr bool value = decltype(check(d))::value;
 };
 
+ADAPT_EXPORT
 template <template <class> class Base, class Derived>
 inline constexpr bool IsBaseOf_T_v = IsBaseOf_T<Base, Derived>::value;
 
+ADAPT_EXPORT
 template <template <class...> class Base, class Derived>
 struct IsBaseOf_XT
 {
@@ -225,9 +247,11 @@ public:
 	static constexpr bool value = decltype(check(d))::value;
 };
 
+ADAPT_EXPORT
 template <template <class...> class Base, class Derived>
 inline constexpr bool IsBaseOf_XT_v = IsBaseOf_XT<Base, Derived>::value;
 
+ADAPT_EXPORT
 template <template <auto...> class Base, class Derived>
 struct IsBaseOf_XN
 {
@@ -240,10 +264,12 @@ public:
 	static constexpr bool value = decltype(check(d))::value;
 };
 
+ADAPT_EXPORT
 template <template <auto...> class Base, class Derived>
 inline constexpr bool IsBaseOf_XN_v = IsBaseOf_XN<Base, Derived>::value;
 
 
+ADAPT_EXPORT
 template <template <auto, class...> class Base, class Derived>
 struct IsBaseOf_NXT
 {
@@ -256,69 +282,85 @@ public:
 	static constexpr bool value = decltype(check(d))::value;
 };
 
+ADAPT_EXPORT
 template <template <auto, class...> class Base, class Derived>
 inline constexpr bool IsBaseOf_NXT_v = IsBaseOf_NXT<Base, Derived>::value;
 
+ADAPT_EXPORT
 template <template <class ...> class T, class U>
 struct IsSame_XT : public std::false_type {};
 template <template <class ...> class T, class ...X>
 struct IsSame_XT<T, T<X...>> : public std::true_type {};
 
+ADAPT_EXPORT
 template <template <class ...> class T, class U>
 inline constexpr bool IsSame_XT_v = IsSame_XT<T, U>::value;
 
+ADAPT_EXPORT
 template <template <auto ...> class T, class U>
 struct IsSame_XN : public std::false_type {};
 template <template <auto ...> class T, auto ...X>
 struct IsSame_XN<T, T<X...>> : public std::true_type {};
 
+ADAPT_EXPORT
 template <template <auto ...> class T, class U>
 inline constexpr bool IsSame_XN_v = IsSame_XN<T, U>::value;
 
+ADAPT_EXPORT
 template <template <class, auto> class T, class U>
 struct IsSame_TN : public std::false_type {};
 template <template <class, auto> class T, class X, auto Y>
 struct IsSame_TN<T, T<X, Y>> : public std::true_type {};
 
+ADAPT_EXPORT
 template <template <class, auto> class T, class U>
 inline constexpr bool IsSame_TN_v = IsSame_TN<T, U>::value;
 
+ADAPT_EXPORT
 template <template <auto, class> class T, class U>
 struct IsSame_NT : public std::false_type {};
 template <template <auto, class> class T, auto X, class Y>
 struct IsSame_NT<T, T<X, Y>> : public std::true_type {};
 
+ADAPT_EXPORT
 template <template <auto, class> class T, class U>
 inline constexpr bool IsSame_NT_v = IsSame_NT<T, U>::value;
 
 
+ADAPT_EXPORT
 template <class T>
 struct DecayRRef { using Type = T; };
 template <class T>
 struct DecayRRef<T&&> { using Type = std::decay_t<T>; };
 
+ADAPT_EXPORT
 template <auto ...N>
 struct ConstantSequence
 {
 };
 
+ADAPT_EXPORT
 template <class T>
 struct IsComplex : public std::false_type {};
 template <class T>
 struct IsComplex<std::complex<T>> : public std::true_type {};
 
+ADAPT_EXPORT
 template <class T>
 inline constexpr bool IsComplex_v = IsComplex<T>::value;
 
+ADAPT_EXPORT
 template <class T, class U>
 concept derivative_relation = std::derived_from<T, U> || std::derived_from<U, T>;
 
+ADAPT_EXPORT
 template <class T, class U>
 concept similar_lvalue_reference =
 (std::is_lvalue_reference_v<T> && std::is_lvalue_reference_v<U>) &&
 (std::same_as<std::remove_cvref_t<T>, std::remove_cvref_t<U>> ||
  derivative_relation<std::remove_cvref_t<T>, std::remove_cvref_t<U>>);
 
+ADAPT_EXPORT
 template <class ...Ts>
 struct CommonRef { using Type = void; };
 template <class T>
@@ -338,116 +380,143 @@ public:
 //<Base&, Derived&>のような派生関係
 //いずれかのlvalue referenceであるときに、その共通型を取り出す。
 //const有無の違いを許す。constが混ざっていたら共通型もconst。
+ADAPT_EXPORT
 template <class ...T>
 using CommonRef_t = CommonRef<T...>::Type;
 
 //static constexpr auto x = ConstantSequence<1, 2, 3>();
 
+ADAPT_EXPORT
 template <class T>
 concept non_void = !std::same_as<T, void>;
 
+ADAPT_EXPORT
 template <class T, template <class...> class U>
 concept derived_from_xt = IsBaseOf_XT<U, T>::value;
 
+ADAPT_EXPORT
 template <class T, template <auto...> class U>
 concept derived_from_xn = IsBaseOf_XN<U, T>::value;
 
+ADAPT_EXPORT
 template <class T, template <auto, class...> class U>
 concept derived_from_nxt = IsBaseOf_NXT<U, T>::value;
 
+ADAPT_EXPORT
 template <class T, template <class...> class U>
 concept same_as_xt = IsSame_XT<U, T>::value;
 //template <class T, template <class...> class U>
 //concept not_same_as_xt = !IsSame_XT<U, T>::value;
 
+ADAPT_EXPORT
 template <class T, template <auto...> class U>
 concept same_as_xn = IsSame_XN<U, T>::value;
 //template <class T, template <auto...> class U>
 //concept not_same_as_xn = !IsSame_XN<U, T>::value;
 
+ADAPT_EXPORT
 template <class T, template <class, auto> class U>
 concept same_as_tn = IsSame_TN<U, T>::value;
 //template <class T, template <class, auto> class U>
 //concept not_same_as_xn = !IsSame_TN<U, T>::value;
 
+ADAPT_EXPORT
 template <class T, template <auto, class> class U>
 concept same_as_nt = IsSame_NT<U, T>::value;
 //template <class T, template <auto...> class U>
 //concept not_same_as_xn = !IsSame_XN<U, T>::value;
 
 
+ADAPT_EXPORT
 template <class T, class U>
 concept similar_to = std::same_as<std::decay_t<T>, U>;
+ADAPT_EXPORT
 template <class T, template <class...> class U>
 concept similar_to_xt = same_as_xt<std::decay_t<T>, U>;
+ADAPT_EXPORT
 template <class T, template <auto...> class U>
 concept similar_to_xn = same_as_xn<std::decay_t<T>, U>;
 
 
+ADAPT_EXPORT
 template <class T>
 struct IsTuple : public std::false_type {};
 template <class ...T>
 struct IsTuple<std::tuple<T...>> : public std::true_type {};
+ADAPT_EXPORT
 template <class T>
 concept any_tuple = IsTuple<std::remove_cvref_t<T>>::value;
 
+ADAPT_EXPORT
 template <class T>
 struct IsArray : public std::false_type {};
 template <class T, size_t N>
 struct IsArray<std::array<T, N>> : public std::true_type {};
+ADAPT_EXPORT
 template <class T>
 concept any_array = IsArray<std::remove_cvref_t<T>>::value;
 
+ADAPT_EXPORT
 template <class ArgType>
 concept boolean_testable = requires(ArgType a)
 {
 	static_cast<bool>(a);
 };
+ADAPT_EXPORT
 template <class ArgType>
 concept summable = requires(ArgType a, ArgType b)
 {
 	a += b;
 };
+ADAPT_EXPORT
 template <class ArgType>
 concept dividable = requires(ArgType a, ArgType b)
 {
 	a /= b;
 };
+ADAPT_EXPORT
 template <class ArgType>
 concept greater_than_comparable = requires(ArgType a, ArgType b)
 {
 	{ a > b } -> boolean_testable;
 };
+ADAPT_EXPORT
 template <class T, class U>
 concept greater_than_comparable_with = requires(T a, U b)
 {
 	{ a > b } -> boolean_testable;
 };
+ADAPT_EXPORT
 template <class ArgType>
 concept less_than_comparable = requires(ArgType a, ArgType b)
 {
 	{ a < b } -> boolean_testable;
 };
+ADAPT_EXPORT
 template <class T, class U>
 concept less_than_comparable_with = requires(T a, U b)
 {
 	{ a < b } -> boolean_testable;
 };
+ADAPT_EXPORT
 template <class ArgType>
 concept equal_comparable = requires(ArgType a, ArgType b)
 {
 	{ a == b } -> boolean_testable;
 };
+ADAPT_EXPORT
 template <class T, class U>
 concept equal_comparable_with = requires(T a, U b)
 {
 	{ a == b } -> boolean_testable;
 };
 
+ADAPT_EXPORT
 template <class T>
 concept arithmetic = std::is_arithmetic_v<T>;
 
 // C++23を使えないときのための、std::formattableの簡易的代用。非常に雑だが取りあえず動く。
+ADAPT_EXPORT
 template <class T, class Out, class Char>
 concept formattable = requires(T v, std::formatter<std::remove_cvref_t<T>, Char> f, std::basic_format_context<Out, Char>&fc)
 {

@@ -11,6 +11,7 @@
 namespace adapt
 {
 
+ADAPT_EXPORT
 template <RankType Rank, class Container, class Types, class Nodes>
 struct KeyJoint;
 template <RankType Rank, class Container, class ...Types, node_or_placeholder ...Nodes>

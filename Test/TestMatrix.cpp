@@ -1,6 +1,4 @@
-#include <gtest/gtest.h>
-#include <OpenADAPT/Utility/Matrix.h>
-#include <OpenADAPT/Plot/Canvas.h>
+#include <Test/Aggregator.h>
 
 TEST(Utility, Matrix)
 {

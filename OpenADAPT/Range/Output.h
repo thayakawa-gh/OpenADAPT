@@ -1,9 +1,10 @@
 #ifndef ADAPT_RANGE_OUTPUT_H
 #define ADAPT_RANGE_OUTPUT_H
 
-#include <iomanip>
 #include <string_view>
 #include <fstream>
+#include <sstream>
+#include <iomanip>
 #include <OpenADAPT/Utility/Exception.h>
 #include <OpenADAPT/Container/Tree.h>
 #include <OpenADAPT/Range/RangeAdapter.h>
@@ -313,17 +314,16 @@ void WriteAsText_print(std::ostream& out, const Trav& trav, NP&& np, [[maybe_unu
 	out.flags(f);
 }
 
-
+template <class Trav>
+void WriteAsText_rec(std::ostream& out, const Trav&)
+{
+	out << "\n";
+}
 template <class Trav, node_or_placeholder NP, node_or_placeholder ...NPs>
 void WriteAsText_rec(std::ostream& out, const Trav& trav, NP&& np, NPs&& ...nps)
 {
 	WriteAsText_print(out, trav, np);
 	WriteAsText_rec(out, trav, std::forward<NPs>(nps)...);
-}
-template <class Trav>
-void WriteAsText_rec(std::ostream& out, const Trav&)
-{
-	out << "\n";
 }
 
 }
@@ -364,7 +364,6 @@ void WriteAsText(std::ostream& out, std::string_view fmt, Range&& range, NPs&& .
 	{
 		try
 		{
-			std::ostringstream oss;
 			trav.GetBpos(pos);
 			out << std::format("{:>4}", pos);
 			// std::make_format_argsは何故か一時変数を受け取れない仕様になっている。
@@ -403,16 +402,19 @@ public:
 
 }
 
+ADAPT_EXPORT
 template <node_or_placeholder ...NPs>
 RangeConversion<detail::OutputConversion, std::ostream&, NPs...> Show(NPs&& ...nps)
 {
 	return RangeConversion<detail::OutputConversion, std::ostream&, NPs...>(std::cout, std::forward<NPs>(nps)...);
 }
+ADAPT_EXPORT
 template <node_or_placeholder ...NPs>
 RangeConversion<detail::OutputConversion, std::ostream&, std::string_view, NPs...> Show(std::string_view fmt, NPs&& ...nps)
 {
 	return RangeConversion<detail::OutputConversion, std::ostream&, std::string_view, NPs...>(std::cout, fmt, std::forward<NPs>(nps)...);
 }
+ADAPT_EXPORT
 template <node_or_placeholder ...NPs>
 RangeConversion<detail::OutputConversion, std::ofstream, NPs...> Write(std::string_view filename, NPs&& ...nps)
 {
@@ -420,6 +422,7 @@ RangeConversion<detail::OutputConversion, std::ofstream, NPs...> Write(std::stri
 	if (!ost) throw BadFile("file cannot open.");
 	return RangeConversion<detail::OutputConversion, std::ofstream, NPs...>(std::move(ost), std::forward<NPs>(nps)...);
 }
+ADAPT_EXPORT
 template <node_or_placeholder ...NPs>
 RangeConversion<detail::OutputConversion, std::ofstream, std::string_view, NPs...> Write(std::string_view filename, std::string_view fmt, NPs&& ...nps)
 {

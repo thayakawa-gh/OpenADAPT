@@ -1,4 +1,14 @@
+#include <vector>
+#include <string>
+#include <iostream>
+#include <array>
+#include <complex>
+#ifdef ADAPT_IMPORT_MODULE
+#include <OpenADAPT/Macros.h>
+import adapt;
+#else
 #include <OpenADAPT/ADAPT.h>
+#endif
 
 template <class Container>
 void StoreData(Container& t)

@@ -14,8 +14,10 @@
 namespace adapt
 {
 
+ADAPT_EXPORT
 template <class T>
 concept direction_flag = std::is_same_v<ForwardMovement, T> || std::is_same_v<BackwardMovement, T>;
+ADAPT_EXPORT
 template <class JointMode>
 concept joint_mode = std::is_same_v<PromptJoint, JointMode> || std::is_same_v<DelayedJoint, JointMode>;
 
@@ -23,52 +25,66 @@ namespace eval
 {
 
 //定数値ノード
+ADAPT_EXPORT
 template <class Type>
 struct CttiConstNode;
+ADAPT_EXPORT
 struct RttiConstNode;
+ADAPT_EXPORT
 template <class TravOrStor, class NP, class HasBpos>
 struct RttiEvalProxy;
 
 //コンパイル時型情報を持つフィールドノード。SPlaceholderまたはDCttiPlaceholderから作られる。
+ADAPT_EXPORT
 template <class Placeholder>
 struct CttiFieldNode;
+ADAPT_EXPORT
 template <class Placeholder, DepthType>
 struct CttiOuterFieldNode;
+ADAPT_EXPORT
 template <class Placeholder_, class Nodes, class Indices>
 struct CttiIndexedFieldNode;
 
 //実行時型情報のみを持つフィールドノード。DPlaceholderかSRttiPlaceholderにより作られる。
+ADAPT_EXPORT
 template <class Placeholder>
 struct RttiFieldNode;
 //
+ADAPT_EXPORT
 template <class Func, class Nodes, class Components, class Indices>
 struct CttiFuncNode;
 
+ADAPT_EXPORT
 template <class Components>
 struct RttiFuncNode;
 
+ADAPT_EXPORT
 template <class Func_, class Node_, RankType FixRank, class Depth, class Up, class Cond = EmptyClass>
 struct CttiLayerFuncNode;
 
 }
 
 
+ADAPT_EXPORT
 template <class T>
 struct IsRttiConstNode : public std::false_type {};
 template <>
 struct IsRttiConstNode<eval::RttiConstNode> : public std::true_type {};
 
+ADAPT_EXPORT
 template <class T>
 struct IsRttiFieldNode : public std::false_type {};
 template <class Placeholder>
 struct IsRttiFieldNode<eval::RttiFieldNode<Placeholder>> : public std::true_type {};
 
+ADAPT_EXPORT
 template <class T>
 struct IsRttiFuncNode : public std::false_type {};
 template <class Container>
 struct IsRttiFuncNode<eval::RttiFuncNode<Container>> : public std::true_type {};
 
 //RttiLayerFuncNodeやRttiIndexedFieldNodeはRttiFuncNodeに統合されている。
+ADAPT_EXPORT
 template <class T>
 struct IsRttiNode : public std::disjunction<IsRttiConstNode<T>, IsRttiFieldNode<T>, IsRttiFuncNode<T>> {};
 
@@ -80,33 +96,40 @@ template <class Placeholder>
 struct RttiFieldMethods;
 }
 
+ADAPT_EXPORT
 template <class T>
 concept anything_typed = requires(std::remove_cvref_t<T> t)
 {
 	{ t.GetType() } -> std::same_as<FieldType>;
 };
+ADAPT_EXPORT
 template <class T>
 concept statistically_typed = anything_typed<T> && requires
 {
 	typename std::remove_cvref_t<T>::RetType;
 	Number<std::remove_cvref_t<T>::GetType()>{};
 };
+ADAPT_EXPORT
 template <class T>
 concept dynamically_typed = anything_typed<T> && !statistically_typed<T>;
 
+ADAPT_EXPORT
 template <class T>
 concept anything_layered = requires(std::remove_cvref_t<T> t)
 {
 	{ t.GetLayer() } -> std::same_as<LayerType>;
 };
+ADAPT_EXPORT
 template <class T>
 concept statistically_layered = anything_layered<T> && requires
 {
 	LayerConstant<std::remove_cvref_t<T>::GetLayer()>{};
 };
+ADAPT_EXPORT
 template <class T>
 concept dynamically_layered = anything_layered<T> && !statistically_layered<T>;
 
+ADAPT_EXPORT
 template <class T>
 concept placeholder = anything_typed<T> && anything_layered<T> &&
 	requires(std::remove_cvref_t<T> v)
@@ -115,6 +138,7 @@ concept placeholder = anything_typed<T> && anything_layered<T> &&
 	{ v.GetIndex() } -> similar_to<uint16_t>;
 	{ v.GetPtrOffset() } -> similar_to<ptrdiff_t>;
 };
+ADAPT_EXPORT
 template <class T>
 concept rtti_placeholder =
 	placeholder<T> && dynamically_typed<T> && dynamically_layered<T> &&
@@ -123,22 +147,27 @@ concept rtti_placeholder =
 {
 	{ v.GetInternalLayer() } -> std::same_as<LayerType>;
 };
+ADAPT_EXPORT
 template <class T>
 concept typed_placeholder = placeholder<T> &&
 	statistically_typed<T> && dynamically_layered<T> &&
 	derived_from_xt<std::remove_cvref_t<T>, eval::detail::CttiFieldMethods>;
+ADAPT_EXPORT
 template <class T>
 concept ctti_placeholder = placeholder<T> &&
 	statistically_typed<T> && statistically_layered<T> &&
 	derived_from_xt<std::remove_cvref_t<T>, eval::detail::CttiFieldMethods>;
 
+ADAPT_EXPORT
 template <class T>
 concept ranked_placeholder = placeholder<T> && std::remove_cvref_t<T>::MaxRank != 0;
 
+ADAPT_EXPORT
 template <class T>
 concept stat_type_placeholder = typed_placeholder<T> || ctti_placeholder<T>;
 
 // FieldRefやEvalProxyのように、as<Int>()などで値を取得できるもの。
+ADAPT_EXPORT
 template <class T>
 concept evaluation_proxy = anything_typed<T> && requires(std::remove_cvref_t<T> t)
 {
@@ -160,12 +189,16 @@ struct IsCttiLayerFuncNode<eval::CttiLayerFuncNode<Func, Nodes, FixRank, Depth, 
 
 //const nodeはany_nodeのような汎用的な判定が難しいので、
 //別に用意する。
+ADAPT_EXPORT
 template <class T>
 concept rtti_const_node = std::same_as<std::remove_cvref_t<T>, eval::RttiConstNode>;
+ADAPT_EXPORT
 template <class T>
 concept ctti_const_node = same_as_xt<std::remove_cvref_t<T>, eval::CttiConstNode>;
+ADAPT_EXPORT
 template <class T>
 concept const_node = rtti_const_node<T> || ctti_const_node<T>;
+ADAPT_EXPORT
 template <class T>
 concept any_node =
 	const_node<T> || (anything_typed<T> && anything_layered<T> &&
@@ -180,23 +213,29 @@ concept any_node =
 	t.Evaluate(ctrav);
 });
 
+ADAPT_EXPORT
 template <class T>
 concept rtti_node =
 	rtti_const_node<T> || (dynamically_typed<T> && dynamically_layered<T> && any_node<T>);
 
+ADAPT_EXPORT
 template <class T>
 concept rtti_field_node = rtti_node<T> && same_as_xt<std::remove_cvref_t<T>, eval::RttiFieldNode>;
+ADAPT_EXPORT
 template <class T>
 concept rtti_func_node = rtti_node<T> && same_as_xt<std::remove_cvref_t<T>, eval::RttiFuncNode>;
 
+ADAPT_EXPORT
 template <class T>
 concept typed_node =
 	any_node<T> && statistically_typed<T> && dynamically_layered<T>;
 
+ADAPT_EXPORT
 template <class T>
 concept ctti_node =
 	ctti_const_node<T> || (any_node<T> && statistically_typed<T> && statistically_layered<T>);
 
+ADAPT_EXPORT
 template <class T>
 concept stat_type_node = typed_node<T> || ctti_node<T>;
 
@@ -216,19 +255,25 @@ concept ctti_layer_func_node = detail::IsCttiLayerFuncNode<std::remove_cvref_t<T
 //template <class T>
 //concept any_node = rtti_node<T> || ctti_node<T>;
 
+ADAPT_EXPORT
 template <class T>
 concept node_or_placeholder = placeholder<T> || any_node<T>;
 
+ADAPT_EXPORT
 template <class T>
 concept neither_node_nor_placeholder = !placeholder<T> && !any_node<T>;
 
+ADAPT_EXPORT
 template <class T>
 concept ctti_node_or_placeholder = ctti_placeholder<T> || ctti_node<T>;
+ADAPT_EXPORT
 template <class T>
 concept rtti_node_or_placeholder = rtti_placeholder<T> || rtti_node<T>;
+ADAPT_EXPORT
 template <class T>
 concept typed_node_or_placeholder = typed_placeholder<T> || typed_node<T>;
 
+ADAPT_EXPORT
 template <class T>
 concept stat_type_node_or_placeholder = typed_node_or_placeholder<T> || ctti_node_or_placeholder<T>;
 
@@ -257,21 +302,27 @@ template <class Name, ctti_node_or_placeholder T>
 struct IsCttiNamedNodeOrPlaceholder<std::tuple<Name, T>> : std::true_type {};
 }
 
+ADAPT_EXPORT
 template <class T>
 concept s_named_node_or_placeholder = detail::IsSNamedNodeOrPlaceholder<std::decay_t<T>>::value;
+ADAPT_EXPORT
 template <class T>
 concept d_named_node_or_placeholder = detail::IsDNamedNodeOrPlaceholder<std::decay_t<T>>::value;
 
+ADAPT_EXPORT
 template <class T>
 concept named_node_or_placeholder = s_named_node_or_placeholder<T> || d_named_node_or_placeholder<T>;
 
+ADAPT_EXPORT
 template <class T>
 concept named_or_anon_node_or_placeholder = node_or_placeholder<T> || named_node_or_placeholder<T>;
 
+ADAPT_EXPORT
 template <class T>
 concept s_ctti_named_node_or_placeholder = s_named_node_or_placeholder<T> && detail::IsCttiNamedNodeOrPlaceholder<std::decay_t<T>>::value;
 
 
+ADAPT_EXPORT
 template <class T>
 struct GetNodeType { using Type = eval::CttiConstNode<T>; };
 template <stat_type_placeholder PH>
@@ -280,9 +331,12 @@ template <rtti_placeholder PH>
 struct GetNodeType<PH> { using Type = eval::RttiFieldNode<PH>; };
 template <any_node N>
 struct GetNodeType<N> { using Type = N; };
+
+ADAPT_EXPORT
 template <class T>
 using GetNodeType_t = typename GetNodeType<T>::Type;
 
+ADAPT_EXPORT
 template <class T>
 concept any_traverser =
 	std::input_iterator<std::remove_cvref_t<T>> &&
@@ -303,6 +357,7 @@ concept any_traverser =
 	{ t.Decr() } -> std::same_as<LayerType>;
 };
 
+ADAPT_EXPORT
 template <class T>
 concept traversal_range =
 std::ranges::input_range<T> &&
@@ -314,6 +369,7 @@ std::ranges::input_range<T> &&
 	typename std::remove_cvref_t<T>::ConstSentinel;
 	{ r.SetTravLayer(layer) } -> std::same_as<void>;
 };
+ADAPT_EXPORT
 template <class T>
 concept view_from_traversal_range =
 std::ranges::viewable_range<T> && requires (T t)
@@ -321,6 +377,7 @@ std::ranges::viewable_range<T> && requires (T t)
 	{ *t.begin() } -> any_traverser;
 };
 
+ADAPT_EXPORT
 template <class T>
 concept sized_traversal_range = traversal_range<T> &&
 	requires (T r, LayerType layer)
@@ -332,15 +389,19 @@ concept sized_traversal_range = traversal_range<T> &&
 namespace detail
 {
 
+ADAPT_EXPORT
 template <class Hierarchy, template <class> class Qualifier, class LayerSD>
 class ElementListRef_impl;
 
+ADAPT_EXPORT
 template <class Hierarchy, template <class> class Qualifier, class LayerSD>
 class ElementRef_impl;
 
+ADAPT_EXPORT
 template <class Hierarchy, template <class> class Qualifier>
 class ElementPtr_impl;
 
+ADAPT_EXPORT
 template <class Hierarchy, template <class> class Qualifier>
 class ElementIterator_impl;
 
@@ -361,39 +422,46 @@ struct IsElementIterator<detail::ElementIterator_impl<Hierarchy, Qualifier>> : s
 
 }
 
+ADAPT_EXPORT
 template <class ListRef>
 concept element_list_ref = detail::IsElementListRef<ListRef>::value;
 
+ADAPT_EXPORT
 template <class Ref>
 concept element_ref = detail::IsElementRef<Ref>::value;
 
+ADAPT_EXPORT
 template <class Iter>
 concept element_iterator = detail::IsElementIterator<Iter>::value;
 
 
+ADAPT_EXPORT
 template <class T>
 concept any_hierarchy = requires(std::remove_cvref_t<T> h, LayerType layer, const std::string & name)
 {
 	//typename std::remove_cvref_t<T>::RttiPlaceholder;
 	{ h.GetMaxLayer() } -> std::convertible_to<LayerType>;
-	{ h.GetElementSize(0_layer) } -> std::convertible_to<size_t>;
+	{ h.GetElementSize((LayerType)0) } -> std::convertible_to<size_t>;
 	{ h.GetPlaceholder(name) } -> rtti_placeholder;
-	h.GetPlaceholdersIn(0_layer);
+	h.GetPlaceholdersIn((LayerType)0);
 };
+ADAPT_EXPORT
 template <class T>
 concept s_hierarchy = any_hierarchy<T> && requires(std::remove_cvref_t<T> h)
 {
 	//typename std::remove_cvref_t<T>::template CttiPlaceholder<0_layer, int32_t>;
 	LayerConstant<std::remove_cvref_t<T>::GetMaxLayer()>{};
-	Number<std::remove_cvref_t<T>::GetElementSize(0_layer)>{};
+	Number<std::remove_cvref_t<T>::GetElementSize((LayerType)0)>{};
 	//{ std::remove_cvref_t<T>::template GetPlaceholder(std::get<0>(std::remove_cvref_t<T>::GetFieldNames())) } -> ctti_placeholder;
-	std::remove_cvref_t<T>::GetPlaceholdersIn(0_layer);
+	std::remove_cvref_t<T>::GetPlaceholdersIn((LayerType)0);
 };
+ADAPT_EXPORT
 template <class T>
 concept f_hierarchy = any_hierarchy<T> && !s_hierarchy<T> && requires(std::remove_cvref_t<T> h)
 {
 	LayerConstant<std::remove_cvref_t<T>::GetMaxLayer()>{};
 };
+ADAPT_EXPORT
 template <class T>
 concept d_hierarchy = any_hierarchy<T> && !s_hierarchy<T> && !f_hierarchy<T> &&
 	requires(std::remove_cvref_t<T> h, LayerType layer, const std::string & name)
@@ -406,6 +474,7 @@ concept d_hierarchy = any_hierarchy<T> && !s_hierarchy<T> && !f_hierarchy<T> &&
 };
 
 //joined containerはhierarchyではないので、ここではany_hierarchyを要求しない。
+ADAPT_EXPORT
 template <class T>
 concept any_container = requires(std::remove_cvref_t<T> t, LayerType layer)
 {
@@ -416,10 +485,13 @@ concept any_container = requires(std::remove_cvref_t<T> t, LayerType layer)
 	{ t.GetRange(layer) } -> traversal_range;
 };
 
+ADAPT_EXPORT
 template <class T>
-concept any_table = any_container<T> && (std::remove_cvref_t<T>::MaxLayer == 0_layer);
+concept any_table = any_container<T> && (std::remove_cvref_t<T>::MaxLayer == (LayerType)0);
+ADAPT_EXPORT
 template <class T>
 concept s_table = s_hierarchy<T> && any_table<T>;
+ADAPT_EXPORT
 template <class T>
 concept d_table = f_hierarchy<T> && any_table<T>;
 
@@ -427,26 +499,33 @@ concept d_table = f_hierarchy<T> && any_table<T>;
 // 仕方ないのでBin<1>と固定値にするが、SHistまで一緒くたにBin<1>で判定するのはちょっと意味不明すぎる。
 // どうにかならんか。
 // いずれかのDimが適格となるような[]やResizeが存在する、というような判定はできないのか。
+ADAPT_EXPORT
 template <class T>
 concept any_hist = any_container<T> && requires(std::remove_cvref_t<T> t, Bin<1> bin)
 {
 	{ t[bin] } -> element_ref;
 	{ t.Resize(bin, bin) };
 };
+ADAPT_EXPORT
 template <class T>
 concept s_hist = s_hierarchy<T> && any_hist<T>;
+ADAPT_EXPORT
 template <class T>
 concept d_hist = f_hierarchy<T> && any_hist<T>;
 
+ADAPT_EXPORT
 template <class T>
 concept any_tree = any_container<T> && !any_table<T> && !any_hist<T>;
+ADAPT_EXPORT
 template <class T>
 concept s_tree = s_hierarchy<T> && any_tree<T>;
+ADAPT_EXPORT
 template <class T>
 concept d_tree = d_hierarchy<T> && any_tree<T>;
 
 
 //hierarchyであるものはjoined_containerではない。
+ADAPT_EXPORT
 template <class T>
 concept container_simplex = any_container<T> && any_hierarchy<T>;
 
@@ -456,16 +535,20 @@ template <RankType MaxRank_, class Container>
 class JointMethods;
 }
 
+ADAPT_EXPORT
 template <class T>
 concept joined_container = any_container<T> && derived_from_nxt<std::remove_cvref_t<T>, detail::JointMethods>;
 
+ADAPT_EXPORT
 template <template <class> class Modifier, class ...Containers>
 class DJoinedContainer;
+ADAPT_EXPORT
 template <class T>
 struct IsDJoinedContainer : public std::false_type {};
 template <template <class> class Qualifier, class ...Containers>
 struct IsDJoinedContainer<DJoinedContainer<Qualifier, Containers...>> : public std::true_type {};
 
+ADAPT_EXPORT
 template <class T>
 struct IsSJoinedContainer : public std::false_type {};
 //template <template <class> class Qualifier, class ...Containers>
@@ -476,15 +559,19 @@ struct IsSJoinedContainer : public std::false_type {};
 //たとえばd_joined_contaier = joined_container<T>;とするだけでも狂う。
 //それどころか、any_containerなどのコンセプトも巻き添えを食って機能しなくなる。
 //msvc、gcc、clangいずれも同様だったのでコンパイラのバグではないと思うが、原因が分からない。
+ADAPT_EXPORT
 template <class T>
 concept d_joined_container = IsDJoinedContainer<std::remove_cvref_t<T>>::value;
+ADAPT_EXPORT
 template <class T>
 concept s_joined_container = IsSJoinedContainer<std::remove_cvref_t<T>>::value;
 
 //階層構造をdynamicにしか決定できないもの。
+ADAPT_EXPORT
 template <class T>
 concept d_container = d_tree<T> || d_table<T> || d_joined_container<T>;
 //階層構造をstaticに決定できるもの。
+ADAPT_EXPORT
 template <class T>
 concept s_container = s_tree<T> || s_table<T> || s_joined_container<T>;
 
@@ -494,6 +581,7 @@ concept s_container = s_tree<T> || s_table<T> || s_joined_container<T>;
 //template <class T>
 //concept any_container = container_simplex<T> || joined_container<T>;
 
+ADAPT_EXPORT
 template <class T>
 concept joined_traverser = any_traverser<T> && derived_from_nxt<std::remove_cvref_t<T>, detail::JointMethods>;
 

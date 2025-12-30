@@ -1,16 +1,28 @@
 #ifndef ADAPT_TEST_COMMON_H
 #define ADAPT_TEST_COMMON_H
 
+#include <format>
+#include <iostream>
+#include <vector>
+#include <cassert>
+#include <cmath>
+#include <complex>
+#include <ranges>
+#include <array>
+#include <fstream>
 #include <random>
 #include <algorithm>
 #include <fstream>
-#include <tuple>
 #include <string>
-#include <optional>
 #include <filesystem>
 #include <yaml-cpp/yaml.h>
 #include <gtest/gtest.h>
+#ifdef ADAPT_IMPORT_MODULE
+#include <OpenADAPT/Macros.h>
+import adapt;
+#else
 #include <OpenADAPT/ADAPT.h>
+#endif
 
 using namespace adapt;
 using namespace adapt::lit;
@@ -280,12 +292,12 @@ protected:
 		MakeTable(m_stable, m_class);
 		MakeTable(m_dtable, m_class);
 	}
+	std::vector<Class> m_class;
 
 	DTree m_dtree;
 	STree_ m_stree;
 	DTable m_dtable;
 	STable_ m_stable;
-	std::vector<Class> m_class;
 };
 
 inline bool All400(const Student& s)

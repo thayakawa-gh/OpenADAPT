@@ -9,21 +9,25 @@ namespace adapt
 inline int32_t g_num_of_threads = -1;
 inline int32_t g_granularity = 128;
 
+ADAPT_EXPORT
 inline int32_t GetNumOfThreads()
 {
 	if (g_num_of_threads == -1)
 		return std::thread::hardware_concurrency();
 	return g_num_of_threads;
 }
+ADAPT_EXPORT
 inline void SetNumOfThreads(int32_t num_of_threads = -1)
 {
 	g_num_of_threads = num_of_threads;
 }
 
+ADAPT_EXPORT
 inline int32_t GetGranularity()
 {
 	return g_granularity;
 }
+ADAPT_EXPORT
 inline void SetGranularity(int32_t granularity)
 {
 	g_granularity = granularity;

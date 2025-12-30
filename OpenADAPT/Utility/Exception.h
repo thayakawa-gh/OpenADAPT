@@ -5,16 +5,19 @@
 #include <string>
 #include <string_view>
 #include <format>
+#include <OpenADAPT/Utility/Common.h>
 
 namespace adapt
 {
 
+ADAPT_EXPORT
 class Exception
 {
 public:
 
 };
 
+ADAPT_EXPORT
 class ExceptionWithMessage : public Exception
 {
 public:
@@ -25,6 +28,7 @@ private:
 	std::string m_message;
 };
 
+ADAPT_EXPORT
 class NoElements : public Exception
 {
 	//コンテナの要素が見つからない、範囲外などの場合に投げられる。
@@ -32,6 +36,7 @@ public:
 
 };
 
+ADAPT_EXPORT
 class JointError : public Exception
 {
 public:
@@ -54,6 +59,7 @@ public:
 
 };*/
 
+ADAPT_EXPORT
 class BadAlloc : public ExceptionWithMessage
 {
 	//メモリ確保に失敗した場合。
@@ -63,6 +69,7 @@ public:
 	{}
 };
 
+ADAPT_EXPORT
 class BadFile : public adapt::ExceptionWithMessage
 {
 public:
@@ -71,6 +78,7 @@ public:
 	{}
 };
 
+ADAPT_EXPORT
 class InvalidLayer : public ExceptionWithMessage
 {
 	//階層に問題がある場合。
@@ -80,6 +88,7 @@ public:
 	{}
 };
 
+ADAPT_EXPORT
 class InvalidArg : public ExceptionWithMessage
 {
 	//引数に問題がある場合。
@@ -89,6 +98,7 @@ public:
 	{}
 };
 
+ADAPT_EXPORT
 class MismatchType : public ExceptionWithMessage
 {
 	//主に動的型を扱う際に型の誤りがあった場合。
@@ -98,6 +108,7 @@ public:
 	{}
 };
 
+ADAPT_EXPORT
 class Forbidden : public ExceptionWithMessage
 {
 	//静的型を動的に処理する場合などで、
@@ -108,6 +119,7 @@ public:
 	{}
 };
 
+ADAPT_EXPORT
 class NotInitialized : public ExceptionWithMessage
 {
 	//未初期化の状態でアクセスすると投げられる例外。

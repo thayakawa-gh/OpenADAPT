@@ -9,6 +9,7 @@ namespace adapt
 namespace eval
 {
 
+ADAPT_EXPORT
 template <class LayerSD, class Container_>
 class CttiPosNode : public detail::CttiMethods<CttiPosNode<LayerSD, Container_>, std::add_const_t>
 {
@@ -85,6 +86,7 @@ private:
 	const Container* m_container = nullptr;
 };
 
+ADAPT_EXPORT
 template <class FromLayerSD, class ToLayerSD, class Container_>
 class CttiSizeNode : public detail::CttiMethods<CttiSizeNode<FromLayerSD, ToLayerSD, Container_>, std::add_const_t>
 {

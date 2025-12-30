@@ -173,6 +173,7 @@ struct ExtractContainer<Node, Nodes...>
 //もし別所で寿命が管理されているのならNPはconst refでよいが、
 //もし寿命が尽きる可能性のある一時オブジェクトならNPは値とする。
 //same_as_xtに与えたいので、HasBposはboolではなくbool_constantを取る。
+ADAPT_EXPORT
 template <class TravOrStor, class NP, class HasBpos>
 struct RttiEvalProxy : public detail::RttiMethods<RttiEvalProxy<TravOrStor, NP, HasBpos>, std::add_const_t>
 {
@@ -242,6 +243,7 @@ private:
 //もし別所で寿命が管理されているのならNPはnon-const refでよいが、
 //もし寿命が尽きる可能性のある一時オブジェクトならNPは値とする。
 //const refではよくない。Initする必要があるので。
+ADAPT_EXPORT
 template <class NP, FieldType Type>
 struct RttiTypeProxy
 {
@@ -690,6 +692,7 @@ private:
 
 }
 
+ADAPT_EXPORT
 template <class Container_>
 struct RttiFuncNode : public detail::RttiMethods<RttiFuncNode<Container_>, std::type_identity_t>
 {
@@ -934,42 +937,50 @@ private:
 }
 
 
+ADAPT_EXPORT
 template <any_container Container, node_or_placeholder NP>
 void Init(const Container& c, const Bpos& bpos, NP& np)
 {
 	if constexpr (any_node<NP>) np.Init(c, bpos);
 }
+ADAPT_EXPORT
 template <any_container Container, node_or_placeholder NP>
 void Init(const Container& c, NP& np)
 {
 	if constexpr (any_node<NP>) np.Init(c);
 }
+ADAPT_EXPORT
 template <any_traverser Trav, node_or_placeholder NP>
 void Init(const Trav& t, NP& np)
 {
 	if constexpr (any_node<NP>) np.Init(t);
 }
+ADAPT_EXPORT
 template <node_or_placeholder NP>
 void Init(NP& np)
 {
 	if constexpr (any_node<NP>) np.Init();
 }
 
+ADAPT_EXPORT
 template <any_container Container, node_or_placeholder ...NPs>
 void InitAll(const Container& c, const Bpos& bpos, NPs& ...nps)
 {
 	DoNothing((Init(c, bpos, nps), 0)...);
 }
+ADAPT_EXPORT
 template <any_container Container, node_or_placeholder ...NPs>
 void InitAll(const Container& c, NPs& ...nps)
 {
 	DoNothing((Init(c, nps), 0)...);
 }
+ADAPT_EXPORT
 template <any_traverser Trav, node_or_placeholder ...NPs>
 void InitAll(const Trav& t, NPs& ...nps)
 {
 	DoNothing((Init(t, nps), 0)...);
 }
+ADAPT_EXPORT
 template <node_or_placeholder ...NPs>
 void InitAll(NPs& ...nps)
 {

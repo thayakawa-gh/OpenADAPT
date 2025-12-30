@@ -5,12 +5,14 @@
 #include <tuple>
 #include <limits>
 #include <string_view>
+#include <OpenADAPT/Utility/Common.h>
 #include <OpenADAPT/Utility/StaticString.h>
 #include <OpenADAPT/Utility/TypeTraits.h>
 
 namespace adapt
 {
 
+ADAPT_EXPORT
 template <StaticChar N, class T>
 struct Named
 {
@@ -22,6 +24,7 @@ struct Named
 	T m_value;
 };
 
+ADAPT_EXPORT
 template <class ...T>
 class NamedTuple;
 template <StaticChar ...Names, class ...T>
@@ -43,21 +46,27 @@ public:
 	using std::tuple<T...>::tuple;
 };
 
+ADAPT_EXPORT
 template <class T>
 struct IsNamedTuple : public std::false_type {};
 template <class ...T>
 struct IsNamedTuple<NamedTuple<T...>> : public std::true_type {};
 
+ADAPT_EXPORT
 template <class T>
 concept named_tuple = IsNamedTuple<T>::value;
 
+ADAPT_EXPORT
 template <StaticChar Name_, class ...T>
 decltype(auto) Get(NamedTuple<T...>& t) { return std::get<NamedTuple<T...>::FindName(Name_)>(t); }
+ADAPT_EXPORT
 template <StaticChar Name_, class ...T>
 decltype(auto) Get(const NamedTuple<T...>& t) { return std::get<NamedTuple<T...>::FindName(Name_)>(t); }
+ADAPT_EXPORT
 template <StaticChar Name_, class ...T>
 decltype(auto) Get(NamedTuple<T...>&& t) { return std::get<NamedTuple<T...>::FindName(Name_)>(std::move(t)); }
 
+ADAPT_EXPORT
 template <size_t N, class T>
 struct TupleElement;
 template <size_t N, StaticChar ...Names, class ...T>
@@ -67,12 +76,14 @@ struct TupleElement<N, std::tuple<T...>> : public std::tuple_element<N, std::tup
 template <size_t N, class T>
 using TupleElement_t = TupleElement<N, T>::type;
 
+ADAPT_EXPORT
 template <class T>
 struct TupleSize;
 template <StaticChar ...Names, class ...T>
 struct TupleSize<NamedTuple<Named<Names, T>...>> : public std::tuple_size<std::tuple<T...>> {};
 template <class ...T>
 struct TupleSize<std::tuple<T...>> : public std::tuple_size<typename std::tuple<T...>> {};
+ADAPT_EXPORT
 template <class T>
 inline constexpr size_t TupleSize_v = TupleSize<T>::value;
 
@@ -93,6 +104,7 @@ struct TupleElementName_impl<Index, std::index_sequence<Indices...>, ValueList<N
 	using Type = decltype(GetName(Number<Index>{}));
 };
 }
+ADAPT_EXPORT
 template <size_t Index, class T>
 struct TupleElementName;
 template <size_t Index, StaticChar ...Names, class ...Ts>
@@ -101,9 +113,11 @@ struct TupleElementName<Index, NamedTuple<Named<Names, Ts>...>>
 	static constexpr size_t Size = sizeof...(Ts);
 	using Type = detail::TupleElementName_impl<Index, std::make_index_sequence<Size>, ValueList<Names...>>::Type;
 };
+ADAPT_EXPORT
 template <size_t Index, class T>
 using TupleElementName_t = TupleElementName<Index, T>::Type;
 
+ADAPT_EXPORT
 template <class ...Tuples>
 struct NamedTupleCat;
 template <>
@@ -127,6 +141,7 @@ struct NamedTupleCat<TupleHead, Tuples...>
 {
 	using Type = NamedTupleCat<TupleHead, typename NamedTupleCat<Tuples...>::Type>::Type;
 };
+ADAPT_EXPORT
 template <named_tuple ...Tuples>
 using NamedTupleCat_t = typename NamedTupleCat<Tuples...>::Type;
 

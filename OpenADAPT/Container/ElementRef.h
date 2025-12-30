@@ -18,6 +18,7 @@ namespace adapt
 namespace detail
 {
 
+ADAPT_EXPORT
 template <template <class> class Qualifier>
 class FieldRef_impl : public eval::detail::RttiMethods<FieldRef_impl<Qualifier>, Qualifier>
 {

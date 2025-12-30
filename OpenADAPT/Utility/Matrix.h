@@ -4,12 +4,14 @@
 #include <memory>
 #include <cassert>
 #include <numeric>
+#include <OpenADAPT/Utility/Common.h>
 #include <OpenADAPT/Utility/TypeTraits.h>
 #include <OpenADAPT/Utility/Function.h>
 
 namespace adapt
 {
 
+ADAPT_EXPORT
 template <class T, size_t Dim = 2>
 class Matrix
 {

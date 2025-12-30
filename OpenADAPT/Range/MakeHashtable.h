@@ -44,12 +44,14 @@ public:
 
 }
 
+ADAPT_EXPORT
 template <node_or_placeholder ...NPs>
 auto Hash(NPs&& ...nps)
 {
 	return RangeConversion<detail::ToHashtable, NPs...>(std::forward<NPs>(nps)...);
 }
 // 古い関数名も一応残しておく。
+ADAPT_EXPORT
 template <node_or_placeholder ...NPs>
 [[deprecated("plase use Hash(...)")]] auto MakeHashtable(NPs&& ...nps)
 {

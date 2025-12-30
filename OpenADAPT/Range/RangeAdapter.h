@@ -163,6 +163,7 @@ struct GetRangeArgs
 	LayerTrav m_trav_layer;
 };
 
+ADAPT_EXPORT
 template <any_container Container, class LayerFixed, class Bpos_, class LayerTrav>
 auto operator|(Container&& s, const GetRangeArgs<LayerFixed, Bpos_, LayerTrav>& r)
 {
@@ -203,6 +204,7 @@ auto operator|(Container&& s, const GetRangeArgs<LayerFixed, Bpos_, LayerTrav>& 
 		}
 	}
 }
+ADAPT_EXPORT
 template <traversal_range Range, class LayerFixed, class Bpos_, class LayerTrav>
 Range operator|(Range&& s, const GetRangeArgs<LayerFixed, Bpos_, LayerTrav>& r)
 {
@@ -237,22 +239,27 @@ Range operator|(Range&& s, const GetRangeArgs<LayerFixed, Bpos_, LayerTrav>& r)
 	return std::forward<Range>(s);
 }
 
+ADAPT_EXPORT
 inline GetRangeArgs<LayerType, const Bpos&, LayerType> GetRange(LayerType fix, const Bpos& bpos, LayerType trav)
 {
 	return { fix, bpos, trav };
 }
+ADAPT_EXPORT
 inline GetRangeArgs<LayerType, const Bpos&, std::nullptr_t> GetRange(LayerType fix, const Bpos& bpos)
 {
 	return { fix, bpos, nullptr };
 }
+ADAPT_EXPORT
 inline GetRangeArgs<std::nullptr_t, const Bpos&, LayerType> GetRange(const Bpos& bpos, LayerType trav)
 {
 	return { nullptr, bpos, trav };
 }
+ADAPT_EXPORT
 inline GetRangeArgs<LayerType, std::nullptr_t, LayerType> GetRange(LayerType fix, LayerType trav)
 {
 	return { fix, nullptr, trav };
 }
+ADAPT_EXPORT
 inline GetRangeArgs<std::nullptr_t, std::nullptr_t, LayerType> GetRange(LayerType trav)
 {
 	return { nullptr, nullptr, trav };

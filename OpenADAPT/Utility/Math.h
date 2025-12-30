@@ -3,6 +3,8 @@
 
 #include <cmath>
 #include <array>
+#include <cstdint>
+#include <OpenADAPT/Utility/Common.h>
 
 namespace adapt
 {
@@ -220,6 +222,7 @@ inline constexpr std::pair<double, double> cl_95_intervals[] =
 
 }
 
+ADAPT_EXPORT
 inline std::pair<double, double> GetPoissonCI68(uint64_t count)
 {
 	if (count < 100)
@@ -230,6 +233,7 @@ inline std::pair<double, double> GetPoissonCI68(uint64_t count)
 		return { count - e, count + e };
 	}
 }
+ADAPT_EXPORT
 inline std::pair<double, double> GetPoissonCI95(uint64_t count)
 {
 	if (count < 100)

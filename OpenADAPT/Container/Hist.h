@@ -7,6 +7,7 @@
 namespace adapt
 {
 
+ADAPT_EXPORT
 struct AxisAttr
 {
 	AxisAttr() = default;
@@ -29,6 +30,7 @@ struct AxisAttr
 namespace detail
 {
 
+ADAPT_EXPORT
 template <class DimType, class Container_, class Hierarchy_, class ElementBlockPolicy_>
 class Hist_base : public Tree_base<Container_, Hierarchy_, ElementBlockPolicy_>
 {
@@ -390,12 +392,14 @@ using HistLayer0 = typename BinInfoSelector<Dim>::HistLayer0;
 
 }
 
+ADAPT_EXPORT
 class DHist : public detail::Hist_base<size_t, DHist, FHierarchy<DHist, 1>, detail::DElementBlockPolicy>
 {
 public:
 	using Base = detail::Hist_base<size_t, DHist, FHierarchy<DHist, 1>, detail::DElementBlockPolicy>;
 	using Base::Base;
 };
+ADAPT_EXPORT
 template <size_t Dim, named_tuple Layer1>
 class SHist : public detail::Hist_base<SizeConstant<Dim>, SHist<Dim, Layer1>,
 									   SHierarchy<SHist<Dim, Layer1>, detail::HistTopLayer<Dim>, detail::HistLayer0<Dim>, Layer1>,
@@ -408,12 +412,16 @@ public:
 	using Base::Base;
 };
 
+ADAPT_EXPORT
 template <named_tuple Layer1>
 using SHist1D = SHist<1, Layer1>;
+ADAPT_EXPORT
 template <named_tuple Layer1>
 using SHist2D = SHist<2, Layer1>;
+ADAPT_EXPORT
 template <named_tuple Layer1>
 using SHist3D = SHist<3, Layer1>;
+ADAPT_EXPORT
 template <named_tuple Layer1>
 using SHist4D = SHist<4, Layer1>;
 

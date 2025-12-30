@@ -5,6 +5,7 @@
 #include <cassert>
 #include <iostream>
 #include <string_view>
+#include <OpenADAPT/Utility/Common.h>
 
 namespace adapt
 {

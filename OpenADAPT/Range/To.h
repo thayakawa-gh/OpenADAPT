@@ -82,11 +82,13 @@ using ToVectorConversion = ToContainer<std::vector, Range>;
 
 }
 
+ADAPT_EXPORT
 template <stat_type_node_or_placeholder ...NPs>
 auto ToVector(Combine, NPs&& ...nps)
 {
 	return RangeConversion<detail::ToVectorConversion, NPs...>(std::forward<NPs>(nps)...);
 }
+ADAPT_EXPORT
 template <stat_type_node_or_placeholder ...NPs>
 auto ToVector(NPs&& ...nps)
 {

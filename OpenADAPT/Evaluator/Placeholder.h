@@ -9,6 +9,7 @@
 namespace adapt
 {
 
+ADAPT_EXPORT
 struct DFieldInfo
 {
 	using enum FieldType;
@@ -27,7 +28,7 @@ private:
 	template <std::nullptr_t N> struct TagTypeToValueType_impl<Jbp, N> { using Type = JBpos; };
 
 	template <class Type, size_t Size>
-	inline static constexpr bool is_integral_with_size = std::is_integral_v<Type> && sizeof(Type) == Size;
+	static constexpr bool is_integral_with_size = std::is_integral_v<Type> && sizeof(Type) == Size;
 public:
 
 	template <FieldType Tag>
@@ -35,6 +36,7 @@ public:
 	template <class ValueType>
 	static constexpr FieldType ValueTypeToTagType()
 	{
+		using enum FieldType;
 		if constexpr (std::is_same_v<ValueType, int8_t>) return I08;
 		else if constexpr (std::is_same_v<ValueType, int16_t>) return I16;
 		else if constexpr (std::is_same_v<ValueType, int32_t>) return I32;
@@ -51,6 +53,7 @@ public:
 	template <class T>
 	static constexpr FieldType GetSameSizeTagType()
 	{
+		using enum FieldType;
 		if constexpr (IsI08<T>()) return I08;
 		else if constexpr (IsI16<T>()) return I16;
 		else if constexpr (IsI32<T>()) return I32;
@@ -72,12 +75,13 @@ public:
 	template <class T>
 	static constexpr bool IsConvertibleToTagType()
 	{
-		return GetSameSizeTagType<T>() != Emp;
+		return GetSameSizeTagType<T>() != FieldType::Emp;
 	}
 
 	template <FieldType Type>
 	static constexpr auto GetTagTypeString()
 	{
+		using enum FieldType;
 		if constexpr (Type == I08) return StaticString<"I08">{};
 		else if constexpr (Type == I16) return StaticString<"I16">{};
 		else if constexpr (Type == I32) return StaticString<"I32">{};
@@ -92,6 +96,7 @@ public:
 	}
 	static std::string GetTagTypeString(FieldType Type)
 	{
+		using enum FieldType;
 		if (Type == I08) return std::string("I08");
 		else if (Type == I16) return std::string("I16");
 		else if (Type == I32) return std::string("I32");
@@ -154,23 +159,23 @@ public:
 	static constexpr bool IsNum(FieldType type) { return (uint32_t)type & FieldTypeFlag::NUM; }
 
 	static constexpr bool IsInt(FieldType type) { return (uint32_t)type & FieldTypeFlag::INT; }
-	static constexpr bool IsI08(FieldType type) { return type == I08; }
-	static constexpr bool IsI16(FieldType type) { return type == I16; }
-	static constexpr bool IsI32(FieldType type) { return type == I32; }
-	static constexpr bool IsI64(FieldType type) { return type == I64; }
+	static constexpr bool IsI08(FieldType type) { return type == FieldType::I08; }
+	static constexpr bool IsI16(FieldType type) { return type == FieldType::I16; }
+	static constexpr bool IsI32(FieldType type) { return type == FieldType::I32; }
+	static constexpr bool IsI64(FieldType type) { return type == FieldType::I64; }
 
 	static constexpr bool IsFlt(FieldType type) { return (uint32_t)type & FieldTypeFlag::FLT; }
-	static constexpr bool IsF32(FieldType type) { return type == F32; }
-	static constexpr bool IsF64(FieldType type) { return type == F64; }
+	static constexpr bool IsF32(FieldType type) { return type == FieldType::F32; }
+	static constexpr bool IsF64(FieldType type) { return type == FieldType::F64; }
 
 	static constexpr bool IsCpx(FieldType type) { return (uint32_t)type & FieldTypeFlag::CPX; }
-	static constexpr bool IsC32(FieldType type) { return type == C32; }
-	static constexpr bool IsC64(FieldType type) { return type == C64; }
+	static constexpr bool IsC32(FieldType type) { return type == FieldType::C32; }
+	static constexpr bool IsC64(FieldType type) { return type == FieldType::C64; }
 
-	static constexpr bool IsStr(FieldType type) { return type == Str; }
-	static constexpr bool IsJbp(FieldType type) { return type == Jbp; }
+	static constexpr bool IsStr(FieldType type) { return type == FieldType::Str; }
+	static constexpr bool IsJbp(FieldType type) { return type == FieldType::Jbp; }
 
-	static constexpr bool IsEmp(FieldType type) { return type == Emp; }
+	static constexpr bool IsEmp(FieldType type) { return type == FieldType::Emp; }
 };
 
 namespace eval
@@ -605,6 +610,7 @@ private:
 
 }
 
+ADAPT_EXPORT
 class FieldVariant : public eval::detail::RttiMethods<FieldVariant, std::type_identity_t>
 {
 	using enum FieldType;
@@ -879,7 +885,9 @@ private:
 
 }
 
+ADAPT_EXPORT
 using FieldVarRef = detail::FieldVarRef_impl<std::type_identity_t>;
+ADAPT_EXPORT
 using FieldVarCRef = detail::FieldVarRef_impl<std::add_const_t>;
 
 template <class Derived, template <class> class Qualifier>
@@ -891,6 +899,7 @@ FieldVariant eval::detail::RttiMethods<Derived, Qualifier>::var() const
 namespace eval
 {
 
+ADAPT_EXPORT
 template <RankType Rank_, LayerType Layer_, class Type, class Container_>
 struct CttiPlaceholder_impl : public detail::CttiFieldMethods<CttiPlaceholder_impl<Rank_, Layer_, Type, Container_>>,
 							  public detail::JointInfo<Rank_, Container_, CttiPlaceholder_impl<Rank_, Layer_, Type, Container_>>,
@@ -952,6 +961,7 @@ private:
 	ptrdiff_t m_ptr_offset;
 };
 
+ADAPT_EXPORT
 template <RankType Rank_, class Type_, class Container_>
 struct TypedPlaceholder_impl : public detail::CttiFieldMethods<TypedPlaceholder_impl<Rank_, Type_, Container_>>,
 							   public detail::JointInfo<Rank_, Container_, TypedPlaceholder_impl<Rank_, Type_, Container_>>,
@@ -1028,6 +1038,7 @@ private:
 	ptrdiff_t m_ptr_offset;
 };
 
+ADAPT_EXPORT
 template <RankType Rank_, class Container_>
 struct RttiPlaceholder_impl : public detail::RttiFieldMethods<RttiPlaceholder_impl<Rank_, Container_>>,
 	public detail::RttiMethods<RttiPlaceholder_impl<Rank_, Container_>, std::type_identity_t>,
@@ -1131,17 +1142,23 @@ struct TypedName
 	std::string_view m_name;
 };*/
 
+ADAPT_EXPORT
 template <class Container>
 using RttiPlaceholder = RttiPlaceholder_impl<0, Container>;
+ADAPT_EXPORT
 template <class Type, class Container>
 using TypedPlaceholder = TypedPlaceholder_impl<0, Type, Container>;
+ADAPT_EXPORT
 template <LayerType Layer, class Type, class Container>
 using CttiPlaceholder = CttiPlaceholder_impl<0, Layer, Type, Container>;
 
+ADAPT_EXPORT
 template <RankType Rank, class Container>
 using RankedRttiPlaceholder = RttiPlaceholder_impl<Rank, Container>;
+ADAPT_EXPORT
 template <RankType Rank, class Type, class Container>
 using RankedTypedPlaceholder = TypedPlaceholder_impl<Rank, Type, Container>;
+ADAPT_EXPORT
 template <RankType Rank, LayerType Layer, class Type, class Container>
 using RankedCttiPlaceholder = CttiPlaceholder_impl<Rank, Layer, Type, Container>;
 
@@ -1150,6 +1167,7 @@ using RankedCttiPlaceholder = CttiPlaceholder_impl<Rank, Layer, Type, Container>
 inline namespace lit
 {
 
+ADAPT_EXPORT
 template <StaticChar Name>
 consteval auto operator""_fld()
 {

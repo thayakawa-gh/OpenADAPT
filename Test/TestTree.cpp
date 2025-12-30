@@ -1,6 +1,6 @@
-#include <Test/Aggregator.h>
 #include <ranges>
 #include <iterator>
+#include <Test/Aggregator.h>
 
 using namespace adapt;
 using namespace adapt::lit;

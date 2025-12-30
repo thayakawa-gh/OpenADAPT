@@ -13,6 +13,7 @@
 #include <tuple>
 #include <typeindex>
 #include <any>
+#include <OpenADAPT/Utility/Common.h>
 #include <OpenADAPT/Utility/TypeTraits.h>
 #include <OpenADAPT/Utility/Any.h>
 
@@ -257,6 +258,7 @@ private:
 
 }
 
+ADAPT_EXPORT
 template <class Ref, class Visitor>
 class Generics : public Generics<std::tuple<Ref>, std::tuple<Visitor>>
 {
@@ -298,6 +300,7 @@ public:
 	{}
 
 };
+ADAPT_EXPORT
 template <class Ref, size_t MaxNumOfArgs = 16>
 class Variadic
 {

@@ -14,6 +14,7 @@ namespace adapt
 namespace detail
 {
 
+ADAPT_EXPORT
 template <class Tree,
 	template <class, template <class> class> class Iterator,
 	template <class> class Qualifier>
@@ -21,6 +22,7 @@ class Sentinel_impl
 {
 };
 
+ADAPT_EXPORT
 template <class Container_,
 	template <class, template <class> class> class Iterator,
 	template <class> class Qualifier>
@@ -896,19 +898,19 @@ public:
 	}
 
 
-	friend bool operator==(const Traverser_impl& self, const Sentinel&)
+	friend inline bool operator==(const Traverser_impl& self, const Sentinel&)
 	{
 		return self.IsEnd();
 	}
-	friend bool operator!=(const Traverser_impl& self, const Sentinel&)
+	friend inline bool operator!=(const Traverser_impl& self, const Sentinel&)
 	{
 		return !self.IsEnd();
 	}
-	friend bool operator==(const Sentinel&, const Traverser_impl& self)
+	friend inline bool operator==(const Sentinel&, const Traverser_impl& self)
 	{
 		return self.IsEnd();
 	}
-	friend bool operator!=(const Sentinel&, const Traverser_impl& self)
+	friend inline bool operator!=(const Sentinel&, const Traverser_impl& self)
 	{
 		return !self.IsEnd();
 	}
@@ -941,6 +943,7 @@ private:
 
 //HierarcicalTreeのrangeは固定層、走査層、固定位置の情報の指定が必要であるため、
 //Treeそれ自体はrangesとして成立しない。
+ADAPT_EXPORT
 template <class Container_, template <class> class Qualifier>
 class Range_impl : public std::ranges::view_interface<Range_impl<Container_, Qualifier>>
 {
@@ -1700,5 +1703,8 @@ private:
 }
 
 }
+
+template <class Container_, template <class> class Qualifier>
+inline constexpr bool std::ranges::enable_borrowed_range<adapt::detail::Range_impl<Container_, Qualifier>> = true;
 
 #endif

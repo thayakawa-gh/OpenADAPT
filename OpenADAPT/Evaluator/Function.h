@@ -57,6 +57,7 @@ struct Not
 {
 	auto operator()(const auto& a) const -> decltype(!a) { return !a; }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto operator!(Arg&& a)
 {
@@ -66,6 +67,7 @@ struct Negate
 {
 	auto operator()(const auto& a) const -> decltype(-a) { return -a; }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto operator-(Arg&& a)
 {
@@ -77,6 +79,7 @@ struct Plus
 	auto operator()(const auto& a, const auto& b) const -> decltype(a + b) { return a + b; }
 	auto operator()(auto& buf, const auto& a, const auto& b) const { buf = a; buf += b; }
 };
+ADAPT_EXPORT
 template <class Arg1, class Arg2>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
 auto operator+(Arg1&& a, Arg2&& b)
@@ -88,6 +91,7 @@ struct Minus
 	auto operator()(const auto& a, const auto& b) const -> decltype(a - b) { return a - b; }
 	auto operator()(auto& buf, const auto& a, const auto& b) const { buf = a; buf -= b; }
 };
+ADAPT_EXPORT
 template <class Arg1, class Arg2>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
 auto operator-(Arg1&& a, Arg2&& b)
@@ -99,6 +103,7 @@ struct Multiply
 	auto operator()(const auto& a, const auto& b) const -> decltype(a * b) { return a * b; }
 	auto operator()(auto& buf, const auto& a, const auto& b) const { buf = a; buf *= b; }
 };
+ADAPT_EXPORT
 template <class Arg1, class Arg2>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
 auto operator*(Arg1&& a, Arg2&& b)
@@ -110,6 +115,7 @@ struct Divide
 	auto operator()(const auto& a, const auto& b) const -> decltype(a / b) { return a / b; }
 	auto operator()(auto& buf, const auto& a, const auto& b) const { buf = a; buf /= b; }
 };
+ADAPT_EXPORT
 template <class Arg1, class Arg2>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
 auto operator/(Arg1&& a, Arg2&& b)
@@ -121,6 +127,7 @@ struct Modulus
 	auto operator()(const auto& a, const auto& b) const -> decltype(a % b) { return a % b; }
 	auto operator()(auto& buf, const auto& a, const auto& b) const { buf = a; buf %= b; }
 };
+ADAPT_EXPORT
 template <class Arg1, class Arg2>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
 auto operator%(Arg1&& a, Arg2&& b)
@@ -132,6 +139,7 @@ struct Power
 {
 	auto operator()(const auto& a, const auto& b) const -> decltype(std::pow(a, b)) { return std::pow(a, b); }
 };
+ADAPT_EXPORT
 template <class Arg1, class Arg2>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
 auto pow(Arg1&& a, Arg2&& b)
@@ -142,6 +150,7 @@ struct Equal
 {
 	auto operator()(const auto& a, const auto& b) const -> decltype(a == b) { return a == b; }
 };
+ADAPT_EXPORT
 template <class Arg1, class Arg2>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
 auto operator==(Arg1&& a, Arg2&& b)
@@ -152,6 +161,7 @@ struct NotEqual
 {
 	auto operator()(const auto& a, const auto& b) const -> decltype(a != b) { return a != b; }
 };
+ADAPT_EXPORT
 template <class Arg1, class Arg2>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
 auto operator!=(Arg1&& a, Arg2&& b)
@@ -162,6 +172,7 @@ struct Less
 {
 	auto operator()(const auto& a, const auto& b) const -> decltype(a < b) { return a < b; }
 };
+ADAPT_EXPORT
 template <class Arg1, class Arg2>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
 auto operator<(Arg1&& a, Arg2&& b)
@@ -172,6 +183,7 @@ struct LessEqual
 {
 	auto operator()(const auto& a, const auto& b) const -> decltype(a <= b) { return a <= b; }
 };
+ADAPT_EXPORT
 template <class Arg1, class Arg2>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
 auto operator<=(Arg1&& a, Arg2&& b)
@@ -182,6 +194,7 @@ struct Greater
 {
 	auto operator()(const auto& a, const auto& b) const -> decltype(a > b) { return a > b; }
 };
+ADAPT_EXPORT
 template <class Arg1, class Arg2>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
 auto operator>(Arg1&& a, Arg2&& b)
@@ -192,6 +205,7 @@ struct GreaterEqual
 {
 	auto operator()(const auto& a, const auto& b) const -> decltype(a >= b) { return a >= b; }
 };
+ADAPT_EXPORT
 template <class Arg1, class Arg2>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
 auto operator>=(Arg1&& a, Arg2&& b)
@@ -208,6 +222,7 @@ struct OperatorAnd
 		return nodeimpl.template GetArg<0>(args...) && nodeimpl.template GetArg<1>(args...);
 	}
 };
+ADAPT_EXPORT
 template <class Arg1, class Arg2>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
 auto operator&&(Arg1&& a, Arg2&& b)
@@ -223,6 +238,7 @@ struct OperatorOr
 		return nodeimpl.template GetArg<0>(args...) || nodeimpl.template GetArg<1>(args...);
 	}
 };
+ADAPT_EXPORT
 template <class Arg1, class Arg2>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
 auto operator||(Arg1&& a, Arg2&& b)
@@ -234,6 +250,7 @@ struct BitwiseAnd
 {
 	auto operator()(const auto& a, const auto& b) const -> decltype(a & b) { return a & b; }
 };
+ADAPT_EXPORT
 template <class Arg1, class Arg2>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
 auto operator&(Arg1&& a, Arg2&& b)
@@ -244,6 +261,7 @@ struct BitwiseOr
 {
 	auto operator()(const auto& a, const auto& b) const -> decltype(a | b) { return a | b; }
 };
+ADAPT_EXPORT
 template <class Arg1, class Arg2>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
 auto operator|(Arg1&& a, Arg2&& b)
@@ -254,6 +272,7 @@ struct BitwiseXor
 {
 	auto operator()(const auto& a, const auto& b) const -> decltype(a ^ b) { return a ^ b; }
 };
+ADAPT_EXPORT
 template <class Arg1, class Arg2>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
 auto operator^(Arg1&& a, Arg2&& b)
@@ -264,6 +283,7 @@ struct BitwiseNot
 {
 	auto operator()(const auto& a) const -> decltype(~a) { return ~a; }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto operator~(Arg&& a)
 {
@@ -273,6 +293,7 @@ struct LeftShift
 {
 	auto operator()(const auto& a, const auto& b) const -> decltype(a << b) { return a << b; }
 };
+ADAPT_EXPORT
 template <class Arg1, class Arg2>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
 auto operator<<(Arg1&& a, Arg2&& b)
@@ -283,6 +304,7 @@ struct RightShift
 {
 	auto operator()(const auto& a, const auto& b) const -> decltype(a >> b) { return a >> b; }
 };
+ADAPT_EXPORT
 template <class Arg1, class Arg2>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
 auto operator>>(Arg1&& a, Arg2&& b)
@@ -294,6 +316,7 @@ struct IsFinite
 {
 	auto operator()(const auto& a) const -> decltype(std::isfinite(a)) { return std::isfinite(a); }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto isfinite(Arg&& a)
 {
@@ -303,6 +326,7 @@ struct IsInf
 {
 	auto operator()(const auto& a) const -> decltype(std::isinf(a)) { return std::isinf(a); }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto isinf(Arg&& a)
 {
@@ -312,6 +336,7 @@ struct IsNan
 {
 	auto operator()(const auto& a) const -> decltype(std::isnan(a)) { return std::isnan(a); }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto isnan(Arg&& a)
 {
@@ -321,6 +346,7 @@ struct IsNormal
 {
 	auto operator()(const auto& a) const -> decltype(std::isnormal(a)) { return std::isnormal(a); }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto isnormal(Arg&& a)
 {
@@ -331,6 +357,7 @@ struct Sin
 {
 	auto operator()(const auto& a) const -> decltype(std::sin(a)) { return std::sin(a); }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto sin(Arg&& a)
 {
@@ -340,6 +367,7 @@ struct Cos
 {
 	auto operator()(const auto& a) const -> decltype(std::cos(a)) { return std::cos(a); }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto cos(Arg&& a)
 {
@@ -349,6 +377,7 @@ struct Tan
 {
 	auto operator()(const auto& a) const -> decltype(std::tan(a)) { return std::tan(a); }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto tan(Arg&& a)
 {
@@ -358,6 +387,7 @@ struct ASin
 {
 	auto operator()(const auto& a) const -> decltype(std::asin(a)) { return std::asin(a); }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto asin(Arg&& a)
 {
@@ -367,6 +397,7 @@ struct ACos
 {
 	auto operator()(const auto& a) const -> decltype(std::acos(a)) { return std::acos(a); }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto acos(Arg&& a)
 {
@@ -376,6 +407,7 @@ struct ATan
 {
 	auto operator()(const auto& a) const -> decltype(std::atan(a)) { return std::atan(a); }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto atan(Arg&& a)
 {
@@ -385,6 +417,7 @@ struct Sinh
 {
 	auto operator()(const auto& a) const -> decltype(std::sinh(a)) { return std::sinh(a); }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto sinh(Arg&& a)
 {
@@ -394,6 +427,7 @@ struct Cosh
 {
 	auto operator()(const auto& a) const -> decltype(std::cosh(a)) { return std::cosh(a); }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto cosh(Arg&& a)
 {
@@ -403,6 +437,7 @@ struct Tanh
 {
 	auto operator()(const auto& a) const -> decltype(std::tanh(a)) { return std::tanh(a); }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto tanh(Arg&& a)
 {
@@ -412,6 +447,7 @@ struct ASinh
 {
 	auto operator()(const auto& a) const -> decltype(std::asinh(a)) { return std::asinh(a); }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto asinh(Arg&& a)
 {
@@ -421,6 +457,7 @@ struct ACosh
 {
 	auto operator()(const auto& a) const -> decltype(std::acosh(a)) { return std::acosh(a); }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto acosh(Arg&& a)
 {
@@ -430,6 +467,7 @@ struct ATanh
 {
 	auto operator()(const auto& a) const -> decltype(std::atanh(a)) { return std::atanh(a); }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto atanh(Arg&& a)
 {
@@ -440,6 +478,7 @@ struct Exponential
 {
 	auto operator()(const auto& a) const -> decltype(std::exp(a)) { return std::exp(a); }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto exp(Arg&& a)
 {
@@ -449,6 +488,7 @@ struct Exp2
 {
 	auto operator()(const auto& a) const -> decltype(std::exp2(a)) { return std::exp2(a); }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto exp2(Arg&& a)
 {
@@ -459,6 +499,7 @@ struct Square
 	auto operator()(const auto& a) const -> decltype(a* a) { return a * a; }
 	auto operator()(auto& buf, const auto& a) const { buf = a; buf *= a; }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto square(Arg&& a)
 {
@@ -468,6 +509,7 @@ struct Sqrt
 {
 	auto operator()(const auto& a) const -> decltype(std::sqrt(a)) { return std::sqrt(a); }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto sqrt(Arg&& a)
 {
@@ -478,6 +520,7 @@ struct Cube
 	auto operator()(const auto& a) const -> decltype(a* a* a) { return a * a * a; }
 	auto operator()(auto& buf, const auto& a) const { buf = a; buf *= a; buf *= a; }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto cube(Arg&& a)
 {
@@ -487,6 +530,7 @@ struct Cbrt
 {
 	auto operator()(const auto& a) const -> decltype(std::cbrt(a)) { return std::cbrt(a); }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto cbrt(Arg&& a)
 {
@@ -497,11 +541,13 @@ struct Log
 	auto operator()(const auto& a) const -> decltype(std::log(a)) { return std::log(a); }
 	auto operator()(const auto& a, const auto& b) const -> decltype(std::log(a) / std::log(b)) { return std::log(a) / std::log(b); }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto log(Arg&& a)
 {
 	return detail::MakeFunctionNode(Log{}, std::forward<Arg>(a));
 }
+ADAPT_EXPORT
 template <class Arg1, class Arg2>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
 auto log(Arg1&& a, Arg2&& b)
@@ -512,6 +558,7 @@ struct Log10
 {
 	auto operator()(const auto& a) const -> decltype(std::log10(a)) { return std::log10(a); }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto log10(Arg&& a)
 {
@@ -521,6 +568,7 @@ struct Log2
 {
 	auto operator()(const auto& a) const -> decltype(std::log2(a)) { return std::log2(a); }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto log2(Arg&& a)
 {
@@ -531,6 +579,7 @@ struct Ceil
 {
 	auto operator()(const auto& a) const -> decltype(std::ceil(a)) { return std::ceil(a); }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto ceil(Arg&& a)
 {
@@ -540,6 +589,7 @@ struct Floor
 {
 	auto operator()(const auto& a) const -> decltype(std::floor(a)) { return std::floor(a); }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto floor(Arg&& a)
 {
@@ -550,6 +600,7 @@ struct Abs
 {
 	auto operator()(const auto& a) const -> decltype(std::abs(a)) { return std::abs(a); }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto abs(Arg&& a)
 {
@@ -559,6 +610,7 @@ struct Len
 {
 	auto operator()(const auto& a) const -> decltype(std::ranges::size(a)) { return std::ranges::size(a); }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto len(Arg&& a)
 {
@@ -569,6 +621,7 @@ struct NumToStr
 	auto operator()(const auto& a) const -> decltype(std::to_string(a)) { return std::to_string(a); }
 	auto operator()(auto& buf, const auto& a) const { ToStr(a, buf); }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto tostr(Arg&& a)
 {
@@ -578,6 +631,7 @@ struct Substr
 {
 	auto operator()(const auto& a, const auto& b, const auto& c) const -> decltype(a.substr((size_t)b, (size_t)c)) { return a.substr((size_t)b, (size_t)c); }
 };
+ADAPT_EXPORT
 template <class Arg1, class Arg2, class Arg3>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2> || node_or_placeholder<Arg3>)
 auto substr(Arg1&& a, Arg2&& b, Arg3&& c)
@@ -590,6 +644,7 @@ struct ATan2
 {
 	auto operator()(const auto& a, const auto& b) const -> decltype(std::atan2(a, b)) { return std::atan2(a, b); }
 };
+ADAPT_EXPORT
 template <class Arg1, class Arg2>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
 auto atan2(Arg1&& a, Arg2&& b)
@@ -601,6 +656,7 @@ struct Hypot
 {
 	auto operator()(const auto& a, const auto& b) const -> decltype(std::hypot(a, b)) { return std::hypot(a, b); }
 };
+ADAPT_EXPORT
 template <class Arg1, class Arg2>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
 auto hypot(Arg1&& a, Arg2&& b)
@@ -614,6 +670,7 @@ struct Max
 		requires less_than_comparable<T>
 	auto operator()(const T& a, const T& b) const { return std::max(a, b); }
 };
+ADAPT_EXPORT
 template <class Arg1, class Arg2>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
 auto max(Arg1&& a, Arg2&& b)
@@ -626,6 +683,7 @@ struct Min
 		requires less_than_comparable<T>
 	auto operator()(const T& a, const T& b) const { return std::min(a, b); }
 };
+ADAPT_EXPORT
 template <class Arg1, class Arg2>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2>)
 auto min(Arg1&& a, Arg2&& b)
@@ -633,6 +691,7 @@ auto min(Arg1&& a, Arg2&& b)
 	return detail::MakeFunctionNode(Min{}, std::forward<Arg1>(a), std::forward<Arg2>(b));
 }
 
+ADAPT_EXPORT
 template <class A, class B, class C>
 concept if_function_applicable = requires(A a, B b, C c)
 {
@@ -674,6 +733,7 @@ struct IfFunction
 												   n.template GetArg<2>(args...);
 	}
 };
+ADAPT_EXPORT
 template <class Arg1, class Arg2, class Arg3>
 	requires (node_or_placeholder<Arg1> || node_or_placeholder<Arg2> || node_or_placeholder<Arg3>)
 auto if_(Arg1&& a, Arg2&& b, Arg3&& c)
@@ -707,6 +767,7 @@ public:
 };
 //Do NOT use with 4 or more arguments including rtti nodes or placeholders,
 //to avoid excessive compilation time.
+ADAPT_EXPORT
 template <class ...Args>
 	requires (node_or_placeholder<Args> || ...) && (sizeof...(Args) > 1)
 auto switch_(Args&& ...args)
@@ -718,6 +779,7 @@ struct Forward
 {
 	decltype(auto) operator()(const auto& a) const { return a; }
 };
+ADAPT_EXPORT
 template <node_or_placeholder Arg>
 auto fwd(Arg&& a)
 {
@@ -745,11 +807,13 @@ struct Cast
 		requires std::convertible_to<Arg, Ret>
 	void operator()(Ret& buf, const Arg& a) const { buf = Ret(a); }
 };
+ADAPT_EXPORT
 template <class T, node_or_placeholder NP>
 auto cast(NP&& np)
 {
 	return detail::MakeFunctionNode(Cast<T>{}, std::forward<NP>(np));
 }
+ADAPT_EXPORT
 template <FieldType Type, node_or_placeholder NP>
 auto cast(NP&& np)
 {
@@ -757,13 +821,21 @@ auto cast(NP&& np)
 	return cast<ValueType>(std::forward<NP>(np));
 }
 
+ADAPT_EXPORT
 template <node_or_placeholder NP> auto cast_i08(NP&& np) { return cast<FieldType::I08>(std::forward<NP>(np)); }
+ADAPT_EXPORT
 template <node_or_placeholder NP> auto cast_i16(NP&& np) { return cast<FieldType::I16>(std::forward<NP>(np)); }
+ADAPT_EXPORT
 template <node_or_placeholder NP> auto cast_i32(NP&& np) { return cast<FieldType::I32>(std::forward<NP>(np)); }
+ADAPT_EXPORT
 template <node_or_placeholder NP> auto cast_i64(NP&& np) { return cast<FieldType::I64>(std::forward<NP>(np)); }
+ADAPT_EXPORT
 template <node_or_placeholder NP> auto cast_f32(NP&& np) { return cast<FieldType::F32>(std::forward<NP>(np)); }
+ADAPT_EXPORT
 template <node_or_placeholder NP> auto cast_f64(NP&& np) { return cast<FieldType::F64>(std::forward<NP>(np)); }
+ADAPT_EXPORT
 template <node_or_placeholder NP> auto cast_c32(NP&& np) { return cast<FieldType::C32>(std::forward<NP>(np)); }
+ADAPT_EXPORT
 template <node_or_placeholder NP> auto cast_c64(NP&& np) { return cast<FieldType::C64>(std::forward<NP>(np)); }
 
 /*
@@ -779,6 +851,7 @@ template <node_or_placeholder NP> auto cast_c64(NP&& np) { return detail::MakeFu
 
 }
 
+ADAPT_EXPORT
 template <class Func>
 struct UserFunc
 {

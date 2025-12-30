@@ -15,6 +15,7 @@ class TopJoint_impl
 
 }
 
+ADAPT_EXPORT
 template <class Container_>
 class TopJoint
 {

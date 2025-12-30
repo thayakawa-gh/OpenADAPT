@@ -36,6 +36,7 @@ struct CttiFuncNodeBuffer<RetType, false>
 
 }
 
+ADAPT_EXPORT
 template <class Func, class Nodes,
 	class Container = detail::ExtractContainer<Nodes>::Container,
 	class Indices = std::make_index_sequence<Nodes::size>>
@@ -304,6 +305,8 @@ private:
 
 namespace eval
 {
+
+ADAPT_EXPORT
 template <class Placeholder>
 struct RttiFieldNode;
 
@@ -568,6 +571,7 @@ auto MakeRttiFuncNodeFromConstant(Func&& f, Constant&& c)
 
 //任意のノードを強制的にRttiFuncNodeでラップする。
 //ただし、既にRttiFuncNodeであれば何もせず引数をそのまま返す。
+ADAPT_EXPORT
 template <node_or_placeholder NPs>
 auto ConvertToRttiFuncNode(NPs&& nps)
 {
@@ -576,7 +580,7 @@ auto ConvertToRttiFuncNode(NPs&& nps)
 	{
 		auto f = [](const auto& a) { return a; };
 		return detail::MakeRttiFuncNode(f, ValueList<>(), std::tuple<>(),
-			ConvertToNode(std::forward<NPs>(nps), std::true_type{}));
+										detail::ConvertToNode(std::forward<NPs>(nps), std::true_type{}));
 	}
 }
 

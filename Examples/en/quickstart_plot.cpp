@@ -1,7 +1,21 @@
+#include <format>
+#include <iostream>
+#include <vector>
+#include <ranges>
+#include <cassert>
+#include <cmath>
 #include <random>
-#include <filesystem>
+#include <chrono>
 #include <thread>
+#include <filesystem>
+#include <numeric>
+#include <fstream>
+#ifdef ADAPT_IMPORT_MODULE
+#include <OpenADAPT/Macros.h>
+import adapt;
+#else
 #include <OpenADAPT/Plot/Canvas.h>
+#endif
 
 int example_2d(const std::string& output_filename, bool enable_in_memory_data_transfer)
 {

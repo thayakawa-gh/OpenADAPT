@@ -356,6 +356,7 @@ auto Hist_impl(TupleAxes&& axes, TupleVars&& vars, std::index_sequence<Is...> is
 
 }
 
+ADAPT_EXPORT
 template <similar_to_xt<std::tuple> TupleAxes, similar_to_xt<std::tuple> TupleVars>
 auto Hist(TupleAxes&& axes, TupleVars&& vars)
 {
@@ -363,6 +364,7 @@ auto Hist(TupleAxes&& axes, TupleVars&& vars)
 							 std::make_index_sequence<std::tuple_size_v<std::remove_cvref_t<TupleAxes>>>{},
 							 std::make_index_sequence<std::tuple_size_v<std::remove_cvref_t<TupleVars>>>{});
 }
+ADAPT_EXPORT
 template <similar_to_xt<AxisArgs> ...Axes>
 auto Hist(Axes&& ...axes)
 {
@@ -406,6 +408,7 @@ auto Hist_impl(AxesTuple&& axes, NP&& np, double wbin, double cbin, Next&& next,
 	return Hist_impl(std::move(axes2), std::forward<Next>(next), std::forward<Args>(args)...);
 }
 }
+ADAPT_EXPORT
 template <named_or_anon_node_or_placeholder NP, class ...Args>
 	requires ((named_or_anon_node_or_placeholder<Args> || std::convertible_to<Args, double>) && ...)
 auto Hist(NP&& np, double wbin, Args&& ...args)

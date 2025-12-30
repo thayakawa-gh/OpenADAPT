@@ -1,0 +1,8 @@
+#ifndef ADAPT_UTILITY_COMMON_H
+#define ADAPT_UTILITY_COMMON_H
+
+#ifndef ADAPT_EXPORT
+#define ADAPT_EXPORT
+#endif
+
+#endif

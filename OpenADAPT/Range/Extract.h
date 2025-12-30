@@ -756,6 +756,7 @@ public:
 
 // 無名のnodeかplaceholderに対しては与えられた名前を付与し、そうでない場合は何もしない。
 // ADAPT_EXTRACTやADAPT_HISTで、明示的に名前を与えるか否かを識別したり、axisのdouble型引数に名前を与えないよう分岐するための処理。
+ADAPT_EXPORT
 template <class T, StaticChar Name>
 decltype(auto) AddNameIfNP(T&& t, StaticString<Name>)
 {
@@ -794,12 +795,14 @@ auto Extract_impl(std::bool_constant<AllFieldsFlag> b, std::index_sequence<Is...
 }
 }
 
+ADAPT_EXPORT
 template <class ...Vars>
 	requires ((node_or_placeholder<Vars> || named_node_or_placeholder<Vars>) && ...)
 auto Extract(Vars&& ...vars)
 {
 	return detail::Extract_impl(std::false_type{}, std::make_index_sequence<sizeof...(Vars)>{}, std::forward<Vars>(vars)...);
 }
+ADAPT_EXPORT
 template <class ...Vars>
 	requires ((node_or_placeholder<Vars> || named_node_or_placeholder<Vars>) && ...)
 auto Extract(AllFields, Vars&& ...vars)

@@ -5,12 +5,14 @@
 #include <concepts>
 #include <string_view>
 #include <array>
+#include <OpenADAPT/Utility/Common.h>
 #include <OpenADAPT/Utility/Exception.h>
 #include <OpenADAPT/Utility/TypeTraits.h>
 
 namespace adapt
 {
 
+ADAPT_EXPORT
 inline void* AlignedAlloc(size_t size, size_t align)
 {
 #ifdef _MSC_VER
@@ -28,8 +30,10 @@ inline void FreeAligned(void* ptr)
 #endif
 }
 
+ADAPT_EXPORT
 inline constexpr bool IsDigit(char c) { return c <= '9' && c >= '0'; }
 
+ADAPT_EXPORT
 inline constexpr bool IsIntegral(std::string_view str)
 {
 	if (str.empty()) return false;
@@ -43,6 +47,7 @@ inline constexpr bool IsIntegral(std::string_view str)
 }
 
 //+-数字以外の文字が含まれてはいけない。空白も駄目。
+ADAPT_EXPORT
 template <std::integral T>
 constexpr T StrTo(std::string_view str, T base = 10)
 {
@@ -62,6 +67,7 @@ constexpr T StrTo(std::string_view str, T base = 10)
 	return minus ? -res : res;
 }
 
+ADAPT_EXPORT
 template <class Num>
 	requires std::is_arithmetic_v<Num>
 void ToStr(Num v, std::string& res)
@@ -86,6 +92,7 @@ void ToStr(Num v, std::string& res)
 	else if constexpr (std::is_unsigned_v<Num>) func("%d", (unsigned int)v);
 }
 
+ADAPT_EXPORT
 inline std::string ReplaceStr(std::string_view str, std::string_view from, std::string_view to)
 {
 	std::string res(str);
@@ -139,11 +146,13 @@ constexpr auto CatArray_impl(Array1&& a, std::index_sequence<Indices1...>,
 }
 }
 
+ADAPT_EXPORT
 template <any_array Array>
 constexpr Array CatArray(Array&& a)
 {
 	return a;
 }
+ADAPT_EXPORT
 template <any_array Array1, any_array Array2>
 constexpr auto CatArray(Array1&& a, Array2&& b)
 {
@@ -164,11 +173,13 @@ constexpr auto CatArray_rec(Array1&& a, Array2&& b, Array3&& c, Arrays&& ...as)
 	return CatArray_rec(CatArray(std::forward<Array1>(a), std::forward<Array2>(b)), std::forward<Array3>(c), std::forward<Arrays>(as)...);
 }
 }
+ADAPT_EXPORT
 template <any_array ...Array>
 constexpr auto CatArray(Array&& ...a)
 {
 	return detail::CatArray_rec(std::forward<Array>(a)...);
 }
+ADAPT_EXPORT
 template <class ...Args>
 constexpr auto MakeArray(Args&& ...args) ->
 std::array<
@@ -203,8 +214,9 @@ struct GetFormerNArgs_impl<0>
 	}
 };
 }
+ADAPT_EXPORT
 template <size_t Size, class ...Args>
-static constexpr auto GetFormerNArgs(Args&& ...args)
+constexpr auto GetFormerNArgs(Args&& ...args)
 {
 	return detail::GetFormerNArgs_impl<Size>::apply(std::forward<Args>(args)...);
 }
@@ -296,12 +308,14 @@ inline detail::ReferenceArray<std::nullptr_t, 0> HoldRefArray()
 */
 
 //rvalueは値に、lvalueは参照のままでtupleにする。
+ADAPT_EXPORT
 template <class ...Args>
 auto MakeDecayedTuple(Args&& ...args)
 {
 	return std::tuple<typename DecayRRef<Args>::Type...>(std::forward<Args>(args)...);
 }
 
+ADAPT_EXPORT
 template <class ...Args>
 void DoNothing(Args&& ...) {}
 

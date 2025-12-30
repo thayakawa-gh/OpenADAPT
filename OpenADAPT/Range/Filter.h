@@ -13,10 +13,12 @@ namespace adapt
 namespace detail
 {
 
+ADAPT_EXPORT
 template <class Traverser, class Container, class ...NPs>
 class CttiFilteredSentinel
 {};
 
+ADAPT_EXPORT
 template <class Traverser_, class Container_, class ...NPs>
 class CttiFilteredTraverser : public Traverser_
 {
@@ -203,21 +205,25 @@ private:
 	std::tuple<NPs...> m_nps;
 };
 
+ADAPT_EXPORT
 template <class Traverser, class Container, class ...NPs>
 bool operator==(const CttiFilteredTraverser<Traverser, Container, NPs...>& t, const CttiFilteredSentinel<Traverser, Container, NPs...>&)
 {
 	return t.IsEnd();
 }
+ADAPT_EXPORT
 template <class Traverser, class Container, class ...NPs>
 bool operator!=(const CttiFilteredTraverser<Traverser, Container, NPs...>& t, const CttiFilteredSentinel<Traverser, Container, NPs...>&)
 {
 	return !t.IsEnd();
 }
+ADAPT_EXPORT
 template <class Traverser, class Container, class ...NPs>
 bool operator==(const CttiFilteredSentinel<Traverser, Container, NPs...>&, const CttiFilteredTraverser<Traverser, Container, NPs...>& t)
 {
 	return t.IsEnd();
 }
+ADAPT_EXPORT
 template <class Traverser, class Container, class ...NPs>
 bool operator!=(const CttiFilteredSentinel<Traverser, Container, NPs...>&, const CttiFilteredTraverser<Traverser, Container, NPs...>& t)
 {
@@ -225,6 +231,7 @@ bool operator!=(const CttiFilteredSentinel<Traverser, Container, NPs...>&, const
 }
 
 
+ADAPT_EXPORT
 template <class Range_, node_or_placeholder ...NPs>
 class CttiFilterView
 	: public std::ranges::view_interface<CttiFilterView<Range_, NPs...>>
@@ -293,10 +300,12 @@ private:
 };
 
 
+ADAPT_EXPORT
 template <class Traverser, class Container>
 class RttiFilteredSentinel
 {};
 
+ADAPT_EXPORT
 template <class Traverser_, class Container_>
 class RttiFilteredTraverser : public Traverser_
 {
@@ -508,21 +517,25 @@ private:
 	std::vector<std::vector<eval::RttiFuncNode<Container>>> m_nodes;
 };
 
+ADAPT_EXPORT
 template <class Traverser, class Container>
 bool operator==(const RttiFilteredTraverser<Traverser, Container>& t, const RttiFilteredSentinel<Traverser, Container>&)
 {
 	return t.IsEnd();
 }
+ADAPT_EXPORT
 template <class Traverser, class Container>
 bool operator!=(const RttiFilteredTraverser<Traverser, Container>& t, const RttiFilteredSentinel<Traverser, Container>&)
 {
 	return !t.IsEnd();
 }
+ADAPT_EXPORT
 template <class Traverser, class Container>
 bool operator==(const RttiFilteredSentinel<Traverser, Container>&, const RttiFilteredTraverser<Traverser, Container>& t)
 {
 	return t.IsEnd();
 }
+ADAPT_EXPORT
 template <class Traverser, class Container>
 bool operator!=(const RttiFilteredSentinel<Traverser, Container>&, const RttiFilteredTraverser<Traverser, Container>& t)
 {
@@ -530,6 +543,7 @@ bool operator!=(const RttiFilteredSentinel<Traverser, Container>&, const RttiFil
 }
 
 //cttiでない条件が一つでも含まれる場合、こちらになる。
+ADAPT_EXPORT
 template <class Range_, node_or_placeholder ...NPs>
 class RttiFilterView
 	: public std::ranges::view_interface<RttiFilterView<Range_, NPs...>>
@@ -549,7 +563,13 @@ public:
 	RttiFilterView(Range__&& r, NPs_&&... nps)
 		: m_range(std::forward<Range__>(r)), m_conds({ ConvertToRttiFuncNode(std::forward<NPs_>(nps))... })
 	{
-		LayerType max = std::ranges::max(std::views::all(m_conds) | std::views::transform([](const auto& c) { return c.GetLayer(); }));
+		//LayerType max = std::ranges::max(std::views::all(m_conds) | std::views::transform([](const auto& c) { return c.GetLayer(); }));
+		LayerType max = -1_layer;
+		for (const auto& c : m_conds)
+		{
+			LayerType layer = c.GetLayer();
+			if (layer > max) max = layer;
+		}
 		if (max > GetTravLayer()) SetTravLayer(max);
 	}
 
@@ -599,12 +619,14 @@ private:
 
 }
 
+ADAPT_EXPORT
 template <ctti_node_or_placeholder ...NPs>
 RangeReceiver<detail::CttiFilterView, std::decay_t<NPs>...> Filter(NPs&& ...nps)
 {
 	return RangeReceiver<detail::CttiFilterView, std::decay_t<NPs>...>(std::forward<NPs>(nps)...);
 }
 
+ADAPT_EXPORT
 template <node_or_placeholder ...NPs>
 	requires (!(ctti_node_or_placeholder<NPs> && ...))
 RangeReceiver<detail::RttiFilterView, std::decay_t<NPs>...> Filter(NPs&& ...nps)

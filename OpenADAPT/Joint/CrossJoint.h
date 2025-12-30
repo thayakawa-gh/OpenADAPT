@@ -11,6 +11,7 @@
 namespace adapt
 {
 
+ADAPT_EXPORT
 template <RankType Rank, class Container>
 struct CrossJoint : public detail::JointInterface_impl<Container>
 {
@@ -41,6 +42,7 @@ public:
 	}
 };
 
+ADAPT_EXPORT
 template <RankType Rank, class Container>
 std::unique_ptr<detail::JointInterface_impl<Container>> MakeCrossJoint()
 {

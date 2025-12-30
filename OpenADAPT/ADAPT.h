@@ -1,6 +1,8 @@
 #ifndef ADAPT_ADAPT_H
 #define ADAPT_ADAPT_H
 
+
+#include <OpenADAPT/Utility/NamedTuple.h>
 #include <OpenADAPT/Container/Tree.h>
 #include <OpenADAPT/Container/Hist.h>
 #include <OpenADAPT/Container/JoinedContainer.h>

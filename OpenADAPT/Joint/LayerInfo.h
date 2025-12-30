@@ -10,6 +10,7 @@
 namespace adapt
 {
 
+ADAPT_EXPORT
 class InternalLayerInfo
 {
 public:
@@ -240,6 +241,7 @@ private:
 	State m_state;
 };
 
+ADAPT_EXPORT
 template <RankType MaxRank>
 struct JointLayerArray : public std::array<std::pair<LayerType, LayerType>, MaxRank + 1>
 {
@@ -272,6 +274,7 @@ public:
 	}
 };
 
+ADAPT_EXPORT
 template <RankType MaxRank>
 class LayerInfo
 {

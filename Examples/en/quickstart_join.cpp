@@ -1,6 +1,18 @@
 #include <format>
 #include <iostream>
+#include <vector>
+#include <cassert>
+#include <cmath>
+#include <complex>
+#include <ranges>
+#include <array>
+#include <fstream>
+#ifdef ADAPT_IMPORT_MODULE
+#include <OpenADAPT/Macros.h>
+import adapt;
+#else
 #include <OpenADAPT/ADAPT.h>
+#endif
 
 using namespace adapt::lit;
 
@@ -102,6 +114,9 @@ void QuickstartKeyJoin()
 	// Now, "county" in t0 is in the layer 1, and "county" in t1 is in the layer 0.
 	// So we need to join them by t0 layer 1 to t1 layer 0 using KeyJoint: joining by the same keys.
 
+	auto r = t0.GetRange(1);
+	std::ranges::begin(r);
+	std::ranges::end(r);
 	auto jt = Join(t0, 1_layer, 0_layer, t1);
 
 	// In this case, t0 is rank 0 and t1 is rank 1. If you want, you can join additional trees like as follows:
