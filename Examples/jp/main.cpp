@@ -1,7 +1,7 @@
-#include "examples_join.h"
+#include "examples_plot.h"
 #include "examples_rtti.h"
 #include "examples_ctti.h"
-#include "examples_plot.h"
+#include "examples_join.h"
 
 adapt::DTree MakeDTree()
 {

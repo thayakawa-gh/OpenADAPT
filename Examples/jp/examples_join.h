@@ -1,4 +1,22 @@
+#ifndef ADAPT_EXAMPLES_JOIN_H
+#define ADAPT_EXAMPLES_JOIN_H
+
+#include <format>
+#include <iostream>
+#include <vector>
+#include <cassert>
+#include <cmath>
+#include <complex>
+#include <ranges>
+#include <array>
+#include <fstream>
+#include <numeric>
+#ifdef ADAPT_IMPORT_MODULE
+#include <OpenADAPT/Macros.h>
+import adapt;
+#else
 #include <OpenADAPT/ADAPT.h>
+#endif
 
 using namespace adapt::lit;
 
@@ -243,3 +261,5 @@ void Plot_jtree(const JTree& jt)
 	c.SetYLabel("household income");
 	c.PlotPoints(v_math, v_income, plot::pt_cir, plot::ps_med_large, plot::notitle);
 }
+
+#endif

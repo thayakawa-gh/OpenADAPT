@@ -1,6 +1,22 @@
+#ifndef ADAPT_EXAMPLES_CTTI_H
+#define ADAPT_EXAMPLES_CTTI_H
+
 #include <format>
 #include <iostream>
+#include <vector>
+#include <cassert>
+#include <cmath>
+#include <complex>
+#include <ranges>
+#include <array>
+#include <fstream>
+#include <numeric>
+#ifdef ADAPT_IMPORT_MODULE
+#include <OpenADAPT/Macros.h>
+import adapt;
+#else
 #include <OpenADAPT/ADAPT.h>
+#endif
 
 using namespace adapt::lit;
 
@@ -515,3 +531,5 @@ void Plot_ctti(const Tree& t)
 	//この他、より複雑な描画を行いたい場合はMatplot++などを使うこともできる。
 	//各々好ましいものを選択して使うとよい。
 }
+
+#endif

@@ -1,8 +1,12 @@
-#include <vector>
-#include <string>
+#include <format>
 #include <iostream>
-#include <array>
+#include <vector>
+#include <cassert>
+#include <cmath>
 #include <complex>
+#include <ranges>
+#include <array>
+#include <fstream>
 #ifdef ADAPT_IMPORT_MODULE
 #include <OpenADAPT/Macros.h>
 import adapt;

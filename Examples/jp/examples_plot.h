@@ -1,9 +1,25 @@
-#ifndef EXAMPLES_PLOT_H
-#define EXAMPLES_PLOT_H
+#ifndef ADAPT_EXAMPLES_PLOT_H
+#define ADAPT_EXAMPLES_PLOT_H
 
-#include <random>
+#include <thread>
+#include <ratio>
 #include <filesystem>
+#include <format>
+#include <iostream>
+#include <vector>
+#include <cassert>
+#include <cmath>
+#include <complex>
+#include <ranges>
+#include <array>
+#include <fstream>
+#include <random>
+#ifdef ADAPT_IMPORT_MODULE
+#include <OpenADAPT/Macros.h>
+import adapt;
+#else
 #include <OpenADAPT/ADAPT.h>
+#endif
 
 int example_2d(const std::string& output_filename, bool enable_in_memory_data_transfer)
 {
@@ -676,4 +692,4 @@ void PlotVariations()
 	example_for_loop("PlotExamples/example_for_loop-inmemory.png", true);
 }
 
-#endif // EXAMPLES_PLOT_H
+#endif
