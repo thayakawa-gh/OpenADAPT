@@ -55,10 +55,24 @@ target_link_libraries(YOUR_PACKAGE_NAME PRIVATE OpenADAPT::Module)
 ```
 
 ```cpp
-#include <OpenADAPT/Macros.h>// Import macros which are not imported by the above module.
+#include <OpenADAPT/Macros.h>// Import macros which are not imported by the module below.
 import adapt;// Import the module.
 
 using namespace adapt::lit;// Import the ADAPT literals, such as "_fld" for field names.
+```
+Maybe the following headers are required to be included before importing the module.
+```cpp
+#include <format>
+#include <iostream>
+#include <vector>
+#include <string>
+#include <cassert>
+#include <cmath>
+#include <complex>
+#include <ranges>
+#include <random>
+#include <filesystem>
+#include <thread>
 ```
 
 ## [For the detailed examples and explanations, please see Examples/en](Examples/en).
