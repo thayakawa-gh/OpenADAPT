@@ -1,12 +1,14 @@
-#include <Test/Aggregator.h>
+#include <Test/Common/Aggregator.h>
 
 using namespace adapt;
 using namespace adapt::lit;
 
-TEST_F(Aggregator, CrossJoint)
+using Aggregator_CrossJoin = Aggregator_DTree;
+
+TEST_F(Aggregator_CrossJoin, CrossJoint)
 {
 	{
-		auto jt = Join(m_dtree, 2_layer, -1_layer, m_dtree);
+		auto jt = Join(*m_dtree, 2_layer, -1_layer, *m_dtree);
 		jt.SetCrossJoint<1_rank>();
 
 		auto [math0, english0, name0] = jt.GetPlaceholders<0_rank>("math", "english", "name");
@@ -46,7 +48,7 @@ TEST_F(Aggregator, CrossJoint)
 		EXPECT_TRUE(trav.IsEnd());
 	}
 	{
-		auto jt = Join(m_dtree, 1_layer, -1_layer, m_dtree);
+		auto jt = Join(*m_dtree, 1_layer, -1_layer, *m_dtree);
 		jt.SetCrossJoint<1_rank>();
 
 		//SetNumOfThreads(1);

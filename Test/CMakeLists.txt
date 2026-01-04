@@ -6,10 +6,39 @@ find_package(GTest REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(unordered_dense)
 
+set(TEST_TREE_TYPES DTree STree DJTree0 DJTree1 DJTree2 DJTree0_1 DJTree1_2)
+set(TEST_TABLE_TYPES DTable STable DJTable)
+
+set(TEST_SUBJECTS Evaluate Traverse Extract Filter Hist Show)
+
+foreach(TYPE ${TEST_TREE_TYPES})
+	foreach(SUBJ ${TEST_SUBJECTS})
+		configure_file(
+			${CMAKE_CURRENT_SOURCE_DIR}/Tree/Tree${SUBJ}.cpp.in
+			${CMAKE_CURRENT_BINARY_DIR}/${TYPE}/${TYPE}_${SUBJ}.cpp
+		)
+		list(APPEND TEST_SOURCES
+			${CMAKE_CURRENT_BINARY_DIR}/${TYPE}/${TYPE}_${SUBJ}.cpp
+		)
+	endforeach()
+endforeach()
+
+foreach(TYPE ${TEST_TABLE_TYPES})
+	foreach(SUBJ ${TEST_SUBJECTS})
+		configure_file(
+			${CMAKE_CURRENT_SOURCE_DIR}/Table/Table${SUBJ}.cpp.in
+			${CMAKE_CURRENT_BINARY_DIR}/${TYPE}/${TYPE}_${SUBJ}.cpp
+		)
+		list(APPEND TEST_SOURCES
+			${CMAKE_CURRENT_BINARY_DIR}/${TYPE}/${TYPE}_${SUBJ}.cpp
+		)
+	endforeach()
+endforeach()
+
 add_executable(${PROJECT_NAME}
-	"TestLayerInfo.cpp" "TestTree.cpp"
-	"TestEvaluate.cpp" "TestExtract.cpp" "TestShow.cpp" "TestFilter.cpp"
-	"TestTraverser.cpp" "TestUserFunc.cpp" "TestPlot.cpp" "TestMatrix.cpp" "TestJoint.cpp" "TestHist.cpp" "TestUtility.cpp")
+	${TEST_SOURCES}
+	"Random/LayerInfo.cpp" "Random/Hist.cpp" "Random/TreeHandling.cpp" "Random/UserFunc.cpp"
+	"Random/Plot.cpp" "Random/Matrix.cpp" "Random/KeywordArg.cpp" "Random/Ranges.cpp")
 
 if(${unordered_dense_FOUND})
 	message("unordered_dense found")

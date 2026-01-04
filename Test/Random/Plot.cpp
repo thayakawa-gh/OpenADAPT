@@ -1,6 +1,9 @@
-#include <Test/Aggregator.h>
+#include <gtest/gtest.h>
+#include <OpenADAPT/Plot/Canvas.h>
 
-TEST_F(Aggregator, Plot_xyerrorbars)
+using namespace adapt;
+
+TEST(Random, Plot_XYErrorBars)
 {
 	std::vector<double> x = { 1, 2, 3, 4, 5 };
 	std::vector<double> y = { 1, 2, 3, 4, 5 };

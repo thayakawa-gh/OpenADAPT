@@ -1,26 +1,28 @@
 #include <ranges>
 #include <iterator>
-#include <Test/Aggregator.h>
+#include <Test/Common/Aggregator.h>
 
 using namespace adapt;
 using namespace adapt::lit;
 
-template <class Container, class Layer0, class Layer1, class Layer2>
-void TestTraverser(Container& tree, const std::vector<Class>& cls,
-				 const Layer0& l0, const Layer1& l1, const Layer2& l2)
+template <FieldType Type, class Trav, class PH>
+decltype(auto) get_field(Number<Type>, const Trav& t, PH& ph)
+{
+	if constexpr (statistically_typed<PH>) return t[ph];
+	else return t[ph].template as<Type>();
+};
+
+template <any_tree Container, class Layer0, class Layer1, class Layer2>
+void TestTraverserIncr(Container& tree, const std::vector<Class>& cls,
+					   const Layer0& l0, const Layer1& l1, const Layer2& l2)
 {
 	using enum FieldType;
-	//constexpr bool is_joined = joined_container<Container>;
-	
-	auto [class_] = l0;
-	auto [name] = l1;
-	auto [math] = l2;
-
-	auto get_field = []<FieldType Type, class Trav, class PH>(Number<Type>, const Trav & t, PH& ph)
-	{
-		if constexpr (s_container<Container>) return t[ph];
-		else return t[ph].template as<Type>();
-	};
+	//0層要素。学年とクラス。
+	[[maybe_unused]] auto [grade, class_] = l0;
+	//1層要素。出席番号、名前、生年月日。
+	[[maybe_unused]] auto [number, name] = l1;
+	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
+	[[maybe_unused]] auto [exam, math, jpn, eng, sci, soc] = l2;
 
 	auto range = tree.GetRange(2);
 	auto trav = range.begin();
@@ -58,7 +60,28 @@ void TestTraverser(Container& tree, const std::vector<Class>& cls,
 		}
 	}
 	EXPECT_EQ(trav, range.end());
+}
 
+
+template <any_tree Container, class Layer0, class Layer1, class Layer2>
+void TestTraverserDecr(Container& tree, const std::vector<Class>& cls,
+					   const Layer0& l0, const Layer1& l1, const Layer2& l2)
+{
+	using enum FieldType;
+	//0層要素。学年とクラス。
+	[[maybe_unused]] auto [grade, class_] = l0;
+	//1層要素。出席番号、名前、生年月日。
+	[[maybe_unused]] auto [number, name] = l1;
+	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
+	[[maybe_unused]] auto [exam, math, jpn, eng, sci, soc] = l2;
+
+	auto range = tree.GetRange(2);
+	auto trav = range.begin();
+	Bpos cur(2);
+	Bpos buf(2);
+	trav.MoveToEnd();
+
+	BindexType clssize = (BindexType)cls.size();
 	//逆順
 	for (BindexType i = (BindexType)clssize - 1; i >= 0; --i)
 	{
@@ -99,7 +122,26 @@ void TestTraverser(Container& tree, const std::vector<Class>& cls,
 		}
 	}
 	EXPECT_EQ(trav, range.begin());
+}
 
+template <any_tree Container, class Layer0, class Layer1, class Layer2>
+void TestTraverserMoveForward(Container& tree, const std::vector<Class>& cls,
+							  const Layer0& l0, const Layer1& l1, const Layer2& l2)
+{
+	using enum FieldType;
+	//0層要素。学年とクラス。
+	auto [grade, class_] = l0;
+	//1層要素。出席番号、名前、生年月日。
+	auto [number, name] = l1;
+	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
+	auto [exam, math, jpn, eng, sci, soc] = l2;
+
+	auto range = tree.GetRange(2);
+	auto trav = range.begin();
+	Bpos cur(2);
+	Bpos buf(2);
+
+	BindexType clssize = (BindexType)cls.size();
 	//MoveForwardによる移動テスト
 	for (BindexType i = 0; i < clssize; ++i)
 	{
@@ -135,7 +177,27 @@ void TestTraverser(Container& tree, const std::vector<Class>& cls,
 	EXPECT_EQ(trav.GetPos(0), clssize - 1);
 	EXPECT_EQ(trav.GetPos(1), 29);
 	EXPECT_EQ(trav.GetPos(2), 3);
+}
+template <any_tree Container, class Layer0, class Layer1, class Layer2>
+void TestTraverserMoveBackward(Container& tree, const std::vector<Class>& cls,
+							   const Layer0& l0, const Layer1& l1, const Layer2& l2)
+{
+	using enum FieldType;
+	//0層要素。学年とクラス。
+	auto [grade, class_] = l0;
+	//1層要素。出席番号、名前、生年月日。
+	auto [number, name] = l1;
+	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
+	auto [exam, math, jpn, eng, sci, soc] = l2;
 
+	auto range = tree.GetRange(2);
+	auto trav = range.begin();
+	Bpos cur(2);
+	Bpos buf(2);
+	trav.MoveToEnd();
+	--trav;
+
+	BindexType clssize = (BindexType)cls.size();
 	//MoveBackward
 	for (BindexType i = (BindexType)clssize - 1; i >= 0; --i)
 	{
@@ -181,70 +243,12 @@ void TestTraverser(Container& tree, const std::vector<Class>& cls,
 	EXPECT_EQ(trav.GetPos(2), 0);
 }
 
-TEST_F(Aggregator, DTree_Traverser)
-{
-	auto class_ = m_dtree.GetPlaceholder("class_");
-	auto name = m_dtree.GetPlaceholder("name");
-	auto math = m_dtree.GetPlaceholder("math");
-
-	TestTraverser(m_dtree, m_class,
-				  std::make_tuple(class_),
-				  std::make_tuple(name),
-				  std::make_tuple(math));
-}
-TEST_F(Aggregator, STree_Traverser)
-{
-	auto class_ = m_stree.GetPlaceholder("class_"_fld);
-	auto name = m_stree.GetPlaceholder("name"_fld);
-	auto math = m_stree.GetPlaceholder("math"_fld);
-	static_assert(ctti_placeholder<decltype(class_)>);
-	static_assert(ctti_placeholder<decltype(name)>);
-	static_assert(ctti_placeholder<decltype(math)>);
-
-	TestTraverser(m_stree, m_class,
-				  std::make_tuple(class_),
-				  std::make_tuple(name),
-				  std::make_tuple(math));
-}
-TEST_F(Aggregator, DJoinedContainer_Traverser)
-{
-	auto a = m_dtree.GetPlaceholder("number").i16();//MakeHashmapはキーの型を特定する必要があるため、
-	auto b = m_dtree.GetPlaceholder("name").str();//これらのPlaceholderは予め型情報を与えなければならない。
-	auto hash = m_dtree | Hash(a, b);
-
-	auto jtree = Join(m_dtree, 1_layer, 1_layer, m_dtree);
-	//0層要素。学年とクラス。
-	auto [nu, na] = jtree.GetPlaceholders<0>("number"_fld, "name"_fld);//検索用
-	auto class_ = jtree.GetPlaceholder<1>("class_"_fld);//値取得用。
-	//1層要素。出席番号、名前、生年月日。
-	auto name = jtree.GetPlaceholder<1>("name"_fld);
-	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
-	auto math = jtree.GetPlaceholder<1>("math");
-
-	jtree.SetKeyJoint<1>(std::move(hash), nu, na);
-
-	TestTraverser(jtree, m_class,
-				  std::make_tuple(class_),
-				  std::make_tuple(name),
-				  std::make_tuple(math));
-}
-
-
-
 template <class Container, class Layer0>
-void TestTraverser(Container& tree, const std::vector<Class>& cls,
-	const Layer0& l0)
+void TestTraverserIncr(Container& tree, const std::vector<Class>& cls,
+					   const Layer0& l0)
 {
 	using enum FieldType;
-	//constexpr bool is_joined = joined_container<Container>;
-
-	auto [class_, name, math] = l0;
-
-	auto get_field = []<FieldType Type, class Trav, class PH>(Number<Type>, const Trav & t, PH & ph)
-	{
-		if constexpr (s_container<Container>) return t[ph];
-		else return t[ph].template as<Type>();
-	};
+	auto [class_, number, name, exam, math, jpn, eng, sci, soc] = l0;
 
 	auto range = tree.GetRange(0_layer);
 	auto trav = range.begin();
@@ -277,8 +281,21 @@ void TestTraverser(Container& tree, const std::vector<Class>& cls,
 		}
 	}
 	EXPECT_EQ(trav, range.end());
+}
+template <class Container, class Layer0>
+void TestTraverserDecr(Container& tree, const std::vector<Class>& cls,
+					   const Layer0& l0)
+{
+	using enum FieldType;
+	auto [class_, number, name, exam, math, jpn, eng, sci, soc] = l0;
 
+	auto range = tree.GetRange(0_layer);
+	auto trav = range.begin();
+	Bpos cur(2);
+	Bpos buf(2);
+	trav.MoveToEnd();
 	//逆順
+	BindexType clssize = (BindexType)cls.size();
 	for (BindexType i = (BindexType)clssize - 1; i >= 0; --i)
 	{
 		//forループをBindexTypeで回してはいけない。unsignedなのでi >= 0の判定が意味をなさない。
@@ -304,21 +321,4 @@ void TestTraverser(Container& tree, const std::vector<Class>& cls,
 		}
 	}
 	EXPECT_EQ(trav, range.begin());
-}
-TEST_F(Aggregator, Traverse_dtable)
-{
-	auto& t = m_dtable;
-
-	auto [class_, name, math] = t.GetPlaceholders("class_", "name", "math");
-	static_assert(adapt::container_simplex<adapt::DTable>);
-	TestTraverser(t, m_class,
-		std::make_tuple(class_, name, math));
-}
-TEST_F(Aggregator, Traverse_stable)
-{
-	auto& t = m_stable;
-
-	auto [class_, name, math] = t.GetPlaceholders("class_"_fld, "name"_fld, "math"_fld);
-	TestTraverser(t, m_class,
-		std::make_tuple(class_, name, math));
 }

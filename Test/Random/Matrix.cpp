@@ -1,6 +1,7 @@
-#include <Test/Aggregator.h>
+#include <gtest/gtest.h>
+#include <OpenADAPT/Utility/Matrix.h>
 
-TEST(Utility, Matrix)
+TEST(Random, Matrix)
 {
 	adapt::Matrix<double, 3> m(0., 3, 5, 7);
 	adapt::Matrix<double, 2> m2(0., 3, 5);

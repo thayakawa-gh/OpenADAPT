@@ -1,15 +1,15 @@
-#include <Test/Aggregator.h>
+#include <Test/Common/Aggregator.h>
 
-using namespace adapt;
-using namespace adapt::lit;
-
-
-template <class Container, class Layer0, class Layer1, class Layer2, bool Disabled>
+template <any_tree Container, class Layer0, class Layer1, class Layer2>
 void TestFilter(Container& tree, const std::vector<Class>& clses,
-				const Layer0&, const Layer1& l1, const Layer2& l2, std::bool_constant<Disabled> = std::false_type{})
+				const Layer0& l0, const Layer1& l1, const Layer2& l2)
 {
-	auto [number, name] = l1;
-	auto [math, jpn, eng, sci, soc] = l2;
+	//0層要素。学年とクラス。
+	[[maybe_unused]] auto [grade, class_] = l0;
+	//1層要素。出席番号、名前、生年月日。
+	[[maybe_unused]] auto [number, name] = l1;
+	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
+	[[maybe_unused]] auto [exam, math, jpn, eng, sci, soc] = l2;
 
 	auto mean_math = mean(cast_f64(math));
 
@@ -43,7 +43,7 @@ void TestFilter(Container& tree, const std::vector<Class>& clses,
 				EXPECT_EQ(Evaluate(Number<I32>{}, trav, math), r.m_math);
 
 				//filterは階層関数内部の走査には効力を持たない。
-				EXPECT_EQ(Evaluate(Number<F64>{}, trav, mean_math), AvgMath(s));
+				EXPECT_EQ(Evaluate(Number<F64>{}, trav, mean_math), AvgMath(clses, i, j, k));
 
 				++trav;
 			}
@@ -60,7 +60,8 @@ void TestFilter(Container& tree, const std::vector<Class>& clses,
 		for (BindexType j = 0; j < (BindexType)c.m_students.size(); ++j)
 		{
 			auto& s = c.m_students[j];
-			if (AvgMath(s) < 60) continue;
+			double avg_math = AvgMath(clses, i, j, 0);
+			if (avg_math < 60) continue;
 			for (BindexType k = 0; k < (BindexType)s.m_records.size(); ++k)
 			{
 				auto& r = s.m_records[k];
@@ -74,7 +75,7 @@ void TestFilter(Container& tree, const std::vector<Class>& clses,
 				EXPECT_EQ(Evaluate(Number<I32>{}, trav2, math), r.m_math);
 
 				//filterは階層関数内部の走査には効力を持たない。
-				EXPECT_EQ(Evaluate(Number<F64>{}, trav2, mean_math), AvgMath(s));
+				EXPECT_EQ(Evaluate(Number<F64>{}, trav2, mean_math), avg_math);
 
 				++trav2;
 			}
@@ -82,33 +83,11 @@ void TestFilter(Container& tree, const std::vector<Class>& clses,
 	}
 }
 
-TEST_F(Aggregator, DTree_Filter)
-{
-	auto [number, name] = m_dtree.GetPlaceholders("number", "name");
-	auto [math, eng, jpn, sci, soc] = m_dtree.GetPlaceholders("math", "japanese", "english", "science", "social");
-
-	TestFilter(m_dtree, m_class,
-		std::make_tuple(),
-		std::make_tuple(number, name),
-		std::make_tuple(math, eng, jpn, sci, soc),
-		std::true_type{});
-}
-TEST_F(Aggregator, STree_Filter)
-{
-	auto [number, name] = m_stree.GetPlaceholders<"number", "name">();
-	auto [math, eng, jpn, sci, soc] = m_stree.GetPlaceholders<"math", "japanese", "english", "science", "social">();
-
-	TestFilter(m_stree, m_class,
-		std::make_tuple(),
-		std::make_tuple(number, name),
-		std::make_tuple(math, eng, jpn, sci, soc),
-		std::true_type{});
-}
 
 template <class Container, class Layer>
 void TestFilter(Container& table, const std::vector<Class>& clses, const Layer& l)
 {
-	auto [number, name, exam, math, jpn, eng, sci, soc] = l;
+	auto [class_, number, name, exam, math, jpn, eng, sci, soc] = l;
 
 	auto exam_1 = exam == 1;
 	auto sum5subjs = math + jpn + eng + sci + soc;
@@ -134,12 +113,13 @@ void TestFilter(Container& table, const std::vector<Class>& clses, const Layer& 
 			{
 				auto& r = s.m_records[k];
 				if (r.m_exam != 1) continue;
-				if (Sum5Subjs(r) < 400) continue;
+				double tot = TotalScore(clses, i, j, k);
+				if (tot < 400) continue;
 
 				EXPECT_EQ(Evaluate(Number<Str>{}, trav, name), s.m_name);
 
 				//filterは階層関数内部の走査には効力を持たない。
-				EXPECT_EQ(Evaluate(Number<I32>{}, trav, sum5subjs), Sum5Subjs(r));
+				EXPECT_EQ(Evaluate(Number<I32>{}, trav, sum5subjs), tot);
 
 				++trav;
 			}
@@ -147,19 +127,3 @@ void TestFilter(Container& table, const std::vector<Class>& clses, const Layer& 
 	}
 }
 
-TEST_F(Aggregator, STable_Filter)
-{
-	auto [number, name, exam, math, eng, jpn, sci, soc] =
-		m_stable.GetPlaceholders("number"_fld, "name"_fld, "exam"_fld, "math"_fld, "japanese"_fld, "english"_fld, "science"_fld, "social"_fld);
-
-	TestFilter(m_stable, m_class,
-		std::make_tuple(number, name, exam, math, eng, jpn, sci, soc));
-}
-TEST_F(Aggregator, DTable_Filter)
-{
-	auto [number, name, exam, math, eng, jpn, sci, soc] =
-		m_dtable.GetPlaceholders("number", "name", "exam", "math", "japanese", "english", "science", "social");
-
-	TestFilter(m_dtable, m_class,
-		std::make_tuple(number, name, exam, math, eng, jpn, sci, soc));
-}

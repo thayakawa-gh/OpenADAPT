@@ -607,9 +607,9 @@ public:
 	LayerType IncrDecrOperator(Flag)
 	{
 		constexpr bool IsForward = std::is_same_v<Flag, ForwardMovement>;
-		//backwardかつend状態のときはfixed + 1層が末尾であるため、
-		//そこから移動する必要がある。
-		LayerType retry_from = (!IsForward && IsEnd()) ? m_fixed_layer + 1 : m_trav_layer;
+		//backwardかつend状態のときはfixed + 1層が末尾であるため、そこから移動する必要がある。
+		//ただしfixed == travのときは常時end状態であるため、trav層の移動を試みて失敗するという挙動にすべき。
+		LayerType retry_from = (!IsForward && IsEnd() && m_fixed_layer != m_trav_layer) ? m_fixed_layer + 1 : m_trav_layer;
 		LayerType moved = (LayerType)-1;
 		LayerType res = m_trav_layer;
 		while (true)
@@ -1388,9 +1388,17 @@ public:
 		if (m_fixed_layer == -1_layer)
 		{
 			auto& it = m_iterators[1];
-			++it;
-			bool x = it == m_iterators[0]->end();
-			return LayerType(0 - (int)x);//末尾に到達した場合は-1を返さなければならない。
+			if constexpr (std::same_as<Flag, ForwardMovement>)
+			{
+				++it;
+				bool x = it == m_iterators[0]->end();
+				return LayerType(0 - (int)x);//末尾に到達した場合は-1を返さなければならない。
+			}
+			else
+			{
+				--it;
+				return 0_layer;
+			}
 		}
 		return 0_layer;
 	}

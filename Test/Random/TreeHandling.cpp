@@ -1,9 +1,6 @@
 #include <ranges>
 #include <iterator>
-#include <Test/Aggregator.h>
-
-using namespace adapt;
-using namespace adapt::lit;
+#include <Test/Common/Aggregator.h>
 
 template <class Container, class Layer0, class Layer1, class Layer2>
 void TestContainer(Container& tree, const std::vector<Class>& cls,
@@ -89,33 +86,15 @@ void TestContainer(Container& tree, const std::vector<Class>& cls,
 	}
 }
 
-TEST_F(Aggregator, DTree_Container)
+TEST_F(Aggregator_DTree, Container)
 {
-	//0層要素。学年とクラス。
-	auto [grade, class_] = m_dtree.GetPlaceholders("grade", "class_");
-	//1層要素。出席番号、名前、生年月日。
-	auto [number, name] = m_dtree.GetPlaceholders("number", "name");
-	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
-	auto [exam, math, jpn, eng, sci, soc] = m_dtree.GetPlaceholders("exam", "math", "japanese", "english", "science", "social");
-
-	TestContainer(m_dtree, m_class,
-				 std::make_tuple(grade, class_),
-				 std::make_tuple(number, name),
-				 std::make_tuple(exam, math, jpn, eng, sci, soc));
+	DECL_PH_SET_DTree;
+	TestContainer(*m_tree, m_class, layer0, layer1, layer2);
 }
-TEST_F(Aggregator, STree_Container)
+TEST_F(Aggregator_STree, Container)
 {
-	//0層要素。学年とクラス。
-	auto [grade, class_] = m_stree.GetPlaceholders<"grade", "class_">();
-	//1層要素。出席番号、名前、生年月日。
-	auto [number, name] = m_stree.GetPlaceholders<"number", "name">();
-	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
-	auto [exam, math, jpn, eng, sci, soc] = m_stree.GetPlaceholders<"exam", "math", "japanese", "english", "science", "social">();
-
-	TestContainer(m_stree, m_class,
-				std::make_tuple(grade, class_),
-				std::make_tuple(number, name),
-				std::make_tuple(exam, math, jpn, eng, sci, soc));
+	DECL_PH_SET_STree;
+	TestContainer(*m_tree, m_class, layer0, layer1, layer2);
 }
 
 template <container_simplex Tree>
@@ -235,9 +214,7 @@ void TestTreeHandling(Tree& tree)
 		}
 	}
 }
-
-
-TEST_F(Aggregator, DTree_TreeHandling)
+TEST(Random, DTree_Handling)
 {
 	using enum FieldType;
 	//通常のテストでは中身の確認を行うだけだが、こちらはPushとPop、Insert、Eraseもテストする。
@@ -247,7 +224,7 @@ TEST_F(Aggregator, DTree_TreeHandling)
 	tree.VerifyStructure();
 	TestTreeHandling(tree);
 }
-TEST_F(Aggregator, STree_TreeHandling)
+TEST(Random, STree_Handling)
 {
 	using enum FieldType;
 	//通常のテストでは中身の確認を行うだけだが、こちらはPushとPop、Insert、Eraseもテストする。
@@ -331,93 +308,62 @@ void TestTreeConcat(const Tree& tree, const std::vector<Class>& cls)
 	}
 }
 
-TEST_F(Aggregator, DTree_Concat)
+TEST_F(Aggregator_DTree, Concat)
 {
 	{
-		DTree t1, t2;
-		MakeTree(t1, m_class);
-		MakeTree(t2, m_class);
-		t1.Concat(t2);
-		TestTreeConcat(t1, m_class);
-		EXPECT_EQ(t2.GetSize(0_layer), 4);
-		//0層要素。学年とクラス。
-		auto [grade, class_] = t2.GetPlaceholders("grade", "class_");
-		//1層要素。出席番号、名前、生年月日。
-		auto [number, name] = t2.GetPlaceholders("number", "name");
-		//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
-		auto [exam, math, jpn, eng, sci, soc] = t2.GetPlaceholders("exam", "math", "japanese", "english", "science", "social");
+		std::optional<DTree> t1, t2;
+		MakeContainer(t1, m_class);
+		MakeContainer(t2, m_class);
+		t1->Concat(*t2);
+		TestTreeConcat(*t1, m_class);
+		EXPECT_EQ(t2->GetSize(0_layer), 4);
 
-		TestContainer(t2, m_class,
-			std::make_tuple(grade, class_),
-			std::make_tuple(number, name),
-			std::make_tuple(exam, math, jpn, eng, sci, soc));
+		DECL_PH_SET_DTree;
+
+		TestContainer(*t2, m_class, layer0, layer1, layer2);
 	}
 	{
-		DTree t1, t2;
-		MakeTree(t1, m_class);
-		MakeTree(t2, m_class);
-		t1.MoveConcat(std::move(t2));
-		TestTreeConcat(t1, m_class);
-		EXPECT_EQ(t2.GetSize(0_layer), 0);
+		std::optional<DTree> t1, t2;
+		MakeContainer(t1, m_class);
+		MakeContainer(t2, m_class);
+		t1->MoveConcat(std::move(*t2));
+		TestTreeConcat(*t1, m_class);
+		EXPECT_EQ(t2->GetSize(0_layer), 0);
 
-		//t2の要素は空になっているので、再利用できる。
-		MakeTree(t2, m_class, false);
+		t2.reset();
+		MakeContainer(t2, m_class);
 
-		//0層要素。学年とクラス。
-		auto [grade, class_] = t2.GetPlaceholders("grade", "class_");
-		//1層要素。出席番号、名前、生年月日。
-		auto [number, name] = t2.GetPlaceholders("number", "name");
-		//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
-		auto [exam, math, jpn, eng, sci, soc] = t2.GetPlaceholders("exam", "math", "japanese", "english", "science", "social");
+		DECL_PH_SET_DTree;
 
-		TestContainer(t2, m_class,
-			std::make_tuple(grade, class_),
-			std::make_tuple(number, name),
-			std::make_tuple(exam, math, jpn, eng, sci, soc));
+		TestContainer(*t2, m_class, layer0, layer1, layer2);
 	}
 }
-TEST_F(Aggregator, STree_Concat)
+TEST_F(Aggregator_STree, Concat)
 {
 	{
-		STree_ t1, t2;
-		MakeTree(t1, m_class);
-		MakeTree(t2, m_class);
-		t1.Concat(t2);
-		TestTreeConcat(t1, m_class);
-		EXPECT_EQ(t2.GetSize(0_layer), 4);
-		//0層要素。学年とクラス。
-		auto [grade, class_] = m_stree.GetPlaceholders<"grade", "class_">();
-		//1層要素。出席番号、名前、生年月日。
-		auto [number, name] = m_stree.GetPlaceholders<"number", "name">();
-		//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
-		auto [exam, math, jpn, eng, sci, soc] = m_stree.GetPlaceholders<"exam", "math", "japanese", "english", "science", "social">();
+		std::optional<STree_> t1, t2;
+		MakeContainer(t1, m_class);
+		MakeContainer(t2, m_class);
+		t1->Concat(*t2);
+		TestTreeConcat(*t1, m_class);
+		EXPECT_EQ(t2->GetSize(0_layer), 4);
+		DECL_PH_SET_STree;
 
-		TestContainer(t2, m_class,
-			std::make_tuple(grade, class_),
-			std::make_tuple(number, name),
-			std::make_tuple(exam, math, jpn, eng, sci, soc));
+		TestContainer(*t2, m_class, layer0, layer1, layer2);
 	}
 	{
-		STree_ t1, t2;
-		MakeTree(t1, m_class);
-		MakeTree(t2, m_class);
-		t1.MoveConcat(std::move(t2));
-		TestTreeConcat(t1, m_class);
-		EXPECT_EQ(t2.GetSize(0_layer), 0);
+		std::optional<STree_> t1, t2;
+		MakeContainer(t1, m_class);
+		MakeContainer(t2, m_class);
+		t1->MoveConcat(std::move(*t2));
+		TestTreeConcat(*t1, m_class);
+		EXPECT_EQ(t2->GetSize(0_layer), 0);
 
-		//t2の要素は空になっているので、再利用できる。
-		MakeTree(t2, m_class);
+		t2.reset();
+		MakeContainer(t2, m_class);
 
-		//0層要素。学年とクラス。
-		auto [grade, class_] = m_stree.GetPlaceholders<"grade", "class_">();
-		//1層要素。出席番号、名前、生年月日。
-		auto [number, name] = m_stree.GetPlaceholders<"number", "name">();
-		//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
-		auto [exam, math, jpn, eng, sci, soc] = m_stree.GetPlaceholders<"exam", "math", "japanese", "english", "science", "social">();
+		DECL_PH_SET_STree;
 
-		TestContainer(t2, m_class,
-			std::make_tuple(grade, class_),
-			std::make_tuple(number, name),
-			std::make_tuple(exam, math, jpn, eng, sci, soc));
+		TestContainer(*t2, m_class, layer0, layer1, layer2);
 	}
 }

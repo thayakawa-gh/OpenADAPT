@@ -1,6 +1,6 @@
 #include <ranges>
 #include <iterator>
-#include <Test/Aggregator.h>
+#include <Test/Common/Aggregator.h>
 
 using namespace adapt;
 using namespace adapt::lit;
@@ -67,33 +67,22 @@ void TestHist(Hist& hist)
 	}
 }
 
-TEST_F(Aggregator, DHist)
-{
-	DHist hist;
-	TestHist(hist);
-}
-TEST_F(Aggregator, SHist)
-{
-	using HistLayer1 = ADAPT_S_DEFINE_LAYER(x, double, y, double, xy, double);
-	SHist2D<HistLayer1> hist;
-	TestHist(hist);
-}
-
-template <any_tree Tree>
-void TestHistFromTree(const Tree& tree, const std::vector<Class>& cls)
+template <any_container Tree, class PHs>
+void TestHistFromTree(const Tree& tree, const std::vector<Class>& cls, PHs phs)
 {
 	//SetNumOfThreads(1);
 	//SetGranularity(1);
-	auto hist = [&tree]()
+	auto hist = [&tree, &phs]()
 	{
-		ADAPT_GET_PLACEHOLDERS(tree, english, math, name, exam);
+		//ADAPT_GET_PLACEHOLDERS(tree, english, math, name, exam);
+		auto [class_, number, name, exam, math, japanese, english, science, social] = phs;
 		auto fmath = cast_f64(math);
 		auto feng = cast_f64(english);
 		auto h = tree | ADAPT_HIST(fmath, 5., 0., feng, 5., 0., name, exam);
-		EXPECT_EQ(h.GetSize(0_layer), 441);
-		EXPECT_EQ(h.GetSize(1_layer), 480);
 		return h;
 	} ();
+	EXPECT_EQ(hist.GetSize(0_layer), 441);
+	EXPECT_EQ(hist.GetSize(1_layer), 480);
 
 	std::map<std::pair<std::string, int32_t>, std::pair<int32_t, int32_t>> name_map;
 	{
@@ -130,12 +119,4 @@ void TestHistFromTree(const Tree& tree, const std::vector<Class>& cls)
 			}
 		}
 	}
-}
-TEST_F(Aggregator, DHistFromDTree)
-{
-	TestHistFromTree(m_dtree, m_class);
-}
-TEST_F(Aggregator, SHistFromSTree)
-{
-	TestHistFromTree(m_stree, m_class);
 }

@@ -1,6 +1,7 @@
 #include <ranges>
 #include <iterator>
-#include <Test/Aggregator.h>
+#include <gtest/gtest.h>
+#include <OpenADAPT/Joint/LayerInfo.h>
 
 using namespace adapt;
 using namespace lit;
@@ -22,7 +23,7 @@ constexpr LayerInfo<3> GetLayerInfo()
 	return e;
 }
 
-TEST_F(Aggregator, LayerInfo)
+TEST(Random, LayerInfo)
 {
 	{
 		constexpr auto e = GetLayerInfo();

@@ -6,6 +6,7 @@
 #include <OpenADAPT/Utility/TypeTraits.h>
 #include <OpenADAPT/Utility/Utility.h>
 #include <OpenADAPT/Utility/Macros.h>
+#include <OpenADAPT/Utility/Exception.h>
 
 namespace adapt
 {

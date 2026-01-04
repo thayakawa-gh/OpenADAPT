@@ -1,4 +1,7 @@
-#include <Test/Aggregator.h>
+#include <gtest/gtest.h>
+#include <OpenADAPT/Utility/KeywordArgs.h>
+
+using namespace adapt;
 
 namespace args
 {
@@ -44,7 +47,7 @@ void func(Args&& ...args)
 	for (int i = 0; i < (int)lv.size(); ++i) lv[i] = i * 3;
 }
 
-TEST(Utility, KeywordArg)
+TEST(Random, KeywordArg_NoTag)
 {
 	std::vector<double> r = { 5, 5, 5 };
 	std::vector<double> l = { 5, 5, 5 };
@@ -80,7 +83,7 @@ void func2(Args&& ...args)
 	std::cout << std::endl;
 	for (int i = 0; i < (int)lv.size(); ++i) lv[i] = i * 3;
 }
-TEST(Utility, KeywordArgWithTag)
+TEST(Random, KeywordArg_WithTag)
 {
 	std::vector<double> r = { 5, 5, 5 };
 	std::vector<double> l = { 5, 5, 5 };
@@ -91,21 +94,4 @@ TEST(Utility, KeywordArgWithTag)
 	std::cout << "LVector        :";
 	for (auto& v : l) std::cout << " " << v;//左辺値参照なので中身が書き換えられる。
 	std::cout << std::endl;
-}
-TEST(Utility, RepeatView)
-{
-	auto rep = adapt::views::Repeat(42, 5);
-	size_t count = 0;
-	for (auto v : rep)
-	{
-		++count;
-		EXPECT_EQ(v, 42);
-	}
-	EXPECT_EQ(count, 5);
-
-	std::vector<int> vec = { 1, 2, 3, 4, 5 };
-	for (auto [v, r] : adapt::views::Zip(vec, adapt::views::Repeat(10)))
-	{
-		EXPECT_EQ(r * v, 10 * v);
-	}
 }
