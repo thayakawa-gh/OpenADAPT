@@ -37,8 +37,9 @@ endforeach()
 
 add_executable(${PROJECT_NAME}
 	${TEST_SOURCES}
-	"Random/LayerInfo.cpp" "Random/Hist.cpp" "Random/TreeHandling.cpp" "Random/UserFunc.cpp"
-	"Random/Plot.cpp" "Random/Matrix.cpp" "Random/KeywordArg.cpp" "Random/Ranges.cpp")
+	"Random/BinJoint.cpp" "Random/CrossJoint.cpp" "Random/Hist.cpp" "Random/KeywordArg.cpp" "Random/LayerInfo.cpp"
+	"Random/Matrix.cpp" "Random/Plot.cpp" "Random/Ranges.cpp"
+	"Random/TreeHandling.cpp" "Random/TryJoin.cpp" "Random/UserFunc.cpp")
 
 if(${unordered_dense_FOUND})
 	message("unordered_dense found")

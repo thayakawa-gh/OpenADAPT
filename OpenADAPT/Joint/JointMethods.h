@@ -6,6 +6,7 @@
 #include <OpenADAPT/Common/Bpos.h>
 #include <OpenADAPT/Common/Concepts.h>
 #include <OpenADAPT/Joint/KeyJoint.h>
+#include <OpenADAPT/Joint/BinJoint.h>
 #include <OpenADAPT/Joint/CrossJoint.h>
 
 namespace adapt
@@ -67,6 +68,18 @@ public:
 	void SetKeyJoint(KeyLeft&& left, KeyRight&& right)
 	{
 		SetKeyJoint<Rank>(std::forward_as_tuple(std::forward<KeyLeft>(left)), std::forward_as_tuple(std::forward<KeyRight>(right)));
+	}
+
+	template <RankType Rank, node_or_placeholder ...Indices>
+		requires (Rank > 0)
+	void SetBinJoint(Indices&& ...indices)
+	{
+		const auto& self = static_cast<const Container&>(*this);
+		const auto& cr = self.template GetContainer<Rank>();
+		//const auto& upper = self.template GetContainer<Rank - 1>();
+		auto j = MakeBinJoint<Rank, Container>
+			(cr, std::forward<Indices>(indices)...);
+		m_joints[Rank] = std::move(j);
 	}
 
 	template <RankType Rank>

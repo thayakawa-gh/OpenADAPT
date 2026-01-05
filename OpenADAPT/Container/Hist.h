@@ -126,15 +126,13 @@ public:
 	template <size_t Dim>
 	ElementRef_0 operator[](const Bin<Dim>& bin)
 	{
-		HIST_ASSERT(Dim)
-		BindexType index = BinToIndex<Dim>{}(bin, GetMinList(), GetMaxList());
+		BindexType index = BinToIndex(bin);
 		return Base::operator[](index);
 	}
 	template <size_t Dim>
 	ConstElementRef_0 operator[](const Bin<Dim>& bin) const
 	{
-		HIST_ASSERT(Dim)
-		BindexType index = BinToIndex<Dim>{}(bin, GetMinList(), GetMaxList());
+		BindexType index = BinToIndex(bin);
 		return Base::operator[](index);
 	}
 
@@ -199,10 +197,15 @@ public:
 	template <size_t Dim>
 	adapt::Bpos BinToBpos(const Bin<Dim>& bin) const
 	{
+		return Bpos{ BinToIndex(bin) };
+	}
+	template <size_t Dim>
+	BindexType BinToIndex(const Bin<Dim>& bin) const
+	{
 		HIST_ASSERT(Dim)
 		const BinBaseType* min_list = GetMinList();
 		const BinBaseType* max_list = GetMaxList();
-		return Bpos{ BinToIndex<Dim>{}(bin , min_list, max_list) };
+		return adapt::detail::BinToIndex<Dim>{}(bin, min_list, max_list);
 	}
 
 	// 最初のm_dim個の要素はヒストグラムの軸の値に用いられる。

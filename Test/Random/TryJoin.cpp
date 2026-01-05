@@ -7,15 +7,15 @@ TEST_F(Aggregator_TryJoin, TryJoinInEvaluator)
 	//auto [number, name, dob] = m_dtree.GetPlaceholders("number", "name", "date_of_birth");
 	auto dtree_even = [this]()
 	{
-		DECL_TREE_PH_SET(*m_dtree);
-		return *m_dtree | Filter(number % 2 == 0) | ADAPT_EXTRACT(grade, class_, number, name, math, japanese, english);
+		DECL_TREE_PH_SET(*m_tree);
+		return *m_tree | Filter(number % 2 == 0) | ADAPT_EXTRACT(grade, class_, number, name, math, japanese, english);
 	}();
 	auto hash = [&dtree_even]()
 	{
 		auto [number, name] = dtree_even.GetPlaceholders("number", "name");
 		return dtree_even | Hash(number.i16(), name.str());
 	}();
-	auto jt = Join(*m_dtree, 1_layer, 1_layer, dtree_even);
+	auto jt = Join(*m_tree, 1_layer, 1_layer, dtree_even);
 	auto [jgrade, jclass, jnumber, jname] = jt.GetPlaceholders<0>("grade", "class_", "number", "name");
 	auto jnumber2 = jt.GetPlaceholder<1>("number");
 	jt.SetKeyJoint<1>(std::move(hash), jnumber, jname);
