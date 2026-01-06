@@ -15,10 +15,10 @@ foreach(TYPE ${TEST_TREE_TYPES})
 	foreach(SUBJ ${TEST_SUBJECTS})
 		configure_file(
 			${CMAKE_CURRENT_SOURCE_DIR}/Tree/Tree${SUBJ}.cpp.in
-			${CMAKE_CURRENT_BINARY_DIR}/${TYPE}/${TYPE}_${SUBJ}.cpp
+			${CMAKE_CURRENT_BINARY_DIR}/${TYPE}_${SUBJ}.cpp
 		)
 		list(APPEND TEST_SOURCES
-			${CMAKE_CURRENT_BINARY_DIR}/${TYPE}/${TYPE}_${SUBJ}.cpp
+			${CMAKE_CURRENT_BINARY_DIR}/${TYPE}_${SUBJ}.cpp
 		)
 	endforeach()
 endforeach()
@@ -27,10 +27,10 @@ foreach(TYPE ${TEST_TABLE_TYPES})
 	foreach(SUBJ ${TEST_SUBJECTS})
 		configure_file(
 			${CMAKE_CURRENT_SOURCE_DIR}/Table/Table${SUBJ}.cpp.in
-			${CMAKE_CURRENT_BINARY_DIR}/${TYPE}/${TYPE}_${SUBJ}.cpp
+			${CMAKE_CURRENT_BINARY_DIR}/${TYPE}_${SUBJ}.cpp
 		)
 		list(APPEND TEST_SOURCES
-			${CMAKE_CURRENT_BINARY_DIR}/${TYPE}/${TYPE}_${SUBJ}.cpp
+			${CMAKE_CURRENT_BINARY_DIR}/${TYPE}_${SUBJ}.cpp
 		)
 	endforeach()
 endforeach()
