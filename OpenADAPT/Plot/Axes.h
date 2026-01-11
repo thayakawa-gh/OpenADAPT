@@ -26,6 +26,10 @@ public:\
 	template <class ...Args>\
 	void Set##AXIS##Tics(Args&& ...args) { this->SetTics(axis, std::forward<Args>(args)...); }\
 	void Set##AXIS##TicsRotate(double ang) { this->SetTicsRotate(axis, ang); }\
+	void Set##AXIS##LabelFont(std::string_view font, double size = 0.0) { Canvas_::SetFont_impl(font, size, axis"label"); }\
+	void Set##AXIS##TicsFont(std::string_view font, double size = 0.0) { Canvas_::SetFont_impl(font, size, axis"tics"); }\
+	void SetLabelFont(std::string_view font, double size = 0.0) { Set##AXIS##LabelFont(font, size); Canvas_::SetLabelFont(font, size); }\
+	void SetTicsFont(std::string_view font, double size = 0.0) { Set##AXIS##TicsFont(font, size); Canvas_::SetTicsFont(font, size); }\
 };
 
 DEF_AXIS(X, "x")

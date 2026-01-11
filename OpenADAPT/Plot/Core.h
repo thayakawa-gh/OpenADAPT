@@ -29,7 +29,31 @@ ADAPT_EXPORT enum class Contour : int16_t { none, base, surface, both, };
 ADAPT_EXPORT enum class CntrSmooth : int16_t { none, linear, cubicspline, bspline };
 
 ADAPT_EXPORT
-class MultiPlot;
+class MultiPlot
+{
+public:
+
+	MultiPlot() {}
+	MultiPlot(std::string_view outputname, int row, int column, double sizex = 0., double sizey = 0.) { Begin(outputname, row, column, sizex, sizey); }
+	~MultiPlot() { End(); }
+
+	static inline bool IsOpen();
+	static inline std::string GetNextOutput();
+
+	static inline FILE* GetPipe();
+
+	static inline void Begin(std::string_view output, int row, int column, double sizex = 0., double sizey = 0.);
+	static inline void End();
+
+	template <class ...Args>
+	static void Command(Args&& ...args);
+
+private:
+	inline static std::string ms_output = {};
+	inline static size_t ms_count = 0;
+	inline static FILE* ms_global_pipe = nullptr;
+	inline static double ms_font_size_ratio = 1.0;
+};
 
 class Canvas
 {
@@ -65,7 +89,8 @@ public:
 	}
 	Canvas(double sizex = 0., double sizey = 0.)
 		: Canvas(ms_default_gnuplot_terminal, sizex, sizey)
-	{}
+	{
+	}
 	Canvas(const Canvas&) = delete;
 	Canvas(Canvas&&) = delete;
 	Canvas& operator=(const Canvas&) = delete;
@@ -218,41 +243,62 @@ public:
 		SetTopMargin(t);
 	}
 
-	void SetOutput(std::string_view output, double sizex, double sizey)
+protected:
+	void SetFont_impl(std::string_view font, double size, std::string_view x)
 	{
-		m_output = output;
+		if (size == 0.0) size = ms_default_font_size * m_font_size_ratio;
+		Command(std::format("set {} font \"{}, {:>.1f}\"", x, font, size));
+	}
+public:
+	void SetTitleFont(std::string_view font, double size = 0.0) { SetFont_impl(font, size, "title"); }
+	void SetTicsFont(std::string_view, double = 0.0) {}//overrided by each axis class.
+	void SetLabelFont(std::string_view, double = 0.0) {}//overrided by each axis class.
+	void SetKeyFont(std::string_view font, double size = 0.0) { SetFont_impl(font, size, "key"); }
+
+private:
+	template <class Command>
+	static void SetTerminal(Command com, std::string_view output, double sizex, double sizey, int row, int column, double& font_size_ratio)
+	{
+		auto command = [&](std::string_view ext, std::string_view unit, const std::array<double, 2>& defxy)
+		{
+			if (sizex == 0 && sizey == 0)
+			{
+				sizex = defxy[0] * column;
+				sizey = defxy[1] * row;
+			}
+			else font_size_ratio = std::sqrt((sizex * sizey) / (defxy[0] * column * defxy[1] * row));
+			com(std::format("set terminal {} enhanced size {}{}, {}{} font \"{},{:>.1f}\"",
+							ext, sizex, unit, sizey, unit, ms_default_font_name, ms_default_font_size * font_size_ratio));
+		};
 		if (output.size() > 4)
 		{
 			std::string_view extension(output.substr(output.size() - 4, 4));
 			std::string repout = ReplaceStr(output, "\\", "/");
-			if (extension == ".png")
-			{
-				if (sizex == 0 && sizey == 0) sizex = 720, sizey = 540;
-				Command(std::format("set terminal pngcairo enhanced size {}, {} font \"sans\"\nset output '{}'", sizex, sizey, repout));
-			}
-			else if (extension == ".eps")
-			{
-				if (sizex == 0 && sizey == 0) sizex = 6, sizey = 4.5;
-				Command(std::format("set terminal epscairo enhanced size {}in, {}in font \"sans\"\nset output '{}'", sizex, sizey, repout));
-			}
-			else if (extension == ".pdf")
-			{
-				if (sizex == 0 && sizey == 0) sizex = 6, sizey = 4.5;
-				Command(std::format("set terminal pdfcairo enhanced size {}in, {}in font \"sans, 14\"\nset output '{}'", sizex, sizey, repout));
-			}
+			if (extension == ".png") command("pngcairo", "", ms_default_canvas_size_px);
+			else if (extension == ".eps") command("epscairo", "in", ms_default_canvas_size_in);
+			else if (extension == ".pdf") command("pdfcairo", "in", ms_default_canvas_size_in);
+			com(std::format("set output '{}'", repout));
 		}
-		else if (output == "qt")
-		{
-			if (sizex == 0 && sizey == 0) sizex = 720, sizey = 540;
-			Command(std::format("set terminal qt size {}, {} font \"sans\" enhanced", sizex, sizey));
-		}
-		else if (output == "wxt")
-		{
-			if (sizex == 0 && sizey == 0) sizex = 720, sizey = 540;
-			Command(std::format("set terminal wxt enhanced size {}, {} font \"sans\"", sizex, sizey));
-		}
+		else if (output == "qt") command("qt", "", ms_default_canvas_size_px);
+		else if (output == "wxt") command("wxt", "", ms_default_canvas_size_px);
 		else std::cout << "WARNING : " << output << " is not a terminal or has no valid extension. Default terminal is selected." << std::endl;
-
+	}
+public:
+	void SetOutput(std::string_view output, double sizex, double sizey)
+	{
+		if (MultiPlot::IsOpen())
+		{
+			if (output != ms_default_gnuplot_terminal)
+				PrintWarning("In MultiPlot mode, output setting of Canvas is ignored. Output is controlled by MultiPlot.");
+			if (sizex != 0. || sizey != 0.)
+				PrintWarning("In MultiPlot mode, size setting of Canvas is ignored. Size is controlled by MultiPlot.");
+			m_output = MultiPlot::GetNextOutput();
+			return;
+		}
+		m_output = output;
+		SetTerminal([this]<class ...Args>(Args&& ...args) { Command(std::forward<Args>(args)...); },
+					output, sizex, sizey, 1, 1, m_font_size_ratio);
+		SetTitleFont(ms_default_font_name, ms_default_font_size * m_font_size_ratio * 1.1);
 	}
 	void Reset() { Command("reset"); }
 	const std::string& GetOutput() const { return m_output; }
@@ -264,19 +310,20 @@ public:
 			PrintWarning("Gnuplot has already been open. {}", GetGnuplotPath());
 			return;
 		}
-		if (ms_global_pipe != nullptr)
-			m_pipe = ms_global_pipe;
-		else
+		if (MultiPlot::IsOpen())
 		{
-			if ((m_pipe = OpenGnuplot(GetGnuplotPath())) == nullptr)
-				PrintError("Gnuplot cannot open. {}", GetGnuplotPath());
+			m_pipe = MultiPlot::GetPipe();
+			return;
 		}
-		if (m_pipe)
+		if ((m_pipe = OpenGnuplot(GetGnuplotPath())) == nullptr)
 		{
-			Command("set palette defined ( 0 '#000090',1 '#000fff',2 "
-					"'#0090ff',3 '#0fffee',4 '#90ff70',5 '#ffee00',6 "
-					"'#ff7000',7 '#ee0000',8 '#7f0000')");
+			PrintError("Gnuplot cannot open. {}", GetGnuplotPath());
+			return;
 		}
+		// デフォルト設定
+		Command("set palette defined ( 0 '#000090',1 '#000fff',2 "
+				"'#0090ff',3 '#0fffee',4 '#90ff70',5 '#ffee00',6 "
+				"'#ff7000',7 '#ee0000',8 '#7f0000')");
 	}
 	void Open(std::string_view output, double sizex = 0., double sizey = 0.)
 	{
@@ -285,7 +332,7 @@ public:
 	}
 	void Close()
 	{
-		if (m_pipe != nullptr && m_pipe != ms_global_pipe)
+		if (m_pipe != nullptr && m_pipe != MultiPlot::GetPipe())
 		{
 			Command("exit");
 			CloseGnuplot(m_pipe);
@@ -342,14 +389,9 @@ protected:
 	//When any axes (x, y, x2, y2, z) are contained within this variable, 
 	//the values of them are treated as DateTime even if the type of values are std::string or a type that is convertible to std::string.
 	std::set<std::string> m_date_time_axes;
-	//template <class = void>
-	//struct Paths
-	//{
-	//	static const std::string ms_default_gnuplot_terminal;
-	//	static std::string ms_gnuplot_path;
-	//	static const std::string ms_default_gnuplot_path;
-	//	static FILE* ms_global_pipe;//multiplotなどを利用する際のグローバルなパイプ。これがnullptrでない場合、mPipe==mGlobalPipeとなる。
-	//};
+
+	double m_font_size_ratio = 1.0;
+
 	inline static const std::string ms_default_gnuplot_terminal = "wxt";
 	inline static std::string ms_gnuplot_path = "";
 #ifdef _WIN32
@@ -357,88 +399,63 @@ protected:
 #else
 	inline static const std::string ms_default_gnuplot_path = "gnuplot";
 #endif
-	inline static FILE* ms_global_pipe = nullptr;
 
+	inline static constexpr std::array<double, 2> ms_default_canvas_size_px = { 720., 540. };
+	inline static constexpr std::array<double, 2> ms_default_canvas_size_in = { 6., 4.5 };
+
+	inline static constexpr double ms_default_font_size = 13.;
+	inline static const std::string ms_default_font_name = "Noto Sans";
 };
 
 
-class MultiPlot
+bool MultiPlot::IsOpen()
 {
-public:
+	return ms_global_pipe != nullptr;
+}
+std::string MultiPlot::GetNextOutput() { return std::format("{}_{}", ms_output, ms_count++); }
 
-	MultiPlot() {}
-	MultiPlot(std::string_view outputname, int row, int column, double sizex = 0., double sizey = 0.) { Begin(outputname, row, column, sizex, sizey); }
-	~MultiPlot() { End(); }
+FILE* MultiPlot::GetPipe() { return ms_global_pipe; }
 
-	void Begin(std::string_view output, int row, int column, double sizex = 0., double sizey = 0.)
+void MultiPlot::Begin(std::string_view output, int row, int column, double sizex, double sizey)
+{
+	if (IsOpen())
 	{
-		if (Canvas::ms_global_pipe != nullptr)
-		{
-			std::cerr << "Gnuplot has already been open. " << Canvas::GetGnuplotPath() << std::endl;
-			return;
-		}
-		if ((Canvas::ms_global_pipe = Canvas::OpenGnuplot(Canvas::GetGnuplotPath())) == nullptr)
-		{
-			std::cerr << "Gnuplot cannot open. " << Canvas::GetGnuplotPath() << std::endl;
-		}
-		else
-		{
-			//Command("set bars small");
-			Command("set palette defined ( 0 '#000090',1 '#000fff',2 '#0090ff',3 '#0fffee',4 '#90ff70',5 '#ffee00',6 '#ff7000',7 '#ee0000',8 '#7f0000')");
-
-			if (output.size() > 4)
-			{
-				std::string_view extension = output.substr(output.size() - 4, 4);
-				std::string repout = ReplaceStr(output, "\\", "/");
-				if (extension == ".png")
-				{
-					if (sizex == 0 && sizey == 0) sizex = 720 * column, sizey = 540 * row;
-					Command(std::format("set terminal pngcairo enhanced size {}, {} font \"Arial\"\nset output '{}'", (int)sizex, (int)sizey, repout));
-				}
-				else if (extension == ".eps")
-				{
-					if (sizex == 0 && sizey == 0) sizex = 6 * column, sizey = 4.5 * row;
-					Command(std::format("set terminal epscairo enhanced size {}in, {}in font \"Arial\"\nset output '{}'", sizex, sizey, repout));
-				}
-				else if (extension == ".pdf")
-				{
-					if (sizex == 0 && sizey == 0) sizex = 6 * column, sizey = 4.5 * row;
-					Command(std::format("set terminal pdfcairo enhanced size {}in, {}in font \"Arial\"\nset output '{}'", sizex, sizey, repout));
-				}
-			}
-			else if (output == "qt")
-			{
-				if (sizex == 0 && sizey == 0) sizex = 720 * column, sizey = 540 * row;
-				Command(std::format("set terminal qt size {}, {} font \"Arial\" enhanced", sizex, sizey));
-			}
-			else if (output == "wxt")
-			{
-				if (sizex == 0 && sizey == 0) sizex = 720 * column, sizey = 540 * row;
-				Command(std::format("set terminal wxt size {}, {} enhanced font \"Arial\"", sizex, sizey));
-			}
-			else std::cout << "WARNING : " << output << " is not a terminal or has no valid extension. Default terminal is selected." << std::endl;
-
-			Command("set multiplot layout " + std::to_string(row) + ", " + std::to_string(column));
-		}
+		std::cerr << "Gnuplot has already been open. " << Canvas::GetGnuplotPath() << std::endl;
+		return;
 	}
-	void End()
+	if ((ms_global_pipe = Canvas::OpenGnuplot(Canvas::GetGnuplotPath())) == nullptr)
 	{
-		if (Canvas::ms_global_pipe != nullptr)
-		{
-			Command("unset multiplot");
-			Canvas::CloseGnuplot(Canvas::ms_global_pipe);
-			Canvas::ms_global_pipe = nullptr;
-		}
+		std::cerr << "Gnuplot cannot open. " << Canvas::GetGnuplotPath() << std::endl;
 	}
-
-	template <class ...Args>
-	void Command(Args&& ...args)
+	else
 	{
-		adapt::Print(Canvas::ms_global_pipe, std::forward<Args>(args)...);
+		ms_output = output;
+		//Command("set bars small");
+		Command("set palette defined ( 0 '#000090',1 '#000fff',2 '#0090ff',3 '#0fffee',4 '#90ff70',5 '#ffee00',6 '#ff7000',7 '#ee0000',8 '#7f0000')");
+		Canvas::SetTerminal([]<class ...Args>(Args&& ...args) { MultiPlot::Command(std::forward<Args>(args)...); },
+							output, sizex, sizey, row, column, ms_font_size_ratio);
+		Command("set multiplot layout " + std::to_string(row) + ", " + std::to_string(column));
+		Command(std::format("set title font \"{},{:>.1f}", Canvas::ms_default_font_name, Canvas::ms_default_font_size * ms_font_size_ratio * 1.1));
 	}
+}
+void MultiPlot::End()
+{
+	if (ms_global_pipe != nullptr)
+	{
+		Command("unset multiplot");
+		Canvas::CloseGnuplot(ms_global_pipe);
+		ms_global_pipe = nullptr;
+	}
+	ms_output.clear();
+	ms_count = 0;
+	ms_font_size_ratio = 1.0;
+}
 
-private:
-};
+template <class ...Args>
+void MultiPlot::Command(Args&& ...args)
+{
+	adapt::Print(MultiPlot::ms_global_pipe, std::forward<Args>(args)...);
+}
 
 }
 

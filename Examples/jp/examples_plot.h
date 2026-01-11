@@ -90,7 +90,7 @@ int example_2d(const std::string& output_filename, bool enable_in_memory_data_tr
 
 	if (!enable_in_memory_data_transfer)
 	{
-		adapt::Canvas2D g2(output_filename + ".fileplot.png");
+		adapt::Canvas2D g2;
 		//g2.ShowCommands(true);
 		g2.SetTitle("example\\_2d");
 		g2.SetXRange(-4.0, 4.0);
@@ -295,7 +295,7 @@ int example_colormap(const std::string& output_filename, bool enable_in_memory_d
 	{
 		adapt::MultiPlot multi(output_filename, 1, 2, 1200, 600);
 
-		adapt::Canvas2D g1(output_filename + ".map_tmp");
+		adapt::Canvas2D g1;
 		//g1.ShowCommands(true);
 		g1.EnableInMemoryDataTransfer(enable_in_memory_data_transfer); // Enable or disable datablock feature of gnuplot
 		g1.SetTitle("example\\_colormap");
@@ -312,7 +312,7 @@ int example_colormap(const std::string& output_filename, bool enable_in_memory_d
 		//sleep for a short time to avoid the output image broken by multiplot.
 		std::this_thread::sleep_for(std::chrono::milliseconds(300));
 
-		adapt::Canvas2D g2(output_filename + ".cntr_tmp");
+		adapt::Canvas2D g2;
 		//g2.ShowCommands(true);
 		g2.EnableInMemoryDataTransfer(enable_in_memory_data_transfer); // Enable or disable datablock feature of gnuplot
 		g2.SetTitle("example\\_contour");
