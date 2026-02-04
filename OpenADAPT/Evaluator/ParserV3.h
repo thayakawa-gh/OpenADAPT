@@ -324,7 +324,12 @@ struct ParsedNode
 		else // IsConstNode()
 		{
 			// ConstNodeをFuncNodeでラップ
-			return ConvertToRttiFuncNode(std::move(AsConstNode()));
+			// Container型を指定する必要があるため、ConstNodeをラムダでキャプチャして
+			// MakeRttiFuncNodeを使う
+			auto cn = std::move(AsConstNode());
+			auto f = [](const auto& a) { return a; };
+			return eval::detail::MakeRttiFuncNode(f, ValueList<>(), std::tuple<>(),
+												  eval::detail::ConvertToNode(std::move(cn), std::true_type{}));
 		}
 	}
 };
@@ -548,23 +553,48 @@ private:
 			type = is_float ? FieldType::F64 : FieldType::I32;
 		}
 		
-		// 型に応じてConstNodeを生成
+		// 型に応じてConstNodeを生成し、直接FuncNodeでラップ
+		// ConstNodeを保持するのではなく、直接ラムダとして扱う
 		try
 		{
 			switch (type)
 			{
 			case FieldType::I08:
-				return NodeType(ConstNodeType(static_cast<int8_t>(std::stoi(value))));
+			{
+				int8_t val = static_cast<int8_t>(std::stoi(value));
+				auto lambda = [val](const Container&, const Bpos&) { return ConstNodeType(val); };
+				return NodeType(FuncNodeType(std::move(lambda)));
+			}
 			case FieldType::I16:
-				return NodeType(ConstNodeType(static_cast<int16_t>(std::stoi(value))));
+			{
+				int16_t val = static_cast<int16_t>(std::stoi(value));
+				auto lambda = [val](const Container&, const Bpos&) { return ConstNodeType(val); };
+				return NodeType(FuncNodeType(std::move(lambda)));
+			}
 			case FieldType::I32:
-				return NodeType(ConstNodeType(static_cast<int32_t>(std::stoi(value))));
+			{
+				int32_t val = static_cast<int32_t>(std::stoi(value));
+				auto lambda = [val](const Container&, const Bpos&) { return ConstNodeType(val); };
+				return NodeType(FuncNodeType(std::move(lambda)));
+			}
 			case FieldType::I64:
-				return NodeType(ConstNodeType(static_cast<int64_t>(std::stoll(value))));
+			{
+				int64_t val = static_cast<int64_t>(std::stoll(value));
+				auto lambda = [val](const Container&, const Bpos&) { return ConstNodeType(val); };
+				return NodeType(FuncNodeType(std::move(lambda)));
+			}
 			case FieldType::F32:
-				return NodeType(ConstNodeType(static_cast<float>(std::stof(value))));
+			{
+				float val = static_cast<float>(std::stof(value));
+				auto lambda = [val](const Container&, const Bpos&) { return ConstNodeType(val); };
+				return NodeType(FuncNodeType(std::move(lambda)));
+			}
 			case FieldType::F64:
-				return NodeType(ConstNodeType(std::stod(value)));
+			{
+				double val = std::stod(value);
+				auto lambda = [val](const Container&, const Bpos&) { return ConstNodeType(val); };
+				return NodeType(FuncNodeType(std::move(lambda)));
+			}
 			default:
 				throw std::runtime_error("Unsupported literal type");
 			}
@@ -581,8 +611,9 @@ private:
 		std::string value = m_current_token.value;
 		Advance();
 		
-		// 文字列のConstNodeを生成
-		return NodeType(ConstNodeType(std::move(value)));
+		// 文字列のFuncNodeを直接生成
+		auto lambda = [value](const Container&, const Bpos&) { return ConstNodeType(value); };
+		return NodeType(FuncNodeType(std::move(lambda)));
 	}
 	
 	// 関数呼び出しをパース
@@ -655,17 +686,29 @@ private:
 	
 	// 二項演算子を適用
 	// RttiFieldNodeは直接渡す（パフォーマンス最適化）
+	// ConstNodeは一度FuncNodeに変換する必要がある
 	NodeType ApplyBinaryOperator(const std::string& op, NodeType left, NodeType right)
 	{
-		// 訪問者パターンを使用して型に応じて処理
-		return std::visit([&](auto&& l, auto&& r) -> NodeType
+		// ConstNodeを先にFuncNodeに変換
+		if (left.IsConstNode())
 		{
-			using LeftType = std::decay_t<decltype(l)>;
-			using RightType = std::decay_t<decltype(r)>;
-			
-			// FieldNodeまたはFuncNodeを直接演算子に渡す
-			FuncNodeType result;
-			
+			auto func_node = ConvertToRttiFuncNode(std::move(left.AsConstNode()));
+			left = NodeType(std::move(func_node));
+		}
+		if (right.IsConstNode())
+		{
+			auto func_node = ConvertToRttiFuncNode(std::move(right.AsConstNode()));
+			right = NodeType(std::move(func_node));
+		}
+		
+		// この時点でleftとrightはFieldNodeまたはFuncNode（ConstNodeではない）
+		// 各ケースを直接処理して、ConstNodeのパスを避ける
+		FuncNodeType result;
+		
+		if (left.IsFieldNode() && right.IsFieldNode())
+		{
+			auto& l = left.AsFieldNode();
+			auto& r = right.AsFieldNode();
 			if (op == ops::ADD) result = l + r;
 			else if (op == ops::SUB) result = l - r;
 			else if (op == ops::MUL) result = l * r;
@@ -685,25 +728,114 @@ private:
 			else if (op == ops::SHL) result = l << r;
 			else if (op == ops::SHR) result = l >> r;
 			else throw std::runtime_error("Unknown binary operator: " + op);
-			
-			return NodeType(std::move(result));
-		}, left.node, right.node);
+		}
+		else if (left.IsFieldNode() && right.IsFuncNode())
+		{
+			auto& l = left.AsFieldNode();
+			auto& r = right.AsFuncNode();
+			if (op == ops::ADD) result = l + r;
+			else if (op == ops::SUB) result = l - r;
+			else if (op == ops::MUL) result = l * r;
+			else if (op == ops::DIV) result = l / r;
+			else if (op == ops::MOD) result = l % r;
+			else if (op == ops::EQ) result = l == r;
+			else if (op == ops::NE) result = l != r;
+			else if (op == ops::LT) result = l < r;
+			else if (op == ops::LE) result = l <= r;
+			else if (op == ops::GT) result = l > r;
+			else if (op == ops::GE) result = l >= r;
+			else if (op == ops::AND) result = l && r;
+			else if (op == ops::OR) result = l || r;
+			else if (op == ops::BIT_AND) result = l & r;
+			else if (op == ops::BIT_OR) result = l | r;
+			else if (op == ops::BIT_XOR) result = l ^ r;
+			else if (op == ops::SHL) result = l << r;
+			else if (op == ops::SHR) result = l >> r;
+			else throw std::runtime_error("Unknown binary operator: " + op);
+		}
+		else if (left.IsFuncNode() && right.IsFieldNode())
+		{
+			auto& l = left.AsFuncNode();
+			auto& r = right.AsFieldNode();
+			if (op == ops::ADD) result = l + r;
+			else if (op == ops::SUB) result = l - r;
+			else if (op == ops::MUL) result = l * r;
+			else if (op == ops::DIV) result = l / r;
+			else if (op == ops::MOD) result = l % r;
+			else if (op == ops::EQ) result = l == r;
+			else if (op == ops::NE) result = l != r;
+			else if (op == ops::LT) result = l < r;
+			else if (op == ops::LE) result = l <= r;
+			else if (op == ops::GT) result = l > r;
+			else if (op == ops::GE) result = l >= r;
+			else if (op == ops::AND) result = l && r;
+			else if (op == ops::OR) result = l || r;
+			else if (op == ops::BIT_AND) result = l & r;
+			else if (op == ops::BIT_OR) result = l | r;
+			else if (op == ops::BIT_XOR) result = l ^ r;
+			else if (op == ops::SHL) result = l << r;
+			else if (op == ops::SHR) result = l >> r;
+			else throw std::runtime_error("Unknown binary operator: " + op);
+		}
+		else // both FuncNode
+		{
+			auto& l = left.AsFuncNode();
+			auto& r = right.AsFuncNode();
+			if (op == ops::ADD) result = l + r;
+			else if (op == ops::SUB) result = l - r;
+			else if (op == ops::MUL) result = l * r;
+			else if (op == ops::DIV) result = l / r;
+			else if (op == ops::MOD) result = l % r;
+			else if (op == ops::EQ) result = l == r;
+			else if (op == ops::NE) result = l != r;
+			else if (op == ops::LT) result = l < r;
+			else if (op == ops::LE) result = l <= r;
+			else if (op == ops::GT) result = l > r;
+			else if (op == ops::GE) result = l >= r;
+			else if (op == ops::AND) result = l && r;
+			else if (op == ops::OR) result = l || r;
+			else if (op == ops::BIT_AND) result = l & r;
+			else if (op == ops::BIT_OR) result = l | r;
+			else if (op == ops::BIT_XOR) result = l ^ r;
+			else if (op == ops::SHL) result = l << r;
+			else if (op == ops::SHR) result = l >> r;
+			else throw std::runtime_error("Unknown binary operator: " + op);
+		}
+		
+		return NodeType(std::move(result));
 	}
 	
 	// 単項演算子を適用
 	NodeType ApplyUnaryOperator(const std::string& op, NodeType operand)
 	{
-		return std::visit([&](auto&& o) -> NodeType
+		// ConstNodeを先にFuncNodeに変換
+		if (operand.IsConstNode())
 		{
-			FuncNodeType result;
-			
+			auto func_node = ConvertToRttiFuncNode(std::move(operand.AsConstNode()));
+			operand = NodeType(std::move(func_node));
+		}
+		
+		// この時点でoperandはFieldNodeまたはFuncNode（ConstNodeではない）
+		FuncNodeType result;
+		
+		if (operand.IsFieldNode())
+		{
+			auto& o = operand.AsFieldNode();
 			if (op == ops::NEG) result = -o;
 			else if (op == ops::NOT) result = !o;
 			else if (op == ops::BIT_NOT) result = ~o;
 			else throw std::runtime_error("Unknown unary operator: " + op);
-			
-			return NodeType(std::move(result));
-		}, operand.node);
+		}
+		else // FuncNode
+		{
+			auto& o = operand.AsFuncNode();
+			if (op == ops::NEG) result = -o;
+			else if (op == ops::NOT) result = !o;
+			else if (op == ops::BIT_NOT) result = ~o;
+			else throw std::runtime_error("Unknown unary operator: " + op);
+		}
+		
+		return NodeType(std::move(result));
 	}
 	
 	// 関数を適用
@@ -740,115 +872,225 @@ private:
 	
 	// レベル付き階層関数を適用
 	// RttiFieldNodeは直接渡す（パフォーマンス最適化）
+	// ConstNodeは階層関数に使用できない
 	NodeType ApplyLayerFunctionWithLevel(const std::string& func_name, NodeType arg, int level)
 	{
-		return std::visit([&](auto&& a) -> NodeType
+		// ConstNodeは階層関数では使えない（階層を持たないため）
+		if (arg.IsConstNode())
 		{
-			#define APPLY_LAYER_FUNC_CASE(CONST_NAME, FUNC_NAME, LEVEL) \
-				if (func_name == ops::CONST_NAME && level == LEVEL) { \
-					return NodeType(eval::FUNC_NAME##LEVEL(std::forward<decltype(a)>(a))); \
-				}
+			throw std::runtime_error("Cannot apply layer function to constant literal");
+		}
+		
+		#define APPLY_LAYER_FUNC_IMPL(FIELD_OR_FUNC, CONST_NAME, FUNC_NAME, LEVEL) \
+			if (func_name == ops::CONST_NAME && level == LEVEL) { \
+				return NodeType(eval::FUNC_NAME##LEVEL(std::forward<decltype(FIELD_OR_FUNC)>(FIELD_OR_FUNC))); \
+			}
+		
+		// FieldNodeの場合
+		if (arg.IsFieldNode())
+		{
+			auto& a = arg.AsFieldNode();
 			
 			// size
-			APPLY_LAYER_FUNC_CASE(SIZE, size, 1)
-			APPLY_LAYER_FUNC_CASE(SIZE, size, 2)
-			APPLY_LAYER_FUNC_CASE(SIZE, size, 3)
-			APPLY_LAYER_FUNC_CASE(SIZE, size, 4)
-			APPLY_LAYER_FUNC_CASE(SIZE, size, 5)
-			APPLY_LAYER_FUNC_CASE(SIZE, size, 6)
-			APPLY_LAYER_FUNC_CASE(SIZE, size, 7)
-			APPLY_LAYER_FUNC_CASE(SIZE, size, 8)
-			APPLY_LAYER_FUNC_CASE(SIZE, size, 9)
-			APPLY_LAYER_FUNC_CASE(SIZE, size, 10)
+			APPLY_LAYER_FUNC_IMPL(a, SIZE, size, 1)
+			APPLY_LAYER_FUNC_IMPL(a, SIZE, size, 2)
+			APPLY_LAYER_FUNC_IMPL(a, SIZE, size, 3)
+			APPLY_LAYER_FUNC_IMPL(a, SIZE, size, 4)
+			APPLY_LAYER_FUNC_IMPL(a, SIZE, size, 5)
+			APPLY_LAYER_FUNC_IMPL(a, SIZE, size, 6)
+			APPLY_LAYER_FUNC_IMPL(a, SIZE, size, 7)
+			APPLY_LAYER_FUNC_IMPL(a, SIZE, size, 8)
+			APPLY_LAYER_FUNC_IMPL(a, SIZE, size, 9)
+			APPLY_LAYER_FUNC_IMPL(a, SIZE, size, 10)
 			
 			// exist
-			APPLY_LAYER_FUNC_CASE(EXIST, exist, 1)
-			APPLY_LAYER_FUNC_CASE(EXIST, exist, 2)
-			APPLY_LAYER_FUNC_CASE(EXIST, exist, 3)
-			APPLY_LAYER_FUNC_CASE(EXIST, exist, 4)
-			APPLY_LAYER_FUNC_CASE(EXIST, exist, 5)
-			APPLY_LAYER_FUNC_CASE(EXIST, exist, 6)
-			APPLY_LAYER_FUNC_CASE(EXIST, exist, 7)
-			APPLY_LAYER_FUNC_CASE(EXIST, exist, 8)
-			APPLY_LAYER_FUNC_CASE(EXIST, exist, 9)
-			APPLY_LAYER_FUNC_CASE(EXIST, exist, 10)
+			APPLY_LAYER_FUNC_IMPL(a, EXIST, exist, 1)
+			APPLY_LAYER_FUNC_IMPL(a, EXIST, exist, 2)
+			APPLY_LAYER_FUNC_IMPL(a, EXIST, exist, 3)
+			APPLY_LAYER_FUNC_IMPL(a, EXIST, exist, 4)
+			APPLY_LAYER_FUNC_IMPL(a, EXIST, exist, 5)
+			APPLY_LAYER_FUNC_IMPL(a, EXIST, exist, 6)
+			APPLY_LAYER_FUNC_IMPL(a, EXIST, exist, 7)
+			APPLY_LAYER_FUNC_IMPL(a, EXIST, exist, 8)
+			APPLY_LAYER_FUNC_IMPL(a, EXIST, exist, 9)
+			APPLY_LAYER_FUNC_IMPL(a, EXIST, exist, 10)
 			
 			// count
-			APPLY_LAYER_FUNC_CASE(COUNT, count, 1)
-			APPLY_LAYER_FUNC_CASE(COUNT, count, 2)
-			APPLY_LAYER_FUNC_CASE(COUNT, count, 3)
-			APPLY_LAYER_FUNC_CASE(COUNT, count, 4)
-			APPLY_LAYER_FUNC_CASE(COUNT, count, 5)
-			APPLY_LAYER_FUNC_CASE(COUNT, count, 6)
-			APPLY_LAYER_FUNC_CASE(COUNT, count, 7)
-			APPLY_LAYER_FUNC_CASE(COUNT, count, 8)
-			APPLY_LAYER_FUNC_CASE(COUNT, count, 9)
-			APPLY_LAYER_FUNC_CASE(COUNT, count, 10)
+			APPLY_LAYER_FUNC_IMPL(a, COUNT, count, 1)
+			APPLY_LAYER_FUNC_IMPL(a, COUNT, count, 2)
+			APPLY_LAYER_FUNC_IMPL(a, COUNT, count, 3)
+			APPLY_LAYER_FUNC_IMPL(a, COUNT, count, 4)
+			APPLY_LAYER_FUNC_IMPL(a, COUNT, count, 5)
+			APPLY_LAYER_FUNC_IMPL(a, COUNT, count, 6)
+			APPLY_LAYER_FUNC_IMPL(a, COUNT, count, 7)
+			APPLY_LAYER_FUNC_IMPL(a, COUNT, count, 8)
+			APPLY_LAYER_FUNC_IMPL(a, COUNT, count, 9)
+			APPLY_LAYER_FUNC_IMPL(a, COUNT, count, 10)
 			
 			// sum
-			APPLY_LAYER_FUNC_CASE(SUM, sum, 1)
-			APPLY_LAYER_FUNC_CASE(SUM, sum, 2)
-			APPLY_LAYER_FUNC_CASE(SUM, sum, 3)
-			APPLY_LAYER_FUNC_CASE(SUM, sum, 4)
-			APPLY_LAYER_FUNC_CASE(SUM, sum, 5)
-			APPLY_LAYER_FUNC_CASE(SUM, sum, 6)
-			APPLY_LAYER_FUNC_CASE(SUM, sum, 7)
-			APPLY_LAYER_FUNC_CASE(SUM, sum, 8)
-			APPLY_LAYER_FUNC_CASE(SUM, sum, 9)
-			APPLY_LAYER_FUNC_CASE(SUM, sum, 10)
+			APPLY_LAYER_FUNC_IMPL(a, SUM, sum, 1)
+			APPLY_LAYER_FUNC_IMPL(a, SUM, sum, 2)
+			APPLY_LAYER_FUNC_IMPL(a, SUM, sum, 3)
+			APPLY_LAYER_FUNC_IMPL(a, SUM, sum, 4)
+			APPLY_LAYER_FUNC_IMPL(a, SUM, sum, 5)
+			APPLY_LAYER_FUNC_IMPL(a, SUM, sum, 6)
+			APPLY_LAYER_FUNC_IMPL(a, SUM, sum, 7)
+			APPLY_LAYER_FUNC_IMPL(a, SUM, sum, 8)
+			APPLY_LAYER_FUNC_IMPL(a, SUM, sum, 9)
+			APPLY_LAYER_FUNC_IMPL(a, SUM, sum, 10)
 			
 			// mean
-			APPLY_LAYER_FUNC_CASE(MEAN, mean, 1)
-			APPLY_LAYER_FUNC_CASE(MEAN, mean, 2)
-			APPLY_LAYER_FUNC_CASE(MEAN, mean, 3)
-			APPLY_LAYER_FUNC_CASE(MEAN, mean, 4)
-			APPLY_LAYER_FUNC_CASE(MEAN, mean, 5)
-			APPLY_LAYER_FUNC_CASE(MEAN, mean, 6)
-			APPLY_LAYER_FUNC_CASE(MEAN, mean, 7)
-			APPLY_LAYER_FUNC_CASE(MEAN, mean, 8)
-			APPLY_LAYER_FUNC_CASE(MEAN, mean, 9)
-			APPLY_LAYER_FUNC_CASE(MEAN, mean, 10)
+			APPLY_LAYER_FUNC_IMPL(a, MEAN, mean, 1)
+			APPLY_LAYER_FUNC_IMPL(a, MEAN, mean, 2)
+			APPLY_LAYER_FUNC_IMPL(a, MEAN, mean, 3)
+			APPLY_LAYER_FUNC_IMPL(a, MEAN, mean, 4)
+			APPLY_LAYER_FUNC_IMPL(a, MEAN, mean, 5)
+			APPLY_LAYER_FUNC_IMPL(a, MEAN, mean, 6)
+			APPLY_LAYER_FUNC_IMPL(a, MEAN, mean, 7)
+			APPLY_LAYER_FUNC_IMPL(a, MEAN, mean, 8)
+			APPLY_LAYER_FUNC_IMPL(a, MEAN, mean, 9)
+			APPLY_LAYER_FUNC_IMPL(a, MEAN, mean, 10)
 			
 			// dev
-			APPLY_LAYER_FUNC_CASE(DEV, dev, 1)
-			APPLY_LAYER_FUNC_CASE(DEV, dev, 2)
-			APPLY_LAYER_FUNC_CASE(DEV, dev, 3)
-			APPLY_LAYER_FUNC_CASE(DEV, dev, 4)
-			APPLY_LAYER_FUNC_CASE(DEV, dev, 5)
-			APPLY_LAYER_FUNC_CASE(DEV, dev, 6)
-			APPLY_LAYER_FUNC_CASE(DEV, dev, 7)
-			APPLY_LAYER_FUNC_CASE(DEV, dev, 8)
-			APPLY_LAYER_FUNC_CASE(DEV, dev, 9)
-			APPLY_LAYER_FUNC_CASE(DEV, dev, 10)
+			APPLY_LAYER_FUNC_IMPL(a, DEV, dev, 1)
+			APPLY_LAYER_FUNC_IMPL(a, DEV, dev, 2)
+			APPLY_LAYER_FUNC_IMPL(a, DEV, dev, 3)
+			APPLY_LAYER_FUNC_IMPL(a, DEV, dev, 4)
+			APPLY_LAYER_FUNC_IMPL(a, DEV, dev, 5)
+			APPLY_LAYER_FUNC_IMPL(a, DEV, dev, 6)
+			APPLY_LAYER_FUNC_IMPL(a, DEV, dev, 7)
+			APPLY_LAYER_FUNC_IMPL(a, DEV, dev, 8)
+			APPLY_LAYER_FUNC_IMPL(a, DEV, dev, 9)
+			APPLY_LAYER_FUNC_IMPL(a, DEV, dev, 10)
 			
 			// greatest
-			APPLY_LAYER_FUNC_CASE(GREATEST, greatest, 1)
-			APPLY_LAYER_FUNC_CASE(GREATEST, greatest, 2)
-			APPLY_LAYER_FUNC_CASE(GREATEST, greatest, 3)
-			APPLY_LAYER_FUNC_CASE(GREATEST, greatest, 4)
-			APPLY_LAYER_FUNC_CASE(GREATEST, greatest, 5)
-			APPLY_LAYER_FUNC_CASE(GREATEST, greatest, 6)
-			APPLY_LAYER_FUNC_CASE(GREATEST, greatest, 7)
-			APPLY_LAYER_FUNC_CASE(GREATEST, greatest, 8)
-			APPLY_LAYER_FUNC_CASE(GREATEST, greatest, 9)
-			APPLY_LAYER_FUNC_CASE(GREATEST, greatest, 10)
+			APPLY_LAYER_FUNC_IMPL(a, GREATEST, greatest, 1)
+			APPLY_LAYER_FUNC_IMPL(a, GREATEST, greatest, 2)
+			APPLY_LAYER_FUNC_IMPL(a, GREATEST, greatest, 3)
+			APPLY_LAYER_FUNC_IMPL(a, GREATEST, greatest, 4)
+			APPLY_LAYER_FUNC_IMPL(a, GREATEST, greatest, 5)
+			APPLY_LAYER_FUNC_IMPL(a, GREATEST, greatest, 6)
+			APPLY_LAYER_FUNC_IMPL(a, GREATEST, greatest, 7)
+			APPLY_LAYER_FUNC_IMPL(a, GREATEST, greatest, 8)
+			APPLY_LAYER_FUNC_IMPL(a, GREATEST, greatest, 9)
+			APPLY_LAYER_FUNC_IMPL(a, GREATEST, greatest, 10)
 			
 			// least
-			APPLY_LAYER_FUNC_CASE(LEAST, least, 1)
-			APPLY_LAYER_FUNC_CASE(LEAST, least, 2)
-			APPLY_LAYER_FUNC_CASE(LEAST, least, 3)
-			APPLY_LAYER_FUNC_CASE(LEAST, least, 4)
-			APPLY_LAYER_FUNC_CASE(LEAST, least, 5)
-			APPLY_LAYER_FUNC_CASE(LEAST, least, 6)
-			APPLY_LAYER_FUNC_CASE(LEAST, least, 7)
-			APPLY_LAYER_FUNC_CASE(LEAST, least, 8)
-			APPLY_LAYER_FUNC_CASE(LEAST, least, 9)
-			APPLY_LAYER_FUNC_CASE(LEAST, least, 10)
+			APPLY_LAYER_FUNC_IMPL(a, LEAST, least, 1)
+			APPLY_LAYER_FUNC_IMPL(a, LEAST, least, 2)
+			APPLY_LAYER_FUNC_IMPL(a, LEAST, least, 3)
+			APPLY_LAYER_FUNC_IMPL(a, LEAST, least, 4)
+			APPLY_LAYER_FUNC_IMPL(a, LEAST, least, 5)
+			APPLY_LAYER_FUNC_IMPL(a, LEAST, least, 6)
+			APPLY_LAYER_FUNC_IMPL(a, LEAST, least, 7)
+			APPLY_LAYER_FUNC_IMPL(a, LEAST, least, 8)
+			APPLY_LAYER_FUNC_IMPL(a, LEAST, least, 9)
+			APPLY_LAYER_FUNC_IMPL(a, LEAST, least, 10)
+		}
+		else // FuncNode
+		{
+			auto& a = arg.AsFuncNode();
 			
-			#undef APPLY_LAYER_FUNC_CASE
+			// size
+			APPLY_LAYER_FUNC_IMPL(a, SIZE, size, 1)
+			APPLY_LAYER_FUNC_IMPL(a, SIZE, size, 2)
+			APPLY_LAYER_FUNC_IMPL(a, SIZE, size, 3)
+			APPLY_LAYER_FUNC_IMPL(a, SIZE, size, 4)
+			APPLY_LAYER_FUNC_IMPL(a, SIZE, size, 5)
+			APPLY_LAYER_FUNC_IMPL(a, SIZE, size, 6)
+			APPLY_LAYER_FUNC_IMPL(a, SIZE, size, 7)
+			APPLY_LAYER_FUNC_IMPL(a, SIZE, size, 8)
+			APPLY_LAYER_FUNC_IMPL(a, SIZE, size, 9)
+			APPLY_LAYER_FUNC_IMPL(a, SIZE, size, 10)
 			
-			throw std::runtime_error("Unknown or unsupported layer function: " + func_name);
-		}, arg.node);
+			// exist
+			APPLY_LAYER_FUNC_IMPL(a, EXIST, exist, 1)
+			APPLY_LAYER_FUNC_IMPL(a, EXIST, exist, 2)
+			APPLY_LAYER_FUNC_IMPL(a, EXIST, exist, 3)
+			APPLY_LAYER_FUNC_IMPL(a, EXIST, exist, 4)
+			APPLY_LAYER_FUNC_IMPL(a, EXIST, exist, 5)
+			APPLY_LAYER_FUNC_IMPL(a, EXIST, exist, 6)
+			APPLY_LAYER_FUNC_IMPL(a, EXIST, exist, 7)
+			APPLY_LAYER_FUNC_IMPL(a, EXIST, exist, 8)
+			APPLY_LAYER_FUNC_IMPL(a, EXIST, exist, 9)
+			APPLY_LAYER_FUNC_IMPL(a, EXIST, exist, 10)
+			
+			// count
+			APPLY_LAYER_FUNC_IMPL(a, COUNT, count, 1)
+			APPLY_LAYER_FUNC_IMPL(a, COUNT, count, 2)
+			APPLY_LAYER_FUNC_IMPL(a, COUNT, count, 3)
+			APPLY_LAYER_FUNC_IMPL(a, COUNT, count, 4)
+			APPLY_LAYER_FUNC_IMPL(a, COUNT, count, 5)
+			APPLY_LAYER_FUNC_IMPL(a, COUNT, count, 6)
+			APPLY_LAYER_FUNC_IMPL(a, COUNT, count, 7)
+			APPLY_LAYER_FUNC_IMPL(a, COUNT, count, 8)
+			APPLY_LAYER_FUNC_IMPL(a, COUNT, count, 9)
+			APPLY_LAYER_FUNC_IMPL(a, COUNT, count, 10)
+			
+			// sum
+			APPLY_LAYER_FUNC_IMPL(a, SUM, sum, 1)
+			APPLY_LAYER_FUNC_IMPL(a, SUM, sum, 2)
+			APPLY_LAYER_FUNC_IMPL(a, SUM, sum, 3)
+			APPLY_LAYER_FUNC_IMPL(a, SUM, sum, 4)
+			APPLY_LAYER_FUNC_IMPL(a, SUM, sum, 5)
+			APPLY_LAYER_FUNC_IMPL(a, SUM, sum, 6)
+			APPLY_LAYER_FUNC_IMPL(a, SUM, sum, 7)
+			APPLY_LAYER_FUNC_IMPL(a, SUM, sum, 8)
+			APPLY_LAYER_FUNC_IMPL(a, SUM, sum, 9)
+			APPLY_LAYER_FUNC_IMPL(a, SUM, sum, 10)
+			
+			// mean
+			APPLY_LAYER_FUNC_IMPL(a, MEAN, mean, 1)
+			APPLY_LAYER_FUNC_IMPL(a, MEAN, mean, 2)
+			APPLY_LAYER_FUNC_IMPL(a, MEAN, mean, 3)
+			APPLY_LAYER_FUNC_IMPL(a, MEAN, mean, 4)
+			APPLY_LAYER_FUNC_IMPL(a, MEAN, mean, 5)
+			APPLY_LAYER_FUNC_IMPL(a, MEAN, mean, 6)
+			APPLY_LAYER_FUNC_IMPL(a, MEAN, mean, 7)
+			APPLY_LAYER_FUNC_IMPL(a, MEAN, mean, 8)
+			APPLY_LAYER_FUNC_IMPL(a, MEAN, mean, 9)
+			APPLY_LAYER_FUNC_IMPL(a, MEAN, mean, 10)
+			
+			// dev
+			APPLY_LAYER_FUNC_IMPL(a, DEV, dev, 1)
+			APPLY_LAYER_FUNC_IMPL(a, DEV, dev, 2)
+			APPLY_LAYER_FUNC_IMPL(a, DEV, dev, 3)
+			APPLY_LAYER_FUNC_IMPL(a, DEV, dev, 4)
+			APPLY_LAYER_FUNC_IMPL(a, DEV, dev, 5)
+			APPLY_LAYER_FUNC_IMPL(a, DEV, dev, 6)
+			APPLY_LAYER_FUNC_IMPL(a, DEV, dev, 7)
+			APPLY_LAYER_FUNC_IMPL(a, DEV, dev, 8)
+			APPLY_LAYER_FUNC_IMPL(a, DEV, dev, 9)
+			APPLY_LAYER_FUNC_IMPL(a, DEV, dev, 10)
+			
+			// greatest
+			APPLY_LAYER_FUNC_IMPL(a, GREATEST, greatest, 1)
+			APPLY_LAYER_FUNC_IMPL(a, GREATEST, greatest, 2)
+			APPLY_LAYER_FUNC_IMPL(a, GREATEST, greatest, 3)
+			APPLY_LAYER_FUNC_IMPL(a, GREATEST, greatest, 4)
+			APPLY_LAYER_FUNC_IMPL(a, GREATEST, greatest, 5)
+			APPLY_LAYER_FUNC_IMPL(a, GREATEST, greatest, 6)
+			APPLY_LAYER_FUNC_IMPL(a, GREATEST, greatest, 7)
+			APPLY_LAYER_FUNC_IMPL(a, GREATEST, greatest, 8)
+			APPLY_LAYER_FUNC_IMPL(a, GREATEST, greatest, 9)
+			APPLY_LAYER_FUNC_IMPL(a, GREATEST, greatest, 10)
+			
+			// least
+			APPLY_LAYER_FUNC_IMPL(a, LEAST, least, 1)
+			APPLY_LAYER_FUNC_IMPL(a, LEAST, least, 2)
+			APPLY_LAYER_FUNC_IMPL(a, LEAST, least, 3)
+			APPLY_LAYER_FUNC_IMPL(a, LEAST, least, 4)
+			APPLY_LAYER_FUNC_IMPL(a, LEAST, least, 5)
+			APPLY_LAYER_FUNC_IMPL(a, LEAST, least, 6)
+			APPLY_LAYER_FUNC_IMPL(a, LEAST, least, 7)
+			APPLY_LAYER_FUNC_IMPL(a, LEAST, least, 8)
+			APPLY_LAYER_FUNC_IMPL(a, LEAST, least, 9)
+			APPLY_LAYER_FUNC_IMPL(a, LEAST, least, 10)
+		}
+		
+		#undef APPLY_LAYER_FUNC_IMPL
+		
+		throw std::runtime_error("Unknown or unsupported layer function: " + func_name);
 	}
 	
 	// メンバ関数を適用
