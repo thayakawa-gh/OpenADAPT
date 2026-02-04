@@ -39,6 +39,7 @@ struct Token
 	std::string value;
 	int precedence;  // 演算子の優先順位
 	
+	Token() : type(TokenType::End), value(""), precedence(0) {}
 	Token(TokenType t, std::string v = "", int prec = 0)
 		: type(t), value(std::move(v)), precedence(prec) {}
 };
