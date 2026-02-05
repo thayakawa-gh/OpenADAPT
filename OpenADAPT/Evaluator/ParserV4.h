@@ -252,6 +252,10 @@ private:
 // パーサーで扱うノードの型
 // ========================================
 
+// Forward declaration
+template <class Container>
+class Parser;
+
 template <class Container>
 struct ParsedNode
 {
@@ -281,29 +285,8 @@ struct ParsedNode
 	FuncNodeType& AsFuncNode() { return std::get<FuncNodeType>(node); }
 	const FuncNodeType& AsFuncNode() const { return std::get<FuncNodeType>(node); }
 	
-	// 最終的な結果としてはRttiFuncNodeを返す
-	// FieldNodeとConstNodeはここで初めてFuncNodeに変換される
-	FuncNodeType ToFuncNode() &&
-	{
-		if (IsFuncNode())
-		{
-			return std::move(AsFuncNode());
-		}
-		else if (IsFieldNode())
-		{
-			return ConvertToRttiFuncNode(std::move(AsFieldNode()));
-		}
-		else // IsConstNode()
-		{
-			// ConstNodeをFuncNodeに変換
-			// ConstNodeはContainerを持たないので、ラムダでラップする
-			auto cn = std::move(AsConstNode());
-			return FuncNodeType([cn = std::move(cn)](const Container&, const Bpos&) mutable
-			{
-				return std::move(cn);
-			});
-		}
-	}
+	// 最終的な結果としてはRttiFuncNodeを返す（定義は後述）
+	FuncNodeType ToFuncNode(Parser<Container>* parser) &&;
 };
 
 // ========================================
@@ -334,7 +317,21 @@ public:
 		{
 			throw std::runtime_error("Unexpected token after expression: " + m_current_token.value);
 		}
-		return std::move(result).ToFuncNode();
+		return std::move(result).ToFuncNode(this);
+	}
+	
+	// ConstNodeをFuncNodeに変換するヘルパー（ParsedNode::ToFuncNodeから使用）
+	FuncNodeType WrapConstNode(ConstNodeType cn)
+	{
+		// ConstNodeをFuncNodeに変換するために、Container型の情報を持つ
+		// 恒等関数を使ってConstNodeをラップ
+		// 注意: この実装ではConstNodeをFuncNodeにラップするが、
+		// 実際の評価時にはConstNodeの値が直接使用される
+		auto wrapper = [cn = std::move(cn)](const Container&, const Bpos&) mutable -> ConstNodeType
+		{
+			return std::move(cn);
+		};
+		return FuncNodeType(std::move(wrapper));
 	}
 	
 private:
@@ -504,7 +501,10 @@ private:
 			auto it = m_field_map.find(name);
 			if (it != m_field_map.end())
 			{
-				return NodeType(FieldNodeType(PlaceholderType::Get(it->second)));
+				// GetPlaceholders APIを使用
+				std::array<const char*, 1> field_names = {name.c_str()};
+				auto [placeholder] = m_container.GetPlaceholders(field_names[0]);
+				return NodeType(FieldNodeType(placeholder));
 			}
 			
 			throw std::runtime_error("Unknown identifier: " + name);
@@ -614,11 +614,7 @@ private:
 		// これによりExtractContainerがContainerを見つけられる
 		if (left.IsConstNode() && right.IsConstNode())
 		{
-			auto cn = std::move(left.AsConstNode());
-			left = NodeType(FuncNodeType([cn = std::move(cn)](const Container&, const Bpos&) mutable
-			{
-				return std::move(cn);
-			}));
+			left = NodeType(WrapConstNode(std::move(left.AsConstNode())));
 		}
 		
 		// マクロで演算子適用を定義
@@ -670,12 +666,16 @@ private:
 	// 単項演算子を適用
 	NodeType ApplyUnaryOperator(const std::string& op, NodeType operand)
 	{
+		// 特殊ケース: ConstNodeの場合、FuncNodeに変換してから適用
+		if (operand.IsConstNode())
+		{
+			operand = NodeType(WrapConstNode(std::move(operand.AsConstNode())));
+		}
+		
 		#define APPLY_UNARY_OP(OP_CONST, OP_SYM) \
 			if (op == ops::OP_CONST) { \
 				if (operand.IsFieldNode()) { \
 					return NodeType(OP_SYM operand.AsFieldNode()); \
-				} else if (operand.IsConstNode()) { \
-					return NodeType(OP_SYM operand.AsConstNode()); \
 				} else { \
 					return NodeType(OP_SYM operand.AsFuncNode()); \
 				} \
@@ -815,12 +815,16 @@ private:
 		{
 			auto& arg = args[0];
 			
+			// 特殊ケース: ConstNodeの場合、FuncNodeに変換してから適用
+			if (arg.IsConstNode())
+			{
+				arg = NodeType(WrapConstNode(std::move(arg.AsConstNode())));
+			}
+			
 			#define APPLY_REGULAR_FUNC_1ARG(FUNC_CONST, FUNC_NAME) \
 				if (func_name == funcs::FUNC_CONST) { \
 					if (arg.IsFieldNode()) { \
 						return NodeType(eval::FUNC_NAME(arg.AsFieldNode())); \
-					} else if (arg.IsConstNode()) { \
-						return NodeType(eval::FUNC_NAME(arg.AsConstNode())); \
 					} else { \
 						return NodeType(eval::FUNC_NAME(arg.AsFuncNode())); \
 					} \
@@ -847,11 +851,7 @@ private:
 			// 特殊ケース: 両方がConstNodeの場合、最初のものをFuncNodeに変換
 			if (arg1.IsConstNode() && arg2.IsConstNode())
 			{
-				auto cn = std::move(arg1.AsConstNode());
-				arg1 = NodeType(FuncNodeType([cn = std::move(cn)](const Container&, const Bpos&) mutable
-				{
-					return std::move(cn);
-				}));
+				arg1 = NodeType(WrapConstNode(std::move(arg1.AsConstNode())));
 			}
 			
 			#define APPLY_REGULAR_FUNC_2ARG(FUNC_CONST, FUNC_NAME) \
@@ -888,6 +888,11 @@ private:
 	// メンバ関数を適用（.at(), .outer(), etc.）
 	NodeType ApplyMemberFunction(const std::string& member_name, NodeType object, std::vector<NodeType> args)
 	{
+		// TODO: メンバ関数の実装は今後追加
+		// .at(), .outer(), .o() などのメンバ関数は RttiFieldNode/RttiFuncNode に実装が必要
+		throw std::runtime_error("Member functions not yet implemented: ." + member_name + "()");
+		
+		/* 実装例（将来）:
 		// .at() メンバ関数
 		if (member_name == funcs::AT)
 		{
@@ -961,6 +966,7 @@ private:
 		}
 		
 		throw std::runtime_error("Unknown member function: " + member_name);
+		*/
 	}
 	
 	const Container& m_container;
@@ -968,6 +974,27 @@ private:
 	Token m_current_token;
 	std::unordered_map<std::string, size_t> m_field_map;
 };
+
+// ========================================
+// ParsedNode::ToFuncNode の実装
+// ========================================
+
+template <class Container>
+typename ParsedNode<Container>::FuncNodeType ParsedNode<Container>::ToFuncNode(Parser<Container>* parser) &&
+{
+	if (IsFuncNode())
+	{
+		return std::move(AsFuncNode());
+	}
+	else if (IsFieldNode())
+	{
+		return ConvertToRttiFuncNode(std::move(AsFieldNode()));
+	}
+	else // IsConstNode()
+	{
+		return parser->WrapConstNode(std::move(AsConstNode()));
+	}
+}
 
 // ========================================
 // パーサーのエントリーポイント
