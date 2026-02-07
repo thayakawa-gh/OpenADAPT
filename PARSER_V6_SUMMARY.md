@@ -11,7 +11,7 @@ ParserV6.h is a completely new parser implementation that addresses all feedback
 ## Files Created
 
 - **Parser**: `/home/runner/work/OpenADAPT/OpenADAPT/OpenADAPT/Evaluator/ParserV6.h` (1067 lines)
-- **Test**: `/home/runner/work/OpenADAPT/OpenADAPT/Examples/parser_v6_simple_test.cpp` (177 lines)
+- **Test**: `/home/runner/work/OpenADAPT/OpenADAPT/Examples/parser_v6_simple_test.cpp` (169 lines)
 
 ## Key Features
 
@@ -146,7 +146,7 @@ if (func_name == "outer" || func_name == "o")
 **Operator Precedence**: 4 tests
 - Verifies correct precedence ordering
 
-**Total**: 91+ test cases (18 binary ops with precedence variants, 3 unary, 16 layer funcs, 37 regular funcs, 4 member funcs, 6 complex, 4 precedence, 3 type suffixes)
+**Total**: 88 test cases
 
 ## Implementation Highlights
 
