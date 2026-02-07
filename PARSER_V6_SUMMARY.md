@@ -88,36 +88,40 @@ if (func_name == "at")
 
 #### C. Field Members .outer()/.o()
 - **Called on**: Field nodes
-- **Arguments**: 0-4 integer constants ONLY
-- **Validation**: Checks arguments are ConstNode AND integer type
+- **Arguments**: 0-1 integer constant ONLY  
+- **Validation**: Checks argument is ConstNode AND integer type
 - **Implementation**: `RttiFieldNode<Container>(field, depth)`
-- **Example**: `exam.outer(0)`, `jpn.o(0)`
+- **Example**: `exam.outer(0)`, `jpn.o(0)`, `math.outer()` (defaults to depth 0)
 
 ```cpp
 if (func_name == "outer" || func_name == "o")
 {
     auto field = std::get<FieldNodeType>(obj);
     
-    // Validate all arguments are integer constants
-    for (size_t i = 1; i < args.size(); ++i)
-    {
-        if (!is_int_const(args[i]))
-            throw ParseError("." + func_name + "() requires integer constant arguments");
-    }
+    // No args: defaults to depth 0
+    if (args.size() == 1)
+        return NodeType(RttiFieldNode<Container>(field, 0));
     
+    // Validate argument is integer constant
+    if (!is_int_const(args[1]))
+        throw ParseError("." + func_name + "() requires integer constant argument");
+    
+    // Single depth argument
     if (args.size() == 2)
     {
         int depth = std::get<ConstNodeType>(args[1]).i32();
         return NodeType(RttiFieldNode<Container>(field, depth));
     }
-    // ... up to 4 arguments
+    
+    throw ParseError("." + func_name + "() supports only 0 or 1 argument");
 }
 ```
 
 ### 3. Comprehensive Test Coverage
 
-**Binary Operators**: 18 tests
+**Binary Operators**: 21 tests
 - `*`, `/`, `%`, `+`, `-`, `<<`, `>>`, `<`, `<=`, `>`, `>=`, `==`, `!=`, `&`, `^`, `|`, `&&`, `||`
+- Plus precedence tests with multiple operators
 
 **Unary Operators**: 3 tests
 - `-`, `!`, `~`
@@ -142,7 +146,7 @@ if (func_name == "outer" || func_name == "o")
 **Operator Precedence**: 4 tests
 - Verifies correct precedence ordering
 
-**Total**: 88+ test cases
+**Total**: 91+ test cases (18 binary ops with precedence variants, 3 unary, 16 layer funcs, 37 regular funcs, 4 member funcs, 6 complex, 4 precedence, 3 type suffixes)
 
 ## Implementation Highlights
 

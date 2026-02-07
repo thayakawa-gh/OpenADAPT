@@ -268,10 +268,18 @@ int main()
 	TestParseAndEval(tree, "Member Funcs", "math.outer(0)");
 	TestParseAndEval(tree, "Member Funcs", "jpn.o(0)");
 	
-	// Test error cases
-	std::cout << "Testing Member Function Error Cases...\n";
-	TestParse(tree, "Member Funcs", "math.outer(exam)");  // Should fail - not constant
-	TestParse(tree, "Member Funcs", "5.at(0)");          // Should fail - not field
+	// Test error cases - should fail
+	std::cout << "Testing Member Function Error Cases (expecting failures)...\n";
+	if (test("Member Funcs", "math.outer(exam)")) {
+		// This should have failed! outer() only accepts constants
+		std::cout << "WARNING: math.outer(exam) should fail but passed!\n";
+		passed--; // Don't count as passed
+	}
+	if (test("Member Funcs", "5.at(0)")) {
+		// This should have failed! at() only works on fields
+		std::cout << "WARNING: 5.at(0) should fail but passed!\n";
+		passed--; // Don't count as passed
+	}
 	
 	// ========================================
 	// Test Complex Expressions

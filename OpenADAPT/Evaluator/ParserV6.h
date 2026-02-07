@@ -996,29 +996,19 @@ private:
 				return NodeType(RttiFieldNode<Container>(field, 0));
 			}
 			
-			// Validate all arguments are integer constants
-			for (size_t i = 1; i < args.size(); ++i)
-			{
-				if (!is_int_const(args[i]))
-					throw ParseError("." + func_name + "() requires integer constant arguments");
-			}
+			// Validate argument is integer constant
+			if (!is_int_const(args[1]))
+				throw ParseError("." + func_name + "() requires integer constant argument");
 			
-			// Support 1-4 arguments
+			// Support only single depth argument
 			if (args.size() == 2)
 			{
 				int depth = std::get<ConstNodeType>(args[1]).i32();
 				return NodeType(RttiFieldNode<Container>(field, depth));
 			}
-			else if (args.size() <= 5)
-			{
-				// For multiple args, use first one as depth
-				// (This matches expected behavior from examples)
-				int depth = std::get<ConstNodeType>(args[1]).i32();
-				return NodeType(RttiFieldNode<Container>(field, depth));
-			}
 			else
 			{
-				throw ParseError("." + func_name + "() supports up to 4 arguments");
+				throw ParseError("." + func_name + "() supports only 0 or 1 argument");
 			}
 		}
 		
