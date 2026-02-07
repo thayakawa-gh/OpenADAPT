@@ -10,7 +10,7 @@ ParserV6.h is a completely new parser implementation that addresses all feedback
 
 ## Files Created
 
-- **Parser**: `/home/runner/work/OpenADAPT/OpenADAPT/OpenADAPT/Evaluator/ParserV6.h` (1064 lines)
+- **Parser**: `/home/runner/work/OpenADAPT/OpenADAPT/OpenADAPT/Evaluator/ParserV6.h` (1068 lines)
 - **Test**: `/home/runner/work/OpenADAPT/OpenADAPT/Examples/parser_v6_simple_test.cpp` (169 lines)
 
 ## Key Features
