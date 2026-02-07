@@ -682,7 +682,9 @@ private:
 		#undef BINARY_OP_AND
 		#undef BINARY_OP_OR
 		
-		throw ParseError("Unknown binary operator: " + op);
+		// If we reach here, the operator was matched in GetPrecedence() but not here
+		// This should never happen - internal logic error
+		throw ParseError("Internal error: operator matched in GetPrecedence but not in dispatch");
 	}
 	
 	// ========================================
@@ -713,7 +715,9 @@ private:
 		#undef UNARY_OP_NOT
 		#undef UNARY_OP_BIT_NOT
 		
-		throw ParseError("Unknown unary operator: " + op);
+		// If we reach here, the operator was used in ParseUnary but not dispatched
+		// This should never happen - internal logic error
+		throw ParseError("Internal error: unary operator not handled in dispatch");
 	}
 	
 	// ========================================
