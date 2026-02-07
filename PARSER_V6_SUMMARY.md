@@ -10,7 +10,7 @@ ParserV6.h is a completely new parser implementation that addresses all feedback
 
 ## Files Created
 
-- **Parser**: `/home/runner/work/OpenADAPT/OpenADAPT/OpenADAPT/Evaluator/ParserV6.h` (1067 lines)
+- **Parser**: `/home/runner/work/OpenADAPT/OpenADAPT/OpenADAPT/Evaluator/ParserV6.h` (1064 lines)
 - **Test**: `/home/runner/work/OpenADAPT/OpenADAPT/Examples/parser_v6_simple_test.cpp` (169 lines)
 
 ## Key Features
@@ -119,9 +119,8 @@ if (func_name == "outer" || func_name == "o")
 
 ### 3. Comprehensive Test Coverage
 
-**Binary Operators**: 21 tests
-- `*`, `/`, `%`, `+`, `-`, `<<`, `>>`, `<`, `<=`, `>`, `>=`, `==`, `!=`, `&`, `^`, `|`, `&&`, `||`
-- Plus precedence tests with multiple operators
+**Binary Operators**: 18 tests
+- All 18 standard operators: `*`, `/`, `%`, `+`, `-`, `<<`, `>>`, `<`, `<=`, `>`, `>=`, `==`, `!=`, `&`, `^`, `|`, `&&`, `||`
 
 **Unary Operators**: 3 tests
 - `-`, `!`, `~`
@@ -230,7 +229,7 @@ auto complex = eval::ParseRttiFuncNode(tree,
 | Member .at() | Not implemented | ✅ Full support |
 | Member .outer() | Not implemented | ✅ Full support |
 | Container members | Not implemented | Documented |
-| Test coverage | Partial | Comprehensive (88+ tests) |
+| Test coverage | Partial | Comprehensive (88 tests) |
 | Code maintainability | Lower | Higher (macros) |
 
 ## Future Enhancements
