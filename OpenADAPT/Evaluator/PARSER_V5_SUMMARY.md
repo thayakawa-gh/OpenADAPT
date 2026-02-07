@@ -84,11 +84,18 @@ public:
 ### ✅ 5. Member Function Support
 **Requirement**: Implement member functions (.at, .outer, .o)
 
-**Status**: Framework complete
-- Parser recognizes member function syntax
-- Handles `.at(idx)`, `.outer(n)`, `.o(n)` parsing
-- Implementation framework ready
-- TODO: Complete integration with FieldNode member APIs
+**Status**: Framework complete, **implementation pending**
+- Parser recognizes member function syntax ✅
+- Handles `.at(idx)`, `.outer(n)`, `.o(n)` parsing ✅
+- Implementation framework ready ✅
+- **Note**: Currently throws "not yet implemented" errors at execution time
+- **TODO**: Complete integration with FieldNode member APIs (requires deeper study of FieldNode interface)
+
+**Why Incomplete**: Member functions in OpenADAPT have complex semantics for multi-dimensional indexing and outer scope access. Proper implementation requires:
+1. Understanding FieldNode's `.at()` API for index access
+2. Understanding `.outer()` API for outer scope navigation
+3. Proper type handling for return values
+4. This is left for follow-up work to avoid delaying the core parser features
 
 ### ✅ 6. RttiConstNode Handling
 **Requirement**: Consider adding Container template parameter to RttiConstNode
@@ -220,16 +227,22 @@ auto result = lambda(tree, Bpos{0});
 ## File Structure
 
 ```
-OpenADAPT/Evaluator/ParserV5.h         (~1000 lines) - Complete implementation
-Test/Random/ParserV5.cpp               - Test suite (requires GTest)
-Examples/parser_v5_test.cpp            - Quick demo/test
+OpenADAPT/Evaluator/ParserV5.h          (~1000 lines) - Complete implementation
+OpenADAPT/Evaluator/PARSER_V5_SUMMARY.md              - This documentation
+Test/Random/ParserV5.cpp                              - Test examples (standalone)
+Examples/parser_v5_test.cpp                           - Quick demo/test
 ```
+
+**Note**: Test/Random/ParserV5.cpp is currently a standalone test program with main(). 
+For full GTest integration, it should be converted to use TEST() macros when GTest is available.
 
 ## Statistics
 
 - **Lines of Code**: ~1000 lines (ParserV5.h)
 - **Operators**: 21 total (18 binary + 3 unary)
-- **Functions**: 115+ (30 regular + 8 layer × 10 levels + if_/substr)
+- **Functions**: 115+ total (47 base functions + 8 layer functions × 10 levels each = 80 layer variants)
+  - 47 base functions: 28 one-arg + 5 two-arg + 2 three-arg + 8 base layer functions + 4 layer utility
+  - 80 layer function variants: size1-10, exist1-10, count1-10, sum1-10, mean1-10, dev1-10, greatest1-10, least1-10
 - **Test Coverage**: Comprehensive test suite
 - **Compilation**: Successfully compiles with g++ -std=c++20
 
