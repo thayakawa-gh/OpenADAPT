@@ -30,38 +30,33 @@ int main()
 		
 		std::cout << "\nTest 1: x + y" << std::endl;
 		auto lambda1 = eval::ParseRttiFuncNode(tree, "x + y");
-		std::cout << "Results: ";
-		for (auto&& [v] : Extract(tree, lambda1))
-			std::cout << v << " ";
-		std::cout << std::endl;
+		std::cout << "Result at [0]: " << lambda1(tree, Bpos{0}).f64() << std::endl;
+		std::cout << "Result at [1]: " << lambda1(tree, Bpos{1}).f64() << std::endl;
+		std::cout << "Result at [2]: " << lambda1(tree, Bpos{2}).f64() << std::endl;
 		
 		std::cout << "\nTest 2: x + 10" << std::endl;
 		auto lambda2 = eval::ParseRttiFuncNode(tree, "x + 10");
-		std::cout << "Results: ";
-		for (auto&& [v] : Extract(tree, lambda2))
-			std::cout << v << " ";
-		std::cout << std::endl;
+		std::cout << "Result at [0]: " << lambda2(tree, Bpos{0}).f64() << std::endl;
+		std::cout << "Result at [1]: " << lambda2(tree, Bpos{1}).f64() << std::endl;
+		std::cout << "Result at [2]: " << lambda2(tree, Bpos{2}).f64() << std::endl;
 		
 		std::cout << "\nTest 3: (x + y) * 2" << std::endl;
 		auto lambda3 = eval::ParseRttiFuncNode(tree, "(x + y) * 2");
-		std::cout << "Results: ";
-		for (auto&& [v] : Extract(tree, lambda3))
-			std::cout << v << " ";
-		std::cout << std::endl;
+		std::cout << "Result at [0]: " << lambda3(tree, Bpos{0}).f64() << std::endl;
+		std::cout << "Result at [1]: " << lambda3(tree, Bpos{1}).f64() << std::endl;
+		std::cout << "Result at [2]: " << lambda3(tree, Bpos{2}).f64() << std::endl;
 		
 		std::cout << "\nTest 4: sqrt(x)" << std::endl;
 		auto lambda4 = eval::ParseRttiFuncNode(tree, "sqrt(x)");
-		std::cout << "Results: ";
-		for (auto&& [v] : Extract(tree, lambda4))
-			std::cout << v << " ";
-		std::cout << std::endl;
+		std::cout << "Result at [0]: " << lambda4(tree, Bpos{0}).f64() << std::endl;
+		std::cout << "Result at [1]: " << lambda4(tree, Bpos{1}).f64() << std::endl;
+		std::cout << "Result at [2]: " << lambda4(tree, Bpos{2}).f64() << std::endl;
 		
 		std::cout << "\nTest 5: pow(x, 2)" << std::endl;
 		auto lambda5 = eval::ParseRttiFuncNode(tree, "pow(x, 2)");
-		std::cout << "Results: ";
-		for (auto&& [v] : Extract(tree, lambda5))
-			std::cout << v << " ";
-		std::cout << std::endl;
+		std::cout << "Result at [0]: " << lambda5(tree, Bpos{0}).f64() << std::endl;
+		std::cout << "Result at [1]: " << lambda5(tree, Bpos{1}).f64() << std::endl;
+		std::cout << "Result at [2]: " << lambda5(tree, Bpos{2}).f64() << std::endl;
 		
 		std::cout << "\n=== All tests passed! ===" << std::endl;
 		return 0;

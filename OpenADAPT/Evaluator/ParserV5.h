@@ -879,31 +879,59 @@ private:
 		// 1引数関数 (1-arg functions)
 		if (args.size() == 1)
 		{
-			#define X(NAME, STR) \
-				if (func_name == STR) \
-					return NodeType(eval::STR(to_arg(args[0])));
-			PARSER_REGULAR_FUNCS_1ARG
-			#undef X
+			auto arg0 = to_arg(args[0]);
+			if (func_name == "abs") return NodeType(eval::abs(arg0));
+			if (func_name == "sqrt") return NodeType(eval::sqrt(arg0));
+			if (func_name == "cbrt") return NodeType(eval::cbrt(arg0));
+			if (func_name == "square") return NodeType(eval::square(arg0));
+			if (func_name == "cube") return NodeType(eval::cube(arg0));
+			if (func_name == "sin") return NodeType(eval::sin(arg0));
+			if (func_name == "cos") return NodeType(eval::cos(arg0));
+			if (func_name == "tan") return NodeType(eval::tan(arg0));
+			if (func_name == "asin") return NodeType(eval::asin(arg0));
+			if (func_name == "acos") return NodeType(eval::acos(arg0));
+			if (func_name == "atan") return NodeType(eval::atan(arg0));
+			if (func_name == "sinh") return NodeType(eval::sinh(arg0));
+			if (func_name == "cosh") return NodeType(eval::cosh(arg0));
+			if (func_name == "tanh") return NodeType(eval::tanh(arg0));
+			if (func_name == "asinh") return NodeType(eval::asinh(arg0));
+			if (func_name == "acosh") return NodeType(eval::acosh(arg0));
+			if (func_name == "atanh") return NodeType(eval::atanh(arg0));
+			if (func_name == "exp") return NodeType(eval::exp(arg0));
+			if (func_name == "exp2") return NodeType(eval::exp2(arg0));
+			if (func_name == "log") return NodeType(eval::log(arg0));
+			if (func_name == "log10") return NodeType(eval::log10(arg0));
+			if (func_name == "log2") return NodeType(eval::log2(arg0));
+			if (func_name == "ceil") return NodeType(eval::ceil(arg0));
+			if (func_name == "floor") return NodeType(eval::floor(arg0));
+			if (func_name == "isfinite") return NodeType(eval::isfinite(arg0));
+			if (func_name == "isinf") return NodeType(eval::isinf(arg0));
+			if (func_name == "isnan") return NodeType(eval::isnan(arg0));
+			if (func_name == "isnormal") return NodeType(eval::isnormal(arg0));
+			if (func_name == "len") return NodeType(eval::len(arg0));
+			if (func_name == "tostr") return NodeType(eval::tostr(arg0));
 		}
 		
 		// 2引数関数 (2-arg functions)
 		if (args.size() == 2)
 		{
-			#define X(NAME, STR) \
-				if (func_name == STR) \
-					return NodeType(eval::STR(to_arg(args[0]), to_arg(args[1])));
-			PARSER_REGULAR_FUNCS_2ARG
-			#undef X
+			auto arg0 = to_arg(args[0]);
+			auto arg1 = to_arg(args[1]);
+			if (func_name == "pow") return NodeType(eval::pow(arg0, arg1));
+			if (func_name == "atan2") return NodeType(eval::atan2(arg0, arg1));
+			if (func_name == "hypot") return NodeType(eval::hypot(arg0, arg1));
+			if (func_name == "min") return NodeType(eval::min(arg0, arg1));
+			if (func_name == "max") return NodeType(eval::max(arg0, arg1));
 		}
 		
 		// 3引数関数 (3-arg functions)
 		if (args.size() == 3)
 		{
-			#define X(NAME, STR) \
-				if (func_name == STR) \
-					return NodeType(eval::STR(to_arg(args[0]), to_arg(args[1]), to_arg(args[2])));
-			PARSER_REGULAR_FUNCS_3ARG
-			#undef X
+			auto arg0 = to_arg(args[0]);
+			auto arg1 = to_arg(args[1]);
+			auto arg2 = to_arg(args[2]);
+			if (func_name == "if_") return NodeType(eval::if_(arg0, arg1, arg2));
+			if (func_name == "substr") return NodeType(eval::substr(arg0, arg1, arg2));
 		}
 		
 		throw ParseError("Invalid function call: " + func_name);
