@@ -674,23 +674,23 @@ private:
 		#define X(NAME, STR, PREC) \
 			if (op == STR) { \
 				if (left_is_field && right_is_field) \
-					return NodeType(std::get<FieldNodeType>(left) BINARY_OP_##NAME std::get<FieldNodeType>(right)); \
+					return NodeType(std::move(std::get<FieldNodeType>(left)) BINARY_OP_##NAME std::move(std::get<FieldNodeType>(right))); \
 				if (left_is_field && right_is_const) \
-					return NodeType(std::get<FieldNodeType>(left) BINARY_OP_##NAME std::get<ConstNodeType>(right)); \
+					return NodeType(std::move(std::get<FieldNodeType>(left)) BINARY_OP_##NAME std::move(std::get<ConstNodeType>(right))); \
 				if (left_is_field && right_is_func) \
-					return NodeType(std::get<FieldNodeType>(left) BINARY_OP_##NAME std::get<FuncNodeType>(right)); \
+					return NodeType(std::move(std::get<FieldNodeType>(left)) BINARY_OP_##NAME std::move(std::get<FuncNodeType>(right))); \
 				if (left_is_const && right_is_field) \
-					return NodeType(std::get<ConstNodeType>(left) BINARY_OP_##NAME std::get<FieldNodeType>(right)); \
+					return NodeType(std::move(std::get<ConstNodeType>(left)) BINARY_OP_##NAME std::move(std::get<FieldNodeType>(right))); \
 				if (left_is_const && right_is_const) \
-					return NodeType(std::get<ConstNodeType>(left) BINARY_OP_##NAME std::get<ConstNodeType>(right)); \
+					return NodeType(std::move(std::get<ConstNodeType>(left)) BINARY_OP_##NAME std::move(std::get<ConstNodeType>(right))); \
 				if (left_is_const && right_is_func) \
-					return NodeType(std::get<ConstNodeType>(left) BINARY_OP_##NAME std::get<FuncNodeType>(right)); \
+					return NodeType(std::move(std::get<ConstNodeType>(left)) BINARY_OP_##NAME std::move(std::get<FuncNodeType>(right))); \
 				if (left_is_func && right_is_field) \
-					return NodeType(std::get<FuncNodeType>(left) BINARY_OP_##NAME std::get<FieldNodeType>(right)); \
+					return NodeType(std::move(std::get<FuncNodeType>(left)) BINARY_OP_##NAME std::move(std::get<FieldNodeType>(right))); \
 				if (left_is_func && right_is_const) \
-					return NodeType(std::get<FuncNodeType>(left) BINARY_OP_##NAME std::get<ConstNodeType>(right)); \
+					return NodeType(std::move(std::get<FuncNodeType>(left)) BINARY_OP_##NAME std::move(std::get<ConstNodeType>(right))); \
 				if (left_is_func && right_is_func) \
-					return NodeType(std::get<FuncNodeType>(left) BINARY_OP_##NAME std::get<FuncNodeType>(right)); \
+					return NodeType(std::move(std::get<FuncNodeType>(left)) BINARY_OP_##NAME std::move(std::get<FuncNodeType>(right))); \
 			}
 		
 		// Define operator symbols for each operation
@@ -747,9 +747,9 @@ private:
 		
 		#define X(NAME, STR) \
 			if (op == STR) { \
-				if (is_field) return NodeType(UNARY_OP_##NAME std::get<FieldNodeType>(operand)); \
-				if (is_const) return NodeType(UNARY_OP_##NAME std::get<ConstNodeType>(operand)); \
-				if (is_func) return NodeType(UNARY_OP_##NAME std::get<FuncNodeType>(operand)); \
+				if (is_field) return NodeType(UNARY_OP_##NAME std::move(std::get<FieldNodeType>(operand))); \
+				if (is_const) return NodeType(UNARY_OP_##NAME std::move(std::get<ConstNodeType>(operand))); \
+				if (is_func) return NodeType(UNARY_OP_##NAME std::move(std::get<FuncNodeType>(operand))); \
 			}
 		
 		#define UNARY_OP_NEG -
@@ -760,8 +760,8 @@ private:
 		#undef X
 		
 		#undef UNARY_OP_NEG
-		#undef UNARY_OP_NOT
-		#undef UNARY_OP_BIT_NOT
+		#define UNARY_OP_NOT !
+		#define UNARY_OP_BIT_NOT ~
 		
 		throw ParseError("Unknown unary operator: " + op);
 	}
@@ -780,36 +780,36 @@ private:
 		
 		// Use explicit function calls instead of macro expansion for function names
 		if (func_name == "size") {
-			if (is_field) return NodeType(eval::size(std::get<FieldNodeType>(arg)));
-			if (is_func) return NodeType(eval::size(std::get<FuncNodeType>(arg)));
+			if (is_field) return NodeType(eval::size(std::move(std::get<FieldNodeType>(arg))));
+			if (is_func) return NodeType(eval::size(std::move(std::get<FuncNodeType>(arg))));
 		}
 		if (func_name == "exist") {
-			if (is_field) return NodeType(eval::exist(std::get<FieldNodeType>(arg)));
-			if (is_func) return NodeType(eval::exist(std::get<FuncNodeType>(arg)));
+			if (is_field) return NodeType(eval::exist(std::move(std::get<FieldNodeType>(arg))));
+			if (is_func) return NodeType(eval::exist(std::move(std::get<FuncNodeType>(arg))));
 		}
 		if (func_name == "count") {
-			if (is_field) return NodeType(eval::count(std::get<FieldNodeType>(arg)));
-			if (is_func) return NodeType(eval::count(std::get<FuncNodeType>(arg)));
+			if (is_field) return NodeType(eval::count(std::move(std::get<FieldNodeType>(arg))));
+			if (is_func) return NodeType(eval::count(std::move(std::get<FuncNodeType>(arg))));
 		}
 		if (func_name == "sum") {
-			if (is_field) return NodeType(eval::sum(std::get<FieldNodeType>(arg)));
-			if (is_func) return NodeType(eval::sum(std::get<FuncNodeType>(arg)));
+			if (is_field) return NodeType(eval::sum(std::move(std::get<FieldNodeType>(arg))));
+			if (is_func) return NodeType(eval::sum(std::move(std::get<FuncNodeType>(arg))));
 		}
 		if (func_name == "mean") {
-			if (is_field) return NodeType(eval::mean(std::get<FieldNodeType>(arg)));
-			if (is_func) return NodeType(eval::mean(std::get<FuncNodeType>(arg)));
+			if (is_field) return NodeType(eval::mean(std::move(std::get<FieldNodeType>(arg))));
+			if (is_func) return NodeType(eval::mean(std::move(std::get<FuncNodeType>(arg))));
 		}
 		if (func_name == "dev") {
-			if (is_field) return NodeType(eval::dev(std::get<FieldNodeType>(arg)));
-			if (is_func) return NodeType(eval::dev(std::get<FuncNodeType>(arg)));
+			if (is_field) return NodeType(eval::dev(std::move(std::get<FieldNodeType>(arg))));
+			if (is_func) return NodeType(eval::dev(std::move(std::get<FuncNodeType>(arg))));
 		}
 		if (func_name == "greatest") {
-			if (is_field) return NodeType(eval::greatest(std::get<FieldNodeType>(arg)));
-			if (is_func) return NodeType(eval::greatest(std::get<FuncNodeType>(arg)));
+			if (is_field) return NodeType(eval::greatest(std::move(std::get<FieldNodeType>(arg))));
+			if (is_func) return NodeType(eval::greatest(std::move(std::get<FuncNodeType>(arg))));
 		}
 		if (func_name == "least") {
-			if (is_field) return NodeType(eval::least(std::get<FieldNodeType>(arg)));
-			if (is_func) return NodeType(eval::least(std::get<FuncNodeType>(arg)));
+			if (is_field) return NodeType(eval::least(std::move(std::get<FieldNodeType>(arg))));
+			if (is_func) return NodeType(eval::least(std::move(std::get<FuncNodeType>(arg))));
 		}
 		
 		throw ParseError("Unknown layer function: " + func_name);
@@ -869,11 +869,11 @@ private:
 		// Helper to convert NodeType to compatible form
 		auto to_arg = [](NodeType& node) -> auto {
 			if (std::holds_alternative<FieldNodeType>(node))
-				return std::get<FieldNodeType>(node);
+				return std::move(std::get<FieldNodeType>(node));
 			else if (std::holds_alternative<ConstNodeType>(node))
-				return std::get<ConstNodeType>(node);
+				return std::move(std::get<ConstNodeType>(node));
 			else
-				return std::get<FuncNodeType>(node);
+				return std::move(std::get<FuncNodeType>(node));
 		};
 		
 		// 1引数関数 (1-arg functions)
