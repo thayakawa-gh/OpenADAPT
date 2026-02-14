@@ -1,0 +1,27 @@
+#include <OpenADAPT/Parser/Parser_impl.h>
+
+namespace adapt
+{
+
+namespace eval
+{
+
+namespace parser
+{
+
+#define EX(NAME, UP)\
+template Parser<${TYPE}>::NodeType Parser<${TYPE}>::ApplyLayerFuncN##NAME <UP>(Parser<${TYPE}>::NodeType arg);
+
+#define X(NAME, SYM)\
+template Parser<${TYPE}>::NodeType Parser<${TYPE}>::ApplyLayerFunc##NAME(Parser<${TYPE}>::NodeType arg);\
+EX(NAME, 1) EX(NAME, 2) EX(NAME, 3) EX(NAME, 4) EX(NAME, 5) EX(NAME, 6) EX(NAME, 7) EX(NAME, 8) EX(NAME, 9) EX(NAME, 10)
+PARSER_LAYER_FUNCS
+#undef X
+
+#undef EX
+
+}
+
+}
+
+}

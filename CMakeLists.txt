@@ -17,10 +17,16 @@ install(
 	NAMESPACE ${PACKAGE_NAME}::)
 
 option(ENABLE_MODULE "enable C++ module" OFF)
+option(ENABLE_PREBUILT_PARSER "enable lambda function parser" OFF)
 option(BUILD_TEST "build test program" OFF)
 option(BUILD_EXAMPLES "build examples" OFF)
 
 add_subdirectory(${PACKAGE_NAME})
+set(BUILD_PARSER OFF)
+if(ENABLE_PREBUILT_PARSER)
+	set(BUILD_PARSER ON)
+	add_subdirectory(PrebuiltParser)
+endif()
 set(BUILD_WITH_MODULE OFF)
 if(ENABLE_MODULE)
 	set(BUILD_WITH_MODULE ON)

@@ -1246,17 +1246,22 @@ auto MakeRttiLayerFuncNode(Node&& node, Cond&& cond, LayerType up)
 #endif
 }
 
-#define DEFINE_LAYER_FUNCTION(NAME, NAME_ID, UP)\
+#define DEFINE_LAYER_FUNCTION(NAME, UP, DEPR)\
 ADAPT_EXPORT \
 template <node_or_placeholder NP>\
-auto NAME_ID(NP&& np)\
+DEPR auto NAME##UP(NP&& np) { return NAME<UP>(std::forward<NP>(np)); }
+
+#define DEFINE_LAYER_FUNCTION_10_DEPR(NAME, NAME_ID, DEPR)\
+ADAPT_EXPORT \
+template <LayerType Up, node_or_placeholder NP>\
+DEPR auto NAME_ID(NP&& np)\
 {\
 	constexpr bool is_rtti_type = (rtti_node_or_placeholder<NP>);\
 	if constexpr (is_rtti_type)\
 	{\
 		try\
 		{\
-			return detail::MakeRttiLayerFuncNode<NAME>(detail::ConvertToNode(std::forward<NP>(np), std::true_type{}), UP);\
+			return detail::MakeRttiLayerFuncNode<NAME>(detail::ConvertToNode(std::forward<NP>(np), std::true_type{}), Up);\
 		}\
 		catch (const MismatchType& e)\
 		{\
@@ -1269,26 +1274,33 @@ auto NAME_ID(NP&& np)\
 		auto n = detail::ConvertToNode(std::forward<NP>(np), std::false_type{}).IncreaseDepth();\
 		using Node = decltype(n);\
 		using ArgType = typename Node::RetType;\
-		return CttiLayerFuncNode<NAME<ArgType, typename Node::Container>, Node, 0, DepthConstant<0>, LayerConstant<UP>>(std::move(n), LayerConstant<UP>{});\
+		return CttiLayerFuncNode<NAME<ArgType, typename Node::Container>, Node, 0, DepthConstant<0>, LayerConstant<Up>>(std::move(n), LayerConstant<Up>{});\
 	}\
-}
-#define DEFINE_LAYER_FUNCTION_10(NAME, NAME_ID)\
-DEFINE_LAYER_FUNCTION(NAME, NAME_ID, 1)\
-DEFINE_LAYER_FUNCTION(NAME, NAME_ID##1, 1)\
-DEFINE_LAYER_FUNCTION(NAME, NAME_ID##2, 2)\
-DEFINE_LAYER_FUNCTION(NAME, NAME_ID##3, 3)\
-DEFINE_LAYER_FUNCTION(NAME, NAME_ID##4, 4)\
-DEFINE_LAYER_FUNCTION(NAME, NAME_ID##5, 5)\
-DEFINE_LAYER_FUNCTION(NAME, NAME_ID##6, 6)\
-DEFINE_LAYER_FUNCTION(NAME, NAME_ID##7, 7)\
-DEFINE_LAYER_FUNCTION(NAME, NAME_ID##8, 8)\
-DEFINE_LAYER_FUNCTION(NAME, NAME_ID##9, 9)\
-DEFINE_LAYER_FUNCTION(NAME, NAME_ID##10, 10)
+}\
+ADAPT_EXPORT template <node_or_placeholder NP> auto NAME_ID(NP&& np) { return NAME_ID<1>(std::forward<NP>(np)); }\
+DEFINE_LAYER_FUNCTION(NAME_ID, 1, DEPR)\
+DEFINE_LAYER_FUNCTION(NAME_ID, 2, DEPR)\
+DEFINE_LAYER_FUNCTION(NAME_ID, 3, DEPR)\
+DEFINE_LAYER_FUNCTION(NAME_ID, 4, DEPR)\
+DEFINE_LAYER_FUNCTION(NAME_ID, 5, DEPR)\
+DEFINE_LAYER_FUNCTION(NAME_ID, 6, DEPR)\
+DEFINE_LAYER_FUNCTION(NAME_ID, 7, DEPR)\
+DEFINE_LAYER_FUNCTION(NAME_ID, 8, DEPR)\
+DEFINE_LAYER_FUNCTION(NAME_ID, 9, DEPR)\
+DEFINE_LAYER_FUNCTION(NAME_ID, 10, DEPR)
 
-#define DEFINE_LAYER_FUNCTION_IF(NAME, NAME_ID, UP)\
+#define DEFINE_LAYER_FUNCTION_10(NAME, NAME_ID)\
+DEFINE_LAYER_FUNCTION_10_DEPR(NAME, NAME_ID, ADAPT_EMPTY_MACRO)\
+
+#define DEFINE_LAYER_FUNCTION_IF(NAME_ID, UP, DEPR)\
 ADAPT_EXPORT \
 template <node_or_placeholder NP, node_or_placeholder Cond>\
-auto NAME_ID(NP&& np, Cond&& cond)\
+auto NAME_ID##UP(NP&& np, Cond&& cond) { return NAME_ID<UP>(std::forward<NP>(np), std::forward<Cond>(cond)); }
+
+#define DEFINE_LAYER_FUNCTION_IF_10_DEPR(NAME, NAME_ID, DEPR)\
+ADAPT_EXPORT \
+template <LayerType Up, node_or_placeholder NP, node_or_placeholder Cond>\
+DEPR auto NAME_ID(NP&& np, Cond&& cond)\
 {\
 	constexpr bool is_rtti_type = (rtti_node_or_placeholder<NP>) || (rtti_node_or_placeholder<Cond>);\
 	if constexpr (is_rtti_type)\
@@ -1296,7 +1308,7 @@ auto NAME_ID(NP&& np, Cond&& cond)\
 		try\
 		{\
 			return detail::MakeRttiLayerFuncNode<NAME>(detail::ConvertToNode(std::forward<NP>(np), std::true_type{}),\
-													   detail::ConvertToNode(std::forward<Cond>(cond), std::true_type{}), UP);\
+													   detail::ConvertToNode(std::forward<Cond>(cond), std::true_type{}), Up);\
 		}\
 		catch (const MismatchType& e)\
 		{\
@@ -1311,39 +1323,41 @@ auto NAME_ID(NP&& np, Cond&& cond)\
 		using Node = decltype(n);\
 		using CondNode = decltype(c);\
 		using ArgType = typename Node::RetType;\
-		return CttiLayerFuncNode<NAME<ArgType, typename Node::Container>, Node, 0, DepthConstant<0>, LayerConstant<UP>, CondNode>(std::move(n), std::move(c), LayerConstant<UP>{});\
+		return CttiLayerFuncNode<NAME<ArgType, typename Node::Container>, Node, 0, DepthConstant<0>, LayerConstant<Up>, CondNode>(std::move(n), std::move(c), LayerConstant<Up>{});\
 	}\
-}
+}\
+ADAPT_EXPORT template <node_or_placeholder NP, node_or_placeholder Cond> auto NAME_ID(NP&& np, Cond&& cond) { return NAME_ID<1>(std::forward<NP>(np), std::forward<Cond>(cond)); }\
+DEFINE_LAYER_FUNCTION_IF(NAME_ID, 1, DEPR)\
+DEFINE_LAYER_FUNCTION_IF(NAME_ID, 2, DEPR)\
+DEFINE_LAYER_FUNCTION_IF(NAME_ID, 3, DEPR)\
+DEFINE_LAYER_FUNCTION_IF(NAME_ID, 4, DEPR)\
+DEFINE_LAYER_FUNCTION_IF(NAME_ID, 5, DEPR)\
+DEFINE_LAYER_FUNCTION_IF(NAME_ID, 6, DEPR)\
+DEFINE_LAYER_FUNCTION_IF(NAME_ID, 7, DEPR)\
+DEFINE_LAYER_FUNCTION_IF(NAME_ID, 8, DEPR)\
+DEFINE_LAYER_FUNCTION_IF(NAME_ID, 9, DEPR)\
+DEFINE_LAYER_FUNCTION_IF(NAME_ID, 10, DEPR)
 #define DEFINE_LAYER_FUNCTION_IF_10(NAME, NAME_ID)\
-DEFINE_LAYER_FUNCTION_IF(NAME, NAME_ID, 1)\
-DEFINE_LAYER_FUNCTION_IF(NAME, NAME_ID##1, 1)\
-DEFINE_LAYER_FUNCTION_IF(NAME, NAME_ID##2, 2)\
-DEFINE_LAYER_FUNCTION_IF(NAME, NAME_ID##3, 3)\
-DEFINE_LAYER_FUNCTION_IF(NAME, NAME_ID##4, 4)\
-DEFINE_LAYER_FUNCTION_IF(NAME, NAME_ID##5, 5)\
-DEFINE_LAYER_FUNCTION_IF(NAME, NAME_ID##6, 6)\
-DEFINE_LAYER_FUNCTION_IF(NAME, NAME_ID##7, 7)\
-DEFINE_LAYER_FUNCTION_IF(NAME, NAME_ID##8, 8)\
-DEFINE_LAYER_FUNCTION_IF(NAME, NAME_ID##9, 9)\
-DEFINE_LAYER_FUNCTION_IF(NAME, NAME_ID##10, 10)
-
+DEFINE_LAYER_FUNCTION_IF_10_DEPR(NAME, NAME_ID, ADAPT_EMPTY_MACRO)\
 
 //上昇関数
-//size
-//引数を取得できた要素の数。引数の値は完全に無視する。戻り値型はint64_t/I64。
-//The number of elements that can obtain the arguments. The value of the argument is completely ignored.
-//The return type is int64_t/I64.
-DEFINE_LAYER_FUNCTION_10(detail::LayerFuncSize, size)
 //exist
 //引数が真であるような要素が存在するか否か。戻り値型はbool/I08。
 //Whether there is an element that the argument is true.
 //The return type is bool/I08.
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncExist, exist)
+//size
+//引数を取得できた要素の数。引数の値は完全に無視する。戻り値型はint64_t/I64。
+//The number of elements that can obtain the arguments. The value of the argument is completely ignored.
+//The return type is int64_t/I64.
+DEFINE_LAYER_FUNCTION_10_DEPR(detail::LayerFuncSize, size, [[deprecated("please use countall instead.")]] )
+DEFINE_LAYER_FUNCTION_10(detail::LayerFuncSize, countall)
 //count
 //引数が真であるような要素の数。戻り値型はint64_t/I64。
 //The number of elements that the argument is true (non-zero).
 //The return type is int64_t/I64.
-DEFINE_LAYER_FUNCTION_10(detail::LayerFuncCount, count)
+DEFINE_LAYER_FUNCTION_10_DEPR(detail::LayerFuncCount, count, [[deprecated("please use count_if instead.")]] )
+DEFINE_LAYER_FUNCTION_10(detail::LayerFuncCount, count_if)
 //sum
 //引数の合計値。戻り値型は引数型と同じ。+=演算が可能な型に対してのみ呼び出せる。
 //要素が一つもない場合は値初期化によるデフォルト値が返る。
@@ -1432,6 +1446,11 @@ DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncIsGreatest, isgreatest_if)
 //Returns true when the current calculation target points to an element that is the minimum of the arguments among the traversal targets.
 DEFINE_LAYER_FUNCTION_10(detail::LayerFuncIsLeast, isleast)
 DEFINE_LAYER_FUNCTION_IF_10(detail::LayerFuncIsLeast, isleast_if)
+
+#undef DEFINE_LAYER_FUNCTION
+#undef DEFINE_LAYER_FUNCTION_10
+#undef DEFINE_LAYER_FUNCTION_IF
+#undef DEFINE_LAYER_FUNCTION_IF_10
 
 }
 

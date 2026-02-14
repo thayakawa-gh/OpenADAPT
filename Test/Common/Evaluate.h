@@ -107,13 +107,22 @@ DECL_FUNC(TestNormalFunc)
 					  EvalComp(num_name, &NumName, 1_layer, Number<Str>{}),
 					  EvalComp(total_score, &TotalScore, 2_layer, Number<I32>{}));
 }
+DECL_FUNC(TestShortCircuit)
+{
+	EXPAND_PH;
+	auto has_failed = math < 40 || jpn < 40;//数学または国語で落第点を取ったかどうか。落第点は40点未満とする。
+	auto both_failed = math < 40 && jpn < 40;//数学と国語の両方で落第点を取ったかどうか。
+	TestEvaluate_impl(tree, cls,
+					  EvalComp(has_failed, &HasFailed, 2_layer, Number<I08>{}),
+					  EvalComp(both_failed, &BothFailed, 2_layer, Number<I08>{}));
+}
 
 DECL_FUNC(TestSimpleLayerFunc)
 {
 	EXPAND_PH;
 
 	auto total_score = math + jpn + eng + sci + soc;//その試験の合計点。
-	auto all_400 = count(total_score >= 400) == 4;//全試験で400点以上を取っているかどうか。
+	auto all_400 = count_if(total_score >= 400) == 4;//全試験で400点以上を取っているかどうか。
 	auto mean_math = mean(cast_f32(math));//生徒ごとの数学4回分の平均点。mathは整数型なので、浮動小数点にキャストしてから計算する。
 
 	TestEvaluate_impl(tree, cls,
@@ -138,7 +147,7 @@ DECL_FUNC(TestNestedLayerFunc)
 	EXPAND_PH;
 	auto total_score = math + jpn + eng + sci + soc;//その試験の合計点。
 	auto is_best = isgreatest(total_score);//4回のうち最高点のときにtrue。
-	auto num_stu_200 = count(exist(jpn + math + eng >= 200));//クラス内で3科目200点以上を取ったことのある生徒の数。
+	auto num_stu_200 = count_if(exist(jpn + math + eng >= 200));//クラス内で3科目200点以上を取ったことのある生徒の数。
 	auto mean_max = mean(cast_f32(greatest(total_score)));
 	TestEvaluate_impl(tree, cls,
 					  EvalComp(is_best, &IsBest, 2_layer, Number<I08>{}),
@@ -149,8 +158,8 @@ DECL_FUNC(TestNestedLayerFunc)
 DECL_FUNC(TestOuterField)
 {
 	EXPAND_PH;
-	auto rank_math_class = count2(exam == exam.o(0_depth) && math > math.o(0_depth));//各試験の数学クラス内順位。自分より好成績な生徒の人数を数えている。o(0)はouter(0)の短縮表記。
-	auto rank_math_all = count3(exam == exam.o(0_depth) && math > math.o(0_depth));//各試験の学年順位。数える範囲がクラス内ではなく学年全体になる。
+	auto rank_math_class = count_if2(exam == exam.o(0_depth) && math > math.o(0_depth));//各試験の数学クラス内順位。自分より好成績な生徒の人数を数えている。o(0)はouter(0)の短縮表記。
+	auto rank_math_all = count_if3(exam == exam.o(0_depth) && math > math.o(0_depth));//各試験の学年順位。数える範囲がクラス内ではなく学年全体になる。
 	TestEvaluate_impl(tree, cls,
 					  EvalComp(rank_math_class, &RankMathClass, 2_layer, Number<I64>{}),
 					  EvalComp(rank_math_all, &RankMathAll, 2_layer, Number<I64>{}));
@@ -211,7 +220,7 @@ void TestIndexAndSize(const Tree& t, const Layer0& l0, const Layer1& l1, const L
 	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
 	[[maybe_unused]] auto [exam, math, jpn, eng, sci, soc] = l2;
 
-	[[maybe_unused]] auto size_vs_size = ADAPT_DECL_IF(!IsJoinedContainer, size(exam) == t.size(2_layer));
+	[[maybe_unused]] auto size_vs_size = ADAPT_DECL_IF(!IsJoinedContainer, countall(exam) == t.size(2_layer));
 	[[maybe_unused]] auto size2 = ADAPT_DECL_IF(!IsJoinedContainer, t.size(0_layer, 2_layer) == 120);
 	auto pos0 = t.pos(0_layer);
 	auto pos1 = t.pos(1_layer);

@@ -273,7 +273,7 @@ protected:
 	{
 		constexpr bool HasWeight = !std::same_as<std::ranges::empty_view<double>, Weight>;
 		//histepsなら最後のビンに0を追加する必要はないらしい。
-		std::vector<int64_t> hist(p.xnbin, 0);
+		std::vector<std::conditional_t<HasWeight, double, int64_t>> hist(p.xnbin, 0);
 		[[maybe_unused]] std::vector<double> weighted_errors(p.xnbin, 0.);
 		double wbin = (p.xmax - p.xmin) / p.xnbin;
 		auto ibin = [&p, wbin](double v)
@@ -323,9 +323,9 @@ protected:
 				for (size_t i = 0; i < p.xnbin; ++i)
 				{
 					if (be == BinError::poisson68)
-						std::tie(yerrlow[i], yerrhigh[i]) = GetPoissonCI68(hist[i]);
+						std::tie(yerrlow[i], yerrhigh[i]) = GetPoissonCI68((uint64_t)hist[i]);
 					else
-						std::tie(yerrlow[i], yerrhigh[i]) = GetPoissonCI95(hist[i]);
+						std::tie(yerrlow[i], yerrhigh[i]) = GetPoissonCI95((uint64_t)hist[i]);
 				}
 				auto p2 = MakePointParam(plot::x = x, plot::y = hist, ops..., plot::s_points, plot::xerrorbar = wbin / 2., plot::yerrlow = yerrlow, plot::yerrhigh = yerrhigh);
 				return Plot(p2);
@@ -393,15 +393,15 @@ protected:
 		{
 			std::pair<double, double> xminmax = { p.xmin + wxbin / 2, p.xmax - wxbin / 2 };
 			std::pair<double, double> yminmax = { p.ymin + wybin / 2, p.ymax - wybin / 2 };
-			if (p.bs_lower != std::numeric_limits<uint64_t>::min() ||
-				p.bs_upper != std::numeric_limits<uint64_t>::max())
+			if (p.bs_lower != std::numeric_limits<double>::lowest() ||
+				p.bs_upper != std::numeric_limits<double>::max())
 			{
 				for (uint32_t i = 0; i < p.xnbin; ++i)
 				{
 					for (uint32_t j = 0; j < p.ynbin; ++j)
 					{
-						if (hist[i][j] < p.bs_lower) hist[i][j] = std::numeric_limits<double>::quiet_NaN();
-						if (hist[i][j] > p.bs_upper) hist[i][j] = std::numeric_limits<double>::quiet_NaN();
+						if (hist[i][j] <= p.bs_lower) hist[i][j] = std::numeric_limits<double>::quiet_NaN();
+						else if (hist[i][j] > p.bs_upper) hist[i][j] = std::numeric_limits<double>::quiet_NaN();
 					}
 				}
 			}

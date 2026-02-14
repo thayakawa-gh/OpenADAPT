@@ -1,0 +1,251 @@
+#ifndef ADAPT_PARSER_PARSER_IMPL_H
+#define ADAPT_PARSER_PARSER_IMPL_H
+
+#include <OpenADAPT/Parser/Parser.h>
+
+namespace adapt
+{
+
+namespace eval
+{
+
+namespace parser
+{
+
+#define ADAPT_DETAIL_RETURN_2ARGS_OPS(SYM, LEFT, RIGHT)\
+	if (left_is_##LEFT && right_is_##RIGHT)\
+		return NodeType(std::move(std::get<LEFT##NodeType>(left)) SYM std::move(std::get<RIGHT##NodeType>(right)));
+
+#define ADAPT_DETAIL_RETURN_2ARGS_FUNC(SYM, LEFT, RIGHT)\
+	if (left_is_##LEFT && right_is_##RIGHT)\
+		return NodeType(eval::SYM(std::move(std::get<LEFT##NodeType>(left)), std::move(std::get<RIGHT##NodeType>(right))));
+
+#define ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, LEFT, MIDDLE, RIGHT)\
+	if (left_is_##LEFT && middle_is_##MIDDLE && right_is_##RIGHT)\
+		return NodeType(eval::SYM(std::move(std::get<LEFT##NodeType>(left)), std::move(std::get<MIDDLE##NodeType>(middle)), std::move(std::get<RIGHT##NodeType>(right))));
+
+
+#define X(NAME, SYM)\
+template <class Container>\
+Parser<Container>::NodeType Parser<Container>::ApplyUnary##NAME(Parser<Container>::NodeType operand)\
+{\
+	bool is_field = std::holds_alternative<FieldNodeType>(operand);\
+	bool is_const = std::holds_alternative<ConstNodeType>(operand);\
+	bool is_func = std::holds_alternative<FuncNodeType>(operand);\
+	if (is_field) return NodeType(SYM std::move(std::get<FieldNodeType>(operand)));\
+	if (is_const) return NodeType(SYM ConvertConstNodeToRttiFuncNode<Container>(std::move(std::get<ConstNodeType>(operand))));\
+	if (is_func) return NodeType(SYM std::move(std::get<FuncNodeType>(operand)));\
+	throw ParseError("Unknown unary operator: " + std::string(#SYM));\
+}
+PARSER_UNARY_OPS
+#undef X
+
+#define X(NAME, SYM, PREC)\
+template <class Container>\
+Parser<Container>::NodeType Parser<Container>::ApplyBinary##NAME(Parser<Container>::NodeType left, Parser<Container>::NodeType right)\
+{\
+	bool left_is_Field = std::holds_alternative<FieldNodeType>(left);\
+	bool left_is_Const = std::holds_alternative<ConstNodeType>(left);\
+	bool left_is_Func = std::holds_alternative<FuncNodeType>(left);\
+	bool right_is_Field = std::holds_alternative<FieldNodeType>(right);\
+	bool right_is_Const = std::holds_alternative<ConstNodeType>(right);\
+	bool right_is_Func = std::holds_alternative<FuncNodeType>(right);\
+	ADAPT_DETAIL_RETURN_2ARGS_OPS(SYM, Field, Field)\
+	ADAPT_DETAIL_RETURN_2ARGS_OPS(SYM, Field, Const)\
+	ADAPT_DETAIL_RETURN_2ARGS_OPS(SYM, Field, Func)\
+	ADAPT_DETAIL_RETURN_2ARGS_OPS(SYM, Const, Field)\
+	if (left_is_Const && right_is_Const)\
+		return NodeType(ConvertConstNodeToRttiFuncNode<Container>(std::move(std::get<ConstNodeType>(left))) SYM \
+						std::move(std::get<ConstNodeType>(right)));\
+	ADAPT_DETAIL_RETURN_2ARGS_OPS(SYM, Const, Func)\
+	ADAPT_DETAIL_RETURN_2ARGS_OPS(SYM, Func, Field)\
+	ADAPT_DETAIL_RETURN_2ARGS_OPS(SYM, Func, Const)\
+	ADAPT_DETAIL_RETURN_2ARGS_OPS(SYM, Func, Func)\
+	throw ParseError("Unknown binary operator: " + std::string(#SYM));\
+}
+PARSER_BINARY_OPS
+#undef X
+
+
+#define X(NAME, SYM)\
+template <class Container>\
+Parser<Container>::NodeType Parser<Container>::ApplyLayerFunc##NAME(Parser<Container>::NodeType arg)\
+{\
+	bool is_field = std::holds_alternative<FieldNodeType>(arg);\
+	bool is_func = std::holds_alternative<FuncNodeType>(arg);\
+	if (!is_field && !is_func)\
+		throw ParseError(std::string(#SYM) + " requires a field or expression argument (not a constant)");\
+	if (is_field) return NodeType(eval::SYM(std::move(std::get<FieldNodeType>(arg))));\
+	if (is_func) return NodeType(eval::SYM(std::move(std::get<FuncNodeType>(arg))));\
+	throw ParseError("Unknown layer function: " + std::string(#SYM));\
+}
+PARSER_LAYER_FUNCS
+#undef X
+
+
+#define X(NAME, SYM)\
+template <class Container>\
+template <LayerType Up>\
+Parser<Container>::NodeType Parser<Container>::ApplyLayerFuncN##NAME(Parser<Container>::NodeType arg)\
+{\
+	bool is_field = std::holds_alternative<FieldNodeType>(arg);\
+	bool is_func = std::holds_alternative<FuncNodeType>(arg);\
+	if (!is_field && !is_func)\
+		throw ParseError(#SYM + std::to_string(Up) + " requires a field or expression argument");\
+	if (is_field) return NodeType(eval::SYM<Up>(std::get<FieldNodeType>(arg)));\
+	if (is_func) return NodeType(eval::SYM<Up>(std::get<FuncNodeType>(arg)));\
+	throw ParseError(std::format("Unknown layer function: {}{}", #SYM, Up));\
+}
+PARSER_LAYER_FUNCS
+#undef X
+
+
+#define X(NAME, SYM)\
+template <class Container>\
+Parser<Container>::NodeType Parser<Container>::ApplyLayerFuncIf##NAME(Parser<Container>::NodeType left, Parser<Container>::NodeType right)\
+{\
+	bool left_is_Field = std::holds_alternative<FieldNodeType>(left);\
+	bool left_is_Const = std::holds_alternative<ConstNodeType>(left);\
+	bool left_is_Func = std::holds_alternative<FuncNodeType>(left);\
+	bool right_is_Field = std::holds_alternative<FieldNodeType>(right);\
+	bool right_is_Const = std::holds_alternative<ConstNodeType>(right);\
+	bool right_is_Func = std::holds_alternative<FuncNodeType>(right);\
+	if (left_is_Const || right_is_Const)\
+		throw ParseError(#SYM " requires a field or expression argument");\
+	ADAPT_DETAIL_RETURN_2ARGS_FUNC(SYM, Field, Field)\
+	ADAPT_DETAIL_RETURN_2ARGS_FUNC(SYM, Field, Func)\
+	ADAPT_DETAIL_RETURN_2ARGS_FUNC(SYM, Func, Field)\
+	ADAPT_DETAIL_RETURN_2ARGS_FUNC(SYM, Func, Func)\
+	throw ParseError(std::format("Unknown layer function: {}", #SYM));\
+}
+PARSER_LAYER_FUNCS_IF
+#undef X
+
+
+#define X(NAME, SYM)\
+template <class Container>\
+template <LayerType Up>\
+Parser<Container>::NodeType Parser<Container>::ApplyLayerFuncIfN##NAME(Parser<Container>::NodeType left, Parser<Container>::NodeType right)\
+{\
+	bool left_is_Field = std::holds_alternative<FieldNodeType>(left);\
+	bool left_is_Const = std::holds_alternative<ConstNodeType>(left);\
+	bool left_is_Func = std::holds_alternative<FuncNodeType>(left);\
+	bool right_is_Field = std::holds_alternative<FieldNodeType>(right);\
+	bool right_is_Const = std::holds_alternative<ConstNodeType>(right);\
+	bool right_is_Func = std::holds_alternative<FuncNodeType>(right);\
+	if (left_is_Const || right_is_Const)\
+		throw ParseError(#SYM + std::to_string(Up) + " requires a field or expression argument");\
+	ADAPT_DETAIL_RETURN_2ARGS_FUNC(SYM <Up>, Field, Field)\
+	ADAPT_DETAIL_RETURN_2ARGS_FUNC(SYM <Up>, Field, Func)\
+	ADAPT_DETAIL_RETURN_2ARGS_FUNC(SYM <Up>, Func, Field)\
+	ADAPT_DETAIL_RETURN_2ARGS_FUNC(SYM <Up>, Func, Func)\
+	throw ParseError(std::format("Unknown layer function: {}{}", #SYM, Up));\
+}
+PARSER_LAYER_FUNCS_IF
+#undef X
+
+
+#define X(NAME, SYM)\
+template <class Container>\
+Parser<Container>::NodeType Parser<Container>::ApplyRegularFunc##NAME(Parser<Container>::NodeType arg)\
+{\
+	bool is_field = std::holds_alternative<FieldNodeType>(arg);\
+	bool is_const = std::holds_alternative<ConstNodeType>(arg);\
+	bool is_func = std::holds_alternative<FuncNodeType>(arg);\
+	if (is_const) return NodeType(eval::SYM(ConvertConstNodeToRttiFuncNode<Container>(std::move(std::get<ConstNodeType>(arg)))));\
+	if (is_field) return NodeType(eval::SYM(std::get<FieldNodeType>(std::move(arg))));\
+	if (is_func) return NodeType(eval::SYM(std::get<FuncNodeType>(std::move(arg))));\
+	throw ParseError("Invalid function call: " #SYM);\
+}
+PARSER_REGULAR_FUNCS_1ARG
+#undef X
+
+
+#define X(NAME, SYM)\
+template <class Container>\
+Parser<Container>::NodeType Parser<Container>::ApplyRegularFunc##NAME(Parser<Container>::NodeType left, Parser<Container>::NodeType right)\
+{\
+	bool left_is_Field = std::holds_alternative<FieldNodeType>(left);\
+	bool left_is_Const = std::holds_alternative<ConstNodeType>(left);\
+	bool left_is_Func = std::holds_alternative<FuncNodeType>(left);\
+	bool right_is_Field = std::holds_alternative<FieldNodeType>(right);\
+	bool right_is_Const = std::holds_alternative<ConstNodeType>(right);\
+	bool right_is_Func = std::holds_alternative<FuncNodeType>(right);\
+	ADAPT_DETAIL_RETURN_2ARGS_FUNC(SYM, Field, Field)\
+	ADAPT_DETAIL_RETURN_2ARGS_FUNC(SYM, Field, Const)\
+	ADAPT_DETAIL_RETURN_2ARGS_FUNC(SYM, Field, Func)\
+	ADAPT_DETAIL_RETURN_2ARGS_FUNC(SYM, Const, Field)\
+	if (left_is_Const && right_is_Const)\
+		return NodeType(SYM(ConvertConstNodeToRttiFuncNode<Container>(std::move(std::get<ConstNodeType>(left))),\
+							std::move(std::get<ConstNodeType>(right))));\
+	ADAPT_DETAIL_RETURN_2ARGS_FUNC(SYM, Const, Func)\
+	ADAPT_DETAIL_RETURN_2ARGS_FUNC(SYM, Func, Field)\
+	ADAPT_DETAIL_RETURN_2ARGS_FUNC(SYM, Func, Const)\
+	ADAPT_DETAIL_RETURN_2ARGS_FUNC(SYM, Func, Func)\
+	throw ParseError("Invalid function call: " #SYM);\
+}
+PARSER_REGULAR_FUNCS_2ARG
+#undef X
+
+
+#define X(NAME, SYM)\
+template <class Container>\
+Parser<Container>::NodeType Parser<Container>::ApplyRegularFunc##NAME(Parser<Container>::NodeType left, Parser<Container>::NodeType middle, Parser<Container>::NodeType right)\
+{\
+	bool left_is_Field = std::holds_alternative<FieldNodeType>(left);\
+	bool left_is_Const = std::holds_alternative<ConstNodeType>(left);\
+	bool left_is_Func = std::holds_alternative<FuncNodeType>(left);\
+	bool middle_is_Field = std::holds_alternative<FieldNodeType>(middle);\
+	bool middle_is_Const = std::holds_alternative<ConstNodeType>(middle);\
+	bool middle_is_Func = std::holds_alternative<FuncNodeType>(middle);\
+	bool right_is_Field = std::holds_alternative<FieldNodeType>(right);\
+	bool right_is_Const = std::holds_alternative<ConstNodeType>(right);\
+	bool right_is_Func = std::holds_alternative<FuncNodeType>(right);\
+	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Field, Field, Field)\
+	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Field, Field, Const)\
+	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Field, Field, Func)\
+	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Field, Const, Field)\
+	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Field, Const, Const)\
+	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Field, Const, Func)\
+	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Field, Func, Field)\
+	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Field, Func, Const)\
+	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Field, Func, Func)\
+	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Const, Field, Field)\
+	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Const, Field, Const)\
+	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Const, Field, Func)\
+	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Const, Const, Field)\
+	if (left_is_Const && middle_is_Const && right_is_Const)\
+	{\
+		return NodeType(SYM(\
+			ConvertConstNodeToRttiFuncNode<Container>(std::move(std::get<ConstNodeType>(left))),\
+			std::move(std::get<ConstNodeType>(middle)),\
+			std::move(std::get<ConstNodeType>(right))\
+		));\
+	}\
+	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Const, Const, Func)\
+	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Const, Func, Field)\
+	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Const, Func, Const)\
+	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Const, Func, Func)\
+	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Func, Field, Field)\
+	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Func, Field, Const)\
+	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Func, Field, Func)\
+	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Func, Const, Field)\
+	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Func, Const, Const)\
+	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Func, Const, Func)\
+	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Func, Func, Field)\
+	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Func, Func, Const)\
+	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Func, Func, Func)\
+	throw ParseError("Invalid function call: " #SYM);\
+}
+PARSER_REGULAR_FUNCS_3ARG
+#undef X
+
+
+
+}
+
+}
+
+}
+
+#endif

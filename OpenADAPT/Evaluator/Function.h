@@ -63,6 +63,16 @@ auto operator!(Arg&& a)
 {
 	return detail::MakeFunctionNode(Not{}, std::forward<Arg>(a));
 }
+struct Promote
+{
+	auto operator()(const auto& a) const -> decltype(+a) { return +a; }
+};
+ADAPT_EXPORT
+template <node_or_placeholder Arg>
+auto operator+(Arg&& a)
+{
+	return detail::MakeFunctionNode(Promote{}, std::forward<Arg>(a));
+}
 struct Negate
 {
 	auto operator()(const auto& a) const -> decltype(-a) { return -a; }
@@ -170,7 +180,11 @@ auto operator!=(Arg1&& a, Arg2&& b)
 }
 struct Less
 {
-	auto operator()(const auto& a, const auto& b) const -> decltype(a < b) { return a < b; }
+	auto operator()(const auto& a, const auto& b) const -> decltype(a < b)
+	{
+		if constexpr (std::integral<decltype(a)> && std::integral<decltype(b)>) return std::cmp_less(a, b);
+		else return a < b;
+	}
 };
 ADAPT_EXPORT
 template <class Arg1, class Arg2>
@@ -181,7 +195,11 @@ auto operator<(Arg1&& a, Arg2&& b)
 }
 struct LessEqual
 {
-	auto operator()(const auto& a, const auto& b) const -> decltype(a <= b) { return a <= b; }
+	auto operator()(const auto& a, const auto& b) const -> decltype(a <= b)
+	{
+		if constexpr (std::integral<decltype(a)> && std::integral<decltype(b)>) return std::cmp_less_equal(a, b);
+		else return a <= b;
+	}
 };
 ADAPT_EXPORT
 template <class Arg1, class Arg2>
@@ -192,7 +210,11 @@ auto operator<=(Arg1&& a, Arg2&& b)
 }
 struct Greater
 {
-	auto operator()(const auto& a, const auto& b) const -> decltype(a > b) { return a > b; }
+	auto operator()(const auto& a, const auto& b) const -> decltype(a > b)
+	{
+		if constexpr (std::integral<decltype(a)> && std::integral<decltype(b)>) return std::cmp_greater(a, b);
+		else return a > b;
+	}
 };
 ADAPT_EXPORT
 template <class Arg1, class Arg2>
@@ -203,7 +225,11 @@ auto operator>(Arg1&& a, Arg2&& b)
 }
 struct GreaterEqual
 {
-	auto operator()(const auto& a, const auto& b) const -> decltype(a >= b) { return a >= b; }
+	auto operator()(const auto& a, const auto& b) const -> decltype(a >= b)
+	{
+		if constexpr (std::integral<decltype(a)> && std::integral<decltype(b)>) return std::cmp_greater_equal(a, b);
+		else return a >= b;
+	}
 };
 ADAPT_EXPORT
 template <class Arg1, class Arg2>
@@ -314,7 +340,7 @@ auto operator>>(Arg1&& a, Arg2&& b)
 
 struct IsFinite
 {
-	auto operator()(const auto& a) const -> decltype(std::isfinite(a)) { return std::isfinite(a); }
+	auto operator()(std::floating_point auto a) const { return std::isfinite(a); }
 };
 ADAPT_EXPORT
 template <node_or_placeholder Arg>
@@ -324,7 +350,7 @@ auto isfinite(Arg&& a)
 }
 struct IsInf
 {
-	auto operator()(const auto& a) const -> decltype(std::isinf(a)) { return std::isinf(a); }
+	auto operator()(std::floating_point auto a) const { return std::isinf(a); }
 };
 ADAPT_EXPORT
 template <node_or_placeholder Arg>
@@ -334,7 +360,7 @@ auto isinf(Arg&& a)
 }
 struct IsNan
 {
-	auto operator()(const auto& a) const -> decltype(std::isnan(a)) { return std::isnan(a); }
+	auto operator()(std::floating_point auto a) const { return std::isnan(a); }
 };
 ADAPT_EXPORT
 template <node_or_placeholder Arg>
@@ -344,7 +370,7 @@ auto isnan(Arg&& a)
 }
 struct IsNormal
 {
-	auto operator()(const auto& a) const -> decltype(std::isnormal(a)) { return std::isnormal(a); }
+	auto operator()(std::floating_point auto a) const { return std::isnormal(a); }
 };
 ADAPT_EXPORT
 template <node_or_placeholder Arg>

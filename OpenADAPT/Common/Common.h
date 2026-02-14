@@ -65,6 +65,41 @@ enum class FieldType : uint32_t
 	default: DEFAULT \
 	}
 
+#define ADAPT_FIELD_TYPE_LIST_SOLO(CODE, ...) \
+	ADAPT_EXPAND_VARS(CODE, (I08, i08, int8_t, __VA_ARGS__)) \
+	ADAPT_EXPAND_VARS(CODE, (I16, i16, int16_t, __VA_ARGS__)) \
+	ADAPT_EXPAND_VARS(CODE, (I32, i32, int32_t, __VA_ARGS__)) \
+	ADAPT_EXPAND_VARS(CODE, (I64, i64, int64_t, __VA_ARGS__)) \
+	ADAPT_EXPAND_VARS(CODE, (F32, f32, float, __VA_ARGS__)) \
+	ADAPT_EXPAND_VARS(CODE, (F64, f64, double, __VA_ARGS__)) \
+	ADAPT_EXPAND_VARS(CODE, (C32, c32, std::complex<float>, __VA_ARGS__)) \
+	ADAPT_EXPAND_VARS(CODE, (C64, c64, std::complex<double>, __VA_ARGS__)) \
+	ADAPT_EXPAND_VARS(CODE, (Str, str, std::string, __VA_ARGS__)) \
+	ADAPT_EXPAND_VARS(CODE, (Jbp, jbp, JBpos, __VA_ARGS__))
+
+#define ADAPT_FIELD_TYPE_LIST_DUO(CODE, ...)\
+	ADAPT_FIELD_TYPE_LIST_SOLO(CODE, I08, i08, int8_t, __VA_ARGS__) \
+	ADAPT_FIELD_TYPE_LIST_SOLO(CODE, I16, i16, int16_t, __VA_ARGS__) \
+	ADAPT_FIELD_TYPE_LIST_SOLO(CODE, I32, i32, int32_t, __VA_ARGS__) \
+	ADAPT_FIELD_TYPE_LIST_SOLO(CODE, I64, i64, int64_t, __VA_ARGS__) \
+	ADAPT_FIELD_TYPE_LIST_SOLO(CODE, F32, f32, float, __VA_ARGS__) \
+	ADAPT_FIELD_TYPE_LIST_SOLO(CODE, F64, f64, double, __VA_ARGS__) \
+	ADAPT_FIELD_TYPE_LIST_SOLO(CODE, C32, c32, std::complex<float>, __VA_ARGS__) \
+	ADAPT_FIELD_TYPE_LIST_SOLO(CODE, C64, c64, std::complex<double>, __VA_ARGS__) \
+	ADAPT_FIELD_TYPE_LIST_SOLO(CODE, Str, str, std::string, __VA_ARGS__) \
+	ADAPT_FIELD_TYPE_LIST_SOLO(CODE, Jbp, jbp, JBpos, __VA_ARGS__)
+
+#define ADAPT_FIELD_TYPE_LIST_TRIO(CODE, ...)\
+	ADAPT_FIELD_TYPE_LIST_DUO(CODE, I08, i08, int8_t, __VA_ARGS__) \
+	ADAPT_FIELD_TYPE_LIST_DUO(CODE, I16, i16, int16_t, __VA_ARGS__) \
+	ADAPT_FIELD_TYPE_LIST_DUO(CODE, I32, i32, int32_t, __VA_ARGS__) \
+	ADAPT_FIELD_TYPE_LIST_DUO(CODE, I64, i64, int64_t, __VA_ARGS__) \
+	ADAPT_FIELD_TYPE_LIST_DUO(CODE, F32, f32, float, __VA_ARGS__) \
+	ADAPT_FIELD_TYPE_LIST_DUO(CODE, F64, f64, double, __VA_ARGS__) \
+	ADAPT_FIELD_TYPE_LIST_DUO(CODE, C32, c32, std::complex<float>, __VA_ARGS__) \
+	ADAPT_FIELD_TYPE_LIST_DUO(CODE, C64, c64, std::complex<double>, __VA_ARGS__) \
+	ADAPT_FIELD_TYPE_LIST_DUO(CODE, Str, str, std::string, __VA_ARGS__) \
+	ADAPT_FIELD_TYPE_LIST_DUO(CODE, Jbp, jbp, JBpos, __VA_ARGS__)
 
 ADAPT_EXPORT
 class FieldVariant;

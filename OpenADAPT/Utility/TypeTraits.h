@@ -210,6 +210,13 @@ template <size_t Index, class ...Types>
 using GetFormerNTypes_t = typename GetFormerNTypes<Index, Types...>::Type;
 
 ADAPT_EXPORT
+template <class A, class B>
+using Former = A;
+ADAPT_EXPORT
+template <class A, class B>
+using Latter = B;
+
+ADAPT_EXPORT
 template <size_t Index, auto ...Values>
 constexpr auto GetValue()
 {

@@ -9,7 +9,7 @@ find_package(unordered_dense)
 set(TEST_TREE_TYPES DTree STree DJTree0 DJTree1 DJTree2 DJTree0_1 DJTree1_2)
 set(TEST_TABLE_TYPES DTable STable DJTable)
 
-set(TEST_SUBJECTS Evaluate Traverse Extract Filter Hist Show)
+set(TEST_SUBJECTS Evaluate Traverse Extract Filter Hist Show Parser)
 
 foreach(TYPE ${TEST_TREE_TYPES})
 	foreach(SUBJ ${TEST_SUBJECTS})
@@ -38,7 +38,7 @@ endforeach()
 add_executable(${PROJECT_NAME}
 	${TEST_SOURCES}
 	"Random/BinJoint.cpp" "Random/CrossJoint.cpp" "Random/Hist.cpp" "Random/KeywordArg.cpp" "Random/LayerInfo.cpp"
-	"Random/Matrix.cpp" "Random/Plot.cpp" "Random/Ranges.cpp" "Random/Parser.cpp" "Random/ParserV5.cpp"
+	"Random/Matrix.cpp" "Random/Plot.cpp" "Random/Ranges.cpp"
 	"Random/TreeHandling.cpp" "Random/TryJoin.cpp" "Random/UserFunc.cpp")
 
 if(${unordered_dense_FOUND})
@@ -55,11 +55,11 @@ endif()
 if(BUILD_WITH_MODULE)
 	message("Building Test with Module")
 	set(TEST_COMPILE_DEFS_2 ADAPT_IMPORT_MODULE ${TEST_COMPILE_DEFS_1})
-	set(TEST_LINK_LIBS_2 OpenADAPT::Module ${TEST_LINK_LIBS_1})
+	set(TEST_LINK_LIBS_2 OpenADAPT::Module OpenADAPT::Parser ${TEST_LINK_LIBS_1})
 else()
 	message("Building Test without Module")
 	set(TEST_COMPILE_DEFS_2 ${TEST_COMPILE_DEFS_1})
-	set(TEST_LINK_LIBS_2 OpenADAPT::OpenADAPT ${TEST_LINK_LIBS_1})
+	set(TEST_LINK_LIBS_2 OpenADAPT::OpenADAPT OpenADAPT::Parser ${TEST_LINK_LIBS_1})
 endif()
 target_link_libraries(${PROJECT_NAME} PRIVATE ${TEST_LINK_LIBS_2})
 target_compile_definitions(${PROJECT_NAME} PRIVATE ${TEST_COMPILE_DEFS_2})

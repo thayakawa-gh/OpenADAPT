@@ -11,7 +11,7 @@ void TestShow(Container& tree, const Layer0& l0, const Layer1& l1, const Layer2&
 	[[maybe_unused]] auto [exam, math, jpn, eng, sci, soc] = l2;
 
 	auto sum_3subjs = jpn + math + eng;
-	auto rank = count3(exam == 0 && sum_3subjs > jpn.o(0_depth) + math.o(0_depth) + eng.o(0_depth)) + 1;
+	auto rank = count_if3(exam == 0 && sum_3subjs > jpn.o(0_depth) + math.o(0_depth) + eng.o(0_depth)) + 1;
 
 	tree | Filter(sum_3subjs >= 240 && exam == 0) | Show(name, sum_3subjs, jpn, math, eng, rank);
 }

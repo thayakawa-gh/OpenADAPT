@@ -34,12 +34,23 @@ auto TupleAdd_impl([[maybe_unused]] std::tuple<T...> t, U&& u, std::index_sequen
 {
 	return std::forward_as_tuple(std::get<Indices>(std::move(t))..., std::forward<U>(u));
 }
+template <class U, class ...T, size_t ...Indices>
+auto TupleAddFront_impl(U&& u, [[maybe_unused]] std::tuple<T...> t, std::index_sequence<Indices...>)
+{
+	return std::forward_as_tuple(std::forward<U>(u), std::get<Indices>(std::move(t))...);
+}
 }
 ADAPT_EXPORT
 template <class ...T, class U>
 auto TupleAdd([[maybe_unused]] std::tuple<T...> t, U&& u)
 {
 	return detail::TupleAdd_impl(std::move(t), std::forward<U>(u), std::make_index_sequence<sizeof...(T)>());
+}
+ADAPT_EXPORT
+template <class U, class ...T>
+auto TupleAddFront(U&& u, [[maybe_unused]] std::tuple<T...> t)
+{
+	return detail::TupleAddFront_impl(std::forward<U>(u), std::move(t), std::make_index_sequence<sizeof...(T)>());
 }
 
 // 通常、make_tupleは全てコピー、std::tieは全てlvalue ref、std::forwar_as_tupleは完全転送を行う。

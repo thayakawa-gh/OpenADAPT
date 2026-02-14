@@ -1,0 +1,21 @@
+#include <OpenADAPT/Parser/Parser_impl.h>
+
+namespace adapt
+{
+
+namespace eval
+{
+
+namespace parser
+{
+
+#define X(NAME, SYM)\
+template Parser<${TYPE}>::NodeType Parser<${TYPE}>::ApplyRegularFunc##NAME(Parser<${TYPE}>::NodeType operand);
+PARSER_REGULAR_FUNCS_1ARG
+#undef X
+
+}
+
+}
+
+}

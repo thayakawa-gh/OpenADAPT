@@ -483,6 +483,12 @@ public:
 		return RttiFieldNode<Placeholder>(*self, depth);
 	}
 	auto o(DepthType d) const { return outer(d); }
+	auto o0() const { return outer(0); }
+	auto o1() const { return outer(1); }
+	auto o2() const { return outer(2); }
+	auto o3() const { return outer(3); }
+	auto o4() const { return outer(4); }
+	auto o5() const { return outer(5); }
 
 	template <class ...NP>
 		requires ((node_or_placeholder<NP> || std::integral<NP>) && ...)

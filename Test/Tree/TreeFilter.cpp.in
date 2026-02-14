@@ -2,6 +2,6 @@
 
 TEST_F(Aggregator_${TYPE}, Filter)
 {
-	DECL_PH_SET_${TYPE}(*m_tree);
+	DECL_PH_SET_${TYPE};
 	TestFilter(*m_tree, m_class, layer0, layer1, layer2);
 }
