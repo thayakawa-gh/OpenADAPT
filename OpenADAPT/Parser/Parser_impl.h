@@ -24,6 +24,14 @@ namespace parser
 	if (left_is_##LEFT && middle_is_##MIDDLE && right_is_##RIGHT)\
 		return NodeType(eval::SYM(std::move(std::get<LEFT##NodeType>(left)), std::move(std::get<MIDDLE##NodeType>(middle)), std::move(std::get<RIGHT##NodeType>(right))));
 
+#define ADAPT_DETAIL_RETURN_2ARGS_METHOD(SYM, LEFT, RIGHT)\
+	if (left_is_##LEFT && right_is_##RIGHT)\
+		return NodeType(field.GetPlaceholder().SYM(std::move(std::get<LEFT##NodeType>(left)), std::move(std::get<RIGHT##NodeType>(right))));
+
+#define ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, LEFT, MIDDLE, RIGHT)\
+	if (left_is_##LEFT && middle_is_##MIDDLE && right_is_##RIGHT)\
+		return NodeType(field.GetPlaceholder().SYM(std::move(std::get<LEFT##NodeType>(left)), std::move(std::get<MIDDLE##NodeType>(middle)), std::move(std::get<RIGHT##NodeType>(right))));
+
 
 #define X(NAME, SYM)\
 template <class Container>\
@@ -240,6 +248,120 @@ Parser<Container>::NodeType Parser<Container>::ApplyRegularFunc##NAME(Parser<Con
 PARSER_REGULAR_FUNCS_3ARG
 #undef X
 
+
+#define X(NAME, SYM)\
+template <class Container>\
+Parser<Container>::NodeType Parser<Container>::ApplyFieldMethod##NAME(Parser<Container>::FieldNodeType field, Parser<Container>::NodeType arg)\
+{\
+	bool is_field = std::holds_alternative<FieldNodeType>(arg);\
+	bool is_const = std::holds_alternative<ConstNodeType>(arg);\
+	bool is_func = std::holds_alternative<FuncNodeType>(arg);\
+	if (is_const) return NodeType(field.GetPlaceholder().SYM(std::move(std::get<ConstNodeType>(arg))));\
+	if (is_field) return NodeType(field.GetPlaceholder().SYM(std::move(std::get<FieldNodeType>(arg))));\
+	if (is_func) return NodeType(field.GetPlaceholder().SYM(std::move(std::get<FuncNodeType>(arg))));\
+	throw ParseError("Unknown field method: " + std::string(#SYM)); \
+}
+PARSER_FIELD_METHODS_1ARG
+#undef X
+
+
+#define X(NAME, SYM)\
+template <class Container>\
+Parser<Container>::NodeType Parser<Container>::ApplyFieldMethod##NAME(Parser<Container>::FieldNodeType field, Parser<Container>::NodeType left, Parser<Container>::NodeType right)\
+{\
+	if constexpr (any_tree<Container>)\
+	{\
+		bool left_is_Field = std::holds_alternative<FieldNodeType>(left);\
+		bool left_is_Const = std::holds_alternative<ConstNodeType>(left);\
+		bool left_is_Func = std::holds_alternative<FuncNodeType>(left);\
+		bool right_is_Field = std::holds_alternative<FieldNodeType>(right);\
+		bool right_is_Const = std::holds_alternative<ConstNodeType>(right);\
+		bool right_is_Func = std::holds_alternative<FuncNodeType>(right);\
+		ADAPT_DETAIL_RETURN_2ARGS_METHOD(SYM, Const, Const)\
+		ADAPT_DETAIL_RETURN_2ARGS_METHOD(SYM, Const, Field)\
+		ADAPT_DETAIL_RETURN_2ARGS_METHOD(SYM, Const, Func)\
+		ADAPT_DETAIL_RETURN_2ARGS_METHOD(SYM, Field, Const)\
+		ADAPT_DETAIL_RETURN_2ARGS_METHOD(SYM, Field, Field)\
+		ADAPT_DETAIL_RETURN_2ARGS_METHOD(SYM, Field, Func)\
+		ADAPT_DETAIL_RETURN_2ARGS_METHOD(SYM, Func, Const)\
+		ADAPT_DETAIL_RETURN_2ARGS_METHOD(SYM, Func, Field)\
+		ADAPT_DETAIL_RETURN_2ARGS_METHOD(SYM, Func, Func)\
+	}\
+	throw ParseError("Unknown field method: " + std::string(#SYM)); \
+}
+PARSER_FIELD_METHODS_2ARG
+#undef X
+
+
+#define X(NAME, SYM)\
+template <class Container>\
+Parser<Container>::NodeType Parser<Container>::ApplyFieldMethod##NAME(Parser<Container>::FieldNodeType field, Parser<Container>::NodeType left, Parser<Container>::NodeType middle, Parser<Container>::NodeType right)\
+{\
+	if constexpr (any_tree<Container>)\
+	{\
+		bool left_is_Field = std::holds_alternative<FieldNodeType>(left);\
+		bool left_is_Const = std::holds_alternative<ConstNodeType>(left);\
+		bool left_is_Func = std::holds_alternative<FuncNodeType>(left);\
+		bool middle_is_Field = std::holds_alternative<FieldNodeType>(middle);\
+		bool middle_is_Const = std::holds_alternative<ConstNodeType>(middle);\
+		bool middle_is_Func = std::holds_alternative<FuncNodeType>(middle);\
+		bool right_is_Field = std::holds_alternative<FieldNodeType>(right);\
+		bool right_is_Const = std::holds_alternative<ConstNodeType>(right);\
+		bool right_is_Func = std::holds_alternative<FuncNodeType>(right);\
+		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Const, Const, Const)\
+		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Const, Const, Field)\
+		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Const, Const, Func)\
+		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Const, Field, Const)\
+		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Const, Field, Field)\
+		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Const, Field, Func)\
+		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Const, Func, Const)\
+		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Const, Func, Field)\
+		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Const, Func, Func)\
+		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Field, Const, Const)\
+		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Field, Const, Field)\
+		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Field, Const, Func)\
+		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Field, Field, Const)\
+		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Field, Field, Field)\
+		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Field, Field, Func)\
+		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Field, Func, Const)\
+		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Field, Func, Field)\
+		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Field, Func, Func)\
+		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Func, Const, Const)\
+		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Func, Const, Field)\
+		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Func, Const, Func)\
+		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Func, Field, Const)\
+		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Func, Field, Field)\
+		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Func, Field, Func)\
+		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Func, Func, Const)\
+		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Func, Func, Field)\
+		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Func, Func, Func)\
+	}\
+	throw ParseError("Unknown field method: " + std::string(#SYM)); \
+}
+PARSER_FIELD_METHODS_3ARG
+#undef X
+
+
+#define X(NAME, SYM)\
+template <class Container>\
+Parser<Container>::NodeType Parser<Container>::ApplyContainerMethod##NAME(Parser<Container>::ConstNodeType arg)\
+{\
+	auto f = [](const Container& c, std::integral auto v) { return c.SYM(v); };\
+	return NodeType(ConvertToContainerMethod(f, m_container, arg));\
+}
+PARSER_CONTAINER_METHODS_1ARG
+#undef X
+
+
+#define X(NAME, SYM)\
+template <class Container>\
+Parser<Container>::NodeType Parser<Container>::ApplyContainerMethod##NAME(Parser<Container>::ConstNodeType left, Parser<Container>::ConstNodeType right)\
+{\
+	auto f = [](const Container& c, std::integral auto l, std::integral auto r) { return c.SYM(l, r); };\
+	return NodeType(ConvertToContainerMethod(f, m_container, left, right));\
+}
+PARSER_CONTAINER_METHODS_2ARG
+#undef X
 
 
 }

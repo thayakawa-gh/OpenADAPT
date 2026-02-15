@@ -72,35 +72,6 @@ public:
 	X(NOT,     !) \
 	X(BIT_NOT, ~)
 
-// 階層関数定義 (Layer functions)
-#define PARSER_LAYER_FUNCS \
-	X(COUNTALL, countall) \
-	X(EXIST,    exist) \
-	X(COUNTIF,    count_if) \
-	X(SUM,      sum) \
-	X(MEAN,     mean) \
-	X(DEV,      dev) \
-	X(GREATEST, greatest) \
-	X(LEAST,    least) \
-	X(FIRST, first) \
-	X(LAST, last) \
-	X(INDEX, index) \
-	X(LASTINDEX, lastindex)
-
-#define PARSER_LAYER_FUNCS_IF \
-	X(SUMIF,    sum_if) \
-	X(MEANIF,   mean_if) \
-	X(DEVIF,    dev_if) \
-	X(GREATESTIF, greatest_if) \
-	X(LEASTIF,   least_if) \
-	X(FIRSTIF, first_if) \
-	X(LASTIF, last_if) \
-	X(ISFIRSTIF, isfirst_if) \
-	X(ISLASTIF, islast_if) \
-	X(ISGREATESTIF, isgreatest_if) \
-	X(ISLEASTIF, isleast_if)
-
-
 
 // 通常関数定義 (Regular functions)
 // 1引数関数
@@ -135,6 +106,7 @@ public:
 	X(ISNORMAL,  isnormal) \
 	X(LEN,       len) \
 	X(TOSTR,     tostr)
+
 // 2引数関数
 #define PARSER_REGULAR_FUNCS_2ARG \
 	X(POW,       pow) \
@@ -148,11 +120,111 @@ public:
 	X(IF,        if_) \
 	X(SUBSTR,    substr)
 
-// メンバ関数定義 (Member functions)
-#define PARSER_MEMBER_FUNCS \
-	X(AT,    at) \
-	X(OUTER, outer) \
-	X(O,     o)
+
+// 階層関数定義 (Layer functions)
+#define PARSER_LAYER_FUNCS \
+	X(COUNTALL, countall) \
+	X(EXIST,    exist) \
+	X(COUNTIF,    count_if) \
+	X(SUM,      sum) \
+	X(MEAN,     mean) \
+	X(DEV,      dev) \
+	X(GREATEST, greatest) \
+	X(LEAST,    least) \
+	X(FIRST, first) \
+	X(LAST, last) \
+	X(INDEX, index) \
+	X(LASTINDEX, lastindex)
+
+#define PARSER_LAYER_FUNCS_IF \
+	X(SUMIF,    sum_if) \
+	X(MEANIF,   mean_if) \
+	X(DEVIF,    dev_if) \
+	X(GREATESTIF, greatest_if) \
+	X(LEASTIF,   least_if) \
+	X(FIRSTIF, first_if) \
+	X(LASTIF, last_if) \
+	X(ISFIRSTIF, isfirst_if) \
+	X(ISLASTIF, islast_if) \
+	X(ISGREATESTIF, isgreatest_if) \
+	X(ISLEASTIF, isleast_if)
+
+
+// フィールドメソッド定義
+// atはtableの場合に引数を2個以上取ることが出来ないため、ApplyFieldMethodが特殊な実装になっている。
+// 新しくメソッドを追加する場合は、atとの整合性に注意すること。
+#define PARSER_FIELD_METHODS_1ARG \
+	X(AT,    at)
+#define PARSER_FIELD_METHODS_2ARG \
+	X(AT,    at)
+#define PARSER_FIELD_METHODS_3ARG \
+	X(AT,    at)
+
+#define PARSER_CONST_FIELD_METHODS_0ARG \
+	X(O, o)
+#define PARSER_CONST_FIELD_METHODS_1ARG \
+	X(OUTER, outer)
+
+// コンテナメソッド定義
+#define PARSER_CONTAINER_METHODS_1ARG \
+	X(POS, pos)
+#define PARSER_CONTAINER_METHODS_2ARG \
+	X(SIZE, size)
+
+#define PARSER_CONTAINER_METHODS_0ARG_RED\
+	X(POS0, pos0, POS, 0)\
+	X(POS1, pos1, POS, 1)\
+	X(POS2, pos2, POS, 2)\
+	X(POS3, pos3, POS, 3)\
+	X(POS4, pos4, POS, 4)\
+	X(POS5, pos5, POS, 5)\
+	X(POS6, pos6, POS, 6)\
+	X(POS7, pos7, POS, 7)\
+	X(POS8, pos8, POS, 8)\
+	X(POS9, pos9, POS, 9)
+
+#define PARSER_CONTAINER_METHODS_1ARG_RED\
+	X(SIZE, size, SIZE, ADAPT_TIE_ARGS(Subtract(arg, 1), arg))\
+	X(SIZE1, size1, SIZE, ADAPT_TIE_ARGS(Subtract(arg, 1), arg))\
+	X(SIZE2, size2, SIZE, ADAPT_TIE_ARGS(Subtract(arg, 2), arg))\
+	X(SIZE3, size3, SIZE, ADAPT_TIE_ARGS(Subtract(arg, 3), arg))\
+	X(SIZE4, size4, SIZE, ADAPT_TIE_ARGS(Subtract(arg, 4), arg))\
+	X(SIZE5, size5, SIZE, ADAPT_TIE_ARGS(Subtract(arg, 5), arg))\
+	X(SIZE6, size6, SIZE, ADAPT_TIE_ARGS(Subtract(arg, 6), arg))\
+	X(SIZE7, size7, SIZE, ADAPT_TIE_ARGS(Subtract(arg, 7), arg))\
+	X(SIZE8, size8, SIZE, ADAPT_TIE_ARGS(Subtract(arg, 8), arg))\
+	X(SIZE9, size9, SIZE, ADAPT_TIE_ARGS(Subtract(arg, 9), arg))
+
+inline RttiConstNode Subtract(const RttiConstNode& a, int32_t i)
+{
+	#define Y(TTYPE, METHOD, VTYPE)\
+	if (a.Is##TTYPE()) return RttiConstNode((VTYPE)(a.GetValue(Number<FieldType::TTYPE>{}) - i));
+	ADAPT_INT_TYPE_LIST_SOLO(Y)
+	#undef Y
+	throw ParseError("Invalid argument type for subtraction");
+}
+
+template <class Func, class Container>
+RttiFuncNode<Container> ConvertToContainerMethod(Func f, const Container& c, const RttiConstNode& node)
+{
+	//コンテナのメソッドを呼び出すノードを生成する。
+	#define Y(TTYPE, METHOD, VTYPE)\
+	if (node.Is##TTYPE()) return ConvertToRttiFuncNode(f(c, node.GetValue(Number<FieldType::TTYPE>{})));
+	ADAPT_INT_TYPE_LIST_SOLO(Y)
+	#undef Y
+	throw ParseError("Invalid argument type for container method");
+}
+template <class Func, class Container>
+RttiFuncNode<Container> ConvertToContainerMethod(Func f, const Container& c, const RttiConstNode& left, const RttiConstNode& right)
+{
+	//コンテナのメソッドを呼び出すノードを生成する。
+	#define Y(TTYPE1, METHOD1, VTYPE1, TTYPE2, METHOD2, VTYPE2)\
+	if (left.Is##TTYPE1() && right.Is##TTYPE2())\
+		return ConvertToRttiFuncNode(f(c, left.GetValue(Number<FieldType::TTYPE1>{}), right.GetValue(Number<FieldType::TTYPE2>{})));
+	ADAPT_INT_TYPE_LIST_DUO(Y)
+	#undef Y
+	throw ParseError("Invalid argument type for container method");
+}
 
 // ========================================
 // 名前空間定義の生成 (Generate namespace definitions)
@@ -380,7 +452,7 @@ public:
 	
 	FuncNodeType Parse()
 	{
-		NodeType result = ParseExpression(14); // Start with lowest precedence
+		NodeType result = ParseExpression(); // Start with lowest precedence
 		
 		if (m_current_token.type != TokenType::End)
 			throw ParseError("Unexpected tokens after expression");
@@ -422,7 +494,7 @@ private:
 	}
 	
 	// Precedence climbing method for binary operators
-	NodeType ParseExpression(int min_prec)
+	NodeType ParseExpression(int min_prec = 14)
 	{
 		NodeType left = ParseUnary();
 		
@@ -449,6 +521,7 @@ private:
 		return left;
 	}
 	
+	// 単項演算子、およびそれに続く式を解析する。
 	NodeType ParseUnary()
 	{
 		// 単項演算子チェック (Check unary operators)
@@ -468,39 +541,76 @@ private:
 		return ParsePostfix();
 	}
 	
+	// 単項演算子の後に続く式を解析する。
 	NodeType ParsePostfix()
 	{
 		NodeType node = ParsePrimary();
-		
+
+		// フィールドノードでなければ、メンバ関数呼び出しはできないので、そのまま返す。
+		if (!std::holds_alternative<FieldNodeType>(node)) return node;
+
 		// メンバ関数呼び出し (Member function calls)
 		while (Match(TokenType::Dot))
 		{
 			Consume();
-			
+
 			if (!Match(TokenType::Identifier))
 				throw ParseError("Expected member function name after '.'");
 			
-			std::string member_name = m_current_token.value;
+			std::string method_name = m_current_token.value;
 			Consume();
 			
 			Expect(TokenType::LeftParen, "Expected '(' after member function name");
 			
+			// 引数をパース (Parse arguments)
 			std::vector<NodeType> args;
-			args.push_back(std::move(node)); // 'this' object
 			
 			if (!Match(TokenType::RightParen))
 			{
 				do
 				{
-					if (Match(TokenType::Comma))
-						Consume();
-					args.push_back(ParseExpression(14));
+					// 最初の左括弧の直後を除けば現在のトークンはコンマなので、
+					// コンマの場合だけ次のトークンへ移動する。
+					if (Match(TokenType::Comma)) Consume();
+					args.push_back(ParseExpression());
 				} while (Match(TokenType::Comma));
 			}
 			
 			Expect(TokenType::RightParen, "Expected ')' after member function arguments");
 			
-			node = ApplyMemberFunc(member_name, std::move(args));
+			if (args.size() == 1)
+			{
+				#define X(NAME, SYM) \
+				if (method_name == #SYM) \
+				{\
+					node = ApplyFieldMethod##NAME(std::move(std::get<FieldNodeType>(node)), std::move(args[0]));\
+					continue;\
+				}
+				PARSER_FIELD_METHODS_1ARG
+				#undef X
+			}
+			if (args.size() == 2)
+			{
+				#define X(NAME, SYM) \
+				if (method_name == #SYM) \
+				{\
+					node = ApplyFieldMethod##NAME(std::move(std::get<FieldNodeType>(node)), std::move(args[0]), std::move(args[1]));\
+					continue;\
+				}
+				PARSER_FIELD_METHODS_2ARG
+				#undef X
+			}
+			if (args.size() == 3)
+			{
+				#define X(NAME, SYM) \
+				if (method_name == #SYM) \
+				{\
+					node = ApplyFieldMethod##NAME(std::move(std::get<FieldNodeType>(node)), std::move(args[0]), std::move(args[1]), std::move(args[2]));\
+					continue;\
+				}
+				PARSER_FIELD_METHODS_3ARG
+				#undef X
+			}
 		}
 		
 		return node;
@@ -512,7 +622,7 @@ private:
 		if (Match(TokenType::LeftParen))
 		{
 			Consume();
-			NodeType expr = ParseExpression(14);
+			NodeType expr = ParseExpression();
 			Expect(TokenType::RightParen, "Expected ')'");
 			return expr;
 		}
@@ -623,7 +733,7 @@ private:
 			{
 				if (Match(TokenType::Comma))
 					Consume();
-				args.push_back(ParseExpression(14));
+				args.push_back(ParseExpression());
 			} while (Match(TokenType::Comma));
 		}
 		
@@ -682,7 +792,42 @@ private:
 			PARSER_REGULAR_FUNCS_3ARG
 		}
 		#undef X
-		
+
+		if (std::ranges::all_of(args, [](const NodeType& arg) { return std::holds_alternative<ConstNodeType>(arg); }))
+		{
+			// container methodは全て定数引数でなければならない。
+			#define X(NAME, SYM) \
+			if (func_name == #SYM) return ApplyContainerMethod##NAME(std::move(arg));
+			if (args.size() == 1)
+			{
+				auto arg = std::move(std::get<ConstNodeType>(args[0]));
+				PARSER_CONTAINER_METHODS_1ARG
+			}
+			#undef X
+
+			#define X(NAME, SYM) \
+			if (func_name == #SYM) return ApplyContainerMethod##NAME(std::move(left), std::move(right));
+			if (args.size() == 2)
+			{
+				auto left = std::move(std::get<ConstNodeType>(args[0]));
+				auto right = std::move(std::get<ConstNodeType>(args[1]));
+				PARSER_CONTAINER_METHODS_2ARG
+			}
+			#undef X
+
+			#define X(NAME, SYM, PASSTO, ARG) \
+			if (func_name == #SYM) return ApplyContainerMethod##PASSTO(ARG);
+			if (args.size() == 0)
+			{
+				PARSER_CONTAINER_METHODS_0ARG_RED
+			}
+			if (args.size() == 1)
+			{
+				auto arg = std::move(std::get<ConstNodeType>(args[0]));
+				PARSER_CONTAINER_METHODS_1ARG_RED
+			}
+			#undef X
+		}
 		throw ParseError("Unknown function: " + func_name);
 	}
 	
@@ -739,6 +884,44 @@ private:
 	NodeType ApplyRegularFunc##NAME(NodeType left, NodeType middle, NodeType right);
 	PARSER_REGULAR_FUNCS_3ARG
 	#undef X
+
+
+	#define X(NAME, SYM)\
+	NodeType ApplyFieldMethod##NAME(FieldNodeType fld, NodeType arg);
+	PARSER_FIELD_METHODS_1ARG
+	#undef X
+
+	#define X(NAME, SYM)\
+	NodeType ApplyFieldMethod##NAME(FieldNodeType fld, NodeType arg1, NodeType arg2);
+	PARSER_FIELD_METHODS_2ARG
+	#undef X
+
+	#define X(NAME, SYM)\
+	NodeType ApplyFieldMethod##NAME(FieldNodeType fld, NodeType arg1, NodeType arg2, NodeType arg3);
+	PARSER_FIELD_METHODS_3ARG
+	#undef X
+
+
+	#define X(NAME, SYM)\
+	NodeType ApplyContainerMethod##NAME(ConstNodeType arg);
+	PARSER_CONTAINER_METHODS_1ARG
+	#undef X
+
+	#define X(NAME, SYM)\
+	NodeType ApplyContainerMethod##NAME(ConstNodeType left, ConstNodeType right);
+	PARSER_CONTAINER_METHODS_2ARG
+	#undef X
+
+	#define X(NAME, SYM, PASSTO, ARG)\
+	NodeType ApplyContainerMethod##NAME();
+	PARSER_CONTAINER_METHODS_0ARG_RED
+	#undef X
+
+	#define X(NAME, SYM, PASSTO, ARG)\
+	NodeType ApplyContainerMethod##NAME(NodeType arg);
+	PARSER_CONTAINER_METHODS_1ARG_RED
+	#undef X
+
 
 	NodeType ApplyMemberFunc(const std::string& func_name, std::vector<NodeType> args)
 	{

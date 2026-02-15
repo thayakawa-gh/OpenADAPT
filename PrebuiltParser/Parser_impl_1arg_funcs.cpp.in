@@ -10,7 +10,7 @@ namespace parser
 {
 
 #define X(NAME, SYM)\
-template Parser<${TYPE}>::NodeType Parser<${TYPE}>::ApplyRegularFunc##NAME(Parser<${TYPE}>::NodeType operand);
+template Parser<${TYPE}>::NodeType Parser<${TYPE}>::ApplyRegularFunc##NAME(Parser<${TYPE}>::NodeType arg);
 PARSER_REGULAR_FUNCS_1ARG
 #undef X
 

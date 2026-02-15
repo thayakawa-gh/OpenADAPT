@@ -237,7 +237,7 @@ void QuickstartDTable()
 
 	// Use lambda function with traverser.
 	// Count the number of cities with a larger population than the current city.
-	Lambda population_rank = count(city_population > city_population.o(0_depth)) + 1;
+	Lambda population_rank = count_if(city_population > city_population.o(0_depth)) + 1;
 	for (const auto& trav : usa.GetRange(0_layer))
 	{
 		std::cout << std::format("{:<12} {:>8} {:>7.1f} {:>2}\n", trav[city], trav[city_population], trav[city_area], population_rank(trav));

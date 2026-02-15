@@ -190,7 +190,7 @@ void QuickstartKeyJoin()
 	Lambda profile = "county: " + jt0_county + ", name: " + jt1_name + ", age: " + tostr(jt1_age);
 	std::cout << profile(jt, bpos_to_logan).str() << std::endl;// county: Harris County, name: Logan Peterson, age: 18
 
-	Lambda num_of_citizens_over_30 = count2(jt1_age > 30);
+	Lambda num_of_citizens_over_30 = count_if2(jt1_age > 30);
 	adapt::Bpos bpos_to_california{ 0 };// California
 	std::cout << num_of_citizens_over_30(jt, bpos_to_california).i64() << std::endl;// 3: Ethan Mitchell, Isabella Morgan and Liam Reynolds.
 	adapt::Bpos bpos_to_texas{ 1 };// Texas
@@ -202,7 +202,7 @@ void QuickstartKeyJoin()
 	// The sum of jt0_area can be calculated because sum function raises the layer to 1.
 	std::cout << total_area_in_a_county(jt, bpos_to_harris).f64() << std::endl;// 1500.7 + 114.4 + 32.7 = 1647.8
 
-	Lambda citizens_per_area_in_a_county = size(jt1_name) / sum(jt0_area);
+	Lambda citizens_per_area_in_a_county = countall(jt1_name) / sum(jt0_area);
 	std::cout << citizens_per_area_in_a_county(jt, bpos_to_harris).f64() << std::endl;// 2 / 1647.8 = 0.00121374
 
 	std::cout << std::endl;

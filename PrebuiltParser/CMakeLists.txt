@@ -1,7 +1,11 @@
 project(Parser)
 
 set(PARSER_TYPES DTree DTable)
-set(PARSER_SUBJECTS unary_ops binary_ops 1arg_funcs 2args_funcs 3args_funcs 1arg_lfuncs 2arg_lfuncs)
+set(PARSER_SUBJECTS unary_ops binary_ops
+	1arg_funcs 2arg_funcs 3arg_funcs
+	1arg_lfuncs 2arg_lfuncs
+	1arg_cmeths 2arg_cmeths
+	1arg_fmeths 2arg_fmeths 3arg_fmeths)
 
 #まずinterfaceとしてのParserを用意。
 add_library(Parser INTERFACE)

@@ -154,7 +154,7 @@ struct RttiConstNode
 	}
 
 	template <FieldType Type>
-	const DFieldInfo::TagTypeToValueType<Type>& Evaluate_impl(Number<Type>) const
+	const DFieldInfo::TagTypeToValueType<Type>& GetValue(Number<Type>) const
 	{
 		if constexpr (Type == FieldType::I08) return std::get<0>(m_value);
 		else if constexpr (Type == FieldType::I16) return std::get<1>(m_value);
@@ -172,12 +172,12 @@ struct RttiConstNode
 	template <class Trav, FieldType Type>
 	const DFieldInfo::TagTypeToValueType<Type>& Evaluate(const Trav&, Number<Type> n) const
 	{
-		return Evaluate_impl(n);
+		return GetValue(n);
 	}
 	template <class Container, FieldType Type>
 	const DFieldInfo::TagTypeToValueType<Type>& Evaluate(const Container&, const Bpos&, Number<Type> n) const
 	{
-		return Evaluate_impl(n);
+		return GetValue(n);
 	}
 
 	bool IsI08() const { return m_value.index() == 0; }

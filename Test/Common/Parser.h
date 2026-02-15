@@ -30,8 +30,8 @@ void TestParser(Tree& tree, const std::vector<Class>&, Layer0 l0, Layer1 l1, Lay
 	auto lambda3 = math > english > 50;
 	auto strlambda3 = Parse(tree, "math > english > 50");
 
-	auto lambda4 = !(japanese > english);
-	auto strlambda4 = Parse(tree, "!(japanese > english)");
+	auto lambda4 = !(japanese < english);
+	auto strlambda4 = Parse(tree, "!(japanese < english)");
 
 	//通常関数
 	auto lambda5 = max(math, japanese);
@@ -44,6 +44,14 @@ void TestParser(Tree& tree, const std::vector<Class>&, Layer0 l0, Layer1 l1, Lay
 	auto lambda7 = sum(math + japanese + english);
 	auto strlambda7 = Parse(tree, "sum(math + japanese + english)");
 
+	//at
+	auto lambda8 = (science.at(10, 2) + science.at(10, 3)) / 2.;
+	auto strlambda8 = Parse(tree, "(science.at(10, 2) + science.at(10, 3)) / 2.");
+
+	//pos
+	auto lambda9 = tree.pos(2_layer) == exam;
+	auto strlambda9 = Parse(tree, "pos(2) == exam");
+
 	using enum FieldType;
 	for (const auto& trav : tree.GetRange(2_layer))
 	{
@@ -54,6 +62,9 @@ void TestParser(Tree& tree, const std::vector<Class>&, Layer0 l0, Layer1 l1, Lay
 		EXPECT_TRUE(compare(Number<I32>{}, trav, lambda5, strlambda5));
 		EXPECT_TRUE(compare(Number<I08>{}, trav, lambda6, strlambda6));
 		EXPECT_TRUE(compare(Number<I32>{}, trav, lambda7, strlambda7));
+		EXPECT_TRUE(compare(Number<F64>{}, trav, lambda8, strlambda8));
+		EXPECT_TRUE(compare(Number<I08>{}, trav, lambda9, strlambda9));
+		EXPECT_TRUE(strlambda9(trav).i08());
 	}
 }
 template <any_tree Container, class ...Args>
@@ -77,8 +88,8 @@ void TestParser(Table& table, const std::vector<Class>&, Layer0 l)
 	auto lambda3 = math > english > 50;
 	auto strlambda3 = Parse(table, "math > english > 50");
 
-	auto lambda4 = !(japanese > english);
-	auto strlambda4 = Parse(table, "!(japanese > english)");
+	auto lambda4 = !(japanese < english);
+	auto strlambda4 = Parse(table, "!(japanese < english)");
 
 	//通常関数
 	auto lambda5 = max(math, japanese);

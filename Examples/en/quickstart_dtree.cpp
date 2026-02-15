@@ -343,7 +343,7 @@ void QuickstartDTree()
 	std::cout << std::endl;
 	// Use lambda functions with traverser.
 	// count the number of cities with a larger population than the current city.
-	Lambda population_rank = count3(population > population.o(0_depth)) + 1;
+	Lambda population_rank = count_if3(population > population.o(0_depth)) + 1;
 	for (const auto& trav : usa.GetRange(2_layer))
 	{
 		// Calculate the population ranking.

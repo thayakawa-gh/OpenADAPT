@@ -828,6 +828,11 @@ public:
 		return m_placeholder.GetType();
 	}
 
+	const Placeholder& GetPlaceholder() const
+	{
+		return m_placeholder;
+	}
+
 protected:
 
 	Placeholder m_placeholder;
@@ -984,11 +989,12 @@ auto MakeRttiIndexedFieldNode(const Placeholder& ph, ValueList<IndTypes...>,
 template <FieldType PHType, placeholder Placeholder,
 	FieldType ...IndTypes, any_node ...Nodes>
 auto MakeRttiIndexedFieldNode_switch_ind(const Placeholder& ph, ValueList<IndTypes...>,
-							  std::tuple<Nodes...> t)
+										 std::tuple<Nodes...> t)
 {
 	return MakeRttiIndexedFieldNode<PHType>(ph, ValueList<IndTypes...>{}, std::move(t),
 											std::make_index_sequence<sizeof...(IndTypes)>{});
 }
+/*
 template <FieldType PHType, placeholder Placeholder, FieldType ...IndTypes, any_node ...Nodes, any_node Head, any_node ...Body>
 auto MakeRttiIndexedFieldNode_switch_ind(const Placeholder& ph, ValueList<IndTypes...>,
 										 std::tuple<Nodes...> t, Head&& head, Body&& ...body)
@@ -1022,7 +1028,65 @@ auto MakeRttiIndexedFieldNode_switch_ph(const Placeholder& ph, Nodes&& ...indice
 #define CODE(T) return MakeRttiIndexedFieldNode_switch_ind<T>(ph, ValueList<>{}, std::tuple<>{}, std::forward<Nodes>(indices)...);
 	ADAPT_SWITCH_FIELD_TYPE(ph.GetType(), CODE, throw MismatchType("");)
 #undef CODE
+}*/
+template <const_node Node>
+auto CastToI64(Node&& node)
+{
+	#define CODE(TTYPE, SYM, VTYPE) if (node.Is##TTYPE()) return RttiConstNode(static_cast<int64_t>(node.GetValue(Number<FieldType::TTYPE>{})));
+	ADAPT_INT_TYPE_LIST_SOLO(CODE)
+	#undef CODE
+	throw MismatchType("");
 }
+template <any_node Node>
+	requires (!const_node<Node>)
+auto CastToI64(Node&& node)
+{
+	return cast_i64(node);
+}
+
+template <FieldType PType, placeholder Placeholder, any_node Node>
+auto MakeRttiIndexedFieldNode(const Placeholder& ph, Node&& node)
+{
+	using enum FieldType;
+	#define CODE(TTYPE1, SYM1, VTYPE1)\
+	if (node.Is##TTYPE1()) return MakeRttiIndexedFieldNode_switch_ind<PType>(ph, ValueList<TTYPE1>{}, std::forward_as_tuple(std::forward<Node>(node)));
+	ADAPT_INT_TYPE_LIST_SOLO(CODE)
+	#undef CODE
+	throw MismatchType("Field indices must be integers.");
+}
+template <FieldType PType, placeholder Placeholder, any_node Node1, any_node Node2>
+auto MakeRttiIndexedFieldNode(const Placeholder& ph, Node1&& node1, Node2&& node2)
+{
+	using enum FieldType;
+	#define CODE(TTYPE1, SYM1, VTYPE1)\
+	if (node1.Is##TTYPE1() && node2.Is##TTYPE1())\
+		return MakeRttiIndexedFieldNode_switch_ind<PType>(ph, ValueList<TTYPE1, TTYPE1>{},\
+				std::forward_as_tuple(std::forward<Node1>(node1), std::forward<Node2>(node2)));
+	ADAPT_INT_TYPE_LIST_SOLO(CODE)
+	#undef CODE
+	auto isint = [](auto& i) { return i.IsI08() || i.IsI16() || i.IsI32() || i.IsI64(); };
+	if (isint(node1) && isint(node2))
+		return MakeRttiIndexedFieldNode_switch_ind<PType>(ph, ValueList<FieldType::I64, FieldType::I64>{},
+														std::forward_as_tuple(CastToI64(node1), CastToI64(node2)));
+	throw MismatchType("Field indices must be the same integer type.");
+}
+template <FieldType PType, placeholder Placeholder, any_node Node1, any_node Node2, any_node Node3>
+auto MakeRttiIndexedFieldNode(const Placeholder& ph, Node1&& node1, Node2&& node2, Node3&& node3)
+{
+	using enum FieldType;
+	#define CODE(TTYPE1, SYM1, VTYPE1)\
+	if (node1.Is##TTYPE1() && node2.Is##TTYPE1() && node3.Is##TTYPE1())\
+		return MakeRttiIndexedFieldNode_switch_ind<PType>(ph, ValueList<TTYPE1, TTYPE1, TTYPE1>{},\
+				std::forward_as_tuple(std::forward<Node1>(node1), std::forward<Node2>(node2), std::forward<Node3>(node3)));
+	ADAPT_INT_TYPE_LIST_SOLO(CODE)
+	#undef CODE
+		auto isint = [](auto& i) { return i.IsI08() || i.IsI16() || i.IsI32() || i.IsI64(); };
+	if (isint(node1) && isint(node2) && isint(node3))
+		return MakeRttiIndexedFieldNode_switch_ind<PType>(ph, ValueList<FieldType::I64, FieldType::I64, FieldType::I64>{},
+														  std::forward_as_tuple(CastToI64(node1), CastToI64(node2), CastToI64(node3)));
+	throw MismatchType("Field indices must be the same integer type.");
+}
+
 template <placeholder Placeholder, any_node ...Nodes>
 auto MakeCttiIndexedFieldNode(const Placeholder& ph, Nodes&& ...nodes)
 {
@@ -1039,7 +1103,9 @@ auto MakeIndexedFieldNode(const Placeholder& ph, NPs&& ...indices)
 
 	if constexpr (has_rtti_type)
 	{
-		return MakeRttiIndexedFieldNode_switch_ph(ph, ConvertToNode(std::forward<NPs>(indices), std::true_type{})...);
+		#define CODE(T) return MakeRttiIndexedFieldNode<T>(ph, ConvertToNode(std::forward<NPs>(indices), std::true_type{})...);
+		ADAPT_SWITCH_FIELD_TYPE(ph.GetType(), CODE, throw MismatchType("");)
+		#undef CODE
 	}
 	else
 	{

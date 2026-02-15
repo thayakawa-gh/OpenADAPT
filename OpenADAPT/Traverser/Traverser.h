@@ -1499,6 +1499,13 @@ public:
 		for (LayerType l = 1_layer; l <= max; ++l) bpos[l] = 0;
 	}
 
+	BindexType GetSize(LayerType from, LayerType to) const
+	{
+		assert(from == -1_layer);
+		assert(to == 0_layer);
+		return m_iterators[0_layer]->GetSize(to);
+	}
+
 	FieldRef operator[](const RttiPlaceholder& m) const
 	{
 		return GetField(m);
