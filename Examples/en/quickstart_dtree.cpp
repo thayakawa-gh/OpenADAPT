@@ -217,7 +217,7 @@ void QuickstartDTree()
 	Lambda total_population_in_a_state = sum2(population);
 	assert(total_population_in_a_state.GetLayer() == 0_layer && total_population_in_a_state.GetType() == adapt::FieldType::I32);
 	adapt::Bpos california_index = { 0 };
-	std::cout << total_population_in_a_state(usa, california_index).i32() << std::endl;// 10824306
+	std::cout << total_population_in_a_state(usa, california_index).i32() << std::endl;// 6476094
 
 	// Make a lambda function to calculate total population in a nation.
 	// This time, the layer is raised by 3 and becomes -1, that is, the top layer.
@@ -225,7 +225,7 @@ void QuickstartDTree()
 	// because there is only one layer -1 element, usa.
 	Lambda total_population_in_a_nation = sum3(population);
 	assert(total_population_in_a_nation.GetLayer() == -1_layer && total_population_in_a_nation.GetType() == adapt::FieldType::I32);
-	std::cout << total_population_in_a_nation(usa).i32() << std::endl;// 6476094 + 1304379 + 256684 + 246918 = 8286975
+	std::cout << total_population_in_a_nation(usa).i32() << std::endl;// 10824306
 
 	// Make a lambda function to calculate the average population density of cities with an area larger than 100 km^2.
 	// "sum_if", "mean_if" and the other similar functions can take a condition as a second argument.
@@ -259,7 +259,7 @@ void QuickstartDTree()
 	// The functions given to UserFunc are required to be default constructible and copyable.
 	// Please be careful not to use lambda expressions with captures, which are not default constructible and not copyable.
 
-	// Define a user function that takes two double arguments and returns their sum.
+	// Define a user function that takes one integral and one floating-point argument and returns a floating-point value.
 	// When defining a user function for Rtti lambda functions,
 	// it is preferable to use std::integral, std::floating_point or other concepts as argument types
 	// instead of specific types like int32_t or double in order to suppress type conversion warnings.

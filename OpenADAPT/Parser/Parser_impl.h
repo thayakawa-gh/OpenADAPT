@@ -12,6 +12,8 @@ namespace eval
 namespace parser
 {
 
+// ----------Parserの実装----------
+
 #define ADAPT_DETAIL_RETURN_2ARGS_OPS(SYM, LEFT, RIGHT)\
 	if (left_is_##LEFT && right_is_##RIGHT)\
 		return NodeType(std::move(std::get<LEFT##NodeType>(left)) SYM std::move(std::get<RIGHT##NodeType>(right)));
@@ -22,7 +24,7 @@ namespace parser
 
 #define ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, LEFT, MIDDLE, RIGHT)\
 	if (left_is_##LEFT && middle_is_##MIDDLE && right_is_##RIGHT)\
-		return NodeType(eval::SYM(std::move(std::get<LEFT##NodeType>(left)), std::move(std::get<MIDDLE##NodeType>(middle)), std::move(std::get<RIGHT##NodeType>(right))));
+		return NodeType(eval::SYM(std::move(std::get<LEFT##NodeType>(left)), std::move(std::get<MIDDLE##NodeType>(middle_)), std::move(std::get<RIGHT##NodeType>(right_))));
 
 #define ADAPT_DETAIL_RETURN_2ARGS_METHOD(SYM, LEFT, RIGHT)\
 	if (left_is_##LEFT && right_is_##RIGHT)\
@@ -30,7 +32,7 @@ namespace parser
 
 #define ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, LEFT, MIDDLE, RIGHT)\
 	if (left_is_##LEFT && middle_is_##MIDDLE && right_is_##RIGHT)\
-		return NodeType(field.GetPlaceholder().SYM(std::move(std::get<LEFT##NodeType>(left)), std::move(std::get<MIDDLE##NodeType>(middle)), std::move(std::get<RIGHT##NodeType>(right))));
+		return NodeType(field.GetPlaceholder().SYM(std::move(std::get<LEFT##NodeType>(left)), std::move(std::get<MIDDLE##NodeType>(middle_)), std::move(std::get<RIGHT##NodeType>(right_))));
 
 
 #define X(NAME, SYM)\
@@ -209,39 +211,17 @@ Parser<Container>::NodeType Parser<Container>::ApplyRegularFunc##NAME(Parser<Con
 	bool right_is_Field = std::holds_alternative<FieldNodeType>(right);\
 	bool right_is_Const = std::holds_alternative<ConstNodeType>(right);\
 	bool right_is_Func = std::holds_alternative<FuncNodeType>(right);\
-	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Field, Field, Field)\
-	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Field, Field, Const)\
-	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Field, Field, Func)\
-	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Field, Const, Field)\
-	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Field, Const, Const)\
-	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Field, Const, Func)\
-	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Field, Func, Field)\
-	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Field, Func, Const)\
+	Parser<Container>::NodeType middle_, right_;\
+	if (middle_is_Const) middle_ = ConvertConstNodeToRttiFuncNode<Container>(std::move(std::get<ConstNodeType>(middle)));\
+	else if (middle_is_Field) middle_ = fwd(std::get<FieldNodeType>(middle));\
+	else if (middle_is_Func) middle_ = std::move(std::get<FuncNodeType>(middle));\
+	else throw ParseError("Invalid function call: " #SYM);\
+	if (right_is_Const) right_ = ConvertConstNodeToRttiFuncNode<Container>(std::move(std::get<ConstNodeType>(right)));\
+	else if (right_is_Field) right_ = fwd(std::get<FieldNodeType>(right));\
+	else if (right_is_Func) right_ = std::move(std::get<FuncNodeType>(right));\
+	else throw ParseError("Invalid function call: " #SYM);\
 	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Field, Func, Func)\
-	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Const, Field, Field)\
-	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Const, Field, Const)\
-	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Const, Field, Func)\
-	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Const, Const, Field)\
-	if (left_is_Const && middle_is_Const && right_is_Const)\
-	{\
-		return NodeType(SYM(\
-			ConvertConstNodeToRttiFuncNode<Container>(std::move(std::get<ConstNodeType>(left))),\
-			std::move(std::get<ConstNodeType>(middle)),\
-			std::move(std::get<ConstNodeType>(right))\
-		));\
-	}\
-	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Const, Const, Func)\
-	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Const, Func, Field)\
-	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Const, Func, Const)\
 	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Const, Func, Func)\
-	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Func, Field, Field)\
-	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Func, Field, Const)\
-	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Func, Field, Func)\
-	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Func, Const, Field)\
-	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Func, Const, Const)\
-	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Func, Const, Func)\
-	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Func, Func, Field)\
-	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Func, Func, Const)\
 	ADAPT_DETAIL_RETURN_3ARGS_FUNC(SYM, Func, Func, Func)\
 	throw ParseError("Invalid function call: " #SYM);\
 }
@@ -308,32 +288,17 @@ Parser<Container>::NodeType Parser<Container>::ApplyFieldMethod##NAME(Parser<Con
 		bool right_is_Field = std::holds_alternative<FieldNodeType>(right);\
 		bool right_is_Const = std::holds_alternative<ConstNodeType>(right);\
 		bool right_is_Func = std::holds_alternative<FuncNodeType>(right);\
-		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Const, Const, Const)\
-		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Const, Const, Field)\
-		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Const, Const, Func)\
-		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Const, Field, Const)\
-		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Const, Field, Field)\
-		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Const, Field, Func)\
-		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Const, Func, Const)\
-		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Const, Func, Field)\
+		Parser<Container>::NodeType middle_, right_;\
+		if (middle_is_Const) middle_ = ConvertConstNodeToRttiFuncNode<Container>(std::move(std::get<ConstNodeType>(middle)));\
+		else if (middle_is_Field) middle_ = fwd(std::get<FieldNodeType>(middle));\
+		else if (middle_is_Func) middle_ = std::move(std::get<FuncNodeType>(middle));\
+		else throw ParseError("Invalid function call: " #SYM);\
+		if (right_is_Const) right_ = ConvertConstNodeToRttiFuncNode<Container>(std::move(std::get<ConstNodeType>(right)));\
+		else if (right_is_Field) right_ = fwd(std::get<FieldNodeType>(right));\
+		else if (right_is_Func) right_ = std::move(std::get<FuncNodeType>(right));\
+		else throw ParseError("Invalid function call: " #SYM);\
 		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Const, Func, Func)\
-		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Field, Const, Const)\
-		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Field, Const, Field)\
-		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Field, Const, Func)\
-		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Field, Field, Const)\
-		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Field, Field, Field)\
-		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Field, Field, Func)\
-		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Field, Func, Const)\
-		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Field, Func, Field)\
 		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Field, Func, Func)\
-		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Func, Const, Const)\
-		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Func, Const, Field)\
-		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Func, Const, Func)\
-		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Func, Field, Const)\
-		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Func, Field, Field)\
-		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Func, Field, Func)\
-		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Func, Func, Const)\
-		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Func, Func, Field)\
 		ADAPT_DETAIL_RETURN_3ARGS_METHOD(SYM, Func, Func, Func)\
 	}\
 	throw ParseError("Unknown field method: " + std::string(#SYM)); \
@@ -342,6 +307,11 @@ PARSER_FIELD_METHODS_3ARG
 #undef X
 
 
+// LayerTypeを引数に取る関数などが警告を発してしまうので、ここだけ抑制する。
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4244)
+#endif
 #define X(NAME, SYM)\
 template <class Container>\
 Parser<Container>::NodeType Parser<Container>::ApplyContainerMethod##NAME(Parser<Container>::ConstNodeType arg)\
@@ -352,7 +322,6 @@ Parser<Container>::NodeType Parser<Container>::ApplyContainerMethod##NAME(Parser
 PARSER_CONTAINER_METHODS_1ARG
 #undef X
 
-
 #define X(NAME, SYM)\
 template <class Container>\
 Parser<Container>::NodeType Parser<Container>::ApplyContainerMethod##NAME(Parser<Container>::ConstNodeType left, Parser<Container>::ConstNodeType right)\
@@ -362,6 +331,9 @@ Parser<Container>::NodeType Parser<Container>::ApplyContainerMethod##NAME(Parser
 }
 PARSER_CONTAINER_METHODS_2ARG
 #undef X
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 
 }

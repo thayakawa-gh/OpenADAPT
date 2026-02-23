@@ -177,7 +177,7 @@ void QuickstartDTable()
 	// The functions given to UserFunc are required to be default constructible and copyable.
 	// Please be careful not to use lambda expressions with captures, which are not default constructible and not copyable.
 
-	// Define a user function that takes two double arguments and returns their sum.
+	// Define a user function that takes one integral and one floating-point argument and returns a floating-point value.
 	// When defining a user function for Rtti lambda functions,
 	// it is preferable to use std::integral, std::floating_point or other concepts as argument types
 	// instead of specific types like int32_t or double in order to suppress type conversion warnings.

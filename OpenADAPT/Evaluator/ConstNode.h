@@ -168,6 +168,8 @@ struct RttiConstNode
 		else if constexpr (Type == FieldType::Jbp) return std::get<9>(m_value);
 		else throw MismatchType("");
 	}
+	template <FieldType Type>
+	const DFieldInfo::TagTypeToValueType<Type>& as() const { return GetValue(Number<Type>()); }
 
 	template <class Trav, FieldType Type>
 	const DFieldInfo::TagTypeToValueType<Type>& Evaluate(const Trav&, Number<Type> n) const

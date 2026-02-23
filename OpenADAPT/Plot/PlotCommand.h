@@ -347,16 +347,16 @@ ADAPT_EXPORT inline constexpr auto pm3d_top = (pm3d_at = Pm3dPosition::top);
 namespace plot_detail
 {
 
-#define ADAPT_DETAIL_GET_KEYWORD_ARG_AS_VIEW(NAME) auto NAME = AllView(GetKeywordArg(plot::NAME, std::ranges::empty_view<double>{}, ops...))
-#define ADAPT_DETAIL_DECLTYPE_AUTO(NAME) decltype(NAME)
-#define ADAPT_DETAIL_FORWARD_ARG(NAME) std::forward<decltype(NAME)>(NAME)
+#define ADAPT_DETAIL_GET_KEYWORD_ARG_AS_VIEW(foo, NAME) auto NAME = AllView(GetKeywordArg(plot::NAME, std::ranges::empty_view<double>{}, ops...));
+#define ADAPT_DETAIL_DECLTYPE_AUTO(foo, NAME) decltype(NAME)
+#define ADAPT_DETAIL_FORWARD_ARG(foo, NAME) std::forward<decltype(NAME)>(NAME)
 
 #define ADAPT_DETAIL_MAKE_PARAM_MACRO(PARAM_NAME, ...)\
-ADAPT_DETAIL_EXPAND_CONV_SEMICOLON(ADAPT_DETAIL_GET_KEYWORD_ARG_AS_VIEW, __VA_ARGS__);\
-return PARAM_NAME<ADAPT_DETAIL_EXPAND_CONV(ADAPT_DETAIL_DECLTYPE_AUTO, __VA_ARGS__)>(ADAPT_DETAIL_EXPAND_CONV(ADAPT_DETAIL_FORWARD_ARG, __VA_ARGS__), ops...);
+ADAPT_DETAIL_EXPAND_CONV(ADAPT_DETAIL_GET_KEYWORD_ARG_AS_VIEW, foo, , __VA_ARGS__)\
+return PARAM_NAME<ADAPT_DETAIL_EXPAND_CONV_COMMA(ADAPT_DETAIL_DECLTYPE_AUTO, foo, __VA_ARGS__)>(ADAPT_DETAIL_EXPAND_CONV_COMMA(ADAPT_DETAIL_FORWARD_ARG, foo, __VA_ARGS__), ops...);
 
-#define ADAPT_DETAIL_GET_KEYWORD_ARG_IF_EXIST(NAME) if constexpr (KeywordExists(plot::NAME, ops...)) NAME = GetKeywordArg(plot::NAME, ops...)
-#define ADAPT_DETAIL_SET_OPTIONS_MACRO(...) ADAPT_DETAIL_EXPAND_CONV_SEMICOLON(ADAPT_DETAIL_GET_KEYWORD_ARG_IF_EXIST, __VA_ARGS__);
+#define ADAPT_DETAIL_GET_KEYWORD_ARG_IF_EXIST(foo, NAME) if constexpr (KeywordExists(plot::NAME, ops...)) NAME = GetKeywordArg(plot::NAME, ops...)
+#define ADAPT_DETAIL_SET_OPTIONS_MACRO(...) ADAPT_DETAIL_EXPAND_CONV(ADAPT_DETAIL_GET_KEYWORD_ARG_IF_EXIST, foo, ;, __VA_ARGS__);
 
 template <acceptable_range R>
 	requires (!std::convertible_to<R, std::string_view>)//char[]とかはstring_viewに変換されてしまうので除外

@@ -179,7 +179,7 @@ void QuickstartDHist()
 	std::cout << std::format("max population density in bin{:1>}: {:>6.1f}\n", bin, max_population_density(usa, pos).f64());
 	// max population density in bin[2,4]: 1646.8
 
-	Lambda maxentry = greatest(size(area));
+	Lambda maxentry = greatest(countall(area));
 	std::cout << std::format("largest bin entry: {}\n", maxentry(usa).i64()); // largest bin entry: 8
 
 	std::cout << std::endl;

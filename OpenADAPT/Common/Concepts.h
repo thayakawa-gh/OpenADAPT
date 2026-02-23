@@ -217,7 +217,6 @@ ADAPT_EXPORT
 template <class T>
 concept rtti_node =
 	rtti_const_node<T> || (dynamically_typed<T> && dynamically_layered<T> && any_node<T>);
-
 ADAPT_EXPORT
 template <class T>
 concept rtti_field_node = rtti_node<T> && same_as_xt<std::remove_cvref_t<T>, eval::RttiFieldNode>;

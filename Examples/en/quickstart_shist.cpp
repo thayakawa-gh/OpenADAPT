@@ -181,7 +181,7 @@ void QuickstartSHist()
 	std::cout << std::format("max population density in bin{:1>}: {:>6.1f}\n", bin, max_population_density(usa, pos));
 	// max population density in bin[2,4]: 1646.8
 
-	auto maxentry = greatest(size(area));
+	auto maxentry = greatest(countall(area));
 	std::cout << std::format("largest bin entry: {}\n", maxentry(usa)); // largest bin entry: 8
 
 	std::cout << std::endl;

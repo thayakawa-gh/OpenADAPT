@@ -859,8 +859,10 @@ struct RttiIndexedFieldNode_impl<Container, Placeholder, Type, TypeList<Nodes...
 	using Traverser = Container::Traverser;
 	using ConstTraverser = Container::ConstTraverser;
 
-	using RetType = DFieldInfo::TagTypeToValueType<Type>;
-	using RetTypeRef = std::conditional_t<DFieldInfo::IsTrivial(Type), RetType, const RetType&>;
+	template <FieldType TType>
+	using RetType = DFieldInfo::TagTypeToValueType<TType>;
+	template <FieldType TType>
+	using RetTypeRef = std::conditional_t<DFieldInfo::IsTrivial(TType), RetType<TType>, const RetType<TType>&>;
 
 	static constexpr RankType Rank = Placeholder::Rank;
 	static constexpr RankType MaxRank = Placeholder::MaxRank;
@@ -931,35 +933,85 @@ struct RttiIndexedFieldNode_impl<Container, Placeholder, Type, TypeList<Nodes...
 	template <size_t N>
 	using ArgType = GetType_t<N, Nodes...>;
 
-	virtual RetTypeRef Evaluate(const Traverser& t, Number<Type>) const override
+	using enum FieldType;
+
+	template <class Trav, FieldType TType>
+	RetTypeRef<TType> Evaluate_impl(const Trav& t, Number<TType>) const
 	{
-		return t.GetField(m_placeholder, (BindexType)this->template GetArg<Indices>(t)...).template as_unsafe<Type>();
-	}
-	virtual RetTypeRef Evaluate(const ConstTraverser& t, Number<Type>) const override
-	{
-		return t.GetField(m_placeholder, (BindexType)this->template GetArg<Indices>(t)...).template as_unsafe<Type>();
-	}
-	virtual RetTypeRef Evaluate(const Container& s, Number<Type>) const override
-	{
-		return s.GetBranch((BindexType)this->template GetArg<Indices>(s)...).GetField(m_placeholder).template as_unsafe<Type>();
-	}
-	virtual RetTypeRef Evaluate(const Container& s, const Bpos& bpos, Number<Type>) const override
-	{
-		if constexpr (container_simplex<Container>)
+		if constexpr (Type == TType)
+			return t.GetField(m_placeholder, (BindexType)this->template GetArg<Indices>(t)...).template as_unsafe<Type>();
+		else if constexpr (DFieldInfo::IsCpxAri(TType) && DFieldInfo::IsConvertibleTo<Type, TType>())
 		{
-			//layerまでのうち、layer - sizeof...(Indices)まではbposから与え、その後はnodeから与える。
-			constexpr LayerConstant<(LayerType)sizeof...(Indices)> isize;
-			return s.
-				GetBranch(bpos, m_placeholder.GetInternalLayer() - isize).
-				GetBranch((BindexType)this->template GetArg<Indices>(s, bpos)...).
-				GetField(m_placeholder).template as_unsafe<Type>();
+			if constexpr (DFieldInfo::IsCpx(TType) && DFieldInfo::IsArithmetic(Type))
+				return static_cast<RetType<TType>>((typename RetType<TType>::value_type)Evaluate_impl(t, Number<Type>{}));
+			else
+				return static_cast<RetType<TType>>(Evaluate_impl(t, Number<Type>{}));
 		}
 		else
-		{
-			//joined Containerの場合、simplexと同じ方法は使えない。
-			return s.GetField(m_placeholder, bpos, this->template GetArg<Indices>(s, bpos)...).template as_unsafe<Type>();
-		}
+			throw MismatchType("");
 	}
+	template <FieldType TType>
+	RetTypeRef<TType> Evaluate_impl(const Container& s, Number<TType>) const
+	{
+		if constexpr (Type == TType)
+			return s.GetBranch((BindexType)this->template GetArg<Indices>(s)...).GetField(m_placeholder).template as_unsafe<Type>();
+		else if constexpr (DFieldInfo::IsCpxAri(TType) && DFieldInfo::IsConvertibleTo<Type, TType>())
+		{
+			if constexpr (DFieldInfo::IsCpx(TType) && DFieldInfo::IsArithmetic(Type))
+				return static_cast<RetType<TType>>((typename RetType<TType>::value_type)Evaluate_impl(s, Number<Type>{}));
+			else
+				return static_cast<RetType<TType>>(Evaluate_impl(s, Number<Type>{}));
+		}
+		else
+			throw MismatchType("");
+	}
+	template <FieldType TType>
+	RetTypeRef<TType> Evaluate_impl(const Container& s, const Bpos& bpos, Number<TType>) const
+	{
+		if constexpr (Type == TType)
+		{
+			if constexpr (container_simplex<Container>)
+			{
+				constexpr LayerConstant<(LayerType)sizeof...(Indices)> isize;
+				return s.
+					GetBranch(bpos, m_placeholder.GetInternalLayer() - isize).
+					GetBranch((BindexType)this->template GetArg<Indices>(s, bpos)...).
+					GetField(m_placeholder).template as_unsafe<Type>();
+			}
+			else
+			{
+				return s.GetField(m_placeholder, bpos, this->template GetArg<Indices>(s, bpos)...).template as_unsafe<Type>();
+			}
+		}
+		else if constexpr (DFieldInfo::IsCpxAri(TType) && DFieldInfo::IsConvertibleTo<Type, TType>())
+		{
+			if constexpr (DFieldInfo::IsCpx(TType) && DFieldInfo::IsArithmetic(Type))
+				return static_cast<RetType<TType>>((typename RetType<TType>::value_type)Evaluate_impl(s, bpos, Number<Type>{}));
+			else
+				return static_cast<RetType<TType>>(Evaluate_impl(s, bpos, Number<Type>{}));
+		}
+		else throw MismatchType("");
+	}
+
+	#define CODE(TTYPE, SYM, VTYPE)\
+	virtual RetTypeRef<TTYPE> Evaluate(const Traverser& t, Number<TTYPE>) const override\
+	{\
+		return Evaluate_impl(t, Number<TTYPE>{});\
+	}\
+	virtual RetTypeRef<TTYPE> Evaluate(const ConstTraverser& t, Number<TTYPE>) const override\
+	{\
+		return Evaluate_impl(t, Number<TTYPE>{});\
+	}\
+	virtual RetTypeRef<TTYPE> Evaluate(const Container& s, Number<TTYPE>) const override\
+	{\
+		return Evaluate_impl(s, Number<TTYPE>{});\
+	}\
+	virtual RetTypeRef<TTYPE> Evaluate(const Container& s, const Bpos& bpos, Number<TTYPE>) const override\
+	{\
+		return Evaluate_impl(s, bpos, Number<TTYPE>{});\
+	}
+	ADAPT_FIELD_TYPE_LIST_SOLO(CODE)
+	#undef CODE
 
 	virtual FieldType GetType() const override { return Type; }
 private:

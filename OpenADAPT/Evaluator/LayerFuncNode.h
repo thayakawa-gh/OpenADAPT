@@ -602,7 +602,7 @@ struct RttiLayerFuncNode_impl<Func_, Container_, Node_, Cond_, Type, std::index_
 	using Func = Func_;
 	using Node = Node_;
 	using Base = detail::LayerFuncBase<RttiLayerFuncNode_impl<Func_, Container_, Node_, Cond_, Type, std::index_sequence<Indices...>>, Func_, Node_, DepthType, LayerType, Cond_>;
-	using RetType = DFieldInfo::TagTypeToValueType<Type>;
+	//using RetType = DFieldInfo::TagTypeToValueType<Type>;
 	using Container = Container_;
 	using Traverser = Container::Traverser;
 	using ConstTraverser = Container::ConstTraverser;
@@ -614,7 +614,11 @@ struct RttiLayerFuncNode_impl<Func_, Container_, Node_, Cond_, Type, std::index_
 	//LayerFuncの戻り値は常に参照型ではあるが、
 	//仮想関数RttiFuncNode_base::Evaluateをオーバーライドするときは
 	//trivially_copyableのみ値型に変換しなければならない。
-	using RetTypeRef = std::conditional_t<std::is_trivially_copyable_v<ValueType>, ValueType, const ValueType&>;
+	template <FieldType TType>
+	using RetType = DFieldInfo::TagTypeToValueType<TType>;
+	template <FieldType TType>
+	using RetTypeRef = std::conditional_t<DFieldInfo::IsTrivial(TType), RetType<TType>, const RetType<TType>&>;
+
 
 	using Base::Base;
 
@@ -697,23 +701,58 @@ struct RttiLayerFuncNode_impl<Func_, Container_, Node_, Cond_, Type, std::index_
 	{
 		return Base::GetInternalLayer(depth);
 	}*/
-	
-	virtual RetTypeRef Evaluate(const Traverser& t, Number<Type>) const override
-	{
-		return Base::Evaluate_impl(t, nullptr);
+
+	using enum FieldType;
+
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4244)
+#endif
+
+	#define CODE(TTYPE, SYM, VTYPE)\
+	virtual RetTypeRef<TTYPE> Evaluate(const Traverser& t, Number<TTYPE>) const override\
+	{\
+		if constexpr (Type == TTYPE)\
+			return Base::Evaluate_impl(t, nullptr);\
+		else if constexpr (DFieldInfo::IsCpxAri(TTYPE) && DFieldInfo::IsConvertibleTo<Type, TTYPE>())\
+			return static_cast<RetTypeRef<TTYPE>>(Base::Evaluate_impl(t, nullptr));\
+		else\
+			throw InvalidArg("The return type of the function is not compatible with the requested type.");\
+	}\
+	virtual RetTypeRef<TTYPE> Evaluate(const ConstTraverser& t, Number<TTYPE>) const override\
+	{\
+		if constexpr (Type == TTYPE)\
+			return Base::Evaluate_impl(t, nullptr);\
+		else if constexpr (DFieldInfo::IsCpxAri(TTYPE) && DFieldInfo::IsConvertibleTo<Type, TTYPE>())\
+			return static_cast<RetTypeRef<TTYPE>>(Base::Evaluate_impl(t, nullptr));\
+		else\
+			throw InvalidArg("The return type of the function is not compatible with the requested type.");\
+	}\
+	virtual RetTypeRef<TTYPE> Evaluate(const Container& s, Number<TTYPE>) const override\
+	{\
+		if constexpr (Type == TTYPE)\
+			return Base::Evaluate_impl(s, nullptr);\
+		else if constexpr (DFieldInfo::IsCpxAri(TTYPE) && DFieldInfo::IsConvertibleTo<Type, TTYPE>())\
+			return static_cast<RetTypeRef<TTYPE>>(Base::Evaluate_impl(s, nullptr));\
+		else\
+			throw InvalidArg("The return type of the function is not compatible with the requested type.");\
+	}\
+	virtual RetTypeRef<TTYPE> Evaluate(const Container& s, const Bpos& bpos, Number<TTYPE>) const override\
+	{\
+		if constexpr (Type == TTYPE)\
+			return Base::Evaluate_impl(s, bpos);\
+		else if constexpr (DFieldInfo::IsCpxAri(TTYPE) && DFieldInfo::IsConvertibleTo<Type, TTYPE>())\
+			return static_cast<RetTypeRef<TTYPE>>(Base::Evaluate_impl(s, bpos));\
+		else\
+			throw InvalidArg("The return type of the function is not compatible with the requested type.");\
 	}
-	virtual RetTypeRef Evaluate(const ConstTraverser& t, Number<Type>) const override
-	{
-		return Base::Evaluate_impl(t, nullptr);
-	}
-	virtual RetTypeRef Evaluate(const Container& s, Number<Type>) const override
-	{
-		return Base::Evaluate_impl(s, nullptr);
-	}
-	virtual RetTypeRef Evaluate(const Container& s, const Bpos& bpos, Number<Type>) const override
-	{
-		return Base::Evaluate_impl(s, bpos);
-	}
+	ADAPT_FIELD_TYPE_LIST_SOLO(CODE)
+	#undef CODE
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+
 	virtual FieldType GetType() const override
 	{
 		return DFieldInfo::GetSameSizeTagType<typename Func::RetType>();

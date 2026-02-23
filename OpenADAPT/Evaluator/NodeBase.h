@@ -429,6 +429,7 @@ struct RttiFuncNode_base
 	virtual void Init(const Container& s) = 0;
 	virtual void Init() = 0;
 
+
 	virtual DFieldInfo::TagTypeToValueType<FieldType::I08>
 		Evaluate(const Traverser&, Number<FieldType::I08>) const { throw Forbidden("Evaluate for I08 is not overwritten."); }
 	virtual DFieldInfo::TagTypeToValueType<FieldType::I16>
