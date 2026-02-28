@@ -242,6 +242,12 @@ public:
 		auto iph = std::get<Rank>(m_containers)->GetPlaceholder(name);
 		return RttiPlaceholder<Rank>(iph.GetInternalLayer(), iph.GetIndex(), iph.GetType(), iph.GetPtrOffset(), this->GetJointLayers());
 	}
+	template <RankType Rank>
+	RttiPlaceholder<Rank> GetPlaceholder(LayerType layer, uint16_t index) const
+	{
+		auto iph = std::get<Rank>(m_containers)->GetPlaceholder(layer, index);
+		return RttiPlaceholder<Rank>(iph.GetInternalLayer(), iph.GetIndex(), iph.GetType(), iph.GetPtrOffset(), this->GetJointLayers());
+	}
 	template <RankType Rank, class ...Args>
 		requires (Rank <= MaxRank)
 	auto GetPlaceholders(const Args& ...names) const

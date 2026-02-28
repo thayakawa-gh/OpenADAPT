@@ -2,6 +2,7 @@
 #define ADAPT_EVALUATOR_PLACEHOLDER_H
 
 #include <variant>
+#include <OpenADAPT/Common/Common.h>
 #include <OpenADAPT/Utility/NamedTuple.h>
 #include <OpenADAPT/Joint/LayerInfo.h>
 #include <OpenADAPT/Common/Concepts.h>
@@ -124,7 +125,9 @@ public:
 	static constexpr bool IsTrivial() { return std::is_trivially_copyable_v<T>; }
 
 	template <class T>
-	static constexpr bool IsNum() { return std::is_arithmetic_v<T>; }
+	static constexpr bool IsCpxAri() { return std::is_arithmetic_v<T> || std::is_same_v<T, std::complex<float>> || std::is_same_v<T, std::complex<double>>; }
+	template <class T>
+	static constexpr bool IsArithmetic() { return std::is_arithmetic_v<T>; }
 
 	template <class T>
 	static constexpr bool IsInt() { return std::is_integral_v<T>; }
@@ -153,10 +156,13 @@ public:
 	template <class T>
 	static constexpr bool IsJbp() { return std::is_convertible_v<T, JBpos>; }
 
-
+	// std::is_trivially_copyableを満たすもの。INT、FLT、CPXが該当。
 	static constexpr bool IsTrivial(FieldType type) { return (uint32_t)type & FieldTypeFlag::TRIVIAL; }
 
-	static constexpr bool IsNum(FieldType type) { return (uint32_t)type & FieldTypeFlag::NUM; }
+	// 数値型または複素数型。INT、FLT、CPXが該当。
+	static constexpr bool IsCpxAri(FieldType type) { return (uint32_t)type & (FieldTypeFlag::CPX | FieldTypeFlag::NUM); }
+	// 数値型。INT、FLTが該当。
+	static constexpr bool IsArithmetic(FieldType type) { return (uint32_t)type & FieldTypeFlag::NUM; }
 
 	static constexpr bool IsInt(FieldType type) { return (uint32_t)type & FieldTypeFlag::INT; }
 	static constexpr bool IsI08(FieldType type) { return type == FieldType::I08; }
@@ -176,6 +182,52 @@ public:
 	static constexpr bool IsJbp(FieldType type) { return type == FieldType::Jbp; }
 
 	static constexpr bool IsEmp(FieldType type) { return type == FieldType::Emp; }
+
+	template <FieldType From, FieldType To>
+	static constexpr bool IsConvertibleTo()
+	{
+		using TF = TagTypeToValueType<From>;
+		using TT = TagTypeToValueType<To>;
+		return std::convertible_to<TF, TT>;
+	}
+	static constexpr bool IsConvertibleTo(FieldType from, FieldType to)
+	{
+		if (IsInt(from))
+		{
+			if (IsInt(to) || IsFlt(to)) return true;
+		}
+		else if (IsFlt(from))
+		{
+			if (IsInt(to) || IsFlt(to)) return true;
+			else if (IsCpx(to))
+			{
+				if (IsF64(from) && IsC32(to)) return false;
+				else return true;
+			}
+		}
+		else if (IsCpx(from))
+		{
+			if (IsCpx(to)) return true;
+		}
+		else if (IsStr(from))
+		{
+			if (IsStr(to)) return true;
+		}
+		else if (IsJbp(from))
+		{
+			if (IsJbp(to)) return true;
+		}
+		return false;
+	}
+	static constexpr bool IsConvertibleToBool(FieldType from)
+	{
+		#define CODE(TTYPE1, SYM, VTYPE1) \
+			if (from == TTYPE1)\
+				return std::convertible_to<VTYPE1, bool>;
+		ADAPT_FOR_EACH_TYPE(CODE)
+		#undef CODE
+		throw MismatchType("");
+	}
 };
 
 namespace eval
@@ -202,7 +254,7 @@ public:
 
 	static constexpr bool IsTrivial() { return DFieldInfo::IsTrivial<typename Derived::RetType>(); }
 
-	static constexpr bool IsNum() { return DFieldInfo::IsNum<typename Derived::RetType>(); }
+	static constexpr bool IsArithmetic() { return DFieldInfo::IsArithmetic<typename Derived::RetType>(); }
 
 	static constexpr bool IsInt() { return DFieldInfo::IsInt<typename Derived::RetType>(); }
 
@@ -388,7 +440,7 @@ public:
 
 	constexpr bool IsTrivial() const { return DFieldInfo::IsTrivial(Cast().GetType()); }
 
-	constexpr bool IsNum() const { return DFieldInfo::IsNum(Cast().GetType()); }
+	constexpr bool IsArithmetic() const { return DFieldInfo::IsArithmetic(Cast().GetType()); }
 
 	constexpr bool IsInt() const { return DFieldInfo::IsInt(Cast().GetType()); }
 	constexpr bool IsI08() const { return DFieldInfo::IsI08(Cast().GetType()); }
@@ -483,6 +535,12 @@ public:
 		return RttiFieldNode<Placeholder>(*self, depth);
 	}
 	auto o(DepthType d) const { return outer(d); }
+	auto o0() const { return outer(0); }
+	auto o1() const { return outer(1); }
+	auto o2() const { return outer(2); }
+	auto o3() const { return outer(3); }
+	auto o4() const { return outer(4); }
+	auto o5() const { return outer(5); }
 
 	template <class ...NP>
 		requires ((node_or_placeholder<NP> || std::integral<NP>) && ...)

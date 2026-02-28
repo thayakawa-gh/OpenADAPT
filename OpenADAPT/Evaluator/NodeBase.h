@@ -58,17 +58,17 @@ concept FuncWithBufApplicable =
 {
 	{ f(buf, a...) } -> std::same_as<void>;
 };
-template <class Func, class ...Args>
-concept FuncShortCircuitApplicable = requires(Func f, const Args& ...args)
+template <class Func, class NodeImpl, class ...Args>
+concept FuncShortCircuitApplicable = requires(Func&& f, const NodeImpl& node, const Args& ...args)
 {
-	{ f.ShortCircuit(args...) } -> non_void;
+	{ f.ShortCircuit(node, args...) } -> non_void;
 };
-template <class Func, class RetType, class ...Args>
+template <class Func, class RetType, class NodeImpl, class ...Args>
 concept FuncShortCircuitWithBufApplicable = 
-	FuncShortCircuitApplicable<Func, Args...> &&
-	requires (Func f, RetType& buf, const Args& ...args)
+	FuncShortCircuitApplicable<Func, NodeImpl, Args...> &&
+	requires (Func f, RetType& buf, const NodeImpl& node, const Args& ...args)
 {
-	{ f.ShortCircuitWithBuf(buf, args...) } -> std::same_as<void>;
+	{ f.ShortCircuitWithBuf(buf, node, args...) } -> std::same_as<void>;
 };
 template <class Func, class RetType_, class ...ArgTypes>
 	requires FuncApplicable<Func, ArgTypes...>
@@ -428,6 +428,7 @@ struct RttiFuncNode_base
 	virtual void Init(const Container& s, const Bpos& bpos) = 0;
 	virtual void Init(const Container& s) = 0;
 	virtual void Init() = 0;
+
 
 	virtual DFieldInfo::TagTypeToValueType<FieldType::I08>
 		Evaluate(const Traverser&, Number<FieldType::I08>) const { throw Forbidden("Evaluate for I08 is not overwritten."); }

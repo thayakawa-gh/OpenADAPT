@@ -55,6 +55,7 @@ void SwitchBuf(Res& res, Int i, T&& ...t)
 
 struct Not
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	auto operator()(const auto& a) const -> decltype(!a) { return !a; }
 };
 ADAPT_EXPORT
@@ -63,8 +64,20 @@ auto operator!(Arg&& a)
 {
 	return detail::MakeFunctionNode(Not{}, std::forward<Arg>(a));
 }
+struct Promote
+{
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
+	auto operator()(const auto& a) const -> decltype(+a) { return +a; }
+};
+ADAPT_EXPORT
+template <node_or_placeholder Arg>
+auto operator+(Arg&& a)
+{
+	return detail::MakeFunctionNode(Promote{}, std::forward<Arg>(a));
+}
 struct Negate
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	auto operator()(const auto& a) const -> decltype(-a) { return -a; }
 };
 ADAPT_EXPORT
@@ -76,6 +89,7 @@ auto operator-(Arg&& a)
 
 struct Plus
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Compl;
 	auto operator()(const auto& a, const auto& b) const -> decltype(a + b) { return a + b; }
 	auto operator()(auto& buf, const auto& a, const auto& b) const { buf = a; buf += b; }
 };
@@ -88,6 +102,7 @@ auto operator+(Arg1&& a, Arg2&& b)
 }
 struct Minus
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Compl;
 	auto operator()(const auto& a, const auto& b) const -> decltype(a - b) { return a - b; }
 	auto operator()(auto& buf, const auto& a, const auto& b) const { buf = a; buf -= b; }
 };
@@ -100,6 +115,7 @@ auto operator-(Arg1&& a, Arg2&& b)
 }
 struct Multiply
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Compl;
 	auto operator()(const auto& a, const auto& b) const -> decltype(a * b) { return a * b; }
 	auto operator()(auto& buf, const auto& a, const auto& b) const { buf = a; buf *= b; }
 };
@@ -112,6 +128,7 @@ auto operator*(Arg1&& a, Arg2&& b)
 }
 struct Divide
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Compl;
 	auto operator()(const auto& a, const auto& b) const -> decltype(a / b) { return a / b; }
 	auto operator()(auto& buf, const auto& a, const auto& b) const { buf = a; buf /= b; }
 };
@@ -124,6 +141,7 @@ auto operator/(Arg1&& a, Arg2&& b)
 }
 struct Modulus
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Integ;
 	auto operator()(const auto& a, const auto& b) const -> decltype(a % b) { return a % b; }
 	auto operator()(auto& buf, const auto& a, const auto& b) const { buf = a; buf %= b; }
 };
@@ -137,6 +155,7 @@ auto operator%(Arg1&& a, Arg2&& b)
 
 struct Power
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Compl;
 	auto operator()(const auto& a, const auto& b) const -> decltype(std::pow(a, b)) { return std::pow(a, b); }
 };
 ADAPT_EXPORT
@@ -148,6 +167,7 @@ auto pow(Arg1&& a, Arg2&& b)
 }
 struct Equal
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Compl;
 	auto operator()(const auto& a, const auto& b) const -> decltype(a == b) { return a == b; }
 };
 ADAPT_EXPORT
@@ -159,6 +179,7 @@ auto operator==(Arg1&& a, Arg2&& b)
 }
 struct NotEqual
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Compl;
 	auto operator()(const auto& a, const auto& b) const -> decltype(a != b) { return a != b; }
 };
 ADAPT_EXPORT
@@ -170,7 +191,12 @@ auto operator!=(Arg1&& a, Arg2&& b)
 }
 struct Less
 {
-	auto operator()(const auto& a, const auto& b) const -> decltype(a < b) { return a < b; }
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Usual;
+	auto operator()(const auto& a, const auto& b) const -> decltype(a < b)
+	{
+		if constexpr (std::integral<decltype(a)> && std::integral<decltype(b)>) return std::cmp_less(a, b);
+		else return a < b;
+	}
 };
 ADAPT_EXPORT
 template <class Arg1, class Arg2>
@@ -181,7 +207,12 @@ auto operator<(Arg1&& a, Arg2&& b)
 }
 struct LessEqual
 {
-	auto operator()(const auto& a, const auto& b) const -> decltype(a <= b) { return a <= b; }
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Usual;
+	auto operator()(const auto& a, const auto& b) const -> decltype(a <= b)
+	{
+		if constexpr (std::integral<decltype(a)> && std::integral<decltype(b)>) return std::cmp_less_equal(a, b);
+		else return a <= b;
+	}
 };
 ADAPT_EXPORT
 template <class Arg1, class Arg2>
@@ -192,7 +223,12 @@ auto operator<=(Arg1&& a, Arg2&& b)
 }
 struct Greater
 {
-	auto operator()(const auto& a, const auto& b) const -> decltype(a > b) { return a > b; }
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Usual;
+	auto operator()(const auto& a, const auto& b) const -> decltype(a > b)
+	{
+		if constexpr (std::integral<decltype(a)> && std::integral<decltype(b)>) return std::cmp_greater(a, b);
+		else return a > b;
+	}
 };
 ADAPT_EXPORT
 template <class Arg1, class Arg2>
@@ -203,7 +239,12 @@ auto operator>(Arg1&& a, Arg2&& b)
 }
 struct GreaterEqual
 {
-	auto operator()(const auto& a, const auto& b) const -> decltype(a >= b) { return a >= b; }
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Usual;
+	auto operator()(const auto& a, const auto& b) const -> decltype(a >= b)
+	{
+		if constexpr (std::integral<decltype(a)> && std::integral<decltype(b)>) return std::cmp_greater_equal(a, b);
+		else return a >= b;
+	}
 };
 ADAPT_EXPORT
 template <class Arg1, class Arg2>
@@ -215,6 +256,7 @@ auto operator>=(Arg1&& a, Arg2&& b)
 
 struct OperatorAnd
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Bool;
 	auto operator()(const auto& a, const auto& b) const -> decltype(a && b) { return a && b; }
 	template <class NodeImpl, class ...Args>
 	decltype(auto) ShortCircuit(const NodeImpl& nodeimpl, Args&& ...args) const
@@ -231,6 +273,7 @@ auto operator&&(Arg1&& a, Arg2&& b)
 }
 struct OperatorOr
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Bool;
 	auto operator()(const auto& a, const auto& b) const -> decltype(a || b) { return a || b; }
 	template <class NodeImpl, class ...Args>
 	decltype(auto) ShortCircuit(const NodeImpl& nodeimpl, Args&& ...args) const
@@ -248,6 +291,7 @@ auto operator||(Arg1&& a, Arg2&& b)
 
 struct BitwiseAnd
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Integ;
 	auto operator()(const auto& a, const auto& b) const -> decltype(a & b) { return a & b; }
 };
 ADAPT_EXPORT
@@ -259,6 +303,7 @@ auto operator&(Arg1&& a, Arg2&& b)
 }
 struct BitwiseOr
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Integ;
 	auto operator()(const auto& a, const auto& b) const -> decltype(a | b) { return a | b; }
 };
 ADAPT_EXPORT
@@ -270,6 +315,7 @@ auto operator|(Arg1&& a, Arg2&& b)
 }
 struct BitwiseXor
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Integ;
 	auto operator()(const auto& a, const auto& b) const -> decltype(a ^ b) { return a ^ b; }
 };
 ADAPT_EXPORT
@@ -281,6 +327,7 @@ auto operator^(Arg1&& a, Arg2&& b)
 }
 struct BitwiseNot
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Integ;
 	auto operator()(const auto& a) const -> decltype(~a) { return ~a; }
 };
 ADAPT_EXPORT
@@ -291,6 +338,7 @@ auto operator~(Arg&& a)
 }
 struct LeftShift
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Promo;
 	auto operator()(const auto& a, const auto& b) const -> decltype(a << b) { return a << b; }
 };
 ADAPT_EXPORT
@@ -302,6 +350,7 @@ auto operator<<(Arg1&& a, Arg2&& b)
 }
 struct RightShift
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Promo;
 	auto operator()(const auto& a, const auto& b) const -> decltype(a >> b) { return a >> b; }
 };
 ADAPT_EXPORT
@@ -314,7 +363,8 @@ auto operator>>(Arg1&& a, Arg2&& b)
 
 struct IsFinite
 {
-	auto operator()(const auto& a) const -> decltype(std::isfinite(a)) { return std::isfinite(a); }
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
+	auto operator()(std::floating_point auto a) const { return std::isfinite(a); }
 };
 ADAPT_EXPORT
 template <node_or_placeholder Arg>
@@ -324,7 +374,8 @@ auto isfinite(Arg&& a)
 }
 struct IsInf
 {
-	auto operator()(const auto& a) const -> decltype(std::isinf(a)) { return std::isinf(a); }
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
+	auto operator()(std::floating_point auto a) const { return std::isinf(a); }
 };
 ADAPT_EXPORT
 template <node_or_placeholder Arg>
@@ -334,7 +385,8 @@ auto isinf(Arg&& a)
 }
 struct IsNan
 {
-	auto operator()(const auto& a) const -> decltype(std::isnan(a)) { return std::isnan(a); }
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
+	auto operator()(std::floating_point auto a) const { return std::isnan(a); }
 };
 ADAPT_EXPORT
 template <node_or_placeholder Arg>
@@ -344,7 +396,8 @@ auto isnan(Arg&& a)
 }
 struct IsNormal
 {
-	auto operator()(const auto& a) const -> decltype(std::isnormal(a)) { return std::isnormal(a); }
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
+	auto operator()(std::floating_point auto a) const { return std::isnormal(a); }
 };
 ADAPT_EXPORT
 template <node_or_placeholder Arg>
@@ -355,6 +408,7 @@ auto isnormal(Arg&& a)
 
 struct Sin
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	auto operator()(const auto& a) const -> decltype(std::sin(a)) { return std::sin(a); }
 };
 ADAPT_EXPORT
@@ -365,6 +419,7 @@ auto sin(Arg&& a)
 }
 struct Cos
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	auto operator()(const auto& a) const -> decltype(std::cos(a)) { return std::cos(a); }
 };
 ADAPT_EXPORT
@@ -375,6 +430,7 @@ auto cos(Arg&& a)
 }
 struct Tan
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	auto operator()(const auto& a) const -> decltype(std::tan(a)) { return std::tan(a); }
 };
 ADAPT_EXPORT
@@ -385,6 +441,7 @@ auto tan(Arg&& a)
 }
 struct ASin
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	auto operator()(const auto& a) const -> decltype(std::asin(a)) { return std::asin(a); }
 };
 ADAPT_EXPORT
@@ -395,6 +452,7 @@ auto asin(Arg&& a)
 }
 struct ACos
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	auto operator()(const auto& a) const -> decltype(std::acos(a)) { return std::acos(a); }
 };
 ADAPT_EXPORT
@@ -405,6 +463,7 @@ auto acos(Arg&& a)
 }
 struct ATan
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	auto operator()(const auto& a) const -> decltype(std::atan(a)) { return std::atan(a); }
 };
 ADAPT_EXPORT
@@ -415,6 +474,7 @@ auto atan(Arg&& a)
 }
 struct Sinh
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	auto operator()(const auto& a) const -> decltype(std::sinh(a)) { return std::sinh(a); }
 };
 ADAPT_EXPORT
@@ -425,6 +485,7 @@ auto sinh(Arg&& a)
 }
 struct Cosh
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	auto operator()(const auto& a) const -> decltype(std::cosh(a)) { return std::cosh(a); }
 };
 ADAPT_EXPORT
@@ -435,6 +496,7 @@ auto cosh(Arg&& a)
 }
 struct Tanh
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	auto operator()(const auto& a) const -> decltype(std::tanh(a)) { return std::tanh(a); }
 };
 ADAPT_EXPORT
@@ -445,6 +507,7 @@ auto tanh(Arg&& a)
 }
 struct ASinh
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	auto operator()(const auto& a) const -> decltype(std::asinh(a)) { return std::asinh(a); }
 };
 ADAPT_EXPORT
@@ -455,6 +518,7 @@ auto asinh(Arg&& a)
 }
 struct ACosh
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	auto operator()(const auto& a) const -> decltype(std::acosh(a)) { return std::acosh(a); }
 };
 ADAPT_EXPORT
@@ -465,6 +529,7 @@ auto acosh(Arg&& a)
 }
 struct ATanh
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	auto operator()(const auto& a) const -> decltype(std::atanh(a)) { return std::atanh(a); }
 };
 ADAPT_EXPORT
@@ -476,6 +541,7 @@ auto atanh(Arg&& a)
 
 struct Exponential
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	auto operator()(const auto& a) const -> decltype(std::exp(a)) { return std::exp(a); }
 };
 ADAPT_EXPORT
@@ -486,6 +552,7 @@ auto exp(Arg&& a)
 }
 struct Exp2
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	auto operator()(const auto& a) const -> decltype(std::exp2(a)) { return std::exp2(a); }
 };
 ADAPT_EXPORT
@@ -496,6 +563,7 @@ auto exp2(Arg&& a)
 }
 struct Square
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	auto operator()(const auto& a) const -> decltype(a* a) { return a * a; }
 	auto operator()(auto& buf, const auto& a) const { buf = a; buf *= a; }
 };
@@ -507,6 +575,7 @@ auto square(Arg&& a)
 }
 struct Sqrt
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	auto operator()(const auto& a) const -> decltype(std::sqrt(a)) { return std::sqrt(a); }
 };
 ADAPT_EXPORT
@@ -517,6 +586,7 @@ auto sqrt(Arg&& a)
 }
 struct Cube
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	auto operator()(const auto& a) const -> decltype(a* a* a) { return a * a * a; }
 	auto operator()(auto& buf, const auto& a) const { buf = a; buf *= a; buf *= a; }
 };
@@ -528,6 +598,7 @@ auto cube(Arg&& a)
 }
 struct Cbrt
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	auto operator()(const auto& a) const -> decltype(std::cbrt(a)) { return std::cbrt(a); }
 };
 ADAPT_EXPORT
@@ -538,6 +609,7 @@ auto cbrt(Arg&& a)
 }
 struct Log
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Compl;
 	auto operator()(const auto& a) const -> decltype(std::log(a)) { return std::log(a); }
 	auto operator()(const auto& a, const auto& b) const -> decltype(std::log(a) / std::log(b)) { return std::log(a) / std::log(b); }
 };
@@ -556,6 +628,7 @@ auto log(Arg1&& a, Arg2&& b)
 }
 struct Log10
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	auto operator()(const auto& a) const -> decltype(std::log10(a)) { return std::log10(a); }
 };
 ADAPT_EXPORT
@@ -566,6 +639,7 @@ auto log10(Arg&& a)
 }
 struct Log2
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	auto operator()(const auto& a) const -> decltype(std::log2(a)) { return std::log2(a); }
 };
 ADAPT_EXPORT
@@ -577,6 +651,7 @@ auto log2(Arg&& a)
 
 struct Ceil
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	auto operator()(const auto& a) const -> decltype(std::ceil(a)) { return std::ceil(a); }
 };
 ADAPT_EXPORT
@@ -587,6 +662,7 @@ auto ceil(Arg&& a)
 }
 struct Floor
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	auto operator()(const auto& a) const -> decltype(std::floor(a)) { return std::floor(a); }
 };
 ADAPT_EXPORT
@@ -598,6 +674,7 @@ auto floor(Arg&& a)
 
 struct Abs
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	auto operator()(const auto& a) const -> decltype(std::abs(a)) { return std::abs(a); }
 };
 ADAPT_EXPORT
@@ -608,6 +685,7 @@ auto abs(Arg&& a)
 }
 struct Len
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	auto operator()(const auto& a) const -> decltype(std::ranges::size(a)) { return std::ranges::size(a); }
 };
 ADAPT_EXPORT
@@ -618,6 +696,7 @@ auto len(Arg&& a)
 }
 struct NumToStr
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	auto operator()(const auto& a) const -> decltype(std::to_string(a)) { return std::to_string(a); }
 	auto operator()(auto& buf, const auto& a) const { ToStr(a, buf); }
 };
@@ -629,6 +708,7 @@ auto tostr(Arg&& a)
 }
 struct Substr
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	auto operator()(const auto& a, const auto& b, const auto& c) const -> decltype(a.substr((size_t)b, (size_t)c)) { return a.substr((size_t)b, (size_t)c); }
 };
 ADAPT_EXPORT
@@ -642,6 +722,7 @@ auto substr(Arg1&& a, Arg2&& b, Arg3&& c)
 
 struct ATan2
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Usual;
 	auto operator()(const auto& a, const auto& b) const -> decltype(std::atan2(a, b)) { return std::atan2(a, b); }
 };
 ADAPT_EXPORT
@@ -654,6 +735,7 @@ auto atan2(Arg1&& a, Arg2&& b)
 
 struct Hypot
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Usual;
 	auto operator()(const auto& a, const auto& b) const -> decltype(std::hypot(a, b)) { return std::hypot(a, b); }
 };
 ADAPT_EXPORT
@@ -665,6 +747,7 @@ auto hypot(Arg1&& a, Arg2&& b)
 }
 struct Max
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Usual;
 	//decltype(std::max(a, b))のような書き方だと、gccではエラーになる。
 	template <class T>
 		requires less_than_comparable<T>
@@ -679,6 +762,7 @@ auto max(Arg1&& a, Arg2&& b)
 }
 struct Min
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Usual;
 	template <class T>
 		requires less_than_comparable<T>
 	auto operator()(const T& a, const T& b) const { return std::min(a, b); }
@@ -699,6 +783,7 @@ concept if_function_applicable = requires(A a, B b, C c)
 };
 struct IfFunction
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	// -> decltype(a ? b : c)という形式にしてしまうと、
 	// 戻り値が必ずconst&になってしまい、ダングリング参照になる。
 	// よってコンセプトで呼び出しの可否を判定し、戻り値型はautoで取得する。
@@ -745,6 +830,7 @@ auto if_(Arg1&& a, Arg2&& b, Arg3&& c)
 template <size_t NCase>
 struct SwitchFunction
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 private:
 	template <size_t I, std::integral Int, class NodeImpl, class ...Args>
 	decltype(auto) ShortCircuit_rec(Int i, const NodeImpl& nodeimpl, Args&& ...args) const
@@ -777,6 +863,7 @@ auto switch_(Args&& ...args)
 
 struct Forward
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	decltype(auto) operator()(const auto& a) const { return a; }
 };
 ADAPT_EXPORT
@@ -799,10 +886,17 @@ DEFINE_FN1(detail::Forward, fwd);
 template <class Ret>
 struct Cast
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	Cast() {}
 	template <class Arg>
 		requires std::convertible_to<Arg, Ret>
-	Ret operator()(const Arg& a) const { return Ret(a); }
+	Ret operator()(const Arg& a) const
+	{
+		if constexpr (IsSame_XT_v<std::complex, Ret> && std::is_arithmetic_v<Arg>)
+			return Ret((typename Ret::value_type)(a));
+		else
+			return Ret(a);
+	}
 	template <class Arg>
 		requires std::convertible_to<Arg, Ret>
 	void operator()(Ret& buf, const Arg& a) const { buf = Ret(a); }
@@ -838,16 +932,15 @@ template <node_or_placeholder NP> auto cast_c32(NP&& np) { return cast<FieldType
 ADAPT_EXPORT
 template <node_or_placeholder NP> auto cast_c64(NP&& np) { return cast<FieldType::C64>(std::forward<NP>(np)); }
 
-/*
-template <node_or_placeholder NP> auto cast_i08(NP&& np) { return detail::MakeFunctionNode<detail::CastI08>(std::forward<NP>(np)); }
-template <node_or_placeholder NP> auto cast_i16(NP&& np) { return detail::MakeFunctionNode<detail::CastI16>(std::forward<NP>(np)); }
-template <node_or_placeholder NP> auto cast_i32(NP&& np) { return detail::MakeFunctionNode<detail::CastI32>(std::forward<NP>(np)); }
-template <node_or_placeholder NP> auto cast_i64(NP&& np) { return detail::MakeFunctionNode<detail::CastI64>(std::forward<NP>(np)); }
-template <node_or_placeholder NP> auto cast_f32(NP&& np) { return detail::MakeFunctionNode<detail::CastF32>(std::forward<NP>(np)); }
-template <node_or_placeholder NP> auto cast_f64(NP&& np) { return detail::MakeFunctionNode<detail::CastF64>(std::forward<NP>(np)); }
-template <node_or_placeholder NP> auto cast_c32(NP&& np) { return detail::MakeFunctionNode<detail::CastC32>(std::forward<NP>(np)); }
-template <node_or_placeholder NP> auto cast_c64(NP&& np) { return detail::MakeFunctionNode<detail::CastC64>(std::forward<NP>(np)); }
-*/
+struct CastBool
+{
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
+	template <std::convertible_to<bool> T>
+	auto operator()(const T& a) const { return static_cast<bool>(a); }
+};
+
+ADAPT_EXPORT
+template <node_or_placeholder NP> auto cast_bool(NP&& np) { return detail::MakeFunctionNode(CastBool{}, std::forward<NP>(np)); }
 
 }
 
@@ -855,9 +948,11 @@ ADAPT_EXPORT
 template <class Func>
 struct UserFunc
 {
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
 	template <class Func_>
 		requires std::convertible_to<Func_, Func>
-	UserFunc(Func_&& f) : m_func(std::forward<Func_>(f)) {}
+	UserFunc(Func_&& f) : m_func{ std::forward<Func_>(f) }
+	{}
 
 	template <class ...NPs>
 		requires (node_or_placeholder<NPs> || ...)

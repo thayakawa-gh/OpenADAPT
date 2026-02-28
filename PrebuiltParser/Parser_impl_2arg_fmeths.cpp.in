@@ -1,0 +1,21 @@
+#include <OpenADAPT/Parser_impl.h>
+
+namespace adapt
+{
+
+namespace eval
+{
+
+namespace parser
+{
+
+#define X(NAME, SYM)\
+template ADAPT_DLL_EXPORT Parser<${TYPE}>::NodeType Parser<${TYPE}>::ApplyFieldMethod##NAME(Parser<${TYPE}>::FieldNodeType fld, Parser<${TYPE}>::NodeType left, Parser<${TYPE}>::NodeType right);
+PARSER_FIELD_METHODS_2ARG
+#undef X
+
+}
+
+}
+
+}

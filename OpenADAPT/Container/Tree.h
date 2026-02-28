@@ -381,6 +381,7 @@ public:
 	auto pos8() const { return pos(8_layer); }
 	auto pos9() const { return pos(9_layer); }
 
+	//現在のfrom層要素に属す全to層要素の数を返す。
 	template <LayerType From, LayerType To>
 	eval::CttiSizeNode<LayerConstant<From>, LayerConstant<To>, Container> size(LayerConstant<From> from, LayerConstant<To> to) const
 	{
@@ -388,6 +389,7 @@ public:
 		static_assert(From < To);
 		return eval::CttiSizeNode<LayerConstant<From>, LayerConstant<To>, Container>(from, to, static_cast<const Container&>(*this));
 	}
+	//現在のfrom層要素に属す全to層要素の数を返す。
 	eval::CttiSizeNode<LayerType, LayerType, Container> size(LayerType from, LayerType to) const
 	{
 		assert(to <= Hierarchy::GetMaxLayer());

@@ -22,7 +22,7 @@ void TestSimpleExtract(Container& s, const std::vector<Class>&, Layer0 l0, Layer
 	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
 	auto [exam, math, jpn, eng, sci, soc] = l2;
 
-	auto count_350 = count(exist(math + jpn + eng + sci + soc >= 350));
+	auto count_350 = count_if(exist(math + jpn + eng + sci + soc >= 350));
 	auto mean_sum = mean(cast_f64(math + jpn + eng + sci + soc));
 	auto sum = math + jpn + eng + sci + soc;
 	auto isbest = isgreatest(sum);

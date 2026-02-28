@@ -265,7 +265,7 @@ private:
 		if constexpr (Layer <= MaxLayer)
 		{
 			using Element_ = Element<Layer>;
-			constexpr auto names = std::tuple_cat(GetFieldNamesIn_impl(Element_{}), GetFieldNamesIn_rec<Layer + 1>());
+			return std::tuple_cat(GetFieldNamesIn_impl(Element_{}), GetFieldNamesIn_rec<Layer + 1>());
 		}
 		else
 		{
@@ -722,6 +722,15 @@ public:
 		}
 		return res;
 	}
+	std::vector<std::string> GetFieldNames() const
+	{
+		std::vector<std::string> res;
+		for (const auto&[name, ph] : m_field_map)
+		{
+			res.push_back(name);
+		}
+		return res;
+	}
 	size_t GetElementSize(LayerType layer) const
 	{
 		assert(layer <= m_max_layer);
@@ -903,6 +912,15 @@ public:
 		for (const auto& field : fields)
 		{
 			res.push_back(GetFieldName(field));
+		}
+		return res;
+	}
+	std::vector<std::string> GetFieldNames() const
+	{
+		std::vector<std::string> res;
+		for (const auto&[name, ph] : m_field_map)
+		{
+			res.push_back(name);
 		}
 		return res;
 	}

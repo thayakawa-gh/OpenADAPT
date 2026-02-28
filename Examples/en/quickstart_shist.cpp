@@ -110,7 +110,7 @@ void QuickstartSHist()
 
 	std::cout << "------Show histogram data------" << std::endl;
 	ADAPT_GET_PLACEHOLDERS(usa, ibin0, ibin1, population, area, name);
-	usa | Show(" bin[{:>1},{:>1}] size:{:>2}", ibin0, ibin1, size(area));
+	usa | Show(" bin[{:>1},{:>1}] size:{:>2}", ibin0, ibin1, countall(area));
 	// [   0] bin[0, 0] size: 8
 	// [   1] bin[0, 1] size: 0
 	// [   1] bin[0, 1] size: 0
@@ -181,7 +181,7 @@ void QuickstartSHist()
 	std::cout << std::format("max population density in bin{:1>}: {:>6.1f}\n", bin, max_population_density(usa, pos));
 	// max population density in bin[2,4]: 1646.8
 
-	auto maxentry = greatest(size(area));
+	auto maxentry = greatest(countall(area));
 	std::cout << std::format("largest bin entry: {}\n", maxentry(usa)); // largest bin entry: 8
 
 	std::cout << std::endl;

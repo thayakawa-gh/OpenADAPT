@@ -1,0 +1,8 @@
+#include <OpenADAPT/Parser_impl.h>
+
+namespace adapt
+{
+
+template ADAPT_DLL_EXPORT eval::RttiFuncNode<${TYPE}> Parse<${TYPE}>(const ${TYPE}& container, std::string_view expr);
+
+}

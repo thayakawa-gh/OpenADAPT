@@ -2,10 +2,13 @@
 #define ADAPT_COMMOM_COMMON_H
 
 #include <complex>
+#include <OpenADAPT/Common/Macros.h>
 #include <OpenADAPT/Common/Definition.h>
 #include <OpenADAPT/Common/Bpos.h>
 #ifdef USE_ANKERL_UNORDERED_DENSE
 #include <ankerl/unordered_dense.h>
+#else
+#include <unordered_map>
 #endif
 
 namespace adapt
@@ -65,6 +68,142 @@ enum class FieldType : uint32_t
 	default: DEFAULT \
 	}
 
+#ifndef ADAPT_DETAIL_MSVC_TRADITIONAL
+
+// I08、F32などにFieldType::を付けないこと。IsI08などの関数名でエラーになる。
+
+#define ADAPT_FOR_EACH_TYPE(CODE, ...) \
+	CODE(I08, i08, int8_t __VA_OPT__(,) __VA_ARGS__) \
+	CODE(I16, i16, int16_t __VA_OPT__(,) __VA_ARGS__) \
+	CODE(I32, i32, int32_t __VA_OPT__(,) __VA_ARGS__) \
+	CODE(I64, i64, int64_t __VA_OPT__(,) __VA_ARGS__) \
+	CODE(F32, f32, float __VA_OPT__(,) __VA_ARGS__) \
+	CODE(F64, f64, double __VA_OPT__(,) __VA_ARGS__) \
+	CODE(C32, c32, std::complex<float> __VA_OPT__(,) __VA_ARGS__) \
+	CODE(C64, c64, std::complex<double> __VA_OPT__(,) __VA_ARGS__) \
+	CODE(Str, str, std::string __VA_OPT__(,) __VA_ARGS__) \
+	CODE(Jbp, jbp, JBpos __VA_OPT__(,) __VA_ARGS__)
+#define ADAPT_FOR_EACH_TYPE_PROD(CODE, ...)\
+	ADAPT_FOR_EACH_TYPE(CODE, I08, i08, int8_t __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, I16, i16, int16_t __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, I32, i32, int32_t __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, I64, i64, int64_t __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, F32, f32, float __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, F64, f64, double __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, C32, c32, std::complex<float> __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, C64, c64, std::complex<double> __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, Str, str, std::string __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, Jbp, jbp, JBpos __VA_OPT__(,) __VA_ARGS__)
+
+#define ADAPT_FOR_EACH_INT_TYPE(CODE, ...) \
+	CODE(I08, i08, int8_t __VA_OPT__(,) __VA_ARGS__) \
+	CODE(I16, i16, int16_t __VA_OPT__(,) __VA_ARGS__) \
+	CODE(I32, i32, int32_t __VA_OPT__(,) __VA_ARGS__) \
+	CODE(I64, i64, int64_t __VA_OPT__(,) __VA_ARGS__)
+#define ADAPT_FOR_EACH_INT_TYPE_PROD(CODE, ...)\
+	ADAPT_FOR_EACH_INT_TYPE(CODE, I08, i08, int8_t __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_INT_TYPE(CODE, I16, i16, int16_t __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_INT_TYPE(CODE, I32, i32, int32_t __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_INT_TYPE(CODE, I64, i64, int64_t __VA_OPT__(,) __VA_ARGS__)
+#define ADAPT_FOR_EACH_INT_TYPE_TRI_PROD(CODE, ...)\
+	ADAPT_FOR_EACH_INT_TYPE_PROD(CODE, I08, i08, int8_t __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_INT_TYPE_PROD(CODE, I16, i16, int16_t __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_INT_TYPE_PROD(CODE, I32, i32, int32_t __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_INT_TYPE_PROD(CODE, I64, i64, int64_t __VA_OPT__(,) __VA_ARGS__)
+
+#define ADAPT_FOR_EACH_TRIVIAL_TYPE(CODE) \
+	ADAPT_EXPAND_VARS(CODE, (I08, i08, int8_t)) \
+	ADAPT_EXPAND_VARS(CODE, (I16, i16, int16_t)) \
+	ADAPT_EXPAND_VARS(CODE, (I32, i32, int32_t)) \
+	ADAPT_EXPAND_VARS(CODE, (I64, i64, int64_t)) \
+	ADAPT_EXPAND_VARS(CODE, (F32, f32, float)) \
+	ADAPT_EXPAND_VARS(CODE, (F64, f64, double)) \
+	ADAPT_EXPAND_VARS(CODE, (C32, c32, std::complex<float>)) \
+	ADAPT_EXPAND_VARS(CODE, (C64, c64, std::complex<double>))
+
+#else
+
+// I08、F32などにFieldType::を付けないこと。IsI08などの関数名でエラーになる。
+
+#define ADAPT_FOR_EACH_TYPE(CODE, ...) \
+	ADAPT_EXPAND_VARS(CODE, (I08, i08, int8_t, __VA_ARGS__)) \
+	ADAPT_EXPAND_VARS(CODE, (I16, i16, int16_t, __VA_ARGS__)) \
+	ADAPT_EXPAND_VARS(CODE, (I32, i32, int32_t, __VA_ARGS__)) \
+	ADAPT_EXPAND_VARS(CODE, (I64, i64, int64_t, __VA_ARGS__)) \
+	ADAPT_EXPAND_VARS(CODE, (F32, f32, float, __VA_ARGS__)) \
+	ADAPT_EXPAND_VARS(CODE, (F64, f64, double, __VA_ARGS__)) \
+	ADAPT_EXPAND_VARS(CODE, (C32, c32, std::complex<float>, __VA_ARGS__)) \
+	ADAPT_EXPAND_VARS(CODE, (C64, c64, std::complex<double>, __VA_ARGS__)) \
+	ADAPT_EXPAND_VARS(CODE, (Str, str, std::string, __VA_ARGS__)) \
+	ADAPT_EXPAND_VARS(CODE, (Jbp, jbp, JBpos, __VA_ARGS__))
+#define ADAPT_FOR_EACH_TYPE_PROD(CODE, ...)\
+	ADAPT_FOR_EACH_TYPE(CODE, I08, i08, int8_t, __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, I16, i16, int16_t, __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, I32, i32, int32_t, __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, I64, i64, int64_t, __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, F32, f32, float, __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, F64, f64, double, __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, C32, c32, std::complex<float>, __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, C64, c64, std::complex<double>, __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, Str, str, std::string, __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, Jbp, jbp, JBpos, __VA_ARGS__)
+
+#define ADAPT_FOR_EACH_INT_TYPE(CODE, ...) \
+	ADAPT_EXPAND_VARS(CODE, (I08, i08, int8_t, __VA_ARGS__)) \
+	ADAPT_EXPAND_VARS(CODE, (I16, i16, int16_t, __VA_ARGS__)) \
+	ADAPT_EXPAND_VARS(CODE, (I32, i32, int32_t, __VA_ARGS__)) \
+	ADAPT_EXPAND_VARS(CODE, (I64, i64, int64_t, __VA_ARGS__))
+#define ADAPT_FOR_EACH_INT_TYPE_PROD(CODE, ...)\
+	ADAPT_FOR_EACH_INT_TYPE(CODE, I08, i08, int8_t, __VA_ARGS__) \
+	ADAPT_FOR_EACH_INT_TYPE(CODE, I16, i16, int16_t, __VA_ARGS__) \
+	ADAPT_FOR_EACH_INT_TYPE(CODE, I32, i32, int32_t, __VA_ARGS__) \
+	ADAPT_FOR_EACH_INT_TYPE(CODE, I64, i64, int64_t, __VA_ARGS__)
+#define ADAPT_FOR_EACH_INT_TYPE_TRI_PROD(CODE, ...)\
+	ADAPT_FOR_EACH_INT_TYPE_PROD(CODE, I08, i08, int8_t, __VA_ARGS__) \
+	ADAPT_FOR_EACH_INT_TYPE_PROD(CODE, I16, i16, int16_t, __VA_ARGS__) \
+	ADAPT_FOR_EACH_INT_TYPE_PROD(CODE, I32, i32, int32_t, __VA_ARGS__) \
+	ADAPT_FOR_EACH_INT_TYPE_PROD(CODE, I64, i64, int64_t, __VA_ARGS__)
+
+#define ADAPT_FOR_EACH_TRIVIAL_TYPE(CODE) \
+	ADAPT_EXPAND_VARS(CODE, (I08, i08, int8_t)) \
+	ADAPT_EXPAND_VARS(CODE, (I16, i16, int16_t)) \
+	ADAPT_EXPAND_VARS(CODE, (I32, i32, int32_t)) \
+	ADAPT_EXPAND_VARS(CODE, (I64, i64, int64_t)) \
+	ADAPT_EXPAND_VARS(CODE, (F32, f32, float)) \
+	ADAPT_EXPAND_VARS(CODE, (F64, f64, double)) \
+	ADAPT_EXPAND_VARS(CODE, (C32, c32, std::complex<float>)) \
+	ADAPT_EXPAND_VARS(CODE, (C64, c64, std::complex<double>))
+
+#endif
+
+
+
+
+// 関数オブジェクト群には、Rttiモードでのコンパイルコストおよびバイナリファイルサイズ削減のために
+// 各ラムダ関数生成を補助するための属性を与えている。
+// ArithmeticConvLevel: 算術変換のレベル。0は算術変換なしで整数昇格のみ、1は整数のみの算術変換あり、2は整数+浮動小数点の算術変換あり、3は整数+浮動小数点+複素数の算術変換あり。
+// Level-1 Bool:  論理演算子。両辺をI08へと変換する。
+// Level0  None:  一切の変換を行わない。
+// Level1  Promo: 算術変換はせず整数昇格のみ行う。シフト演算子が該当。
+// Level2  Integ: 整数の算術変換を行う。剰余、ビット演算子が該当。
+// Level3  Usual: 整数と浮動小数点の算術変換を行う。比較演算子が該当。
+// Level4  Compl: 整数と浮動小数点と複素数の算術変換を行う。加減乗除が該当。
+// Level指定なしはLevel0に同じ。
+// これらのレベルに応じて、MakeRttiFuncNodeでは引数に与えられたnode_or_placeholderの型変換を暗黙的に行う。
+
+// 注意点として、Level4-Complにおいては整数-複素数間の変換は行われず、そもそも呼び出し不能と判断される。
+// std::complexは浮動小数点からの暗黙変換は行えるが、整数型からは行えないためである。
+// さらに、C32 + F64のような、複素数型のビット数が浮動小数点側より小さい場合も変換は行われず、呼び出し不能と判断される。
+
+enum class ArithmeticConvLevel : int32_t
+{
+	Bool = -1,
+	None = 0,
+	Promo = 1,
+	Integ = 2,
+	Usual = 3,
+	Compl = 4
+};
 
 ADAPT_EXPORT
 class FieldVariant;

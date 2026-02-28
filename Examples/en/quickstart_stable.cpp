@@ -167,7 +167,7 @@ void QuickstartSTable()
 	// The functions given to UserFunc are required to be default constructible and copyable.
 	// Please be careful not to use lambda expressions with captures, which are not default constructible and not copyable.
 
-	// Define a user function that takes two double arguments and returns their sum.
+	// Define a user function that takes one integral and one floating-point argument and returns a floating-point value.
 	adapt::UserFunc your_func(
 		[](int32_t p, double a)
 	{
@@ -212,7 +212,7 @@ void QuickstartSTable()
 
 	// Use lambda function with traverser.
 	// Count the number of cities with a larger population than the current city.
-	auto population_rank = count(city_population > city_population.o(0_depth)) + 1;
+	auto population_rank = count_if(city_population > city_population.o(0_depth)) + 1;
 	for (const auto& trav : usa.GetRange(0_layer))
 	{
 		std::cout << std::format("{:<12} {:>8} {:>7.1f} {:>2}\n", trav[city], trav[city_population], trav[city_area], population_rank(trav));

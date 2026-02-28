@@ -65,6 +65,20 @@ inline int32_t TotalScore(const std::vector<Class>& cs, BindexType i, BindexType
 	const auto& r = cs[i].m_students[j].m_records[k];
 	return r.m_math + r.m_japanese + r.m_english + r.m_science + r.m_social;
 }
+inline bool HasFailed(const std::vector<Class>& c, BindexType i, BindexType j, BindexType k)
+{
+	const auto& s = c[i].m_students[j];
+	const auto& r = s.m_records[k];
+	if (r.m_math < 40 || r.m_japanese < 40) return true;
+	return false;
+}
+inline bool BothFailed(const std::vector<Class>& c, BindexType i, BindexType j, BindexType k)
+{
+	const auto& s = c[i].m_students[j];
+	const auto& r = s.m_records[k];
+	if (r.m_math < 40 && r.m_japanese < 40) return true;
+	return false;
+}
 inline bool All400(const std::vector<Class>& c, BindexType i, BindexType j, BindexType)
 {
 	const auto& s = c[i].m_students[j];

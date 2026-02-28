@@ -828,6 +828,11 @@ public:
 		return m_placeholder.GetType();
 	}
 
+	const Placeholder& GetPlaceholder() const
+	{
+		return m_placeholder;
+	}
+
 protected:
 
 	Placeholder m_placeholder;
@@ -854,8 +859,10 @@ struct RttiIndexedFieldNode_impl<Container, Placeholder, Type, TypeList<Nodes...
 	using Traverser = Container::Traverser;
 	using ConstTraverser = Container::ConstTraverser;
 
-	using RetType = DFieldInfo::TagTypeToValueType<Type>;
-	using RetTypeRef = std::conditional_t<DFieldInfo::IsTrivial(Type), RetType, const RetType&>;
+	template <FieldType TType>
+	using RetType = DFieldInfo::TagTypeToValueType<TType>;
+	template <FieldType TType>
+	using RetTypeRef = std::conditional_t<DFieldInfo::IsTrivial(TType), RetType<TType>, const RetType<TType>&>;
 
 	static constexpr RankType Rank = Placeholder::Rank;
 	static constexpr RankType MaxRank = Placeholder::MaxRank;
@@ -926,35 +933,85 @@ struct RttiIndexedFieldNode_impl<Container, Placeholder, Type, TypeList<Nodes...
 	template <size_t N>
 	using ArgType = GetType_t<N, Nodes...>;
 
-	virtual RetTypeRef Evaluate(const Traverser& t, Number<Type>) const override
+	using enum FieldType;
+
+	template <class Trav, FieldType TType>
+	RetTypeRef<TType> Evaluate_impl(const Trav& t, Number<TType>) const
 	{
-		return t.GetField(m_placeholder, (BindexType)this->template GetArg<Indices>(t)...).template as_unsafe<Type>();
-	}
-	virtual RetTypeRef Evaluate(const ConstTraverser& t, Number<Type>) const override
-	{
-		return t.GetField(m_placeholder, (BindexType)this->template GetArg<Indices>(t)...).template as_unsafe<Type>();
-	}
-	virtual RetTypeRef Evaluate(const Container& s, Number<Type>) const override
-	{
-		return s.GetBranch((BindexType)this->template GetArg<Indices>(s)...).GetField(m_placeholder).template as_unsafe<Type>();
-	}
-	virtual RetTypeRef Evaluate(const Container& s, const Bpos& bpos, Number<Type>) const override
-	{
-		if constexpr (container_simplex<Container>)
+		if constexpr (Type == TType)
+			return t.GetField(m_placeholder, (BindexType)this->template GetArg<Indices>(t)...).template as_unsafe<Type>();
+		else if constexpr (DFieldInfo::IsCpxAri(TType) && DFieldInfo::IsConvertibleTo<Type, TType>())
 		{
-			//layerまでのうち、layer - sizeof...(Indices)まではbposから与え、その後はnodeから与える。
-			constexpr LayerConstant<(LayerType)sizeof...(Indices)> isize;
-			return s.
-				GetBranch(bpos, m_placeholder.GetInternalLayer() - isize).
-				GetBranch((BindexType)this->template GetArg<Indices>(s, bpos)...).
-				GetField(m_placeholder).template as_unsafe<Type>();
+			if constexpr (DFieldInfo::IsCpx(TType) && DFieldInfo::IsArithmetic(Type))
+				return static_cast<RetType<TType>>((typename RetType<TType>::value_type)Evaluate_impl(t, Number<Type>{}));
+			else
+				return static_cast<RetType<TType>>(Evaluate_impl(t, Number<Type>{}));
 		}
 		else
-		{
-			//joined Containerの場合、simplexと同じ方法は使えない。
-			return s.GetField(m_placeholder, bpos, this->template GetArg<Indices>(s, bpos)...).template as_unsafe<Type>();
-		}
+			throw MismatchType("");
 	}
+	template <FieldType TType>
+	RetTypeRef<TType> Evaluate_impl(const Container& s, Number<TType>) const
+	{
+		if constexpr (Type == TType)
+			return s.GetBranch((BindexType)this->template GetArg<Indices>(s)...).GetField(m_placeholder).template as_unsafe<Type>();
+		else if constexpr (DFieldInfo::IsCpxAri(TType) && DFieldInfo::IsConvertibleTo<Type, TType>())
+		{
+			if constexpr (DFieldInfo::IsCpx(TType) && DFieldInfo::IsArithmetic(Type))
+				return static_cast<RetType<TType>>((typename RetType<TType>::value_type)Evaluate_impl(s, Number<Type>{}));
+			else
+				return static_cast<RetType<TType>>(Evaluate_impl(s, Number<Type>{}));
+		}
+		else
+			throw MismatchType("");
+	}
+	template <FieldType TType>
+	RetTypeRef<TType> Evaluate_impl(const Container& s, const Bpos& bpos, Number<TType>) const
+	{
+		if constexpr (Type == TType)
+		{
+			if constexpr (container_simplex<Container>)
+			{
+				constexpr LayerConstant<(LayerType)sizeof...(Indices)> isize;
+				return s.
+					GetBranch(bpos, m_placeholder.GetInternalLayer() - isize).
+					GetBranch((BindexType)this->template GetArg<Indices>(s, bpos)...).
+					GetField(m_placeholder).template as_unsafe<Type>();
+			}
+			else
+			{
+				return s.GetField(m_placeholder, bpos, this->template GetArg<Indices>(s, bpos)...).template as_unsafe<Type>();
+			}
+		}
+		else if constexpr (DFieldInfo::IsCpxAri(TType) && DFieldInfo::IsConvertibleTo<Type, TType>())
+		{
+			if constexpr (DFieldInfo::IsCpx(TType) && DFieldInfo::IsArithmetic(Type))
+				return static_cast<RetType<TType>>((typename RetType<TType>::value_type)Evaluate_impl(s, bpos, Number<Type>{}));
+			else
+				return static_cast<RetType<TType>>(Evaluate_impl(s, bpos, Number<Type>{}));
+		}
+		else throw MismatchType("");
+	}
+
+	#define CODE(TTYPE, SYM, VTYPE)\
+	virtual RetTypeRef<TTYPE> Evaluate(const Traverser& t, Number<TTYPE>) const override\
+	{\
+		return Evaluate_impl(t, Number<TTYPE>{});\
+	}\
+	virtual RetTypeRef<TTYPE> Evaluate(const ConstTraverser& t, Number<TTYPE>) const override\
+	{\
+		return Evaluate_impl(t, Number<TTYPE>{});\
+	}\
+	virtual RetTypeRef<TTYPE> Evaluate(const Container& s, Number<TTYPE>) const override\
+	{\
+		return Evaluate_impl(s, Number<TTYPE>{});\
+	}\
+	virtual RetTypeRef<TTYPE> Evaluate(const Container& s, const Bpos& bpos, Number<TTYPE>) const override\
+	{\
+		return Evaluate_impl(s, bpos, Number<TTYPE>{});\
+	}
+	ADAPT_FOR_EACH_TYPE(CODE)
+	#undef CODE
 
 	virtual FieldType GetType() const override { return Type; }
 private:
@@ -984,11 +1041,12 @@ auto MakeRttiIndexedFieldNode(const Placeholder& ph, ValueList<IndTypes...>,
 template <FieldType PHType, placeholder Placeholder,
 	FieldType ...IndTypes, any_node ...Nodes>
 auto MakeRttiIndexedFieldNode_switch_ind(const Placeholder& ph, ValueList<IndTypes...>,
-							  std::tuple<Nodes...> t)
+										 std::tuple<Nodes...> t)
 {
 	return MakeRttiIndexedFieldNode<PHType>(ph, ValueList<IndTypes...>{}, std::move(t),
 											std::make_index_sequence<sizeof...(IndTypes)>{});
 }
+/*
 template <FieldType PHType, placeholder Placeholder, FieldType ...IndTypes, any_node ...Nodes, any_node Head, any_node ...Body>
 auto MakeRttiIndexedFieldNode_switch_ind(const Placeholder& ph, ValueList<IndTypes...>,
 										 std::tuple<Nodes...> t, Head&& head, Body&& ...body)
@@ -1022,7 +1080,66 @@ auto MakeRttiIndexedFieldNode_switch_ph(const Placeholder& ph, Nodes&& ...indice
 #define CODE(T) return MakeRttiIndexedFieldNode_switch_ind<T>(ph, ValueList<>{}, std::tuple<>{}, std::forward<Nodes>(indices)...);
 	ADAPT_SWITCH_FIELD_TYPE(ph.GetType(), CODE, throw MismatchType("");)
 #undef CODE
+}*/
+template <const_node Node>
+auto CastToI64(Node&& node)
+{
+	using enum FieldType;
+	#define CODE(TTYPE, SYM, VTYPE) if (node.Is##TTYPE()) return RttiConstNode(static_cast<int64_t>(node.GetValue(Number<TTYPE>{})));
+	ADAPT_FOR_EACH_INT_TYPE(CODE)
+	#undef CODE
+	throw MismatchType("");
 }
+template <any_node Node>
+	requires (!const_node<Node>)
+auto CastToI64(Node&& node)
+{
+	return cast_i64(node);
+}
+
+template <FieldType PType, placeholder Placeholder, any_node Node>
+auto MakeRttiIndexedFieldNode(const Placeholder& ph, Node&& node)
+{
+	using enum FieldType;
+	#define CODE(TTYPE1, SYM1, VTYPE1)\
+	if (node.Is##TTYPE1()) return MakeRttiIndexedFieldNode_switch_ind<PType>(ph, ValueList<TTYPE1>{}, std::forward_as_tuple(std::forward<Node>(node)));
+	ADAPT_FOR_EACH_INT_TYPE(CODE)
+	#undef CODE
+	throw MismatchType("Field indices must be integers.");
+}
+template <FieldType PType, placeholder Placeholder, any_node Node1, any_node Node2>
+auto MakeRttiIndexedFieldNode(const Placeholder& ph, Node1&& node1, Node2&& node2)
+{
+	using enum FieldType;
+	#define CODE(TTYPE1, SYM1, VTYPE1)\
+	if (node1.Is##TTYPE1() && node2.Is##TTYPE1())\
+		return MakeRttiIndexedFieldNode_switch_ind<PType>(ph, ValueList<TTYPE1, TTYPE1>{},\
+				std::forward_as_tuple(std::forward<Node1>(node1), std::forward<Node2>(node2)));
+	ADAPT_FOR_EACH_INT_TYPE(CODE)
+	#undef CODE
+	auto isint = [](auto& i) { return i.IsI08() || i.IsI16() || i.IsI32() || i.IsI64(); };
+	if (isint(node1) && isint(node2))
+		return MakeRttiIndexedFieldNode_switch_ind<PType>(ph, ValueList<FieldType::I64, FieldType::I64>{},
+														std::forward_as_tuple(CastToI64(node1), CastToI64(node2)));
+	throw MismatchType("Field indices must be the same integer type.");
+}
+template <FieldType PType, placeholder Placeholder, any_node Node1, any_node Node2, any_node Node3>
+auto MakeRttiIndexedFieldNode(const Placeholder& ph, Node1&& node1, Node2&& node2, Node3&& node3)
+{
+	using enum FieldType;
+	#define CODE(TTYPE1, SYM1, VTYPE1)\
+	if (node1.Is##TTYPE1() && node2.Is##TTYPE1() && node3.Is##TTYPE1())\
+		return MakeRttiIndexedFieldNode_switch_ind<PType>(ph, ValueList<TTYPE1, TTYPE1, TTYPE1>{},\
+				std::forward_as_tuple(std::forward<Node1>(node1), std::forward<Node2>(node2), std::forward<Node3>(node3)));
+	ADAPT_FOR_EACH_INT_TYPE(CODE)
+	#undef CODE
+		auto isint = [](auto& i) { return i.IsI08() || i.IsI16() || i.IsI32() || i.IsI64(); };
+	if (isint(node1) && isint(node2) && isint(node3))
+		return MakeRttiIndexedFieldNode_switch_ind<PType>(ph, ValueList<FieldType::I64, FieldType::I64, FieldType::I64>{},
+														  std::forward_as_tuple(CastToI64(node1), CastToI64(node2), CastToI64(node3)));
+	throw MismatchType("Field indices must be the same integer type.");
+}
+
 template <placeholder Placeholder, any_node ...Nodes>
 auto MakeCttiIndexedFieldNode(const Placeholder& ph, Nodes&& ...nodes)
 {
@@ -1039,7 +1156,9 @@ auto MakeIndexedFieldNode(const Placeholder& ph, NPs&& ...indices)
 
 	if constexpr (has_rtti_type)
 	{
-		return MakeRttiIndexedFieldNode_switch_ph(ph, ConvertToNode(std::forward<NPs>(indices), std::true_type{})...);
+		#define CODE(T) return MakeRttiIndexedFieldNode<T>(ph, ConvertToNode(std::forward<NPs>(indices), std::true_type{})...);
+		ADAPT_SWITCH_FIELD_TYPE(ph.GetType(), CODE, throw MismatchType("");)
+		#undef CODE
 	}
 	else
 	{
