@@ -199,7 +199,7 @@ inline RttiConstNode Subtract(const RttiConstNode& a, int32_t i)
 {
 	#define Y(TTYPE, METHOD, VTYPE)\
 	if (a.Is##TTYPE()) return RttiConstNode((VTYPE)(a.GetValue(Number<FieldType::TTYPE>{}) - i));
-	ADAPT_INT_TYPE_LIST_SOLO(Y)
+	ADAPT_FOR_EACH_INT_TYPE(Y)
 	#undef Y
 	throw ParseError("Invalid argument type for subtraction");
 }
@@ -210,7 +210,7 @@ RttiFuncNode<Container> ConvertToContainerMethod(Func f, const Container& c, con
 	//コンテナのメソッドを呼び出すノードを生成する。
 	#define Y(TTYPE, METHOD, VTYPE)\
 	if (node.Is##TTYPE()) return ConvertToRttiFuncNode(f(c, node.GetValue(Number<FieldType::TTYPE>{})));
-	ADAPT_INT_TYPE_LIST_SOLO(Y)
+	ADAPT_FOR_EACH_INT_TYPE(Y)
 	#undef Y
 	throw ParseError("Invalid argument type for container method");
 }
@@ -221,7 +221,7 @@ RttiFuncNode<Container> ConvertToContainerMethod(Func f, const Container& c, con
 	#define Y(TTYPE1, METHOD1, VTYPE1, TTYPE2, METHOD2, VTYPE2)\
 	if (left.Is##TTYPE1() && right.Is##TTYPE2())\
 		return ConvertToRttiFuncNode(f(c, left.GetValue(Number<FieldType::TTYPE1>{}), right.GetValue(Number<FieldType::TTYPE2>{})));
-	ADAPT_INT_TYPE_LIST_DUO(Y)
+	ADAPT_FOR_EACH_INT_TYPE_PROD(Y)
 	#undef Y
 	throw ParseError("Invalid argument type for container method");
 }

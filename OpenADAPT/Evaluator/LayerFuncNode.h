@@ -746,7 +746,7 @@ struct RttiLayerFuncNode_impl<Func_, Container_, Node_, Cond_, Type, std::index_
 		else\
 			throw InvalidArg("The return type of the function is not compatible with the requested type.");\
 	}
-	ADAPT_FIELD_TYPE_LIST_SOLO(CODE)
+	ADAPT_FOR_EACH_TYPE(CODE)
 	#undef CODE
 
 #ifdef _MSC_VER

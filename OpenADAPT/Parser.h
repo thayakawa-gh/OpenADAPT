@@ -1,13 +1,16 @@
 #ifndef ADAPT_PARSER_H
 #define ADAPT_PARSER_H
 
-#ifdef ADAPT_DLL_BUILD
+#if defined(ADAPT_DLL_BUILD) && defined(_MSVC_VER)
 #define ADAPT_DLL_EXPORT __declspec(dllexport)
-#elif defined(ADAPT_DLL_IMPORT)
+#elif defined(ADAPT_DLL_IMPORT) && defined(_MSVC_VER)
 #define ADAPT_DLL_EXPORT __declspec(dllimport)
 #else
 #define ADAPT_DLL_EXPORT
 #endif
+
+#include <OpenADAPT/ADAPT.h>
+#include <OpenADAPT/Parser/Parser.h>
 
 namespace adapt
 {

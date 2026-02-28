@@ -1,4 +1,4 @@
-#include <OpenADAPT/Parser/Parser_impl.h>
+#include <OpenADAPT/Parser_impl.h>
 
 namespace adapt
 {
@@ -10,10 +10,10 @@ namespace parser
 {
 
 #define EX(NAME, UP)\
-template Parser<${TYPE}>::NodeType Parser<${TYPE}>::ApplyLayerFuncIfN##NAME <UP>(Parser<${TYPE}>::NodeType left, Parser<${TYPE}>::NodeType right);
+template ADAPT_DLL_EXPORT Parser<${TYPE}>::NodeType Parser<${TYPE}>::ApplyLayerFuncIfN##NAME <UP>(Parser<${TYPE}>::NodeType left, Parser<${TYPE}>::NodeType right);
 
 #define X(NAME, SYM)\
-template Parser<${TYPE}>::NodeType Parser<${TYPE}>::ApplyLayerFuncIf##NAME(Parser<${TYPE}>::NodeType left, Parser<${TYPE}>::NodeType right);\
+template ADAPT_DLL_EXPORT Parser<${TYPE}>::NodeType Parser<${TYPE}>::ApplyLayerFuncIf##NAME(Parser<${TYPE}>::NodeType left, Parser<${TYPE}>::NodeType right);\
 EX(NAME, 1) EX(NAME, 2) EX(NAME, 3) EX(NAME, 4) EX(NAME, 5) EX(NAME, 6) EX(NAME, 7) EX(NAME, 8) EX(NAME, 9) EX(NAME, 10)
 PARSER_LAYER_FUNCS_IF
 #undef X

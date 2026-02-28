@@ -1,6 +1,6 @@
 project(Parser)
 
-set(PARSER_TYPES DTree DTable)
+#set(PARSER_TYPES DTree DTable)
 set(PARSER_SUBJECTS unary_ops binary_ops
 	1arg_funcs 2arg_funcs 3arg_funcs
 	1arg_lfuncs 2arg_lfuncs
@@ -13,7 +13,7 @@ add_library(${PACKAGE_NAME}::Parser ALIAS Parser)
 
 message("Building Parser")
 set(LIBS)
-foreach(TYPE ${PARSER_TYPES})
+foreach(TYPE ${BUILD_PARSER_WITH})
 	#ループ内で各コンテナ型に対応するParser_${TYPE}.libを作成。
 	set(PARSER_SOURCES)
 	foreach(SUBJ ${PARSER_SUBJECTS})
@@ -28,17 +28,22 @@ foreach(TYPE ${PARSER_TYPES})
 		${CMAKE_CURRENT_BINARY_DIR}/Parser_${TYPE}.cpp)
 	list(APPEND PARSER_SOURCES
 		${CMAKE_CURRENT_BINARY_DIR}/Parser_${TYPE}.cpp)
-	add_library(Parser_${TYPE} STATIC ${PARSER_SOURCES})
+	add_library(${PROJECT_NAME}_${TYPE} ${PARSER_SOURCES})
 	target_include_directories(${PROJECT_NAME}_${TYPE} INTERFACE
 		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>
 		$<INSTALL_INTERFACE:include/${PACKAGE_NAME}>)
 	target_link_libraries(${PROJECT_NAME}_${TYPE} PRIVATE OpenADAPT::OpenADAPT)
 	target_compile_features(${PROJECT_NAME}_${TYPE} PRIVATE cxx_std_20)
+	if (BUILD_SHARED_LIBS)
+		message("Building Parser_${TYPE} as shared library")
+		target_compile_definitions(${PROJECT_NAME}_${TYPE} PRIVATE ADAPT_DLL_BUILD)
+	endif()
 	list(APPEND LIBS ${PROJECT_NAME}_${TYPE})
 	install(
 		TARGETS ${PROJECT_NAME}_${TYPE}
 		EXPORT ${PACKAGE_NAME}Config
-		ARCHIVE DESTINATION lib)
+		ARCHIVE DESTINATION lib
+		RUNTIME DESTINATION bin)
 endforeach()
 
 #Parserインターフェースライブラリに、全てのParser_${TYPE}ライブラリをリンク。

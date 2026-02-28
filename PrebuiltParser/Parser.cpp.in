@@ -3,6 +3,6 @@
 namespace adapt
 {
 
-template eval::RttiFuncNode<${TYPE}> Parse<${TYPE}>(const ${TYPE}& container, std::string_view expr);
+template ADAPT_DLL_EXPORT eval::RttiFuncNode<${TYPE}> Parse<${TYPE}>(const ${TYPE}& container, std::string_view expr);
 
 }

@@ -5,7 +5,7 @@
 
 //----------階層構造定義のヘルパー----------
 
-#define ADAPT_DETAIL_CONV_D_ADD_LAYER(args, name, type) {#name, adapt::FieldType::type}
+#define ADAPT_DETAIL_CONV_D_ADD_LAYER(foo, name, type) {#name, adapt::FieldType::type}
 
 
 // DTree tに対して、ADAPT_D_ADD_LAYER(t, foo, I32, bar F64, baz Str)とすると、
@@ -23,7 +23,7 @@ c.SetTopLayer({ ADAPT_DETAIL_EXPAND_CONV_PAIR_COMMA(ADAPT_DETAIL_CONV_D_ADD_LAYE
 #define ADAPT_D_SET_LAYER(c, l, ...)\
 c.SetLayer(l, { ADAPT_DETAIL_EXPAND_CONV_PAIR_COMMA(ADAPT_DETAIL_CONV_D_ADD_LAYER, foo, __VA_ARGS__) })
 
-#define ADAPT_DETAIL_CONV_S_DEFINE_LAYER(args, name, type) adapt::Named<#name, type>
+#define ADAPT_DETAIL_CONV_S_DEFINE_LAYER(foo, name, type) adapt::Named<#name, type>
 
 // 例えば、ADAPT_S_DEFINE_LAYER(foo int32_t, bar double, baz std::string)とすると、
 // adapt::NamedTuple<adapt::Named<"foo", int32_t>, adapt::Named<"bar", double>, adapt::Named<"baz", std::string>>と展開される。

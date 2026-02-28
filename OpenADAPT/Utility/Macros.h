@@ -4,6 +4,12 @@
 //これはincludeしない方が良い。ADAPT_EXPORTマクロが定義されてしまうため。
 //#include <OpenADAPT/Utility/Common.h>
 
+#if defined(_MSC_VER)
+	#if !defined(_MSVC_TRADITIONAL) || _MSVC_TRADITIONAL
+		#define ADAPT_DETAIL_MSVC_TRADITIONAL
+	#endif
+#endif
+
 #define ADAPT_TIE_ARGS(...) __VA_ARGS__
 
 #define ADAPT_EMPTY_MACRO
@@ -13,7 +19,7 @@
 #define ADAPT_CONCAT_IMPL(X, Y) X##Y
 #define ADAPT_CONCAT(X,Y) ADAPT_CONCAT_IMPL(X, Y)
 
-#define ADAPT_EXPAND_VARS(MACRO, ARGS) MACRO ARGS//msvcでのバグ回避のためのマクロ
+#define ADAPT_EXPAND_VARS(MACRO, ARGS) MACRO ARGS//コンパイラごとの挙動違いを吸収するためのマクロ
 
 #define ADAPT_DETAIL_NUM_ARGS_2( _1,  _2,  _3,  _4,  _5,  _6,  _7,  _8,  _9, _10, _11, _12, _13, _14, _15, _16,\
 								_17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, _29, _30, _31, _32,\
@@ -23,11 +29,6 @@
 #define ADAPT_GET_NUM_ARGS(...) ADAPT_DETAIL_NUM_ARGS_1(__VA_ARGS__, \
 64, 63, 62, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51, 50, 49, 48, 47, 46, 45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34, 33, \
 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
-
-//#define ADAPT_DETAIL_SELECT_MACRO_NUM(MACRO, CONV, ARGS, ...) \
-// ADAPT_EXPAND_VARS(ADAPT_CONCAT, (MACRO, ADAPT_GET_NUM_ARGS(__VA_ARGS__)))(CONV, __VA_ARGS__)
-//#define ADAPT_DETAIL_SELECT_MACRO_NUM_DELIM(MACRO, CONV, ARGS, DELIM, ...) \
-// ADAPT_EXPAND_VARS(ADAPT_CONCAT, (MACRO, ADAPT_GET_NUM_ARGS(__VA_ARGS__)))(CONV, __VA_ARGS__)
 
 
 #define ADAPT_DETAIL_NUM_ARGS_PAIR_2( _1a,  _1b,  _2a,  _2b,  _3a,  _3b,  _4a,  _4b,  _5a,  _5b,  _6a,  _6b,  _7a,  _7b,  _8a,  _8b,\
@@ -45,9 +46,6 @@
 32, ERR, 31, ERR, 30, ERR, 29, ERR, 28, ERR, 27, ERR, 26, ERR, 25, ERR, 24, ERR, 23, ERR, 22, ERR, 21, ERR, 20, ERR, 19, ERR, 18, ERR, 17, ERR,\
 16, ERR, 15, ERR, 14, ERR, 13, ERR, 12, ERR, 11, ERR, 10, ERR,  9, ERR,  8, ERR,  7, ERR,  6, ERR,  5, ERR,  4, ERR,  3, ERR,  2, ERR,  1, ERR)
 
-//#define ADAPT_DETAIL_SELECT_MACRO_NUM_PAIR(MACRO, CONV, ARGS, ...) ADAPT_EXPAND_VARS(ADAPT_CONCAT, (MACRO, ADAPT_GET_NUM_ARGS_PAIR(__VA_ARGS__)))(CONV, ARGS, __VA_ARGS__)
-//#define ADAPT_DETAIL_SELECT_MACRO_NUM_DELIM_PAIR(MACRO, CONV, ARGS, DELIM, ...) ADAPT_EXPAND_VARS(ADAPT_CONCAT, (MACRO, ADAPT_GET_NUM_ARGS_PAIR(__VA_ARGS__)))(CONV, ARGS, DELIM, __VA_ARGS__)
-
 
 #define ADAPT_DETAIL_NUM_ARGS_TRIO_2( _1a,  _1b,  _1c,  _2a,  _2b,  _2c,  _3a,  _3b,  _3c,  _4a,  _4b,  _4c,  _5a,  _5b,  _5c,  _6a,  _6b,  _6c,  _7a,  _7b,  _7c,  _8a,  _8b,  _8c,\
 									  _9a,  _9b,  _9c, _10a, _10b, _10c, _11a, _11b, _11c, _12a, _12b, _12c, _13a, _13b, _13c, _14a, _14b, _14c, _15a, _15b, _15c, _16a, _16b, _16c,\
@@ -64,14 +62,11 @@
 16, ERR, ERR, 15, ERR, ERR, 14, ERR, ERR, 13, ERR, ERR, 12, ERR, ERR, 11, ERR, ERR, 10, ERR, ERR,  9, ERR, ERR,\
 8, ERR, ERR,  7, ERR, ERR,  6, ERR, ERR,  5, ERR, ERR,  4, ERR, ERR,  3, ERR, ERR,  2, ERR, ERR,  1, ERR, ERR)
 
-//#define ADAPT_DETAIL_SELECT_MACRO_NUM_TRIO(MACRO, CONV, ARGS, ...) ADAPT_EXPAND_VARS(ADAPT_CONCAT, (MACRO, ADAPT_GET_NUM_ARGS_TRIO(__VA_ARGS__)))(CONV, ARGS, __VA_ARGS__)
-//#define ADAPT_DETAIL_SELECT_MACRO_NUM_TRIO_DELIM(MACRO, CONV, ARGS, DELIM, ...) ADAPT_EXPAND_VARS(ADAPT_CONCAT, (MACRO, ADAPT_GET_NUM_ARGS_TRIO(__VA_ARGS__)))(CONV, ARGS, DELIM, __VA_ARGS__)
 
 #define ADAPT_DECL_IF(COND, DECL) [&]() { if constexpr (COND) { return DECL; } else { return EmptyClass{}; } } ()
 
 //MSVCとclang/gccで記述統一ができなかった。
-#ifdef _MSC_VER
-
+#ifdef ADAPT_DETAIL_MSVC_TRADITIONAL
 
 #define ADAPT_DETAIL_EXPAND_CONV_1(CONV, OPTS, DELIM, x) ADAPT_EXPAND_VARS(CONV, (OPTS, x))
 #define ADAPT_DETAIL_EXPAND_CONV_2(CONV, OPTS, DELIM, x, ...) ADAPT_EXPAND_VARS(CONV, (OPTS, x)) DELIM ADAPT_EXPAND_VARS(ADAPT_DETAIL_EXPAND_CONV_1, (CONV, OPTS, DELIM, __VA_ARGS__))

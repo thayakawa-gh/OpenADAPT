@@ -370,28 +370,29 @@ struct RttiFuncNode_impl<Func, Container, TypeList<Nodes...>, Type, std::index_s
 		return m_func.Exec(*this, s, bpos);
 	}
 
+	using enum FieldType;
 	#define CODE(TTYPE, SYM, VTYPE)\
-	virtual VTYPE Evaluate(const Traverser& t, Number<FieldType::TTYPE>) const override\
+	virtual VTYPE Evaluate(const Traverser& t, Number<TTYPE>) const override\
 	{\
 		if constexpr (std::convertible_to<RetType, VTYPE>) return (VTYPE)Evaluate_impl(t, Number<Type>{});\
 		else throw MismatchType("");\
 	}\
-	virtual VTYPE Evaluate(const ConstTraverser& t, Number<FieldType::TTYPE>) const override\
+	virtual VTYPE Evaluate(const ConstTraverser& t, Number<TTYPE>) const override\
 	{\
 		if constexpr (std::convertible_to<RetType, VTYPE>) return (VTYPE)Evaluate_impl(t, Number<Type>{});\
 		else throw MismatchType("");\
 	}\
-	virtual VTYPE Evaluate(const Container& s, Number<FieldType::TTYPE>) const override\
+	virtual VTYPE Evaluate(const Container& s, Number<TTYPE>) const override\
 	{\
 		if constexpr (std::convertible_to<RetType, VTYPE>) return (VTYPE)Evaluate_impl(s, Number<Type>{});\
 		else throw MismatchType("");\
 	}\
-	virtual VTYPE Evaluate(const Container& s, const Bpos& bpos, Number<FieldType::TTYPE>) const override\
+	virtual VTYPE Evaluate(const Container& s, const Bpos& bpos, Number<TTYPE>) const override\
 	{\
 		if constexpr (std::convertible_to<RetType, VTYPE>) return (VTYPE)Evaluate_impl(s, bpos, Number<Type>{});\
 		else throw MismatchType("");\
 	}
-	ADAPT_TRIVIAL_TYPE_LIST_SOLO(CODE)
+	ADAPT_FOR_EACH_TRIVIAL_TYPE(CODE)
 	#undef CODE
 
 #ifdef _MSC_VER
@@ -485,28 +486,29 @@ struct RttiFuncNode_impl<Func, Container, TypeList<Nodes...>, Type, std::index_s
 		return m_buf;
 	}
 
+	using enum FieldType;
 	#define CODE(TTYPE, SYM, VTYPE)\
-	virtual VTYPE Evaluate(const Traverser& t, Number<FieldType::TTYPE>) const override\
+	virtual VTYPE Evaluate(const Traverser& t, Number<TTYPE>) const override\
 	{\
 		if constexpr (std::convertible_to<RetType, VTYPE>) return (VTYPE)Evaluate(t, Number<Type>{});\
 		else throw MismatchType("");\
 	}\
-	virtual VTYPE Evaluate(const ConstTraverser& t, Number<FieldType::TTYPE>) const override\
+	virtual VTYPE Evaluate(const ConstTraverser& t, Number<TTYPE>) const override\
 	{\
 		if constexpr (std::convertible_to<RetType, VTYPE>) return (VTYPE)Evaluate(t, Number<Type>{});\
 		else throw MismatchType("");\
 	}\
-	virtual VTYPE Evaluate(const Container& s, Number<FieldType::TTYPE>) const override\
+	virtual VTYPE Evaluate(const Container& s, Number<TTYPE>) const override\
 	{\
 		if constexpr (std::convertible_to<RetType, VTYPE>) return (VTYPE)Evaluate(s, Number<Type>{});\
 		else throw MismatchType("");\
 	}\
-	virtual VTYPE Evaluate(const Container& s, const Bpos& bpos, Number<FieldType::TTYPE>) const override\
+	virtual VTYPE Evaluate(const Container& s, const Bpos& bpos, Number<TTYPE>) const override\
 	{\
 		if constexpr (std::convertible_to<RetType, VTYPE>) return (VTYPE)Evaluate(s, bpos, Number<Type>{});\
 		else throw MismatchType("");\
 	}
-	ADAPT_TRIVIAL_TYPE_LIST_SOLO(CODE)
+	ADAPT_FOR_EACH_TRIVIAL_TYPE(CODE)
 	#undef CODE
 	virtual FieldType GetType() const override { return Type; }
 
@@ -597,11 +599,11 @@ auto MakeRttiFuncNode(Func&& f, ValueList<Types...>, std::tuple<Nodes...> t, Hea
 template <class Container, class Func, any_node Node>
 auto MakeRttiFuncNode(Func&& f, Node&& node)
 {
-	using DecFunc = std::decay_t<Func>;
-	#define CODE(TAGTYPE, SYM, VTYPE)\
-	if constexpr (requires { f(std::declval<const VTYPE&>()); }) if (node.GetType() == FieldType::TAGTYPE)\
-		return MakeRttiFuncNode_construct<Container, FieldType::TAGTYPE>(std::forward<Func>(f), std::forward<Node>(node));
-	ADAPT_FIELD_TYPE_LIST_SOLO(CODE)
+	using enum FieldType;
+	#define CODE(TTYPE, SYM, VTYPE)\
+	if constexpr (requires { f(std::declval<const VTYPE&>()); }) if (node.GetType() == TTYPE)\
+		return MakeRttiFuncNode_construct<Container, TTYPE>(std::forward<Func>(f), std::forward<Node>(node));
+	ADAPT_FOR_EACH_TYPE(CODE)
 	#undef CODE
 	throw MismatchType("");
 }
@@ -617,7 +619,7 @@ auto MakeRttiFuncNode_cast_bool(Node&& node)
 		#define CODE(TTYPE, SYM, VTYPE)\
 		if constexpr (std::convertible_to<VTYPE, bool>)\
 			if (node.GetType() == FieldType::TTYPE) tmp = (bool)node.template as<FieldType::TTYPE>();
-		ADAPT_TRIVIAL_TYPE_LIST_SOLO(CODE)
+		ADAPT_FOR_EACH_TRIVIAL_TYPE(CODE)
 		#undef CODE
 		return RttiConstNode((int8_t)tmp);
 	}
@@ -654,12 +656,12 @@ RttiConstNode MakeRttiFuncNode_cast(Node&& node)
 		if (node.GetType() == TTYPE)\
 		{\
 			if constexpr (IsSame_XT_v<std::complex, RetType> && DFieldInfo::IsArithmetic(TTYPE))\
-				return RttiConstNode(RetType(RetType::value_type(node.template as<TTYPE>())));\
+				return RttiConstNode(RetType(typename RetType::value_type(node.template as<TTYPE>())));\
 			else\
 				return RttiConstNode(RetType(node.template as<TTYPE>()));\
 		}\
 	}
-	ADAPT_TRIVIAL_TYPE_LIST_SOLO(CODE)
+	ADAPT_FOR_EACH_TRIVIAL_TYPE(CODE)
 	#undef CODE
 	throw MismatchType("");
 }
@@ -669,7 +671,6 @@ template <class Container, class Func, any_node Node1, any_node Node2>
 auto IntegralPromotion(Func&& f, Node1&& node1, Node2&& node2)
 {
 	using enum FieldType;
-	using DecFunc = std::decay_t<Func>;
 	FieldType type1 = node1.GetType();
 	FieldType type2 = node2.GetType();
 	assert(DFieldInfo::IsInt(type1) && DFieldInfo::IsInt(type2));
@@ -729,7 +730,6 @@ template <class Container, class Func, any_node Node1, any_node Node2>
 auto IntegralArithmeticConversion(Func&& f, Node1&& node1, Node2&& node2)
 {
 	using enum FieldType;
-	using DecFunc = std::decay_t<Func>;
 	FieldType type1 = node1.GetType();
 	FieldType type2 = node2.GetType();
 	assert(DFieldInfo::IsInt(type1) && DFieldInfo::IsInt(type2));
@@ -777,7 +777,6 @@ template <class Container, class Func, any_node Node1, any_node Node2>
 auto UsualArithmeticConversion(Func&& f, Node1&& node1, Node2&& node2)
 {
 	using enum FieldType;
-	using DecFunc = std::decay_t<Func>;
 	FieldType type1 = node1.GetType();
 	FieldType type2 = node2.GetType();
 	assert(DFieldInfo::IsArithmetic(type1) && DFieldInfo::IsArithmetic(type2));
@@ -820,7 +819,6 @@ template <class Container, class Func, any_node Node1, any_node Node2>
 auto ComplexArithmeticConversion(Func&& f, Node1&& node1, Node2&& node2)
 {
 	using enum FieldType;
-	using DecFunc = std::decay_t<Func>;
 	FieldType type1 = node1.GetType();
 	FieldType type2 = node2.GetType();
 	assert(DFieldInfo::IsCpxAri(type1) && DFieldInfo::IsCpxAri(type2));
@@ -919,6 +917,14 @@ auto MakeRttiFuncNode(Func&& f, Node1&& node1, Node2&& node2)
 		}
 	}
 }
+
+ADAPT_EXPORT
+template <class Func>
+concept flagged_with_arithmetic_conversion = requires(Func)
+{
+	{ std::bool_constant<std::decay_t<Func>::Level != ArithmeticConvLevel::None>{} } -> std::same_as<std::true_type>;
+};
+
 template <class Container, class Func, any_node Node1, any_node Node2>
 	requires (!flagged_with_arithmetic_conversion<Func>)
 auto MakeRttiFuncNode(Func&& f, Node1&& node1, Node2&& node2)
@@ -935,7 +941,7 @@ auto MakeRttiFuncNode(Func&& f, Node1&& node1, Node2&& node2)
 		res.template Construct<NodeImpl>(std::forward<Func>(f), std::forward<Node1>(node1), std::forward<Node2>(node2));\
 		return res;\
 	}
-	ADAPT_FIELD_TYPE_LIST_DUO(CODE)
+	ADAPT_FOR_EACH_TYPE_PROD(CODE)
 	#undef CODE
 	throw MismatchType("");
 }
@@ -945,7 +951,6 @@ auto MakeRttiFuncNode(Func&& f, Node1&& node1, Node2&& node2)
 {
 	// 両引数が整数の場合は整数昇格を行う。非整数が混ざる場合は何もしない。
 	using enum FieldType;
-	using DecFunc = std::decay_t<Func>;
 	FieldType type1 = node1.GetType();
 	FieldType type2 = node2.GetType();
 	if (DFieldInfo::IsInt(type1) && DFieldInfo::IsInt(type2))
@@ -960,7 +965,7 @@ auto MakeRttiFuncNode(Func&& f, Node1&& node1, Node2&& node2)
 			return MakeRttiFuncNode_construct<Container, type1, type2>(std::forward<Func>(f),\
 																	   std::forward<Node1>(node1),\
 																	   std::forward<Node2>(node2));
-		ADAPT_FIELD_TYPE_LIST_DUO(CODE)
+		ADAPT_FOR_EACH_TYPE_PROD(CODE)
 		#undef CODE
 		throw MismatchType("");
 	}
@@ -972,7 +977,6 @@ auto MakeRttiFuncNode(Func&& f, Node1&& node1, Node2&& node2)
 	// 整数の算術変換を行う。非整数が混ざる場合は何もしない。
 	// 両引数が整数の場合は整数昇格を行う。非整数が混ざる場合は何もしない。
 	using enum FieldType;
-	using DecFunc = std::decay_t<Func>;
 	FieldType type1 = node1.GetType();
 	FieldType type2 = node2.GetType();
 	if (DFieldInfo::IsInt(type1) && DFieldInfo::IsInt(type2))
@@ -987,7 +991,7 @@ auto MakeRttiFuncNode(Func&& f, Node1&& node1, Node2&& node2)
 		return MakeRttiFuncNode_construct<Container, type1, type2>(std::forward<Func>(f), \
 																   std::forward<Node1>(node1), \
 																   std::forward<Node2>(node2));
-		ADAPT_FIELD_TYPE_LIST_DUO(CODE)
+		ADAPT_FOR_EACH_TYPE_PROD(CODE)
 		#undef CODE
 		throw MismatchType("");
 	}
@@ -998,7 +1002,6 @@ auto MakeRttiFuncNode(Func&& f, Node1&& node1, Node2&& node2)
 {
 	// 通常の算術変換を行う。非数値が混ざる場合は何もしない。
 	using enum FieldType;
-	using DecFunc = std::decay_t<Func>;
 	FieldType type1 = node1.GetType();
 	FieldType type2 = node2.GetType();
 	if (DFieldInfo::IsArithmetic(type1) && DFieldInfo::IsArithmetic(type2))
@@ -1013,7 +1016,7 @@ auto MakeRttiFuncNode(Func&& f, Node1&& node1, Node2&& node2)
 			return MakeRttiFuncNode_construct<Container, TAGTYPE1, TAGTYPE2>(std::forward<Func>(f), \
 																			 std::forward<Node1>(node1), \
 																			 std::forward<Node2>(node2)); else
-		ADAPT_FIELD_TYPE_LIST_DUO(CODE)
+		ADAPT_FOR_EACH_TYPE_PROD(CODE)
 		#undef CODE
 		throw MismatchType("");
 	}
@@ -1024,7 +1027,6 @@ auto MakeRttiFuncNode(Func&& f, Node1&& node1, Node2&& node2)
 {
 	// 通常の算術変換を行う。非数値が混ざる場合は何もしない。
 	using enum FieldType;
-	using DecFunc = std::decay_t<Func>;
 	FieldType type1 = node1.GetType();
 	FieldType type2 = node2.GetType();
 	if ((DFieldInfo::IsCpxAri(type1) || DFieldInfo::IsCpxAri(type2)))
@@ -1039,7 +1041,7 @@ auto MakeRttiFuncNode(Func&& f, Node1&& node1, Node2&& node2)
 			return MakeRttiFuncNode_construct<Container, TAGTYPE1, TAGTYPE2>(std::forward<Func>(f), \
 																			 std::forward<Node1>(node1), \
 																			 std::forward<Node2>(node2)); else
-		ADAPT_FIELD_TYPE_LIST_DUO(CODE)
+		ADAPT_FOR_EACH_TYPE_PROD(CODE)
 		#undef CODE
 		throw MismatchType("");
 	}
@@ -1079,7 +1081,7 @@ auto MakeRttiFuncNode(Func&& f, Node&& node, Nodes&& ...nodes)
 		res.template Construct<NodeImpl>(std::forward<Func>(f), std::forward<Node>(node), std::forward<Nodes>(nodes)...);\
 		return res;\
 	}
-	ADAPT_FIELD_TYPE_LIST_DUO(CODE)
+	ADAPT_FOR_EACH_TYPE_PROD(CODE)
 	#undef CODE
 	throw MismatchType("");
 }

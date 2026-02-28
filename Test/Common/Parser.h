@@ -14,11 +14,11 @@ template <d_tree Tree, class Layer0, class Layer1, class Layer2>
 void TestParser(Tree& tree, const std::vector<Class>&, Layer0 l0, Layer1 l1, Layer2 l2)
 {
 	//0層要素。学年とクラス。
-	auto [grade, class_] = l0;
+	[[maybe_unused]] auto [grade, class_] = l0;
 	//1層要素。出席番号、名前、生年月日。
-	auto [number, name] = l1;
+	[[maybe_unused]] auto [number, name] = l1;
 	//2層要素。各試験の点数。前期中間、前期期末、後期中間、後期期末の順に並んでいる。
-	auto [exam, math, japanese, english, science, social] = l2;
+	[[maybe_unused]] auto [exam, math, japanese, english, science, social] = l2;
 
 	auto lambda1 = math + japanese + english;
 	auto strlambda1 = Parse(tree, "math + japanese + english");

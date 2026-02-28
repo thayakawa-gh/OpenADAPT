@@ -195,7 +195,6 @@ public:
 		if (IsInt(from))
 		{
 			if (IsInt(to) || IsFlt(to)) return true;
-			else return false;
 		}
 		else if (IsFlt(from))
 		{
@@ -209,29 +208,23 @@ public:
 		else if (IsCpx(from))
 		{
 			if (IsCpx(to)) return true;
-			else return false;
 		}
 		else if (IsStr(from))
 		{
 			if (IsStr(to)) return true;
-			else return false;
 		}
 		else if (IsJbp(from))
 		{
 			if (IsJbp(to)) return true;
-			else return false;
 		}
-		else
-		{
-			return false;
-		}
+		return false;
 	}
 	static constexpr bool IsConvertibleToBool(FieldType from)
 	{
 		#define CODE(TTYPE1, SYM, VTYPE1) \
 			if (from == TTYPE1)\
 				return std::convertible_to<VTYPE1, bool>;
-		ADAPT_FIELD_TYPE_LIST_SOLO(CODE)
+		ADAPT_FOR_EACH_TYPE(CODE)
 		#undef CODE
 		throw MismatchType("");
 	}

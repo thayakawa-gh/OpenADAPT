@@ -1010,7 +1010,7 @@ struct RttiIndexedFieldNode_impl<Container, Placeholder, Type, TypeList<Nodes...
 	{\
 		return Evaluate_impl(s, bpos, Number<TTYPE>{});\
 	}
-	ADAPT_FIELD_TYPE_LIST_SOLO(CODE)
+	ADAPT_FOR_EACH_TYPE(CODE)
 	#undef CODE
 
 	virtual FieldType GetType() const override { return Type; }
@@ -1084,8 +1084,9 @@ auto MakeRttiIndexedFieldNode_switch_ph(const Placeholder& ph, Nodes&& ...indice
 template <const_node Node>
 auto CastToI64(Node&& node)
 {
-	#define CODE(TTYPE, SYM, VTYPE) if (node.Is##TTYPE()) return RttiConstNode(static_cast<int64_t>(node.GetValue(Number<FieldType::TTYPE>{})));
-	ADAPT_INT_TYPE_LIST_SOLO(CODE)
+	using enum FieldType;
+	#define CODE(TTYPE, SYM, VTYPE) if (node.Is##TTYPE()) return RttiConstNode(static_cast<int64_t>(node.GetValue(Number<TTYPE>{})));
+	ADAPT_FOR_EACH_INT_TYPE(CODE)
 	#undef CODE
 	throw MismatchType("");
 }
@@ -1102,7 +1103,7 @@ auto MakeRttiIndexedFieldNode(const Placeholder& ph, Node&& node)
 	using enum FieldType;
 	#define CODE(TTYPE1, SYM1, VTYPE1)\
 	if (node.Is##TTYPE1()) return MakeRttiIndexedFieldNode_switch_ind<PType>(ph, ValueList<TTYPE1>{}, std::forward_as_tuple(std::forward<Node>(node)));
-	ADAPT_INT_TYPE_LIST_SOLO(CODE)
+	ADAPT_FOR_EACH_INT_TYPE(CODE)
 	#undef CODE
 	throw MismatchType("Field indices must be integers.");
 }
@@ -1114,7 +1115,7 @@ auto MakeRttiIndexedFieldNode(const Placeholder& ph, Node1&& node1, Node2&& node
 	if (node1.Is##TTYPE1() && node2.Is##TTYPE1())\
 		return MakeRttiIndexedFieldNode_switch_ind<PType>(ph, ValueList<TTYPE1, TTYPE1>{},\
 				std::forward_as_tuple(std::forward<Node1>(node1), std::forward<Node2>(node2)));
-	ADAPT_INT_TYPE_LIST_SOLO(CODE)
+	ADAPT_FOR_EACH_INT_TYPE(CODE)
 	#undef CODE
 	auto isint = [](auto& i) { return i.IsI08() || i.IsI16() || i.IsI32() || i.IsI64(); };
 	if (isint(node1) && isint(node2))
@@ -1130,7 +1131,7 @@ auto MakeRttiIndexedFieldNode(const Placeholder& ph, Node1&& node1, Node2&& node
 	if (node1.Is##TTYPE1() && node2.Is##TTYPE1() && node3.Is##TTYPE1())\
 		return MakeRttiIndexedFieldNode_switch_ind<PType>(ph, ValueList<TTYPE1, TTYPE1, TTYPE1>{},\
 				std::forward_as_tuple(std::forward<Node1>(node1), std::forward<Node2>(node2), std::forward<Node3>(node3)));
-	ADAPT_INT_TYPE_LIST_SOLO(CODE)
+	ADAPT_FOR_EACH_INT_TYPE(CODE)
 	#undef CODE
 		auto isint = [](auto& i) { return i.IsI08() || i.IsI16() || i.IsI32() || i.IsI64(); };
 	if (isint(node1) && isint(node2) && isint(node3))

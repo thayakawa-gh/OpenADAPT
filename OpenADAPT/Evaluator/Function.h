@@ -893,7 +893,7 @@ struct Cast
 	Ret operator()(const Arg& a) const
 	{
 		if constexpr (IsSame_XT_v<std::complex, Ret> && std::is_arithmetic_v<Arg>)
-			return Ret((Ret::value_type)(a));
+			return Ret((typename Ret::value_type)(a));
 		else
 			return Ret(a);
 	}
@@ -941,23 +941,6 @@ struct CastBool
 
 ADAPT_EXPORT
 template <node_or_placeholder NP> auto cast_bool(NP&& np) { return detail::MakeFunctionNode(CastBool{}, std::forward<NP>(np)); }
-/*
-template <node_or_placeholder NP> auto cast_i08(NP&& np) { return detail::MakeFunctionNode<detail::CastI08>(std::forward<NP>(np)); }
-template <node_or_placeholder NP> auto cast_i16(NP&& np) { return detail::MakeFunctionNode<detail::CastI16>(std::forward<NP>(np)); }
-template <node_or_placeholder NP> auto cast_i32(NP&& np) { return detail::MakeFunctionNode<detail::CastI32>(std::forward<NP>(np)); }
-template <node_or_placeholder NP> auto cast_i64(NP&& np) { return detail::MakeFunctionNode<detail::CastI64>(std::forward<NP>(np)); }
-template <node_or_placeholder NP> auto cast_f32(NP&& np) { return detail::MakeFunctionNode<detail::CastF32>(std::forward<NP>(np)); }
-template <node_or_placeholder NP> auto cast_f64(NP&& np) { return detail::MakeFunctionNode<detail::CastF64>(std::forward<NP>(np)); }
-template <node_or_placeholder NP> auto cast_c32(NP&& np) { return detail::MakeFunctionNode<detail::CastC32>(std::forward<NP>(np)); }
-template <node_or_placeholder NP> auto cast_c64(NP&& np) { return detail::MakeFunctionNode<detail::CastC64>(std::forward<NP>(np)); }
-*/
-
-
-template <class Func>
-concept flagged_with_arithmetic_conversion = requires(Func)
-{
-	{ std::bool_constant<std::decay_t<Func>::Level != ArithmeticConvLevel::None>{} } -> std::same_as<std::true_type>;
-};
 
 }
 

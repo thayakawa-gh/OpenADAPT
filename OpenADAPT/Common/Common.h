@@ -68,7 +68,50 @@ enum class FieldType : uint32_t
 	default: DEFAULT \
 	}
 
-#define ADAPT_FIELD_TYPE_LIST_SOLO(CODE) \
+#ifndef ADAPT_DETAIL_MSVC_TRADITIONAL
+
+// I08、F32などにFieldType::を付けないこと。IsI08などの関数名でエラーになる。
+
+#define ADAPT_FOR_EACH_TYPE(CODE, ...) \
+	CODE(I08, i08, int8_t __VA_OPT__(,) __VA_ARGS__) \
+	CODE(I16, i16, int16_t __VA_OPT__(,) __VA_ARGS__) \
+	CODE(I32, i32, int32_t __VA_OPT__(,) __VA_ARGS__) \
+	CODE(I64, i64, int64_t __VA_OPT__(,) __VA_ARGS__) \
+	CODE(F32, f32, float __VA_OPT__(,) __VA_ARGS__) \
+	CODE(F64, f64, double __VA_OPT__(,) __VA_ARGS__) \
+	CODE(C32, c32, std::complex<float> __VA_OPT__(,) __VA_ARGS__) \
+	CODE(C64, c64, std::complex<double> __VA_OPT__(,) __VA_ARGS__) \
+	CODE(Str, str, std::string __VA_OPT__(,) __VA_ARGS__) \
+	CODE(Jbp, jbp, JBpos __VA_OPT__(,) __VA_ARGS__)
+#define ADAPT_FOR_EACH_TYPE_PROD(CODE, ...)\
+	ADAPT_FOR_EACH_TYPE(CODE, I08, i08, int8_t __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, I16, i16, int16_t __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, I32, i32, int32_t __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, I64, i64, int64_t __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, F32, f32, float __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, F64, f64, double __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, C32, c32, std::complex<float> __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, C64, c64, std::complex<double> __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, Str, str, std::string __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, Jbp, jbp, JBpos __VA_OPT__(,) __VA_ARGS__)
+
+#define ADAPT_FOR_EACH_INT_TYPE(CODE, ...) \
+	CODE(I08, i08, int8_t __VA_OPT__(,) __VA_ARGS__) \
+	CODE(I16, i16, int16_t __VA_OPT__(,) __VA_ARGS__) \
+	CODE(I32, i32, int32_t __VA_OPT__(,) __VA_ARGS__) \
+	CODE(I64, i64, int64_t __VA_OPT__(,) __VA_ARGS__)
+#define ADAPT_FOR_EACH_INT_TYPE_PROD(CODE, ...)\
+	ADAPT_FOR_EACH_INT_TYPE(CODE, I08, i08, int8_t __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_INT_TYPE(CODE, I16, i16, int16_t __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_INT_TYPE(CODE, I32, i32, int32_t __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_INT_TYPE(CODE, I64, i64, int64_t __VA_OPT__(,) __VA_ARGS__)
+#define ADAPT_FOR_EACH_INT_TYPE_TRI_PROD(CODE, ...)\
+	ADAPT_FOR_EACH_INT_TYPE_PROD(CODE, I08, i08, int8_t __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_INT_TYPE_PROD(CODE, I16, i16, int16_t __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_INT_TYPE_PROD(CODE, I32, i32, int32_t __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_INT_TYPE_PROD(CODE, I64, i64, int64_t __VA_OPT__(,) __VA_ARGS__)
+
+#define ADAPT_FOR_EACH_TRIVIAL_TYPE(CODE) \
 	ADAPT_EXPAND_VARS(CODE, (I08, i08, int8_t)) \
 	ADAPT_EXPAND_VARS(CODE, (I16, i16, int16_t)) \
 	ADAPT_EXPAND_VARS(CODE, (I32, i32, int32_t)) \
@@ -76,11 +119,13 @@ enum class FieldType : uint32_t
 	ADAPT_EXPAND_VARS(CODE, (F32, f32, float)) \
 	ADAPT_EXPAND_VARS(CODE, (F64, f64, double)) \
 	ADAPT_EXPAND_VARS(CODE, (C32, c32, std::complex<float>)) \
-	ADAPT_EXPAND_VARS(CODE, (C64, c64, std::complex<double>)) \
-	ADAPT_EXPAND_VARS(CODE, (Str, str, std::string)) \
-	ADAPT_EXPAND_VARS(CODE, (Jbp, jbp, JBpos))
+	ADAPT_EXPAND_VARS(CODE, (C64, c64, std::complex<double>))
 
-#define ADAPT_FIELD_TYPE_LIST_FN(CODE, ...) \
+#else
+
+// I08、F32などにFieldType::を付けないこと。IsI08などの関数名でエラーになる。
+
+#define ADAPT_FOR_EACH_TYPE(CODE, ...) \
 	ADAPT_EXPAND_VARS(CODE, (I08, i08, int8_t, __VA_ARGS__)) \
 	ADAPT_EXPAND_VARS(CODE, (I16, i16, int16_t, __VA_ARGS__)) \
 	ADAPT_EXPAND_VARS(CODE, (I32, i32, int32_t, __VA_ARGS__)) \
@@ -91,46 +136,48 @@ enum class FieldType : uint32_t
 	ADAPT_EXPAND_VARS(CODE, (C64, c64, std::complex<double>, __VA_ARGS__)) \
 	ADAPT_EXPAND_VARS(CODE, (Str, str, std::string, __VA_ARGS__)) \
 	ADAPT_EXPAND_VARS(CODE, (Jbp, jbp, JBpos, __VA_ARGS__))
+#define ADAPT_FOR_EACH_TYPE_PROD(CODE, ...)\
+	ADAPT_FOR_EACH_TYPE(CODE, I08, i08, int8_t, __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, I16, i16, int16_t, __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, I32, i32, int32_t, __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, I64, i64, int64_t, __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, F32, f32, float, __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, F64, f64, double, __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, C32, c32, std::complex<float>, __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, C64, c64, std::complex<double>, __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, Str, str, std::string, __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, Jbp, jbp, JBpos, __VA_ARGS__)
 
-#define ADAPT_FIELD_TYPE_LIST_DUO(CODE, ...)\
-	ADAPT_FIELD_TYPE_LIST_FN(CODE, I08, i08, int8_t, __VA_ARGS__) \
-	ADAPT_FIELD_TYPE_LIST_FN(CODE, I16, i16, int16_t, __VA_ARGS__) \
-	ADAPT_FIELD_TYPE_LIST_FN(CODE, I32, i32, int32_t, __VA_ARGS__) \
-	ADAPT_FIELD_TYPE_LIST_FN(CODE, I64, i64, int64_t, __VA_ARGS__) \
-	ADAPT_FIELD_TYPE_LIST_FN(CODE, F32, f32, float, __VA_ARGS__) \
-	ADAPT_FIELD_TYPE_LIST_FN(CODE, F64, f64, double, __VA_ARGS__) \
-	ADAPT_FIELD_TYPE_LIST_FN(CODE, C32, c32, std::complex<float>, __VA_ARGS__) \
-	ADAPT_FIELD_TYPE_LIST_FN(CODE, C64, c64, std::complex<double>, __VA_ARGS__) \
-	ADAPT_FIELD_TYPE_LIST_FN(CODE, Str, str, std::string, __VA_ARGS__) \
-	ADAPT_FIELD_TYPE_LIST_FN(CODE, Jbp, jbp, JBpos, __VA_ARGS__)
-
-#define ADAPT_INT_TYPE_LIST_SOLO(CODE, ...) \
+#define ADAPT_FOR_EACH_INT_TYPE(CODE, ...) \
 	ADAPT_EXPAND_VARS(CODE, (I08, i08, int8_t, __VA_ARGS__)) \
 	ADAPT_EXPAND_VARS(CODE, (I16, i16, int16_t, __VA_ARGS__)) \
 	ADAPT_EXPAND_VARS(CODE, (I32, i32, int32_t, __VA_ARGS__)) \
-	ADAPT_EXPAND_VARS(CODE, (I64, i64, int64_t, __VA_ARGS__)) \
+	ADAPT_EXPAND_VARS(CODE, (I64, i64, int64_t, __VA_ARGS__))
+#define ADAPT_FOR_EACH_INT_TYPE_PROD(CODE, ...)\
+	ADAPT_FOR_EACH_INT_TYPE(CODE, I08, i08, int8_t, __VA_ARGS__) \
+	ADAPT_FOR_EACH_INT_TYPE(CODE, I16, i16, int16_t, __VA_ARGS__) \
+	ADAPT_FOR_EACH_INT_TYPE(CODE, I32, i32, int32_t, __VA_ARGS__) \
+	ADAPT_FOR_EACH_INT_TYPE(CODE, I64, i64, int64_t, __VA_ARGS__)
+#define ADAPT_FOR_EACH_INT_TYPE_TRI_PROD(CODE, ...)\
+	ADAPT_FOR_EACH_INT_TYPE_PROD(CODE, I08, i08, int8_t, __VA_ARGS__) \
+	ADAPT_FOR_EACH_INT_TYPE_PROD(CODE, I16, i16, int16_t, __VA_ARGS__) \
+	ADAPT_FOR_EACH_INT_TYPE_PROD(CODE, I32, i32, int32_t, __VA_ARGS__) \
+	ADAPT_FOR_EACH_INT_TYPE_PROD(CODE, I64, i64, int64_t, __VA_ARGS__)
 
-#define ADAPT_INT_TYPE_LIST_DUO(CODE, ...)\
-	ADAPT_INT_TYPE_LIST_SOLO(CODE, I08, i08, int8_t, __VA_ARGS__) \
-	ADAPT_INT_TYPE_LIST_SOLO(CODE, I16, i16, int16_t, __VA_ARGS__) \
-	ADAPT_INT_TYPE_LIST_SOLO(CODE, I32, i32, int32_t, __VA_ARGS__) \
-	ADAPT_INT_TYPE_LIST_SOLO(CODE, I64, i64, int64_t, __VA_ARGS__)
+#define ADAPT_FOR_EACH_TRIVIAL_TYPE(CODE) \
+	ADAPT_EXPAND_VARS(CODE, (I08, i08, int8_t)) \
+	ADAPT_EXPAND_VARS(CODE, (I16, i16, int16_t)) \
+	ADAPT_EXPAND_VARS(CODE, (I32, i32, int32_t)) \
+	ADAPT_EXPAND_VARS(CODE, (I64, i64, int64_t)) \
+	ADAPT_EXPAND_VARS(CODE, (F32, f32, float)) \
+	ADAPT_EXPAND_VARS(CODE, (F64, f64, double)) \
+	ADAPT_EXPAND_VARS(CODE, (C32, c32, std::complex<float>)) \
+	ADAPT_EXPAND_VARS(CODE, (C64, c64, std::complex<double>))
 
-#define ADAPT_INT_TYPE_LIST_TRIO(CODE, ...)\
-	ADAPT_INT_TYPE_LIST_DUO(CODE, I08, i08, int8_t, __VA_ARGS__) \
-	ADAPT_INT_TYPE_LIST_DUO(CODE, I16, i16, int16_t, __VA_ARGS__) \
-	ADAPT_INT_TYPE_LIST_DUO(CODE, I32, i32, int32_t, __VA_ARGS__) \
-	ADAPT_INT_TYPE_LIST_DUO(CODE, I64, i64, int64_t, __VA_ARGS__)
+#endif
 
-#define ADAPT_TRIVIAL_TYPE_LIST_SOLO(CODE, ...) \
-	ADAPT_EXPAND_VARS(CODE, (I08, i08, int8_t, __VA_ARGS__)) \
-	ADAPT_EXPAND_VARS(CODE, (I16, i16, int16_t, __VA_ARGS__)) \
-	ADAPT_EXPAND_VARS(CODE, (I32, i32, int32_t, __VA_ARGS__)) \
-	ADAPT_EXPAND_VARS(CODE, (I64, i64, int64_t, __VA_ARGS__)) \
-	ADAPT_EXPAND_VARS(CODE, (F32, f32, float, __VA_ARGS__)) \
-	ADAPT_EXPAND_VARS(CODE, (F64, f64, double, __VA_ARGS__)) \
-	ADAPT_EXPAND_VARS(CODE, (C32, c32, std::complex<float>, __VA_ARGS__)) \
-	ADAPT_EXPAND_VARS(CODE, (C64, c64, std::complex<double>, __VA_ARGS__))
+
+
 
 // 関数オブジェクト群には、Rttiモードでのコンパイルコストおよびバイナリファイルサイズ削減のために
 // 各ラムダ関数生成を補助するための属性を与えている。
