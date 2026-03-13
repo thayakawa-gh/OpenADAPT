@@ -36,24 +36,6 @@ target_link_libraries(YOUR_PACKAGE_NAME PRIVATE OpenADAPT::OpenADAPT)
 
 The test and example codes are built by adding `-DBUILD_TEST=ON` and `-DBUILD_EXAMPLES=ON` to the cmake command, respectively. Note that GTest and yaml-cpp are required for these builds.
 
-### Building with Clang (recommended for faster compilation)
-
-OpenADAPT can be built with Clang instead of GCC for improved compilation performance. Clang is particularly effective with template-heavy code:
-
-```bash
-mkdir build
-cd build
-CC=clang CXX=clang++ cmake .. -DCMAKE_BUILD_TYPE=Release
-make
-```
-
-Or use the provided build script:
-```bash
-./build_with_clang.sh
-```
-
-For more details, see [BUILD_WITH_CLANG.md](BUILD_WITH_CLANG.md).
-
 ### Include ADAPT
 ```cpp
 #include <OpenADAPT/ADAPT.h>
