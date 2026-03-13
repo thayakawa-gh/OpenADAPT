@@ -4,6 +4,7 @@ module;
 #include <any>
 #include <array>
 #include <cassert>
+#include <cctype>
 #include <cfloat>
 #include <cmath>
 #include <complex>

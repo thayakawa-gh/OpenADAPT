@@ -16,9 +16,12 @@ namespace adapt
 namespace plot_detail
 {
 
+class Canvas2D;
+class Canvas3D;
+
 struct PlotBuffer2D
 {
-	PlotBuffer2D(Canvas* g) : m_canvas(g) {}
+	PlotBuffer2D(Canvas2D* g) : m_canvas(g) {}
 	PlotBuffer2D(const PlotBuffer2D&) = delete;
 	PlotBuffer2D(PlotBuffer2D&& p) noexcept
 		: m_commands(std::move(p.m_commands)), m_canvas(p.m_canvas)
@@ -38,17 +41,7 @@ struct PlotBuffer2D
 		if (m_canvas != nullptr) Flush();
 	}
 
-	void Flush()
-	{
-		if (m_canvas == nullptr) throw NotInitialized("Buffer is empty");
-		std::string c = "plot";
-		for (auto& i : m_commands)
-		{
-			c += i + ", ";
-		}
-		c.erase(c.end() - 2, c.end());
-		m_canvas->Command(c);
-	}
+	void Flush();
 
 	template <acceptable_arg X, acceptable_arg Y,
 			  point_option ...Options>
@@ -200,427 +193,32 @@ struct PlotBuffer2D
 
 protected:
 
-	std::string GetSanitizedOutputName() const
-	{
-		if (m_canvas->IsInMemoryDataTransferEnabled())
-			return "$" + SanitizeForDataBlock(m_canvas->GetOutput()) + "_" + std::to_string(m_commands.size());
-		else
-			return m_canvas->GetOutput() + ".tmp" + std::to_string(m_commands.size()) + ".txt";
-	}
+	std::string GetSanitizedOutputName() const;
 
 	template <class X, class Y, class XE, class YE, class XEL, class XEH, class YEL, class YEH, class VC, class VS, class VFC>
-	PlotBuffer2D Plot(const PointParam<X, Y, XE, YE, XEL, XEH, YEL, YEH, VC, VS, VFC>& p)
-	{
-		std::string command;
-		if (p.IsData())
-		{
-			std::string output_name = GetSanitizedOutputName();
-			auto [x_x2, y_y2] = GetAxes2D(p);
-			if (x_x2 == "x2") m_canvas->Command("set x2tics");
-			if (y_y2 == "y2") m_canvas->Command("set y2tics");
-
-			//変数名とカラムのセット。
-			std::map<std::string, std::variant<int, std::string>> column;
-			std::vector<std::string> labelcolumn;
-
-			//rangesは各変数のうち空でないものがtupleとしてまとめられている。
-			auto ranges =
-				ArrangeColumnOption<0, 1>(column, labelcolumn, m_canvas,
-										  std::array<std::string, 11>{ "x", "y", "xerrorbar", "xerrlow", "xerrhigh",
-																		   "yerrorbar", "yerrlow", "yerrhigh",
-																		   "variable_color", "variable_size", "variable_fillcolor" },
-										  std::array<std::string_view, 11>{ x_x2, y_y2, "", "", "", "", "", "", "", "", "" },
-										  p.x, p.y, p.xerrorbar, p.xerrlow, p.xerrhigh, p.yerrorbar, p.yerrlow, p.yerrhigh,
-										  p.variable_color, p.variable_size, p.variable_fillcolor);
-			//dataでない場合、コンパイル時にrangesが空になってエラーになりうる。
-			//ので、空tupleだったら何もしない。
-			if constexpr (std::tuple_size_v<decltype(ranges)> != 0)
-				MakeDataObject(m_canvas, output_name, ranges);
-			//if (!labelcolumn.empty()) column.emplace_back(std::move(labelcolumn));
-
-			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, p);
-		}
-		else if (p.IsFile())
-		{
-			//xとyが与えられている場合はファイルプロット。
-			//x、yにはカラムの情報が入っている。
-			std::map<std::string, std::variant<int, std::string>> column;
-			std::vector<std::string> labelcolumn;
-			AddColumn(p.x, "x", column);
-			AddColumn(p.y, "y", column);
-			AddColumn(p.xerrorbar, "xerrorbar", column);
-			AddColumn(p.xerrlow, "xerrlow", column);
-			AddColumn(p.xerrhigh, "xerrhigh", column);
-			AddColumn(p.yerrorbar, "yerrorbar", column);
-			AddColumn(p.yerrlow, "yerrlow", column);
-			AddColumn(p.yerrhigh, "yerrhigh", column);
-			AddColumn(p.variable_color, "variable_color", column);
-			AddColumn(p.variable_size, "variable_size", column);
-			AddColumn(p.variable_fillcolor, "variable_fillcolor", column);
-			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
-		}
-		else if (p.IsEquation())
-		{
-			std::map<std::string, std::variant<int, std::string>> column;
-			std::vector<std::string> labelcolumn;
-			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
-		}
-		m_commands.push_back(command);
-		return std::move(*this);
-	}
+	PlotBuffer2D Plot(const PointParam<X, Y, XE, YE, XEL, XEH, YEL, YEH, VC, VS, VFC>& p);
 	template <class Data, class Weight, class ...Options>
-	PlotBuffer2D Plot(const HistogramParam<Data, Weight>& p, Options ...ops)
-	{
-		constexpr bool HasWeight = !std::same_as<std::ranges::empty_view<double>, Weight>;
-		//histepsなら最後のビンに0を追加する必要はないらしい。
-		std::vector<std::conditional_t<HasWeight, double, int64_t>> hist(p.xnbin, 0);
-		[[maybe_unused]] std::vector<double> weighted_errors(p.xnbin, 0.);
-		double wbin = (p.xmax - p.xmin) / p.xnbin;
-		auto ibin = [&p, wbin](double v)
-		{
-			return (int64_t)((v - p.xmin) / wbin);
-		};
-
-		if constexpr (HasWeight)
-		{
-			auto weight_ = [](const auto& w)
-			{
-				if constexpr (arithmetic<std::remove_cvref_t<decltype(w)>>)
-					return views::Repeat(w);
-				else
-					return w;
-			} (p.weight);
-			for (auto [v, w] : views::Zip(p.data, weight_))
-			{
-				int64_t i = ibin(v);
-				if (i < 0 || std::cmp_greater_equal(i, p.xnbin)) continue;
-				hist[i] += w;
-				weighted_errors[i] += (w * w);
-			}
-		}
-		else
-		{
-			for (auto&& v : p.data)
-			{
-				int64_t i = ibin(v);
-				if (i < 0 || std::cmp_greater_equal(i, p.xnbin)) continue;
-				++hist[i];
-			}
-		}
-
-		std::vector<double> x(p.xnbin);
-		for (size_t i = 0; i < p.xnbin; ++i) x[i] = p.xmin + wbin * (i + 0.5);
-
-		BinError be = p.binerror;
-
-		if (be != BinError::none)
-		{
-			if (be == BinError::poisson68 || be == BinError::poisson95)
-			{
-				if constexpr (HasWeight)
-					PrintWarning("WARNING : weight option is not supported for Poisson confidence interval error bars. Ignoring weight.");
-				std::vector<double> yerrlow(p.xnbin), yerrhigh(p.xnbin);
-				for (size_t i = 0; i < p.xnbin; ++i)
-				{
-					if (be == BinError::poisson68)
-						std::tie(yerrlow[i], yerrhigh[i]) = GetPoissonCI68((uint64_t)hist[i]);
-					else
-						std::tie(yerrlow[i], yerrhigh[i]) = GetPoissonCI95((uint64_t)hist[i]);
-				}
-				auto p2 = MakePointParam(plot::x = x, plot::y = hist, ops..., plot::s_points, plot::xerrorbar = wbin / 2., plot::yerrlow = yerrlow, plot::yerrhigh = yerrhigh);
-				return Plot(p2);
-			}
-			else
-			{
-				std::vector<double> yerr(p.xnbin);
-				for (size_t i = 0; i < p.xnbin; ++i)
-				{
-					if constexpr (HasWeight)
-						yerr[i] = std::sqrt(weighted_errors[i]);
-					else
-						yerr[i] = std::sqrt(hist[i]);
-					if (be == BinError::normal95) yerr[i] *= 1.96;
-				}
-				auto p2 = MakePointParam(plot::x = x, plot::y = hist, ops..., plot::s_points, plot::xerrorbar = wbin / 2., plot::yerrorbar = yerr);
-				return Plot(p2);
-			}
-		}
-		else
-		{
-			auto p2 = MakePointParam(plot::x = x, plot::y = hist, ops..., plot::s_histeps);
-			return Plot(p2);
-		}
-	}
+	PlotBuffer2D Plot(const HistogramParam<Data, Weight>& p, Options ...ops);
 	template <class X, class Y, class Weight, class ...Options>
-	PlotBuffer2D Plot(const BinscatterParam<X, Y, Weight>& p, Options ...ops)
-	{
-		constexpr bool HasWeight = !std::same_as<std::ranges::empty_view<double>, Weight>;
-		Matrix<double, 2> hist(p.xnbin, p.ynbin);
-		std::vector<double> vx; vx.reserve(p.x.size());
-		std::vector<double> vy; vy.reserve(p.y.size());
-		double wxbin = (p.xmax - p.xmin) / p.xnbin;
-		double wybin = (p.ymax - p.ymin) / p.ynbin;
-		auto ibin = [&p, wxbin, wybin](double x, double y)
-		{
-			return std::make_pair((int64_t)((x - p.xmin) / wxbin), (int64_t)((y - p.ymin) / wybin));
-		};
-		auto w_ = [&p]() { if constexpr (HasWeight) return p.weight; else return views::Repeat(0.); } ();
-		for ([[maybe_unused]] auto&& [x, y, w] : views::Zip(p.x, p.y, w_))
-		{
-			auto [ix, iy] = ibin(x, y);
-			if (ix < 0 || std::cmp_greater_equal(ix, p.xnbin) || iy < 0 || std::cmp_greater_equal(iy, p.ynbin)) continue;
-			if constexpr (HasWeight) hist[(uint32_t)ix][(uint32_t)iy] += w;
-			else ++hist[(uint32_t)ix][(uint32_t)iy];
-			if (p.bs_points)
-			{
-				vx.push_back(x);
-				vy.push_back(y);
-			}
-		}
-		if (p.bs_points)
-		{
-			std::vector<double> dens(vx.size(), 0);
-			for (auto&& [x, y, d] : views::Zip(vx, vy, dens))
-			{
-				auto [ix, iy] = ibin(x, y);
-				assert(ix >= 0 && std::cmp_less(ix, p.xnbin) && iy >= 0 && std::cmp_less(iy, p.ynbin));
-				d = hist[(uint32_t)ix][(uint32_t)iy];
-			}
-			auto p2 = MakePointParam(plot::x = vx, plot::y = vy, plot::variable_color = dens, ops..., plot::pt_fcir, plot::ps_ex_small);
-			return Plot(p2);
-		}
-		else
-		{
-			std::pair<double, double> xminmax = { p.xmin + wxbin / 2, p.xmax - wxbin / 2 };
-			std::pair<double, double> yminmax = { p.ymin + wybin / 2, p.ymax - wybin / 2 };
-			if (p.bs_lower != std::numeric_limits<double>::lowest() ||
-				p.bs_upper != std::numeric_limits<double>::max())
-			{
-				for (uint32_t i = 0; i < p.xnbin; ++i)
-				{
-					for (uint32_t j = 0; j < p.ynbin; ++j)
-					{
-						if (hist[i][j] <= p.bs_lower) hist[i][j] = std::numeric_limits<double>::quiet_NaN();
-						else if (hist[i][j] > p.bs_upper) hist[i][j] = std::numeric_limits<double>::quiet_NaN();
-					}
-				}
-			}
-			auto p2 = MakeColormapParam(plot::map = hist, plot::xminmax = xminmax, plot::yminmax = yminmax, ops...);
-			return Plot(p2);
-		}
-	}
+	PlotBuffer2D Plot(const BinscatterParam<X, Y, Weight>& p, Options ...ops);
 	template <class X, class Y, class XL, class YL, class VC>
-	PlotBuffer2D Plot(const VectorParam<X, Y, XL, YL, VC>& p)
-	{
-		std::string command;
-		if (p.IsData())
-		{
-			std::string output_name = GetSanitizedOutputName();
-			auto [x_x2, y_y2] = GetAxes2D(p);
-			if (x_x2 == "x2") m_canvas->Command("set x2tics");
-			if (y_y2 == "y2") m_canvas->Command("set y2tics");
-
-			std::map<std::string, std::variant<int, std::string>> column;
-			std::vector<std::string> labelcolumn;
-
-			auto ranges =
-				ArrangeColumnOption<0, 1>(column, labelcolumn, m_canvas,
-										  std::array<std::string, 5>{ "x", "y", "xlen", "ylen", "variable_color" },
-										  std::array<std::string_view, 5>{ x_x2, y_y2, x_x2, y_y2, "" },
-										  p.x, p.y, p.xlen, p.ylen, p.variable_color);
-			if constexpr (std::tuple_size_v<decltype(ranges)> != 0)
-				MakeDataObject(m_canvas, output_name, ranges);
-			//if (!labelcolumn.empty()) column.emplace_back(std::move(labelcolumn));
-
-			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, p);
-		}
-		else if (p.IsFile())
-		{
-			std::map<std::string, std::variant<int, std::string>> column;
-			std::vector<std::string> labelcolumn;
-			AddColumn(p.x, "x", column);
-			AddColumn(p.y, "y", column);
-			AddColumn(p.xlen, "xlen", column);
-			AddColumn(p.ylen, "ylen", column);
-			AddColumn(p.variable_color, "variable_color", column);
-			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
-		}
-		else if (p.IsEquation())
-		{
-			throw InvalidArg("Equation plot is not supported for vector plot.");
-		}
-		m_commands.push_back(command);
-		return std::move(*this);
-	}
+	PlotBuffer2D Plot(const VectorParam<X, Y, XL, YL, VC>& p);
 	template <class X, class Y, class Y2, class VC>
-	PlotBuffer2D Plot(const FilledCurveParam<X, Y, Y2, VC>& p)
-	{
-		std::string command;
-		if (p.IsData())
-		{
-			std::string output_name = GetSanitizedOutputName();
-			auto [x_x2, y_y2] = GetAxes2D(p);
-			if (x_x2 == "x2") m_canvas->Command("set x2tics");
-			if (y_y2 == "y2") m_canvas->Command("set y2tics");
-
-			std::map<std::string, std::variant<int, std::string>> column;
-			std::vector<std::string> labelcolumn;
-
-			auto ranges =
-				ArrangeColumnOption<0, 1>(column, labelcolumn, m_canvas,
-										  std::array<std::string, 4>{ "x", "y", "ybelow", "variable_fillcolor" },
-										  std::array<std::string_view, 4>{ x_x2, y_y2, y_y2, ""},
-										  p.x, p.y, p.ybelow, p.variable_fillcolor);
-			if constexpr (std::tuple_size_v<decltype(ranges)> != 0)
-				MakeDataObject(m_canvas, output_name, ranges);
-			//if (!labelcolumn.empty()) column.emplace_back(std::move(labelcolumn));
-
-			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, p);
-		}
-		else if (p.IsFile())
-		{
-			std::map<std::string, std::variant<int, std::string>> column;
-			std::vector<std::string> labelcolumn;
-			AddColumn(p.x, "x", column);
-			AddColumn(p.y, "y", column);
-			AddColumn(p.ybelow, "y2", column);
-			AddColumn(p.variable_fillcolor, "variable_fillcolor", column);
-			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
-		}
-		else if (p.IsEquation())
-		{
-			std::map<std::string, std::variant<int, std::string>> column;
-			std::vector<std::string> labelcolumn;
-			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
-		}
-		m_commands.push_back(command);
-		return std::move(*this);
-	}
+	PlotBuffer2D Plot(const FilledCurveParam<X, Y, Y2, VC>& p);
 	template <class X, class Y, class L, class VTC>
-	PlotBuffer2D Plot(const LabelParam<X, Y, L, VTC>& p)
-	{
-		std::string command;
-		if (p.IsData())
-		{
-			std::string output_name = GetSanitizedOutputName();
-			auto [x_x2, y_y2] = GetAxes2D(p);
-			if (x_x2 == "x2") m_canvas->Command("set x2tics");
-			if (y_y2 == "y2") m_canvas->Command("set y2tics");
-
-			//変数名とカラムのセット。
-			std::map<std::string, std::variant<int, std::string>> column;
-			std::vector<std::string> labelcolumn;
-
-			//rangesは各変数のうち空でないものがtupleとしてまとめられている。
-			auto ranges =
-				ArrangeColumnOption<0, 1>(column, labelcolumn, m_canvas,
-										  std::array<std::string, 4>{ "x", "y", "label", "variable_color" },
-										  std::array<std::string_view, 4>{ x_x2, y_y2, "", "" },
-										  p.x, p.y, p.label, p.variable_color);
-			//dataでない場合、コンパイル時にrangesが空になってエラーになりうる。
-			//ので、空tupleだったら何もしない。
-			if constexpr (std::tuple_size_v<decltype(ranges)> != 0)
-				MakeDataObject(m_canvas, output_name, ranges);
-
-			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, p);
-		}
-		else if (p.IsFile())
-		{
-			//xとyが与えられている場合はファイルプロット。
-			//x、yにはカラムの情報が入っている。
-			std::map<std::string, std::variant<int, std::string>> column;
-			std::vector<std::string> labelcolumn;
-			AddColumn(p.x, "x", column);
-			AddColumn(p.y, "y", column);
-			AddColumn(p.label, "label", column);
-			AddColumn(p.variable_color, "variable_color", column);
-			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
-		}
-		else if (p.IsEquation())
-		{
-			std::map<std::string, std::variant<int, std::string>> column;
-			std::vector<std::string> labelcolumn;
-			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
-		}
-		m_commands.push_back(command);
-		return std::move(*this);
-	}
+	PlotBuffer2D Plot(const LabelParam<X, Y, L, VTC>& p);
 	template <class Map, class X, class Y>
-	PlotBuffer2D Plot(const ColormapParam<Map, X, Y>& p)
-	{
-		constexpr bool xrange_assigned = !PlotParamBase::IsEmptyView<X>();
-		constexpr bool yrange_assigned = !PlotParamBase::IsEmptyView<Y>();
-
-		std::string command;
-		if (p.IsData())
-		{
-			//p.mapがデータでない場合にコンパイルエラーになるのを防ぐため、constexpr ifで括っておく。
-			if constexpr (ranges::arithmetic_matrix_range<Map>)
-			{
-				//データプロットの場合。
-				std::string output_name = GetSanitizedOutputName();
-				if (!p.IsXAssigned()) throw InvalidArg("xrange or xminmax must be specified.");
-				if (!p.IsYAssigned()) throw InvalidArg("yrange or yminmax must be specified.");
-				//std::vector<std::string> column{ "1", "2", "5" };
-				std::map<std::string, std::variant<int, std::string>> column{ { "x", 3 }, { "y", 4 }, { "map", 5} };
-				std::vector<std::string> labelcolumn;
-				size_t xsize = p.map.size();
-				size_t ysize = p.map.front().size();
-				if constexpr (xrange_assigned)
-				{
-					if constexpr (yrange_assigned)
-						MakeDataObject(m_canvas, output_name, p.map, CoordRange<X>(p.xrange), CoordRange<Y>(p.yrange));
-					else
-						MakeDataObject(m_canvas, output_name, p.map, CoordRange<X>(p.xrange), CoordMinMax(p.yminmax, ysize));
-				}
-				else
-				{
-					if constexpr (yrange_assigned)
-						MakeDataObject(m_canvas, output_name, p.map, CoordMinMax(p.xminmax, xsize), CoordRange<Y>(p.yrange));
-					else
-						MakeDataObject(m_canvas, output_name, p.map, CoordMinMax(p.xminmax, xsize), CoordMinMax(p.yminmax, ysize));
-				}
-				if (p.with_contour)
-				{
-					m_canvas->Command(MakeContourPlotCommand(output_name, m_canvas->IsInMemoryDataTransferEnabled(), p));
-				}
-				command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, p);
-			}
-		}
-		else if (p.IsFile())
-		{
-			//ファイルプロットの場合、p.map、p.xrange、p.yrangeにカラムの情報が入っている。
-			std::map<std::string, std::variant<int, std::string>> column;
-			std::vector<std::string> labelcolumn;
-			AddColumn(p.xrange, "x", column);
-			AddColumn(p.yrange, "y", column);
-			AddColumn(p.map, "map", column);
-			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
-			if (p.with_contour)
-			{
-				PrintWarning("Contour plot is not supported for file plot.");
-			}
-		}
-		else if (p.IsEquation())
-		{
-			std::map<std::string, std::variant<int, std::string>> column;
-			std::vector<std::string> labelcolumn;
-			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
-		}
-		m_commands.push_back(command);
-		return std::move(*this);
-	}
+	PlotBuffer2D Plot(const ColormapParam<Map, X, Y>& p);
 
 	std::vector<std::string> m_commands;
-	Canvas* m_canvas;
+	Canvas2D* m_canvas;
 };
 
-class Canvas2D : public Axis2D<Canvas>
+class Canvas2D : public Canvas<AxisX<Canvas2D>, AxisY<Canvas2D>, AxisX2<Canvas2D>, AxisY2<Canvas2D>, AxisCB<Canvas2D>>
 {
 public:
 
-	using Axis2D<Canvas>::Axis2D;
-
+	using Canvas<AxisX<Canvas2D>, AxisY<Canvas2D>, AxisX2<Canvas2D>, AxisY2<Canvas2D>, AxisCB<Canvas2D>>::Canvas;
 	friend class MultiPlotter;
 
 	template <acceptable_arg X, acceptable_arg Y,
@@ -775,6 +373,493 @@ public:
 	}
 };
 
+inline void PlotBuffer2D::Flush()
+{
+	if (m_canvas == nullptr) throw NotInitialized("Buffer is empty");
+	std::string c = "plot";
+	for (auto& i : m_commands)
+	{
+		c += i + ", ";
+	}
+	c.erase(c.end() - 2, c.end());
+	m_canvas->Command(c);
+	m_canvas = nullptr;
+}
+inline std::string PlotBuffer2D::GetSanitizedOutputName() const
+{
+	if (m_canvas->IsInMemoryDataTransferEnabled())
+		return "$" + SanitizeForDataBlock(m_canvas->GetOutput()) + "_" + std::to_string(m_commands.size());
+	else
+		return m_canvas->GetOutput() + ".tmp" + std::to_string(m_commands.size()) + ".txt";
+}
+template <class X, class Y, class XE, class YE, class XEL, class XEH, class YEL, class YEH, class VC, class VS, class VFC>
+PlotBuffer2D PlotBuffer2D::Plot(const PointParam<X, Y, XE, YE, XEL, XEH, YEL, YEH, VC, VS, VFC>& p)
+{
+	std::string command;
+	if (p.IsData())
+	{
+		std::string output_name = GetSanitizedOutputName();
+		auto [x_x2, y_y2] = GetAxes2D(p);
+		if (x_x2 == "x2") m_canvas->Command("set x2tics");
+		if (y_y2 == "y2") m_canvas->Command("set y2tics");
+
+		//変数名とカラムのセット。
+		std::map<std::string, std::variant<int, std::string>> column;
+		std::vector<std::string> labelcolumn;
+
+		//rangesは各変数のうち空でないものがtupleとしてまとめられている。
+		auto ranges =
+			ArrangeColumnOption<0, 1>(column, labelcolumn, m_canvas,
+									  std::array<std::string, 11>{ "x", "y", "xerrorbar", "xerrlow", "xerrhigh",
+									  "yerrorbar", "yerrlow", "yerrhigh",
+									  "variable_color", "variable_size", "variable_fillcolor" },
+									  std::array<std::string_view, 11>{ x_x2, y_y2, "", "", "", "", "", "", "", "", "" },
+									  p.x, p.y, p.xerrorbar, p.xerrlow, p.xerrhigh, p.yerrorbar, p.yerrlow, p.yerrhigh,
+									  p.variable_color, p.variable_size, p.variable_fillcolor);
+		//dataでない場合、コンパイル時にrangesが空になってエラーになりうる。
+		//ので、空tupleだったら何もしない。
+		if constexpr (std::tuple_size_v<decltype(ranges)> != 0)
+			MakeDataObject(m_canvas, output_name, ranges);
+		//if (!labelcolumn.empty()) column.emplace_back(std::move(labelcolumn));
+
+		command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, p);
+	}
+	else if (p.IsFile())
+	{
+		//xとyが与えられている場合はファイルプロット。
+		//x、yにはカラムの情報が入っている。
+		std::map<std::string, std::variant<int, std::string>> column;
+		std::vector<std::string> labelcolumn;
+		AddColumn(p.x, "x", column);
+		AddColumn(p.y, "y", column);
+		AddColumn(p.xerrorbar, "xerrorbar", column);
+		AddColumn(p.xerrlow, "xerrlow", column);
+		AddColumn(p.xerrhigh, "xerrhigh", column);
+		AddColumn(p.yerrorbar, "yerrorbar", column);
+		AddColumn(p.yerrlow, "yerrlow", column);
+		AddColumn(p.yerrhigh, "yerrhigh", column);
+		AddColumn(p.variable_color, "variable_color", column);
+		AddColumn(p.variable_size, "variable_size", column);
+		AddColumn(p.variable_fillcolor, "variable_fillcolor", column);
+		command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+	}
+	else if (p.IsEquation())
+	{
+		std::map<std::string, std::variant<int, std::string>> column;
+		std::vector<std::string> labelcolumn;
+		command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+	}
+	m_commands.push_back(command);
+	return std::move(*this);
+}
+template <class Data, class Weight, class ...Options>
+PlotBuffer2D PlotBuffer2D::Plot(const HistogramParam<Data, Weight>& p, Options ...ops)
+{
+	constexpr bool HasWeight = !std::same_as<std::ranges::empty_view<double>, Weight>;
+	//histepsなら最後のビンに0を追加する必要はないらしい。
+	std::vector<std::conditional_t<HasWeight, double, int64_t>> hist;
+	//累積ヒストグラムの場合、ビンの中身ではなく両側での値を境界部分にプロットする必要があるため、ビン数+1のサイズにする。
+	size_t binsize = (p.cumul || p.inv_cumul) ? (p.xnbin + 1) : p.xnbin;
+	hist.resize(binsize, 0.);
+	int64_t firstbin = p.cumul ? 1 : 0;
+	int64_t lastbin = p.cumul ? p.xnbin + 1 : p.xnbin;
+	[[maybe_unused]] std::vector<double> weighted_errors(binsize, 0.);
+	double wbin = (p.xmax - p.xmin) / p.xnbin;
+	//cumul==trueのときだけ（inv_cumulでは不要）最初のビンをずらす必要がある。
+	auto ibin = [&p, wbin, firstbin](double v)
+	{
+		return (int64_t)((v - p.xmin) / wbin) + firstbin;
+	};
+	if constexpr (HasWeight)
+	{
+		auto weight_ = [](const auto& w)
+		{
+			if constexpr (arithmetic<std::remove_cvref_t<decltype(w)>>)
+				return views::Repeat(w);
+			else
+				return w;
+		} (p.weight);
+		for (auto [v, w] : views::Zip(p.data, weight_))
+		{
+			int64_t i = ibin(v);
+			if (i < firstbin || std::cmp_greater_equal(i, lastbin)) continue;
+			hist[i] += w;
+			weighted_errors[i] += (w * w);
+		}
+		//累積ヒストグラムの場合、単にビンごとに振り分けるだけではなく、
+		//その中身の累積を計算し割合にする必要がある。
+		if (p.cumul)
+		{
+			//最初のビンをずらしたことで、cumulのときだけはhist[0]が必ず0になっている。
+			for (size_t i = 1; i < binsize; ++i)
+			{
+				hist[i] += hist[i - 1];
+				weighted_errors[i] += weighted_errors[i - 1];
+			}
+			double total = hist.back();
+			for (size_t i = 0; i < binsize; ++i)
+			{
+				hist[i] /= total;
+				weighted_errors[i] /= (total * total);
+			}
+		}
+		else if (p.inv_cumul)
+		{
+			//inv_cumulのときは最後のビンが必ず0になっている。
+			for (size_t i = binsize; i > 0; --i)
+			{
+				hist[i - 1] += hist[i];
+				weighted_errors[i - 1] += weighted_errors[i];
+			}
+			double total = hist[0];
+			for (size_t i = 0; i < binsize; ++i)
+			{
+				hist[i] /= total;
+				weighted_errors[i] /= (total * total);
+			}
+		}
+	}
+	else
+	{
+		for (auto&& v : p.data)
+		{
+			int64_t i = ibin(v);
+			if (i < firstbin || std::cmp_greater_equal(i, lastbin)) continue;
+			++hist[i];
+		}
+		//累積ヒストグラムの場合、単にビンごとに振り分けるだけではなく、
+		//その中身の累積を計算し割合にする必要がある。
+		if (p.cumul)
+		{
+			for (size_t i = 1; i < binsize; ++i)
+				hist[i] += hist[i - 1];
+			double total = hist.back();
+			for (auto& v : hist) v /= total;
+		}
+		else if (p.inv_cumul)
+		{
+			for (size_t i = binsize - 1; i > 0; --i)
+				hist[i - 1] += hist[i];
+			double total = hist[0];
+			for (auto& v : hist) v /= total;
+		}
+	}
+
+	std::vector<double> x;// (p.xnbin);
+	if (p.cumul || p.inv_cumul)
+	{
+		x.resize(p.xnbin + 1);
+		for (size_t i = 0; i <= p.xnbin; ++i) x[i] = p.xmin + wbin * i;
+	}
+	else
+	{
+		x.resize(p.xnbin);
+		for (size_t i = 0; i < p.xnbin; ++i) x[i] = p.xmin + wbin * (i + 0.5);
+	}
+	BinError be = p.binerror;
+
+	if (be != BinError::none)
+	{
+		if (be == BinError::poisson68 || be == BinError::poisson95)
+		{
+			if constexpr (HasWeight)
+				PrintWarning("WARNING : weight option is not supported for Poisson confidence interval error bars. Ignoring weight.");
+			std::vector<double> yerrlow(p.xnbin), yerrhigh(p.xnbin);
+			for (size_t i = 0; i < p.xnbin; ++i)
+			{
+				if (be == BinError::poisson68)
+					std::tie(yerrlow[i], yerrhigh[i]) = GetPoissonCI68((uint64_t)hist[i]);
+				else
+					std::tie(yerrlow[i], yerrhigh[i]) = GetPoissonCI95((uint64_t)hist[i]);
+			}
+			//エラーバーありなら累積でも通常でもxyerrorbarsでよい。
+			auto p2 = MakePointParam(plot::x = x, plot::y = hist, ops..., plot::s_points, plot::xerrorbar = wbin / 2., plot::yerrlow = yerrlow, plot::yerrhigh = yerrhigh);
+			return Plot(p2);
+		}
+		else
+		{
+			std::vector<double> yerr(p.xnbin);
+			for (size_t i = 0; i < p.xnbin; ++i)
+			{
+				if constexpr (HasWeight)
+					yerr[i] = std::sqrt(weighted_errors[i]);
+				else
+					yerr[i] = std::sqrt(hist[i]);
+				if (be == BinError::normal95) yerr[i] *= 1.96;
+			}
+			//エラーバーありなら累積でも通常でもxyerrorbarsでよい。
+			auto p2 = MakePointParam(plot::x = x, plot::y = hist, ops..., plot::s_points, plot::xerrorbar = wbin / 2., plot::yerrorbar = yerr);
+			return Plot(p2);
+		}
+	}
+	else
+	{
+		//エラーバーなしなら累積の場合はlinespointsにする。
+		Style s = p.cumul || p.inv_cumul ? Style::linespoints : Style::histeps;
+		auto p2 = MakePointParam(plot::x = x, plot::y = hist, ops..., plot::style = s);
+		return Plot(p2);
+	}
+}
+template <class X, class Y, class Weight, class ...Options>
+PlotBuffer2D PlotBuffer2D::Plot(const BinscatterParam<X, Y, Weight>& p, Options ...ops)
+{
+	constexpr bool HasWeight = !std::same_as<std::ranges::empty_view<double>, Weight>;
+	Matrix<double, 2> hist(p.xnbin, p.ynbin);
+	std::vector<double> vx; vx.reserve(p.x.size());
+	std::vector<double> vy; vy.reserve(p.y.size());
+	double wxbin = (p.xmax - p.xmin) / p.xnbin;
+	double wybin = (p.ymax - p.ymin) / p.ynbin;
+	auto ibin = [&p, wxbin, wybin](double x, double y)
+	{
+		return std::make_pair((int64_t)((x - p.xmin) / wxbin), (int64_t)((y - p.ymin) / wybin));
+	};
+	auto w_ = [&p]() { if constexpr (HasWeight) return p.weight; else return views::Repeat(0.); } ();
+	for ([[maybe_unused]] auto&& [x, y, w] : views::Zip(p.x, p.y, w_))
+	{
+		auto [ix, iy] = ibin(x, y);
+		if (ix < 0 || std::cmp_greater_equal(ix, p.xnbin) || iy < 0 || std::cmp_greater_equal(iy, p.ynbin)) continue;
+		if constexpr (HasWeight) hist[(uint32_t)ix][(uint32_t)iy] += w;
+		else ++hist[(uint32_t)ix][(uint32_t)iy];
+		if (p.bs_points)
+		{
+			vx.push_back(x);
+			vy.push_back(y);
+		}
+	}
+	if (p.bs_points)
+	{
+		std::vector<double> dens(vx.size(), 0);
+		for (auto&& [x, y, d] : views::Zip(vx, vy, dens))
+		{
+			auto [ix, iy] = ibin(x, y);
+			assert(ix >= 0 && std::cmp_less(ix, p.xnbin) && iy >= 0 && std::cmp_less(iy, p.ynbin));
+			d = hist[(uint32_t)ix][(uint32_t)iy];
+		}
+		auto p2 = MakePointParam(plot::x = vx, plot::y = vy, plot::variable_color = dens, ops..., plot::pt_fcir, plot::ps_ex_small);
+		return Plot(p2);
+	}
+	else
+	{
+		std::pair<double, double> xminmax = { p.xmin + wxbin / 2, p.xmax - wxbin / 2 };
+		std::pair<double, double> yminmax = { p.ymin + wybin / 2, p.ymax - wybin / 2 };
+		if (p.bs_lower != std::numeric_limits<double>::lowest() ||
+			p.bs_upper != std::numeric_limits<double>::max())
+		{
+			for (uint32_t i = 0; i < p.xnbin; ++i)
+			{
+				for (uint32_t j = 0; j < p.ynbin; ++j)
+				{
+					if (hist[i][j] <= p.bs_lower) hist[i][j] = std::numeric_limits<double>::quiet_NaN();
+					else if (hist[i][j] > p.bs_upper) hist[i][j] = std::numeric_limits<double>::quiet_NaN();
+				}
+			}
+		}
+		auto p2 = MakeColormapParam(plot::map = hist, plot::xminmax = xminmax, plot::yminmax = yminmax, ops...);
+		return Plot(p2);
+	}
+}
+template <class X, class Y, class XL, class YL, class VC>
+PlotBuffer2D PlotBuffer2D::Plot(const VectorParam<X, Y, XL, YL, VC>& p)
+{
+	std::string command;
+	if (p.IsData())
+	{
+		std::string output_name = GetSanitizedOutputName();
+		auto [x_x2, y_y2] = GetAxes2D(p);
+		if (x_x2 == "x2") m_canvas->Command("set x2tics");
+		if (y_y2 == "y2") m_canvas->Command("set y2tics");
+
+		std::map<std::string, std::variant<int, std::string>> column;
+		std::vector<std::string> labelcolumn;
+
+		auto ranges =
+			ArrangeColumnOption<0, 1>(column, labelcolumn, m_canvas,
+									  std::array<std::string, 5>{ "x", "y", "xlen", "ylen", "variable_color" },
+									  std::array<std::string_view, 5>{ x_x2, y_y2, x_x2, y_y2, "" },
+									  p.x, p.y, p.xlen, p.ylen, p.variable_color);
+		if constexpr (std::tuple_size_v<decltype(ranges)> != 0)
+			MakeDataObject(m_canvas, output_name, ranges);
+		//if (!labelcolumn.empty()) column.emplace_back(std::move(labelcolumn));
+
+		command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, p);
+	}
+	else if (p.IsFile())
+	{
+		std::map<std::string, std::variant<int, std::string>> column;
+		std::vector<std::string> labelcolumn;
+		AddColumn(p.x, "x", column);
+		AddColumn(p.y, "y", column);
+		AddColumn(p.xlen, "xlen", column);
+		AddColumn(p.ylen, "ylen", column);
+		AddColumn(p.variable_color, "variable_color", column);
+		command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+	}
+	else if (p.IsEquation())
+	{
+		throw InvalidArg("Equation plot is not supported for vector plot.");
+	}
+	m_commands.push_back(command);
+	return std::move(*this);
+}
+template <class X, class Y, class Y2, class VC>
+PlotBuffer2D PlotBuffer2D::Plot(const FilledCurveParam<X, Y, Y2, VC>& p)
+{
+	std::string command;
+	if (p.IsData())
+	{
+		std::string output_name = GetSanitizedOutputName();
+		auto [x_x2, y_y2] = GetAxes2D(p);
+		if (x_x2 == "x2") m_canvas->Command("set x2tics");
+		if (y_y2 == "y2") m_canvas->Command("set y2tics");
+
+		std::map<std::string, std::variant<int, std::string>> column;
+		std::vector<std::string> labelcolumn;
+
+		auto ranges =
+			ArrangeColumnOption<0, 1>(column, labelcolumn, m_canvas,
+									  std::array<std::string, 4>{ "x", "y", "ybelow", "variable_fillcolor" },
+									  std::array<std::string_view, 4>{ x_x2, y_y2, y_y2, ""},
+									  p.x, p.y, p.ybelow, p.variable_fillcolor);
+		if constexpr (std::tuple_size_v<decltype(ranges)> != 0)
+			MakeDataObject(m_canvas, output_name, ranges);
+		//if (!labelcolumn.empty()) column.emplace_back(std::move(labelcolumn));
+
+		command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, p);
+	}
+	else if (p.IsFile())
+	{
+		std::map<std::string, std::variant<int, std::string>> column;
+		std::vector<std::string> labelcolumn;
+		AddColumn(p.x, "x", column);
+		AddColumn(p.y, "y", column);
+		AddColumn(p.ybelow, "y2", column);
+		AddColumn(p.variable_fillcolor, "variable_fillcolor", column);
+		command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+	}
+	else if (p.IsEquation())
+	{
+		std::map<std::string, std::variant<int, std::string>> column;
+		std::vector<std::string> labelcolumn;
+		command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+	}
+	m_commands.push_back(command);
+	return std::move(*this);
+}
+template <class X, class Y, class L, class VTC>
+PlotBuffer2D PlotBuffer2D::Plot(const LabelParam<X, Y, L, VTC>& p)
+{
+	std::string command;
+	if (p.IsData())
+	{
+		std::string output_name = GetSanitizedOutputName();
+		auto [x_x2, y_y2] = GetAxes2D(p);
+		if (x_x2 == "x2") m_canvas->Command("set x2tics");
+		if (y_y2 == "y2") m_canvas->Command("set y2tics");
+
+		//変数名とカラムのセット。
+		std::map<std::string, std::variant<int, std::string>> column;
+		std::vector<std::string> labelcolumn;
+
+		//rangesは各変数のうち空でないものがtupleとしてまとめられている。
+		auto ranges =
+			ArrangeColumnOption<0, 1>(column, labelcolumn, m_canvas,
+									  std::array<std::string, 4>{ "x", "y", "label", "variable_color" },
+									  std::array<std::string_view, 4>{ x_x2, y_y2, "", "" },
+									  p.x, p.y, p.label, p.variable_color);
+		//dataでない場合、コンパイル時にrangesが空になってエラーになりうる。
+		//ので、空tupleだったら何もしない。
+		if constexpr (std::tuple_size_v<decltype(ranges)> != 0)
+			MakeDataObject(m_canvas, output_name, ranges);
+
+		command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, p);
+	}
+	else if (p.IsFile())
+	{
+		//xとyが与えられている場合はファイルプロット。
+		//x、yにはカラムの情報が入っている。
+		std::map<std::string, std::variant<int, std::string>> column;
+		std::vector<std::string> labelcolumn;
+		AddColumn(p.x, "x", column);
+		AddColumn(p.y, "y", column);
+		AddColumn(p.label, "label", column);
+		AddColumn(p.variable_color, "variable_color", column);
+		command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+	}
+	else if (p.IsEquation())
+	{
+		std::map<std::string, std::variant<int, std::string>> column;
+		std::vector<std::string> labelcolumn;
+		command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+	}
+	m_commands.push_back(command);
+	return std::move(*this);
+}
+template <class Map, class X, class Y>
+PlotBuffer2D PlotBuffer2D::Plot(const ColormapParam<Map, X, Y>& p)
+{
+	constexpr bool xrange_assigned = !PlotParamBase::IsEmptyView<X>();
+	constexpr bool yrange_assigned = !PlotParamBase::IsEmptyView<Y>();
+
+	std::string command;
+	if (p.IsData())
+	{
+		//p.mapがデータでない場合にコンパイルエラーになるのを防ぐため、constexpr ifで括っておく。
+		if constexpr (ranges::arithmetic_matrix_range<Map>)
+		{
+			//データプロットの場合。
+			std::string output_name = GetSanitizedOutputName();
+			if (!p.IsXAssigned()) throw InvalidArg("xrange or xminmax must be specified.");
+			if (!p.IsYAssigned()) throw InvalidArg("yrange or yminmax must be specified.");
+			//std::vector<std::string> column{ "1", "2", "5" };
+			std::map<std::string, std::variant<int, std::string>> column{ { "x", 3 }, { "y", 4 }, { "map", 5} };
+			std::vector<std::string> labelcolumn;
+			size_t xsize = p.map.size();
+			size_t ysize = p.map.front().size();
+			if constexpr (xrange_assigned)
+			{
+				if constexpr (yrange_assigned)
+					MakeDataObject(m_canvas, output_name, p.map, CoordRange<X>(p.xrange), CoordRange<Y>(p.yrange));
+				else
+					MakeDataObject(m_canvas, output_name, p.map, CoordRange<X>(p.xrange), CoordMinMax(p.yminmax, ysize));
+			}
+			else
+			{
+				if constexpr (yrange_assigned)
+					MakeDataObject(m_canvas, output_name, p.map, CoordMinMax(p.xminmax, xsize), CoordRange<Y>(p.yrange));
+				else
+					MakeDataObject(m_canvas, output_name, p.map, CoordMinMax(p.xminmax, xsize), CoordMinMax(p.yminmax, ysize));
+			}
+			if (p.with_contour)
+			{
+				m_canvas->Command(MakeContourPlotCommand(output_name, m_canvas->IsInMemoryDataTransferEnabled(), p));
+			}
+			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, p);
+		}
+	}
+	else if (p.IsFile())
+	{
+		//ファイルプロットの場合、p.map、p.xrange、p.yrangeにカラムの情報が入っている。
+		std::map<std::string, std::variant<int, std::string>> column;
+		std::vector<std::string> labelcolumn;
+		AddColumn(p.xrange, "x", column);
+		AddColumn(p.yrange, "y", column);
+		AddColumn(p.map, "map", column);
+		command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+		if (p.with_contour)
+		{
+			PrintWarning("Contour plot is not supported for file plot.");
+		}
+	}
+	else if (p.IsEquation())
+	{
+		std::map<std::string, std::variant<int, std::string>> column;
+		std::vector<std::string> labelcolumn;
+		command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+	}
+	m_commands.push_back(command);
+	return std::move(*this);
+}
+
 }
 
 namespace plot_detail
@@ -782,7 +867,7 @@ namespace plot_detail
 
 struct PlotBuffer3D
 {
-	PlotBuffer3D(Canvas* g) : m_canvas(g) {}
+	PlotBuffer3D(Canvas3D* g) : m_canvas(g) {}
 	PlotBuffer3D(const PlotBuffer3D&) = delete;
 	PlotBuffer3D(PlotBuffer3D&& p) noexcept
 		: m_commands(std::move(p.m_commands)), m_canvas(p.m_canvas)
@@ -802,17 +887,7 @@ struct PlotBuffer3D
 		if (m_canvas != nullptr) Flush();
 	}
 
-	void Flush()
-	{
-		if (m_canvas == nullptr) throw NotInitialized("Buffer is empty");
-		std::string c = "splot";
-		for (auto& i : m_commands)
-		{
-			c += i + ", ";
-		}
-		c.erase(c.end() - 2, c.end());
-		m_canvas->Command(c);
-	}
+	void Flush();
 
 	template <acceptable_arg X, acceptable_arg Y, acceptable_arg Z,
 			  point_option ...Options>
@@ -1017,304 +1092,19 @@ struct PlotBuffer3D
 
 protected:
 
-	std::string GetSanitizedOutputName() const
-	{
-		if (m_canvas->IsInMemoryDataTransferEnabled())
-			return "$" + SanitizeForDataBlock(m_canvas->GetOutput()) + "_" + std::to_string(m_commands.size());
-		else
-			return m_canvas->GetOutput() + ".tmp" + std::to_string(m_commands.size()) + ".txt";
-	}
+	std::string GetSanitizedOutputName() const;
 
 	template <class X, class Y, class Z, class XE, class XEL, class XEH, class YE, class YEL, class YEH, class VC, class VS, class VFC>
-	PlotBuffer3D Plot(const PointParam3D<X, Y, Z, XE, XEL, XEH, YE, YEL, YEH, VC, VS, VFC>& p)
-	{
-		std::string command;
-		if (p.IsData())
-		{
-			std::string output_name = GetSanitizedOutputName();
-			auto [x_x2, y_y2, z_z2] = GetAxes3D(p);
-			if (x_x2 == "x2") m_canvas->Command("set x2tics");
-			if (y_y2 == "y2") m_canvas->Command("set y2tics");
-			if (z_z2 == "z2") m_canvas->Command("set z2tics");
-
-			std::map<std::string, std::variant<int, std::string>> column;
-			std::vector<std::string> labelcolumn;
-
-			//rangesは各変数のうち空でないものがtupleとしてまとめられている。
-			auto ranges =
-				ArrangeColumnOption<0, 1>(column, labelcolumn, m_canvas,
-										  std::array<std::string, 12>{ "x", "y", "z", "xerrorbar", "xerrlow", "xerrhigh",
-																			"yerrorbar", "yerrlow", "yerrhigh",
-																			"variable_color", "variable_size", "variable_fillcolor" },
-										  std::array<std::string_view, 12>{ x_x2, y_y2, z_z2, "", "", "", "", "", "", "", "", "" },
-										  p.x, p.y, p.z, p.xerrorbar, p.xerrlow, p.xerrhigh, p.yerrorbar, p.yerrlow, p.yerrhigh,
-										  p.variable_color, p.variable_size, p.variable_fillcolor);
-			if constexpr (std::tuple_size_v<decltype(ranges)> != 0)
-				MakeDataObject(m_canvas, output_name, ranges);
-			//if (!labelcolumn.empty()) column.emplace_back(std::move(labelcolumn));
-
-			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, p);
-		}
-		else if (p.IsFile())
-		{
-			//xとyが与えられている場合はファイルプロット。
-			//x、yにはカラムの情報が入っている。
-			std::map<std::string, std::variant<int, std::string>> column;
-			std::vector<std::string> labelcolumn;
-			AddColumn(p.x, "x", column);
-			AddColumn(p.y, "y", column);
-			AddColumn(p.z, "z", column);
-			AddColumn(p.xerrorbar, "xerrorbar", column);
-			AddColumn(p.xerrlow, "xerrlow", column);
-			AddColumn(p.xerrhigh, "xerrhigh", column);
-			AddColumn(p.yerrorbar, "yerrorbar", column);
-			AddColumn(p.yerrlow, "yerrlow", column);
-			AddColumn(p.yerrhigh, "yerrhigh", column);
-			AddColumn(p.variable_color, "variable_color", column);
-			AddColumn(p.variable_size, "variable_size", column);
-			AddColumn(p.variable_fillcolor, "variable_fillcolor", column);
-			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
-		}
-		else if (p.IsEquation())
-		{
-			std::map<std::string, std::variant<int, std::string>> column;
-			std::vector<std::string> labelcolumn;
-			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
-		}
-		m_commands.push_back(command);
-		return std::move(*this);
-	}
+	PlotBuffer3D Plot(const PointParam3D<X, Y, Z, XE, XEL, XEH, YE, YEL, YEH, VC, VS, VFC>& p);
 	template <class X, class Y, class Z, class XL, class YL, class ZL, class VC>
-	PlotBuffer3D Plot(const VectorParam3D<X, Y, Z, XL, YL, ZL, VC>& p)
-	{
-		std::string command;
-		if (p.IsData())
-		{
-			std::string output_name = GetSanitizedOutputName();
-			auto [x_x2, y_y2, z_z2] = GetAxes3D(p);
-			if (x_x2 == "x2") m_canvas->Command("set x2tics");
-			if (y_y2 == "y2") m_canvas->Command("set y2tics");
-			if (z_z2 == "z2") m_canvas->Command("set z2tics");
-
-			std::map<std::string, std::variant<int, std::string>> column;
-			std::vector<std::string> labelcolumn;
-
-			auto ranges =
-				ArrangeColumnOption<0, 1>(column, labelcolumn, m_canvas,
-										  std::array<std::string, 7>{ "x", "y", "z", "xlen", "ylen", "zlen", "variable_color" },
-										  std::array<std::string_view, 7>{ x_x2, y_y2, z_z2, x_x2, y_y2, z_z2, "" },
-										  p.x, p.y, p.z, p.xlen, p.ylen, p.zlen, p.variable_color);
-			if constexpr (std::tuple_size_v<decltype(ranges)> != 0)
-				MakeDataObject(m_canvas, output_name, ranges);
-			//if (!labelcolumn.empty()) column.emplace_back(std::move(labelcolumn));
-
-			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, p);
-		}
-		else if (p.IsFile())
-		{
-			std::map<std::string, std::variant<int, std::string>> column;
-			std::vector<std::string> labelcolumn;
-			AddColumn(p.x, "x", column);
-			AddColumn(p.y, "y", column);
-			AddColumn(p.z, "z", column);
-			AddColumn(p.xlen, "xlen", column);
-			AddColumn(p.ylen, "ylen", column);
-			AddColumn(p.zlen, "zlen", column);
-			AddColumn(p.variable_color, "variable_color", column);
-			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
-		}
-		else if (p.IsEquation())
-		{
-			throw InvalidArg("Equation plot is not supported for vector plot.");
-		}
-		m_commands.push_back(command);
-		return std::move(*this);
-	}
+	PlotBuffer3D Plot(const VectorParam3D<X, Y, Z, XL, YL, ZL, VC>& p);
 	//CMはFilledCurveをサポートしない。
 	template <class X, class Y, class Z, class L, class VTC>
-	PlotBuffer3D Plot(const LabelParam3D<X, Y, Z, L, VTC>& p)
-	{
-		std::string command;
-		if (p.IsData())
-		{
-			std::string output_name = GetSanitizedOutputName();
-			auto [x_x2, y_y2, z_z2] = GetAxes3D(p);
-			if (x_x2 == "x2") m_canvas->Command("set x2tics");
-			if (y_y2 == "y2") m_canvas->Command("set y2tics");
-			if (z_z2 == "z2") m_canvas->Command("set z2tics");
-
-			//変数名とカラムのセット。
-			std::map<std::string, std::variant<int, std::string>> column;
-			std::vector<std::string> labelcolumn;
-
-			//rangesは各変数のうち空でないものがtupleとしてまとめられている。
-			auto ranges =
-				ArrangeColumnOption<0, 1>(column, labelcolumn, m_canvas,
-										  std::array<std::string, 5>{ "x", "y", "z", "label", "variable_color" },
-										  std::array<std::string_view, 5>{ x_x2, y_y2, z_z2, "", "" },
-										  p.x, p.y, p.z, p.label, p.variable_color);
-			//dataでない場合、コンパイル時にrangesが空になってエラーになりうる。
-			//ので、空tupleだったら何もしない。
-			if constexpr (std::tuple_size_v<decltype(ranges)> != 0)
-				MakeDataObject(m_canvas, output_name, ranges);
-
-			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, p);
-		}
-		else if (p.IsFile())
-		{
-			//xとyが与えられている場合はファイルプロット。
-			//x、yにはカラムの情報が入っている。
-			std::map<std::string, std::variant<int, std::string>> column;
-			std::vector<std::string> labelcolumn;
-			AddColumn(p.x, "x", column);
-			AddColumn(p.y, "y", column);
-			AddColumn(p.z, "z", column);
-			AddColumn(p.label, "label", column);
-			AddColumn(p.variable_color, "variable_color", column);
-			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
-		}
-		else if (p.IsEquation())
-		{
-			std::map<std::string, std::variant<int, std::string>> column;
-			std::vector<std::string> labelcolumn;
-			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
-		}
-		m_commands.push_back(command);
-		return std::move(*this);
-	}
+	PlotBuffer3D Plot(const LabelParam3D<X, Y, Z, L, VTC>& p);
 	template <class Map, class X, class Y>
-	PlotBuffer3D Plot(const ColormapParam<Map, X, Y>& p)
-	{
-		constexpr bool xrange_assigned = !PlotParamBase::IsEmptyView<X>();
-		constexpr bool yrange_assigned = !PlotParamBase::IsEmptyView<Y>();
-
-		std::string command;
-		if (p.IsData())
-		{
-			//p.mapがデータでない場合にコンパイルエラーになるのを防ぐため、constexpr ifで括っておく。
-			if constexpr (ranges::arithmetic_matrix_range<Map>)
-			{
-				//データプロットの場合。
-				std::string output_name = GetSanitizedOutputName();
-				if (!p.IsXAssigned()) throw InvalidArg("xrange or xminmax must be specified.");
-				if (!p.IsYAssigned()) throw InvalidArg("yrange or yminmax must be specified.");
-				//std::vector<std::string> column{ "1", "2", "5" };
-				std::map<std::string, std::variant<int, std::string>> column{ { "x", 3 }, { "y", 4 }, { "map", 5} };
-				std::vector<std::string> labelcolumn;
-				size_t xsize = p.map.size();
-				size_t ysize = p.map.front().size();
-				if constexpr (xrange_assigned)
-				{
-					if constexpr (yrange_assigned)
-						MakeDataObject(m_canvas, output_name, p.map, CoordRange<X>(p.xrange), CoordRange<Y>(p.yrange));
-					else
-						MakeDataObject(m_canvas, output_name, p.map, CoordRange<X>(p.xrange), CoordMinMax(p.yminmax, ysize));
-				}
-				else
-				{
-					if constexpr (yrange_assigned)
-						MakeDataObject(m_canvas, output_name, p.map, CoordMinMax(p.xminmax, xsize), CoordRange<Y>(p.yrange));
-					else
-						MakeDataObject(m_canvas, output_name, p.map, CoordMinMax(p.xminmax, xsize), CoordMinMax(p.yminmax, ysize));
-				}
-				if (p.with_contour)
-				{
-					m_canvas->Command(MakeContourPlotCommand(output_name, m_canvas->IsInMemoryDataTransferEnabled(), p));
-				}
-				command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, p);
-			}
-		}
-		else if (p.IsFile())
-		{
-			//ファイルプロットの場合、p.map、p.xrange、p.yrangeにカラムの情報が入っている。
-			std::map<std::string, std::variant<int, std::string>> column;
-			std::vector<std::string> labelcolumn;
-			AddColumn(p.xrange, "x", column);
-			AddColumn(p.yrange, "y", column);
-			AddColumn(p.map, "map", column);
-			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
-			if (p.with_contour)
-			{
-				PrintWarning("Contour plot is not supported for file plot.");
-			}
-		}
-		else if (p.IsEquation())
-		{
-			std::map<std::string, std::variant<int, std::string>> column;
-			std::vector<std::string> labelcolumn;
-			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
-		}
-		m_commands.push_back(command);
-		return std::move(*this);
-	}
+	PlotBuffer3D Plot(const ColormapParam<Map, X, Y>& p);
 	template <class Map, class X, class Y, class VC, class VS>
-	PlotBuffer3D Plot(const SurfaceParam<Map, X, Y, VC, VS>& p)
-	{
-		constexpr bool xrange_assigned = !PlotParamBase::IsEmptyView<X>();
-		constexpr bool yrange_assigned = !PlotParamBase::IsEmptyView<Y>();
-
-		std::string command;
-		if (p.IsData())
-		{
-			//p.mapがデータでない場合にコンパイルエラーになるのを防ぐため、constexpr ifで括っておく。
-			if constexpr (ranges::arithmetic_matrix_range<Map>)
-			{
-				//データプロットの場合。
-				std::string output_name = GetSanitizedOutputName();
-				if (!p.IsXAssigned()) throw InvalidArg("xrange or xminmax must be specified.");
-				if (!p.IsYAssigned()) throw InvalidArg("yrange or yminmax must be specified.");
-				//std::vector<std::string> column{ "1", "2", "5" };
-				std::map<std::string, std::variant<int, std::string>> column{ { "x", 3 }, { "y", 4 }, { "z", 5} };
-				int c = 6;
-				if constexpr (SurfaceParam<Map, X, Y, VC, VS>::HasVariableColor()) column.emplace("variable_color", c), ++c;
-				if constexpr (SurfaceParam<Map, X, Y, VC, VS>::HasVariableSize()) column.emplace("variable_size", c);
-				std::vector<std::string> labelcolumn;
-				size_t xsize = p.z.size();
-				size_t ysize = p.z.front().size();
-				if constexpr (xrange_assigned)
-				{
-					if constexpr (yrange_assigned)
-						MakeDataObject(m_canvas, output_name, p.z, CoordRange<X>(p.xrange), CoordRange<Y>(p.yrange));
-					else
-						MakeDataObject(m_canvas, output_name, p.z, CoordRange<X>(p.xrange), CoordMinMax(p.yminmax, ysize));
-				}
-				else
-				{
-					if constexpr (yrange_assigned)
-						MakeDataObject(m_canvas, output_name, p.z, CoordMinMax(p.xminmax, xsize), CoordRange<Y>(p.yrange));
-					else
-						MakeDataObject(m_canvas, output_name, p.z, CoordMinMax(p.xminmax, xsize), CoordMinMax(p.yminmax, ysize));
-				}
-				if (p.with_contour)
-				{
-					m_canvas->Command(MakeContourPlotCommand(output_name, m_canvas->IsInMemoryDataTransferEnabled(), p));
-				}
-				command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, p);
-			}
-		}
-		else if (p.IsFile())
-		{
-			//ファイルプロットの場合、p.map、p.xrange、p.yrangeにカラムの情報が入っている。
-			std::map<std::string, std::variant<int, std::string>> column;
-			std::vector<std::string> labelcolumn;
-			AddColumn(p.xrange, "x", column);
-			AddColumn(p.yrange, "y", column);
-			AddColumn(p.z, "z", column);
-			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
-			if (p.with_contour)
-			{
-				PrintWarning("Contour plot is not supported for file plot.");
-			}
-		}
-		else if (p.IsEquation())
-		{
-			std::map<std::string, std::variant<int, std::string>> column;
-			std::vector<std::string> labelcolumn;
-			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
-		}
-		m_commands.push_back(command);
-		return std::move(*this);
-	}
+	PlotBuffer3D Plot(const SurfaceParam<Map, X, Y, VC, VS>& p);
 
 	static std::string InitCommand()
 	{
@@ -1331,16 +1121,17 @@ protected:
 	}
 
 	std::vector<std::string> m_commands;
-	Canvas* m_canvas;
+	Canvas3D* m_canvas;
 };
 
 
-class Canvas3D : public Axis3D<Canvas>
+class Canvas3D : public Canvas<AxisX<Canvas3D>, AxisY<Canvas3D>, AxisZ<Canvas3D>, AxisX2<Canvas3D>, AxisY2<Canvas3D>, AxisCB<Canvas3D>>
 {
 public:
 
+	using Base = Canvas<AxisX<Canvas3D>, AxisY<Canvas3D>, AxisZ<Canvas3D>, AxisX2<Canvas3D>, AxisY2<Canvas3D>, AxisCB<Canvas3D>>;
 	Canvas3D(const std::string& output, double sizex = 0., double sizey = 0.)
-		: Axis3D<Canvas>(output, sizex, sizey)
+		: Base(output, sizex, sizey)
 	{}
 	Canvas3D()
 	{}
@@ -1553,6 +1344,317 @@ public:
 		return PlotBuffer3D(this);
 	}
 };
+
+inline void PlotBuffer3D::Flush()
+{
+	if (m_canvas == nullptr) throw NotInitialized("Buffer is empty");
+	std::string c = "splot";
+	for (auto& i : m_commands)
+	{
+		c += i + ", ";
+	}
+	c.erase(c.end() - 2, c.end());
+	m_canvas->Command(c);
+	m_canvas = nullptr;
+}
+inline std::string PlotBuffer3D::GetSanitizedOutputName() const
+{
+	if (m_canvas->IsInMemoryDataTransferEnabled())
+		return "$" + SanitizeForDataBlock(m_canvas->GetOutput()) + "_" + std::to_string(m_commands.size());
+	else
+		return m_canvas->GetOutput() + ".tmp" + std::to_string(m_commands.size()) + ".txt";
+}
+
+template <class X, class Y, class Z, class XE, class XEL, class XEH, class YE, class YEL, class YEH, class VC, class VS, class VFC>
+PlotBuffer3D PlotBuffer3D::Plot(const PointParam3D<X, Y, Z, XE, XEL, XEH, YE, YEL, YEH, VC, VS, VFC>& p)
+{
+	std::string command;
+	if (p.IsData())
+	{
+		std::string output_name = GetSanitizedOutputName();
+		auto [x_x2, y_y2, z_z2] = GetAxes3D(p);
+		if (x_x2 == "x2") m_canvas->Command("set x2tics");
+		if (y_y2 == "y2") m_canvas->Command("set y2tics");
+		if (z_z2 == "z2") m_canvas->Command("set z2tics");
+
+		std::map<std::string, std::variant<int, std::string>> column;
+		std::vector<std::string> labelcolumn;
+
+		//rangesは各変数のうち空でないものがtupleとしてまとめられている。
+		auto ranges =
+			ArrangeColumnOption<0, 1>(column, labelcolumn, m_canvas,
+									  std::array<std::string, 12>{ "x", "y", "z", "xerrorbar", "xerrlow", "xerrhigh",
+									  "yerrorbar", "yerrlow", "yerrhigh",
+									  "variable_color", "variable_size", "variable_fillcolor" },
+									  std::array<std::string_view, 12>{ x_x2, y_y2, z_z2, "", "", "", "", "", "", "", "", "" },
+									  p.x, p.y, p.z, p.xerrorbar, p.xerrlow, p.xerrhigh, p.yerrorbar, p.yerrlow, p.yerrhigh,
+									  p.variable_color, p.variable_size, p.variable_fillcolor);
+		if constexpr (std::tuple_size_v<decltype(ranges)> != 0)
+			MakeDataObject(m_canvas, output_name, ranges);
+		//if (!labelcolumn.empty()) column.emplace_back(std::move(labelcolumn));
+
+		command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, p);
+	}
+	else if (p.IsFile())
+	{
+		//xとyが与えられている場合はファイルプロット。
+		//x、yにはカラムの情報が入っている。
+		std::map<std::string, std::variant<int, std::string>> column;
+		std::vector<std::string> labelcolumn;
+		AddColumn(p.x, "x", column);
+		AddColumn(p.y, "y", column);
+		AddColumn(p.z, "z", column);
+		AddColumn(p.xerrorbar, "xerrorbar", column);
+		AddColumn(p.xerrlow, "xerrlow", column);
+		AddColumn(p.xerrhigh, "xerrhigh", column);
+		AddColumn(p.yerrorbar, "yerrorbar", column);
+		AddColumn(p.yerrlow, "yerrlow", column);
+		AddColumn(p.yerrhigh, "yerrhigh", column);
+		AddColumn(p.variable_color, "variable_color", column);
+		AddColumn(p.variable_size, "variable_size", column);
+		AddColumn(p.variable_fillcolor, "variable_fillcolor", column);
+		command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+	}
+	else if (p.IsEquation())
+	{
+		std::map<std::string, std::variant<int, std::string>> column;
+		std::vector<std::string> labelcolumn;
+		command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+	}
+	m_commands.push_back(command);
+	return std::move(*this);
+}
+template <class X, class Y, class Z, class XL, class YL, class ZL, class VC>
+PlotBuffer3D PlotBuffer3D::Plot(const VectorParam3D<X, Y, Z, XL, YL, ZL, VC>& p)
+{
+	std::string command;
+	if (p.IsData())
+	{
+		std::string output_name = GetSanitizedOutputName();
+		auto [x_x2, y_y2, z_z2] = GetAxes3D(p);
+		if (x_x2 == "x2") m_canvas->Command("set x2tics");
+		if (y_y2 == "y2") m_canvas->Command("set y2tics");
+		if (z_z2 == "z2") m_canvas->Command("set z2tics");
+
+		std::map<std::string, std::variant<int, std::string>> column;
+		std::vector<std::string> labelcolumn;
+
+		auto ranges =
+			ArrangeColumnOption<0, 1>(column, labelcolumn, m_canvas,
+									  std::array<std::string, 7>{ "x", "y", "z", "xlen", "ylen", "zlen", "variable_color" },
+									  std::array<std::string_view, 7>{ x_x2, y_y2, z_z2, x_x2, y_y2, z_z2, "" },
+									  p.x, p.y, p.z, p.xlen, p.ylen, p.zlen, p.variable_color);
+		if constexpr (std::tuple_size_v<decltype(ranges)> != 0)
+			MakeDataObject(m_canvas, output_name, ranges);
+		//if (!labelcolumn.empty()) column.emplace_back(std::move(labelcolumn));
+
+		command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, p);
+	}
+	else if (p.IsFile())
+	{
+		std::map<std::string, std::variant<int, std::string>> column;
+		std::vector<std::string> labelcolumn;
+		AddColumn(p.x, "x", column);
+		AddColumn(p.y, "y", column);
+		AddColumn(p.z, "z", column);
+		AddColumn(p.xlen, "xlen", column);
+		AddColumn(p.ylen, "ylen", column);
+		AddColumn(p.zlen, "zlen", column);
+		AddColumn(p.variable_color, "variable_color", column);
+		command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+	}
+	else if (p.IsEquation())
+	{
+		throw InvalidArg("Equation plot is not supported for vector plot.");
+	}
+	m_commands.push_back(command);
+	return std::move(*this);
+}
+//CMはFilledCurveをサポートしない。
+template <class X, class Y, class Z, class L, class VTC>
+PlotBuffer3D PlotBuffer3D::Plot(const LabelParam3D<X, Y, Z, L, VTC>& p)
+{
+	std::string command;
+	if (p.IsData())
+	{
+		std::string output_name = GetSanitizedOutputName();
+		auto [x_x2, y_y2, z_z2] = GetAxes3D(p);
+		if (x_x2 == "x2") m_canvas->Command("set x2tics");
+		if (y_y2 == "y2") m_canvas->Command("set y2tics");
+		if (z_z2 == "z2") m_canvas->Command("set z2tics");
+
+		//変数名とカラムのセット。
+		std::map<std::string, std::variant<int, std::string>> column;
+		std::vector<std::string> labelcolumn;
+
+		//rangesは各変数のうち空でないものがtupleとしてまとめられている。
+		auto ranges =
+			ArrangeColumnOption<0, 1>(column, labelcolumn, m_canvas,
+									  std::array<std::string, 5>{ "x", "y", "z", "label", "variable_color" },
+									  std::array<std::string_view, 5>{ x_x2, y_y2, z_z2, "", "" },
+									  p.x, p.y, p.z, p.label, p.variable_color);
+		//dataでない場合、コンパイル時にrangesが空になってエラーになりうる。
+		//ので、空tupleだったら何もしない。
+		if constexpr (std::tuple_size_v<decltype(ranges)> != 0)
+			MakeDataObject(m_canvas, output_name, ranges);
+
+		command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, p);
+	}
+	else if (p.IsFile())
+	{
+		//xとyが与えられている場合はファイルプロット。
+		//x、yにはカラムの情報が入っている。
+		std::map<std::string, std::variant<int, std::string>> column;
+		std::vector<std::string> labelcolumn;
+		AddColumn(p.x, "x", column);
+		AddColumn(p.y, "y", column);
+		AddColumn(p.z, "z", column);
+		AddColumn(p.label, "label", column);
+		AddColumn(p.variable_color, "variable_color", column);
+		command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+	}
+	else if (p.IsEquation())
+	{
+		std::map<std::string, std::variant<int, std::string>> column;
+		std::vector<std::string> labelcolumn;
+		command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+	}
+	m_commands.push_back(command);
+	return std::move(*this);
+}
+template <class Map, class X, class Y>
+PlotBuffer3D PlotBuffer3D::Plot(const ColormapParam<Map, X, Y>& p)
+{
+	constexpr bool xrange_assigned = !PlotParamBase::IsEmptyView<X>();
+	constexpr bool yrange_assigned = !PlotParamBase::IsEmptyView<Y>();
+
+	std::string command;
+	if (p.IsData())
+	{
+		//p.mapがデータでない場合にコンパイルエラーになるのを防ぐため、constexpr ifで括っておく。
+		if constexpr (ranges::arithmetic_matrix_range<Map>)
+		{
+			//データプロットの場合。
+			std::string output_name = GetSanitizedOutputName();
+			if (!p.IsXAssigned()) throw InvalidArg("xrange or xminmax must be specified.");
+			if (!p.IsYAssigned()) throw InvalidArg("yrange or yminmax must be specified.");
+			//std::vector<std::string> column{ "1", "2", "5" };
+			std::map<std::string, std::variant<int, std::string>> column{ { "x", 3 }, { "y", 4 }, { "map", 5} };
+			std::vector<std::string> labelcolumn;
+			size_t xsize = p.map.size();
+			size_t ysize = p.map.front().size();
+			if constexpr (xrange_assigned)
+			{
+				if constexpr (yrange_assigned)
+					MakeDataObject(m_canvas, output_name, p.map, CoordRange<X>(p.xrange), CoordRange<Y>(p.yrange));
+				else
+					MakeDataObject(m_canvas, output_name, p.map, CoordRange<X>(p.xrange), CoordMinMax(p.yminmax, ysize));
+			}
+			else
+			{
+				if constexpr (yrange_assigned)
+					MakeDataObject(m_canvas, output_name, p.map, CoordMinMax(p.xminmax, xsize), CoordRange<Y>(p.yrange));
+				else
+					MakeDataObject(m_canvas, output_name, p.map, CoordMinMax(p.xminmax, xsize), CoordMinMax(p.yminmax, ysize));
+			}
+			if (p.with_contour)
+			{
+				m_canvas->Command(MakeContourPlotCommand(output_name, m_canvas->IsInMemoryDataTransferEnabled(), p));
+			}
+			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, p);
+		}
+	}
+	else if (p.IsFile())
+	{
+		//ファイルプロットの場合、p.map、p.xrange、p.yrangeにカラムの情報が入っている。
+		std::map<std::string, std::variant<int, std::string>> column;
+		std::vector<std::string> labelcolumn;
+		AddColumn(p.xrange, "x", column);
+		AddColumn(p.yrange, "y", column);
+		AddColumn(p.map, "map", column);
+		command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+		if (p.with_contour)
+		{
+			PrintWarning("Contour plot is not supported for file plot.");
+		}
+	}
+	else if (p.IsEquation())
+	{
+		std::map<std::string, std::variant<int, std::string>> column;
+		std::vector<std::string> labelcolumn;
+		command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+	}
+	m_commands.push_back(command);
+	return std::move(*this);
+}
+template <class Map, class X, class Y, class VC, class VS>
+PlotBuffer3D PlotBuffer3D::Plot(const SurfaceParam<Map, X, Y, VC, VS>& p)
+{
+	constexpr bool xrange_assigned = !PlotParamBase::IsEmptyView<X>();
+	constexpr bool yrange_assigned = !PlotParamBase::IsEmptyView<Y>();
+
+	std::string command;
+	if (p.IsData())
+	{
+		//p.mapがデータでない場合にコンパイルエラーになるのを防ぐため、constexpr ifで括っておく。
+		if constexpr (ranges::arithmetic_matrix_range<Map>)
+		{
+			//データプロットの場合。
+			std::string output_name = GetSanitizedOutputName();
+			if (!p.IsXAssigned()) throw InvalidArg("xrange or xminmax must be specified.");
+			if (!p.IsYAssigned()) throw InvalidArg("yrange or yminmax must be specified.");
+			//std::vector<std::string> column{ "1", "2", "5" };
+			std::map<std::string, std::variant<int, std::string>> column{ { "x", 3 }, { "y", 4 }, { "z", 5} };
+			int c = 6;
+			if constexpr (SurfaceParam<Map, X, Y, VC, VS>::HasVariableColor()) column.emplace("variable_color", c), ++c;
+			if constexpr (SurfaceParam<Map, X, Y, VC, VS>::HasVariableSize()) column.emplace("variable_size", c);
+			std::vector<std::string> labelcolumn;
+			size_t xsize = p.z.size();
+			size_t ysize = p.z.front().size();
+			if constexpr (xrange_assigned)
+			{
+				if constexpr (yrange_assigned)
+					MakeDataObject(m_canvas, output_name, p.z, CoordRange<X>(p.xrange), CoordRange<Y>(p.yrange));
+				else
+					MakeDataObject(m_canvas, output_name, p.z, CoordRange<X>(p.xrange), CoordMinMax(p.yminmax, ysize));
+			}
+			else
+			{
+				if constexpr (yrange_assigned)
+					MakeDataObject(m_canvas, output_name, p.z, CoordMinMax(p.xminmax, xsize), CoordRange<Y>(p.yrange));
+				else
+					MakeDataObject(m_canvas, output_name, p.z, CoordMinMax(p.xminmax, xsize), CoordMinMax(p.yminmax, ysize));
+			}
+			if (p.with_contour)
+			{
+				m_canvas->Command(MakeContourPlotCommand(output_name, m_canvas->IsInMemoryDataTransferEnabled(), p));
+			}
+			command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, p);
+		}
+	}
+	else if (p.IsFile())
+	{
+		//ファイルプロットの場合、p.map、p.xrange、p.yrangeにカラムの情報が入っている。
+		std::map<std::string, std::variant<int, std::string>> column;
+		std::vector<std::string> labelcolumn;
+		AddColumn(p.xrange, "x", column);
+		AddColumn(p.yrange, "y", column);
+		AddColumn(p.z, "z", column);
+		command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+		if (p.with_contour)
+		{
+			PrintWarning("Contour plot is not supported for file plot.");
+		}
+	}
+	else if (p.IsEquation())
+	{
+		std::map<std::string, std::variant<int, std::string>> column;
+		std::vector<std::string> labelcolumn;
+		command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+	}
+	m_commands.push_back(command);
+	return std::move(*this);
+}
 
 }
 

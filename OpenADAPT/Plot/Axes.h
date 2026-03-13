@@ -12,24 +12,25 @@ namespace plot_detail
 
 #define DEF_AXIS(AXIS, axis)\
 template <class Canvas_>\
-class Axis##AXIS : public Canvas_\
+class Axis##AXIS\
 {\
+	Canvas_* GetDerived() { return static_cast<Canvas_*>(this); }\
+	const Canvas_* GetDerived() const { return static_cast<const Canvas_*>(this); }\
 public:\
-	using Canvas_::Canvas_;\
-	void Set##AXIS##Label(const std::string& label) { this->SetLabel(axis, label); }\
-	void Set##AXIS##Range(double min, double max) { this->SetRange(axis, min, max); }\
-	void Set##AXIS##RangeMin(double min) { this->SetRangeMin(axis, min); }\
-	void Set##AXIS##RangeMax(double max) { this->SetRangeMax(axis, max); }\
-	void SetLog##AXIS(double base = 10) { this->SetLog(axis, base); }\
-	void SetFormat##AXIS(const std::string& fmt) { this->SetFormat(axis, fmt); }\
-	void Set##AXIS##DataTime(const std::string& fmt = std::string()) { this->SetDataTime(axis, fmt); }\
+	void Set##AXIS##Label(const std::string& label) { GetDerived()->SetLabel(axis, label); }\
+	void Set##AXIS##Range(double min, double max) { GetDerived()->SetRange(axis, min, max); }\
+	void Set##AXIS##RangeMin(double min) { GetDerived()->SetRangeMin(axis, min); }\
+	void Set##AXIS##RangeMax(double max) { GetDerived()->SetRangeMax(axis, max); }\
+	void SetLog##AXIS(double base = 10) { GetDerived()->SetLog(axis, base); }\
+	void SetFormat##AXIS(const std::string& fmt) { GetDerived()->SetFormat(axis, fmt); }\
+	void Set##AXIS##DataTime(const std::string& fmt = std::string()) { GetDerived()->SetDataTime(axis, fmt); }\
 	template <class ...Args>\
-	void Set##AXIS##Tics(Args&& ...args) { this->SetTics(axis, std::forward<Args>(args)...); }\
-	void Set##AXIS##TicsRotate(double ang) { this->SetTicsRotate(axis, ang); }\
-	void Set##AXIS##LabelFont(std::string_view font, double size = 0.0) { Canvas_::SetFont_impl(font, size, axis"label"); }\
-	void Set##AXIS##TicsFont(std::string_view font, double size = 0.0) { Canvas_::SetFont_impl(font, size, axis"tics"); }\
-	void SetLabelFont(std::string_view font, double size = 0.0) { Set##AXIS##LabelFont(font, size); Canvas_::SetLabelFont(font, size); }\
-	void SetTicsFont(std::string_view font, double size = 0.0) { Set##AXIS##TicsFont(font, size); Canvas_::SetTicsFont(font, size); }\
+	void Set##AXIS##Tics(Args&& ...args) { GetDerived()->SetTics(axis, std::forward<Args>(args)...); }\
+	void Set##AXIS##TicsRotate(double ang) { GetDerived()->SetTicsRotate(axis, ang); }\
+	void Set##AXIS##LabelFont(std::string_view font, double size = 0.0) { GetDerived()->SetFont(axis"label", font, size); }\
+	void Set##AXIS##TicsFont(std::string_view font, double size = 0.0) { GetDerived()->SetFont(axis"tics", font, size); }\
+	int SetLabelFont(std::string_view font, double size = 0.0) { Set##AXIS##LabelFont(font, size); return 0; }\
+	int SetTicsFont(std::string_view font, double size = 0.0) { Set##AXIS##TicsFont(font, size); return 0; }\
 };
 
 DEF_AXIS(X, "x")
@@ -42,18 +43,21 @@ DEF_AXIS(CB, "cb")
 
 #undef DEF_AXIS
 
-template <class Canvas_>
-struct Axis2D : public AxisX<AxisX2<AxisY<AxisY2<AxisCB<Canvas_>>>>>
+/*template <class Derived, class Axes, class Indices = std::make_index_sequence<Axes::size>>
+class AxesMethods;
+template <class Derived, template <class> class ...Axes, size_t ...Indices>
+class AxesMethods<Derived, UnarguedList<Axes...>, std::index_sequence<Indices...>> : public Axes<Derived>...
 {
-	using Base = AxisX<AxisX2<AxisY<AxisY2<AxisCB<Canvas_>>>>>;
-	using Base::Base;
+	template <size_t I>
+	const auto& GetAxis() const { return static_cast<GetType_t<I, Axes<Derived>...>>(this); }
+public:
+	void SetLabelFont(std::string_view font, double size = 0.0)
+	{
+		int x = (Axes<Derived>::SetLabelFont(font, size) + ...);
+	}
 };
-template <class Canvas_>
-struct Axis3D : public AxisZ<Axis2D<Canvas_>>
-{
-	using Base = AxisZ<Axis2D<Canvas_>>;
-	using Base::Base;
-};
+template <class Derived>
+using Axes2D = AxesMethods<Derived, UnarguedList<AxisX, AxisY, AxisX2, AxisY2, AxisCB>>;*/
 
 }
 

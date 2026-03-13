@@ -1,11 +1,6 @@
 #ifndef ADAPT_PARSER_PARSER_H
 #define ADAPT_PARSER_PARSER_H
 
-#include <string>
-#include <string_view>
-#include <vector>
-#include <unordered_map>
-#include <variant>
 #include <cctype>
 #include <OpenADAPT/ADAPT.h>
 

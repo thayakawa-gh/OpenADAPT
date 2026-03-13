@@ -898,22 +898,22 @@ struct RttiFuncNode : public detail::RttiMethods<RttiFuncNode<Container_>, std::
 	RttiEvalProxy<Traverser, RttiFuncNode, std::false_type> operator()(const Traverser& t) &&
 	{
 		if (m_init_flag) [[unlikely]] Init(t);
-		return Evaluate(t);
+		return std::move(*this).Evaluate(t);
 	}
 	RttiEvalProxy<ConstTraverser, RttiFuncNode, std::false_type> operator()(const ConstTraverser& t) &&
 	{
 		if (m_init_flag) [[unlikely]] Init(t);
-		return Evaluate(t);
+		return std::move(*this).Evaluate(t);
 	}
 	RttiEvalProxy<Container, RttiFuncNode, std::false_type> operator()(const Container& s) &&
 	{
 		if (m_init_flag) [[unlikely]] Init(s);
-		return Evaluate(s);
+		return std::move(*this).Evaluate(s);
 	}
 	RttiEvalProxy<Container, RttiFuncNode, std::true_type> operator()(const Container& s, const Bpos& bpos) &&
 	{
 		if (m_init_flag) [[unlikely]] Init(s, bpos);
-		return Evaluate(s, bpos);
+		return std::move(*this).Evaluate(s, bpos);
 	}
 
 	FieldType GetType() const { return m_impl->GetType(); }

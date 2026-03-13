@@ -40,7 +40,7 @@ int example_2d(const std::string& output_filename, bool enable_in_memory_data_tr
 
 	/* options for PlotPoints(...)
 	title          ... title. If you specify "notitle", the title is not displayed.
-	  no_title     ... the same as title = "notitle".
+	  notitle     ... the same as title = "notitle".
 	axis           ... set of axes to scale lines. (e.g. plot::axis = "x1y2")
 	  axis_x1y1    ... the same as axis = "x1y1"
 	  axis_x1y2    ... the same as axis = "x1y2"
@@ -178,13 +178,8 @@ int example_labels(const std::string& output_filename, bool enable_in_memory_dat
 	std::vector<int> populations = { 8982000, 2148000, 3769000, 2873000, 3266000, 872680, 1867000, 1921000, 1335000, 1794000, 1756000, 975551, 805402, 658864, 702543, 554554, 544851, 664046, 15462452, 2963199 };
 
 	//If you want to plot labels with different sizes, label strings should be formatted as "{/=fontsize label}".
-	auto zip = adapt::views::Zip(cities, populations);
-	auto it = zip.begin();
-	auto end = zip.end();
-	static_assert(std::sentinel_for<decltype(end), decltype(it)>);
-
 	auto dscities = adapt::views::Zip(cities, populations) |
-		std::views::transform([](const auto& x) { return std::format("\"{{/={} {}}}\"", std::sqrt(std::get<1>(x) / 10000), std::get<0>(x)); });
+		std::views::transform([](const auto& x) { return std::format("\"{{/={} {}}}\"", std::sqrt(std::get<1>(x) / 6700.), std::get<0>(x)); });
 
 	namespace plot = adapt::plot;
 	adapt::Canvas2D g(output_filename);
@@ -292,7 +287,7 @@ int example_colormap(const std::string& output_filename, bool enable_in_memory_d
 
 	namespace plot = adapt::plot;
 	{
-		adapt::MultiPlot multi(output_filename, 1, 2, 1200, 600);
+		adapt::MultiPlot multi(output_filename, 1, 2);
 
 		adapt::Canvas2D g1;
 		//g1.ShowCommands(true);
@@ -360,7 +355,7 @@ int example_binscatter(const std::string& output_filename, bool enable_in_memory
 	}
 	namespace plot = adapt::plot;
 
-	adapt::MultiPlot multi(output_filename, 1, 2, 1200, 600);
+	adapt::MultiPlot multi(output_filename, 1, 2);
 	adapt::Canvas2D g1;
 	g1.EnableInMemoryDataTransfer(enable_in_memory_data_transfer);
 	g1.SetXRange(-4, 4);
@@ -656,40 +651,43 @@ void QuickstartPlot()
 {
 	std::cout << "[[Quickstart Plot]]" << std::endl;
 
+	// ".pdf" and ".png" are supported for output_filename.
+	std::string extension = ".png";
+
 	std::filesystem::exists("PlotExamples") || std::filesystem::create_directory("PlotExamples");
-	//example_2d("PlotExamples/example_2d.png", false);
-	example_2d("PlotExamples/example_2d-inmemory.png", true);
+	//example_2d("PlotExamples/example_2d" + extension, false);
+	example_2d("PlotExamples/example_2d-inmemory" + extension, true);
 
-	//example_histogram("PlotExamples/example_histogram.png", false);
-	example_histogram("PlotExamples/example_histogram-inmemory.png", true);
+	//example_histogram("PlotExamples/example_histogram" + extension, false);
+	example_histogram("PlotExamples/example_histogram-inmemory" + extension, true);
 
-	//example_scatter("PlotExamples/example_scatter.png", false);
-	example_scatter("PlotExamples/example_scatter-inmemory.png", true);
+	//example_scatter("PlotExamples/example_scatter" + extension, false);
+	example_scatter("PlotExamples/example_scatter-inmemory" + extension, true);
 
-	//example_labels("PlotExamples/example_labels.png", false);
-	example_labels("PlotExamples/example_labels-inmemory.png", true);
+	//example_labels("PlotExamples/example_labels" + extension, false);
+	example_labels("PlotExamples/example_labels-inmemory" + extension, true);
 
-	//example_labels_on_colormap("PlotExamples/example_labels_on_colormap.png", false);
-	example_labels_on_colormap("PlotExamples/example_labels_on_colormap-inmemory.png", true);
+	//example_labels_on_colormap("PlotExamples/example_labels_on_colormap" + extension, false);
+	example_labels_on_colormap("PlotExamples/example_labels_on_colormap-inmemory" + extension, true);
 
-	//example_colormap("PlotExamples/example_colormap.png", false);
-	example_colormap("PlotExamples/example_colormap-inmemory.png", true);
+	//example_colormap("PlotExamples/example_colormap" + extension, false);
+	example_colormap("PlotExamples/example_colormap-inmemory" + extension, true);
 
-	//example_binscatter("PlotExamples/example_binscatter.png", false);
-	example_binscatter("PlotExamples/example_binscatter-inmemory.png", true);
+	//example_binscatter("PlotExamples/example_binscatter" + extension, false);
+	example_binscatter("PlotExamples/example_binscatter-inmemory" + extension, true);
 
-	//example_surface("PlotExamples/example_surface.png", false);
-	example_surface("PlotExamples/example_surface-inmemory.png", true);
+	//example_surface("PlotExamples/example_surface" + extension, false);
+	example_surface("PlotExamples/example_surface-inmemory" + extension, true);
 
-	//example_filledcurve("PlotExamples/example_filledcurve.png", false);
-	example_filledcurve("PlotExamples/example_filledcurve-inmemory.png", true);
+	//example_filledcurve("PlotExamples/example_filledcurve" + extension, false);
+	example_filledcurve("PlotExamples/example_filledcurve-inmemory" + extension, true);
 
-	//example_datetime("PlotExamples/example_datetime.png", false);
-	example_datetime("PlotExamples/example_datetime-inmemory.png", true);
+	//example_datetime("PlotExamples/example_datetime" + extension, false);
+	example_datetime("PlotExamples/example_datetime-inmemory" + extension, true);
 
-	//example_string("PlotExamples/example_string_label.png", false);
-	example_string("PlotExamples/example_string_label-inmemory.png", true);
+	//example_string("PlotExamples/example_string_label" + extension, false);
+	example_string("PlotExamples/example_string_label-inmemory" + extension, true);
 
-	//example_for_loop("PlotExamples/example_for_loop.png", false);
-	example_for_loop("PlotExamples/example_for_loop-inmemory.png", true);
+	//example_for_loop("PlotExamples/example_for_loop" + extension, false);
+	example_for_loop("PlotExamples/example_for_loop-inmemory" + extension, true);
 }
