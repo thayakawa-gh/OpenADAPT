@@ -370,13 +370,14 @@ and the hierarchical structure is automatically determined by the layers of the 
 		<tr>
 			<th scope="col">
 				<figure>
-					<img width="720" height="540" alt="example_scatter-inmemory" src="https://github.com/user-attachments/assets/23abf29f-ccb0-4265-80c6-c195a0a6e613">
-					<figurecaption><a href="https://github.com/thayakawa-gh/OpenADAPT/blob/62ad5419371d3a279c9a8d432f45ea6b03715032/Examples/en/quickstart_plot.cpp#L136">example scatter</a></figurecaption>
+					<img width="720" height="540" alt="example_scatter-inmemory" src="https://github.com/user-attachments/assets/3c39e6a2-87c3-45bf-9e0f-6cded73faf6d">
+					<figurecaption><a href="https://github.com/thayakawa-gh/OpenADAPT/blob/6e31bd55b54d3cecaffe61c2f1d7a5d572c843e1/Examples/en/quickstart_plot.cpp#L197">example scatter</a></figurecaption>
 				</figure>
 			</th>
 			<th scope="col">
-				<figure><img width="720" height="540" alt="example_labels-inmemory" src="https://github.com/user-attachments/assets/86c727ff-7700-4934-b977-b8257f62b931">
-					<figurecaption><a href="https://github.com/thayakawa-gh/OpenADAPT/blob/62ad5419371d3a279c9a8d432f45ea6b03715032/Examples/en/quickstart_plot.cpp#L160">example labels</a></figurecaption>
+				<figure>
+					<img width="720" height="540" alt="example_labels-inmemory" src="https://github.com/user-attachments/assets/b55bc5ac-1400-457a-a84b-c30d883ef5f3">
+					<figurecaption><a href="https://github.com/thayakawa-gh/OpenADAPT/blob/6e31bd55b54d3cecaffe61c2f1d7a5d572c843e1/Examples/en/quickstart_plot.cpp#L221">example labels</a></figurecaption>
 				</figure>
 			</th>
 			<th scope="col">
@@ -388,21 +389,20 @@ and the hierarchical structure is automatically determined by the layers of the 
 	<tbody>
 		<tr>
 			<th scope="col">
-				<figure>
-					<img width="720" height="540" alt="example_2d-inmemory" src="https://github.com/user-attachments/assets/6015031c-eba9-47a1-9ccd-e386199a8159">
-					<figurecaption><a href="https://github.com/thayakawa-gh/OpenADAPT/blob/62ad5419371d3a279c9a8d432f45ea6b03715032/Examples/en/quickstart_plot.cpp#L6">example 2d</a></figurecaption>
+					<img width="720" height="540" alt="example_2d-inmemory" src="https://github.com/user-attachments/assets/4435eef9-6c2b-46ff-ac11-e5f2b03d5f78">
+					<figurecaption><a href="https://github.com/thayakawa-gh/OpenADAPT/blob/6e31bd55b54d3cecaffe61c2f1d7a5d572c843e1/Examples/en/quickstart_plot.cpp#L20">example 2d</a></figurecaption>
 				</figure>
 			</th>
 			<th scope="col">
 				<figure>
-					<img width="720" height="540" alt="example_histogram-inmemory" src="https://github.com/user-attachments/assets/1a130808-544e-4859-9456-9a0b3835fd53">
-					<figurecaption><a href="https://github.com/thayakawa-gh/OpenADAPT/blob/62ad5419371d3a279c9a8d432f45ea6b03715032/Examples/en/quickstart_plot.cpp#L90">example histogram</a></figurecaption>
+					<img width="720" height="540" alt="example_for_loop-inmemory" src="https://github.com/user-attachments/assets/3f0e96ba-4f3f-4539-91eb-2ecb550b83e3"><figure>
+					<figurecaption><a href="https://github.com/thayakawa-gh/OpenADAPT/blob/6e31bd55b54d3cecaffe61c2f1d7a5d572c843e1/Examples/en/quickstart_plot.cpp#L700">example for loop</a></figurecaption>
 				</figure>
 			</th>
 			<th scope="col">
 				<figure>
-					<img width="720" height="540" alt="example_string_label-inmemory" src="https://github.com/user-attachments/assets/5281afb1-db81-4db4-b084-dca516ec02d6">
-					<figurecaption><a href="https://github.com/thayakawa-gh/OpenADAPT/blob/62ad5419371d3a279c9a8d432f45ea6b03715032/Examples/en/quickstart_plot.cpp#L595">example string</a></figurecaption>
+					<img width="720" height="540" alt="example_string_label-inmemory" src="https://github.com/user-attachments/assets/8af06e0c-2d6a-4fb8-910e-38573eb718e6">
+					<figurecaption><a href="https://github.com/thayakawa-gh/OpenADAPT/blob/6e31bd55b54d3cecaffe61c2f1d7a5d572c843e1/Examples/en/quickstart_plot.cpp#L672">example string</a></figurecaption>
 				</figure>
 			</th>
 		</tr>
@@ -410,18 +410,41 @@ and the hierarchical structure is automatically determined by the layers of the 
 	<tbody>
 		<tr>
 			<th scope="col">
-				<figure><img width="720" height="540" alt="example_filledcurve-inmemory" src="https://github.com/user-attachments/assets/8c054de2-437e-45c5-b3d2-861a3db2016d">
-					<figurecaption><a href="https://github.com/thayakawa-gh/OpenADAPT/blob/62ad5419371d3a279c9a8d432f45ea6b03715032/Examples/en/quickstart_plot.cpp#L470">example filledcurve</a></figurecaption>
+				<figure>
+					<img width="720" height="540" alt="example_histogram-inmemory" src="https://github.com/user-attachments/assets/ce947adb-011d-4f31-a30b-303faed7cf00">
+					<figurecaption><a href="https://github.com/thayakawa-gh/OpenADAPT/blob/6e31bd55b54d3cecaffe61c2f1d7a5d572c843e1/Examples/en/quickstart_plot.cpp#L86">example histogram</a></figurecaption>
 				</figure>
 			</th>
 			<th scope="col">
-				<figure><img width="720" height="540" alt="example_datetime-inmemory" src="https://github.com/user-attachments/assets/19c05a63-a57c-4a51-8474-8957da07ebc3">
-					<figurecaption><a href="https://github.com/thayakawa-gh/OpenADAPT/blob/62ad5419371d3a279c9a8d432f45ea6b03715032/Examples/en/quickstart_plot.cpp#L564">example datetime</a></figurecaption>
+				<figure>
+					<img width="720" height="540" alt="example_stacked_histogram-inmemory" src="https://github.com/user-attachments/assets/f1902ba6-95d7-4c0e-870e-6233cc51154d">
+					<figurecaption><a href="https://github.com/thayakawa-gh/OpenADAPT/blob/6e31bd55b54d3cecaffe61c2f1d7a5d572c843e1/Examples/en/quickstart_plot.cpp#L141">example stacked histogram</a></figurecaption>
 				</figure>
 			</th>
 			<th scope="col">
-				<img width="720" height="540" alt="example_for_loop-inmemory" src="https://github.com/user-attachments/assets/ad144e38-ef5c-4d7e-a66e-9165028b73c2"><figure>
-					<figurecaption><a href="https://github.com/thayakawa-gh/OpenADAPT/blob/62ad5419371d3a279c9a8d432f45ea6b03715032/Examples/en/quickstart_plot.cpp#L623">example for loop</a></figurecaption>
+				<figure>
+					<img width="720" height="540" alt="example_weighted_histogram-inmemory" src="https://github.com/user-attachments/assets/93a31553-4b0e-4014-bc2e-bcaf14ace281">
+					<figurecaption><a href="https://github.com/thayakawa-gh/OpenADAPT/blob/6e31bd55b54d3cecaffe61c2f1d7a5d572c843e1/Examples/en/quickstart_plot.cpp#L168">example weighted histogram</a></figurecaption>
+				</figure>
+			</th>
+		</tr>
+	</tbody>
+	<tbody>
+		<tr>
+			<th scope="col">
+				<figure>
+					<img width="720" height="540" alt="example_filledcurve-inmemory" src="https://github.com/user-attachments/assets/647fd8cf-b8e8-483f-8762-9bfbb39a5f1f">
+					<figurecaption><a href="https://github.com/thayakawa-gh/OpenADAPT/blob/6e31bd55b54d3cecaffe61c2f1d7a5d572c843e1/Examples/en/quickstart_plot.cpp#L526">example filledcurve</a></figurecaption>
+				</figure>
+			</th>
+			<th scope="col">
+				<figure>
+					<img width="720" height="540" alt="example_datetime-inmemory" src="https://github.com/user-attachments/assets/6d9fc4c9-c08e-49bc-8296-a47451f9c901">
+					<figurecaption><a href="https://github.com/thayakawa-gh/OpenADAPT/blob/6e31bd55b54d3cecaffe61c2f1d7a5d572c843e1/Examples/en/quickstart_plot.cpp#L641">example datetime</a></figurecaption>
+				</figure>
+			</th>
+			<th scope="col">
+				<figure><figurecaption></figurecaption>
 				</figure>
 			</th>
 		</tr>
@@ -430,14 +453,14 @@ and the hierarchical structure is automatically determined by the layers of the 
 		<tr>
 			<th scope="col" colspan="2">
 				<figure>
-					<img width="1200" height="600" alt="example_colormap-inmemory" src="https://github.com/user-attachments/assets/2b747891-2328-41f3-a63b-ab159b161e23">
-					<figurecaption><a href="https://github.com/thayakawa-gh/OpenADAPT/blob/62ad5419371d3a279c9a8d432f45ea6b03715032/Examples/en/quickstart_plot.cpp#L223">example colormap</a></figurecaption>
+					<img width="1200" height="600" alt="example_colormap-inmemory" src="https://github.com/user-attachments/assets/862722e2-1b3c-4193-9996-439bd2cce5b8">
+					<figurecaption><a href="https://github.com/thayakawa-gh/OpenADAPT/blob/6e31bd55b54d3cecaffe61c2f1d7a5d572c843e1/Examples/en/quickstart_plot.cpp#L279">example colormap</a></figurecaption>
 				</figure>
 			</th>
 			<th scope="col">
 				<figure>
-					<img width="720" height="540" alt="example_surface-inmemory" src="https://github.com/user-attachments/assets/faee143b-232d-481c-b730-ddd4e19b4ef7">
-					<figurecaption><a href="https://github.com/thayakawa-gh/OpenADAPT/blob/62ad5419371d3a279c9a8d432f45ea6b03715032/Examples/en/quickstart_plot.cpp#L409">example surface</a></figurecaption>
+					<img width="720" height="540" alt="example_surface-inmemory" src="https://github.com/user-attachments/assets/6887923f-1892-4023-a3f0-b48ce51c4b5a">
+					<figurecaption><a href="https://github.com/thayakawa-gh/OpenADAPT/blob/6e31bd55b54d3cecaffe61c2f1d7a5d572c843e1/Examples/en/quickstart_plot.cpp#L465">example surface</a></figurecaption>
 				</figure>
 			</th>
 		</tr>
@@ -446,14 +469,14 @@ and the hierarchical structure is automatically determined by the layers of the 
 		<tr>
 			<th scope="col" colspan="2">
 				<figure>
-					<img width="1200" height="600" alt="example_binscatter-inmemory" src="https://github.com/user-attachments/assets/0663bfcf-2958-43e6-bac2-ae3b472aaf8d">
-					<figurecaption><a href="https://github.com/thayakawa-gh/OpenADAPT/blob/62ad5419371d3a279c9a8d432f45ea6b03715032/Examples/en/quickstart_plot.cpp#L336">example binscatter</a></figurecaption>
+					<img width="1200" height="600" alt="example_binscatter-inmemory" src="https://github.com/user-attachments/assets/7f32280f-1b2f-4053-abfb-0fb7a0a473bd">
+					<figurecaption><a href="https://github.com/thayakawa-gh/OpenADAPT/blob/6e31bd55b54d3cecaffe61c2f1d7a5d572c843e1/Examples/en/quickstart_plot.cpp#L392">example binscatter</a></figurecaption>
 				</figure>
 			</th>
 			<th scope="col">
 				<figure>
-					<img width="720" height="540" alt="example_labels_on_colormap-inmemory" src="https://github.com/user-attachments/assets/7d32c01d-afc5-486b-b1ba-8ab7abf4d8d4">
-					<figurecaption><a href="https://github.com/thayakawa-gh/OpenADAPT/blob/62ad5419371d3a279c9a8d432f45ea6b03715032/Examples/en/quickstart_plot.cpp#L377">example labels on colormap</a></figurecaption>
+					<img width="720" height="540" alt="example_labels_on_colormap-inmemory" src="https://github.com/user-attachments/assets/9c68dda2-e320-4c00-bdb2-a00120dc2478">
+					<figurecaption><a href="https://github.com/thayakawa-gh/OpenADAPT/blob/6e31bd55b54d3cecaffe61c2f1d7a5d572c843e1/Examples/en/quickstart_plot.cpp#L433">example labels on colormap</a></figurecaption>
 				</figure>
 			</th>
 		</tr>
