@@ -859,19 +859,19 @@ struct RttiFuncNode : public detail::RttiMethods<RttiFuncNode<Container_>, std::
 
 	RttiEvalProxy<Traverser, RttiFuncNode, std::false_type> Evaluate(const Traverser& t) &&
 	{
-		return RttiEvalProxy<Traverser, RttiFuncNode, std::false_type>{ t, * this };
+		return RttiEvalProxy<Traverser, RttiFuncNode, std::false_type>{ t, std::move(*this) };
 	}
 	RttiEvalProxy<ConstTraverser, RttiFuncNode, std::false_type> Evaluate(const ConstTraverser& t) &&
 	{
-		return RttiEvalProxy<ConstTraverser, RttiFuncNode, std::false_type>{ t, * this };
+		return RttiEvalProxy<ConstTraverser, RttiFuncNode, std::false_type>{ t, std::move(*this) };
 	}
 	RttiEvalProxy<Container, RttiFuncNode, std::false_type> Evaluate(const Container& s) &&
 	{
-		return RttiEvalProxy<Container, RttiFuncNode, std::false_type>{ s, * this };
+		return RttiEvalProxy<Container, RttiFuncNode, std::false_type>{ s, std::move(*this) };
 	}
 	RttiEvalProxy<Container, RttiFuncNode, std::true_type> Evaluate(const Container& s, const Bpos& bpos) &&
 	{
-		return RttiEvalProxy<Container, RttiFuncNode, std::true_type>{ s, bpos, * this };
+		return RttiEvalProxy<Container, RttiFuncNode, std::true_type>{ s, bpos, std::move(*this) };
 	}
 
 	RttiEvalProxy<Traverser, const RttiFuncNode&, std::false_type> operator()(const Traverser& t) &

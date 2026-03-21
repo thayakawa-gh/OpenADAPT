@@ -1,5 +1,6 @@
 #include <ranges>
 #include <iterator>
+#include <algorithm>
 #include <Test/Common/Aggregator.h>
 
 template <class Container, class Layer0, class Layer1, class Layer2>

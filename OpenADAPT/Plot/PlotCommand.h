@@ -92,16 +92,16 @@ struct PlotParamBase
 template <acceptable_arg X, acceptable_arg Y,
 	acceptable_arg XE, acceptable_arg YE,
 	acceptable_arg XEL, acceptable_arg XEH, acceptable_arg YEL, acceptable_arg YEH,
-	acceptable_arg VC, acceptable_arg VS, acceptable_arg VFC>
+	acceptable_arg VC, acceptable_arg VS>
 struct PointParam : public PlotParamBase
 {
 	template <keyword_arg ...Ops>
 	PointParam(X x_, Y y_, XE xe_, YE ye_,
 			   XEL xel_, XEH xeh_, YEL yel_, YEH yeh_,
-			   VC vc_, VS vs_, VFC vfc_, Ops ...ops)
+			   VC vc_, VS vs_, Ops ...ops)
 		: x(x_), y(y_), xerrorbar(xe_), yerrorbar(ye_),
 		xerrlow(xel_), xerrhigh(xeh_), yerrlow(yel_), yerrhigh(yeh_),
-		variable_color(vc_), variable_size(vs_), variable_fillcolor(vfc_)
+		variable_color(vc_), variable_size(vs_)
 	{
 		SetOptions(ops...);
 	}
@@ -111,8 +111,7 @@ struct PointParam : public PlotParamBase
 	{
 		SetBaseOptions(ops...);
 		ADAPT_DETAIL_SET_OPTIONS_MACRO(style, linetype, linewidth, dashtype, color, color_rgb,
-									   variable_color, fillcolor, fillpattern, fillsolid, filltransparent, bordercolor, bordertype,
-									   smooth, pointtype, pointsize);
+									   variable_color, smooth, pointtype, pointsize);
 	}
 
 	bool IsData() const
@@ -136,7 +135,6 @@ struct PointParam : public PlotParamBase
 	static constexpr bool HasYErrHigh() { return !IsEmptyView<YEH>(); }
 	static constexpr bool HasVariableColor() { return !IsEmptyView<VC>(); }
 	static constexpr bool HasVariableSize() { return !IsEmptyView<VS>(); }
-	static constexpr bool HasVariableFillcolor() { return !IsEmptyView<VFC>(); }
 
 	bool HasLineOption() const
 	{
@@ -145,10 +143,6 @@ struct PointParam : public PlotParamBase
 	bool HasPointOption() const
 	{
 		return style != Style::points || pointtype != -1 || pointsize != -1 || !IsEmptyView<VS>();
-	}
-	bool HasFillOption() const
-	{
-		return !fillcolor.empty() || !IsEmptyView<VFC>() || fillpattern != -1 || fillsolid != -1 || filltransparent || !bordercolor.empty() || bordertype != -3;
 	}
 
 	[[no_unique_address]] X x;
@@ -175,34 +169,25 @@ struct PointParam : public PlotParamBase
 	int pointtype = -1;//-1ならデフォルト
 	double pointsize = -1.;//-1ならデフォルト、-2ならvariable
 	[[no_unique_address]] VS variable_size = {};
-
-	//FillOption
-	std::string fillcolor = {};
-	[[no_unique_address]] VFC variable_fillcolor = {};
-	int fillpattern = -1;
-	double fillsolid = -1;
-	bool filltransparent = false;
-	std::string bordercolor = {};
-	int bordertype = -3;
 };
 template <keyword_arg ...Options>
 auto MakePointParam(Options ...ops)
 {
-	ADAPT_DETAIL_MAKE_PARAM_MACRO(PointParam, x, y, xerrorbar, yerrorbar, xerrlow, xerrhigh, yerrlow, yerrhigh, variable_color, variable_size, variable_fillcolor);
+	ADAPT_DETAIL_MAKE_PARAM_MACRO(PointParam, x, y, xerrorbar, yerrorbar, xerrlow, xerrhigh, yerrlow, yerrhigh, variable_color, variable_size);
 }
 
 template <acceptable_arg X, acceptable_arg Y, acceptable_arg Z,
 	acceptable_arg XE, acceptable_arg YE,
 	acceptable_arg XEL, acceptable_arg XEH, acceptable_arg YEL, acceptable_arg YEH,
-	acceptable_arg VC, acceptable_arg VS, acceptable_arg VFC>
-struct PointParam3D : public PointParam<X, Y, XE, YE, XEL, XEH, YEL, YEH, VC, VS, VFC>
+	acceptable_arg VC, acceptable_arg VS>
+struct PointParam3D : public PointParam<X, Y, XE, YE, XEL, XEH, YEL, YEH, VC, VS>
 {
-	using Base = PointParam<X, Y, XE, YE, XEL, XEH, YEL, YEH, VC, VS, VFC>;
+	using Base = PointParam<X, Y, XE, YE, XEL, XEH, YEL, YEH, VC, VS>;
 	template <keyword_arg ...Ops>
 	PointParam3D(X x_, Y y_, Z z_, XE xe_, YE ye_,
 				 XEL xel_, XEH xeh_, YEL yel_, YEH yeh_,
-				 VC vc_, VS vs_, VFC vfc_, Ops ...ops)
-		: Base(x_, y_, xe_, ye_, xel_, xeh_, yel_, yeh_, vc_, vs_, vfc_), z(z_)
+				 VC vc_, VS vs_, Ops ...ops)
+		: Base(x_, y_, xe_, ye_, xel_, xeh_, yel_, yeh_, vc_, vs_), z(z_)
 	{
 		SetOptions(ops...);
 	}
@@ -230,7 +215,7 @@ struct PointParam3D : public PointParam<X, Y, XE, YE, XEL, XEH, YEL, YEH, VC, VS
 template <keyword_arg ...Options>
 auto MakePointParam3D(Options ...ops)
 {
-	ADAPT_DETAIL_MAKE_PARAM_MACRO(PointParam3D, x, y, z, xerrorbar, yerrorbar, xerrlow, xerrhigh, yerrlow, yerrhigh, variable_color, variable_size, variable_fillcolor);
+	ADAPT_DETAIL_MAKE_PARAM_MACRO(PointParam3D, x, y, z, xerrorbar, yerrorbar, xerrlow, xerrhigh, yerrlow, yerrhigh, variable_color, variable_size);
 }
 
 template <acceptable_arg X, acceptable_arg Y,
@@ -341,7 +326,7 @@ struct FilledCurveParam : public PlotParamBase
 {
 	template <keyword_arg ...Ops>
 	FilledCurveParam(X x_, Y y_, Y2 y2_, VC vc_, Ops ...ops)
-		: x(x_), y(y_), ybelow(y2_), variable_fillcolor(vc_)
+		: x(x_), y(y_), ybelow(y2_), variable_color(vc_)
 	{
 		SetOptions(ops...);
 	}
@@ -350,7 +335,7 @@ struct FilledCurveParam : public PlotParamBase
 	void SetOptions(Ops ...ops)
 	{
 		SetBaseOptions(ops...);
-		ADAPT_DETAIL_SET_OPTIONS_MACRO(fillcolor, baseline, fillpattern, fillsolid, filltransparent, bordercolor, bordertype, closed, above, below);
+		ADAPT_DETAIL_SET_OPTIONS_MACRO(style, color, baseline, fillpattern, fillsolid, filltransparent, noborder, bordercolor, bordertype, closed, above, below);
 	}
 
 	bool IsData() const
@@ -365,33 +350,37 @@ struct FilledCurveParam : public PlotParamBase
 	{
 		return !input.empty() && IsEmptyView<X>() && IsEmptyView<Y>();
 	}
-	static constexpr bool HasVariableFillcolor() { return !IsEmptyView<VC>(); }
+	static constexpr bool HasVariablecolor() { return !IsEmptyView<VC>(); }
 	static constexpr bool HasYBelow() { return !IsEmptyView<Y2>(); }
 
 	[[no_unique_address]] X x;
 	[[no_unique_address]] Y y;
 	[[no_unique_address]] Y2 ybelow;
 
+	Style style = Style::lines;
 	//FillOption
-	std::string fillcolor;
-	[[no_unique_address]] VC variable_fillcolor;
+	std::string color;
+	[[no_unique_address]] VC variable_color;
 	std::string baseline;
 	int fillpattern = -1;
 	double fillsolid = -1.;
 	bool filltransparent = false;
-	std::string bordercolor;
-	int bordertype = -3;//-2はnorborderを意味する。
 
 	//FilledCurveOption
 	bool closed = false;
 	bool above = false;
 	bool below = false;
+
+	//border PlotPointsのline optionとして渡される。
+	bool noborder = false;
+	std::string bordercolor;
+	int bordertype = -2;//-2はデフォルト。
 };
 
 template <keyword_arg ...Options>
 auto MakeFilledCurveParam(Options ...ops)
 {
-	ADAPT_DETAIL_MAKE_PARAM_MACRO(FilledCurveParam, x, y, ybelow, variable_fillcolor);
+	ADAPT_DETAIL_MAKE_PARAM_MACRO(FilledCurveParam, x, y, ybelow, variable_color);
 }
 
 template <acceptable_arg X, acceptable_arg Y, acceptable_arg L, acceptable_arg VTC>
@@ -710,7 +699,6 @@ using EmptyPointParam = PointParam<
 	std::ranges::empty_view<double>,
 	std::ranges::empty_view<double>,
 	std::ranges::empty_view<double>,
-	std::ranges::empty_view<double>,
 	std::ranges::empty_view<double>>;
 
 template <acceptable_matrix_range Z, ranges::arithmetic_range XRange, ranges::arithmetic_range YRange,
@@ -725,7 +713,7 @@ public:
 	SurfaceParam(Z z_, XRange xrange_, YRange yrange_,
 				 std::pair<double, double> xminmax_, std::pair<double, double> yminmax_,
 				 VC vc_, VS vs_, Ops ...ops)
-		: Base(ev(), ev(), ev(), ev(), ev(), ev(), ev(), ev(), ev(), ev(), ev()),
+		: Base(ev(), ev(), ev(), ev(), ev(), ev(), ev(), ev(), ev(), ev()),
 		z(z_), xrange(xrange_), yrange(yrange_), xminmax(xminmax_), yminmax(yminmax_),
 		variable_color(vc_), variable_size(vs_)
 	{
@@ -817,7 +805,7 @@ struct HistogramParam
 	template <keyword_arg ...Ops>
 	void SetOptions(Ops ...ops)
 	{
-		ADAPT_DETAIL_SET_OPTIONS_MACRO(binerror, cumul, inv_cumul);
+		ADAPT_DETAIL_SET_OPTIONS_MACRO(binerror, cumul, inv_cumul, stack);
 	}
 	Data data;
 	double xmin;
@@ -826,6 +814,7 @@ struct HistogramParam
 	BinError binerror = BinError::none;
 	bool cumul = false;
 	bool inv_cumul = false;
+	bool stack = false;
 	[[no_unique_address]] Weight weight;
 };
 template <keyword_arg ...Options>
@@ -1257,8 +1246,6 @@ std::string MakePlotCommand(std::string_view output_name, bool inmemory,
 	static_assert(!xeb_assigned || Param::HasXErrorbar() != (Param::HasXErrLow() && Param::HasXErrHigh()), "xerrorbar and xerrlow/xerrhigh are exclusive.");
 	static_assert(Param::HasYErrLow() == Param::HasYErrHigh(), "yerrlow and yerrhigh must be specified together.");
 	static_assert(!yeb_assigned || Param::HasYErrorbar() != (Param::HasYErrLow() && Param::HasYErrHigh()), "yerrorbar and yerrlow/yerrhigh are exclusive.");
-	static_assert(!(xeb_assigned || yeb_assigned) || !Param::HasVariableFillcolor(),
-				  "errorbar and fillcolor options are exclusive.");
 
 	std::string c;
 	std::string usg;
@@ -1276,12 +1263,10 @@ std::string MakePlotCommand(std::string_view output_name, bool inmemory,
 	if constexpr (xeb_assigned || yeb_assigned)
 	{
 		static_assert(!is_surface, "errorbars are not allowed with surface plots.");
-		if (p.style == Style::lines)
+		if (p.style == Style::lines || p.style == Style::linespoints)
 		{
 			if constexpr (Param::HasVariableSize())
 				PrintWarning("WARNING : errorlines is incompatible with variable size option.");
-			if (p.HasFillOption())
-				PrintWarning("WARNING : errorlines is incompatible with fill option.");
 			MakeErrorbarCommand<true>(cols, p, c, usg);
 			MakePointCommand<false>(cols, p, c, usg);
 			MakeLineCommand(cols, p, c, usg);
@@ -1292,8 +1277,6 @@ std::string MakePlotCommand(std::string_view output_name, bool inmemory,
 			//boxesではエラーバーの使い方がerrorlines、errorbarsと異なるので、独立して書き下す。
 			if (p.HasPointOption())
 				PrintWarning("WARNING : boxes is incompatible with point option.");
-			if (p.HasFillOption())
-				PrintWarning("WARNING : boxes is incompatible with fill option.");
 			if constexpr (xeb_assigned && !yeb_assigned)
 				PrintWarning("WARNING : Box style is incompatible with only xerrorbar option.");
 			else if constexpr (Param::HasXErrLow() && Param::HasXErrHigh())
@@ -1314,7 +1297,7 @@ std::string MakePlotCommand(std::string_view output_name, bool inmemory,
 		else
 		{
 			if (p.style != Style::points)
-				PrintWarning("WARNING : Only \"lines\", \"boxes\" or \"points\" styles are allowed with errorbars.");
+				PrintWarning("WARNING : Only \"lines\", \"linespoints\", \"boxes\" or \"points\" styles are allowed with errorbars.");
 			if constexpr (Param::HasVariableSize())
 				PrintWarning("WARNING : errorbars is incompatible with variable size option.");
 
@@ -1370,15 +1353,15 @@ std::string MakePlotCommand(std::string_view output_name, bool inmemory,
 		}
 		MakeLineCommand(cols, p, others, usg);
 		MakeColorCommand<true>(cols, p, others, usg);
-		if (p.style == Style::boxes || p.style == Style::steps)
+		/*if (p.style == Style::boxes || p.style == Style::steps)
 		{
 			if (p.style == Style::steps) strstyle = " with fillsteps";
 			//現状、fill系オプションはboxesまたはstepsにしか使えない。
-			if (!p.fillcolor.empty()) others += std::format(" fillcolor '{}'", p.fillcolor);
-			else if constexpr (Param::HasVariableFillcolor())
+			if (!p.color.empty()) others += std::format(" fillcolor '{}'", p.color);
+			else if constexpr (Param::HasVariableColor())
 			{
 				others += " fillcolor palette";
-				usg += std::format(":{}", GetCol(cols.at("variable_fillcolor")));
+				usg += std::format(":{}", GetCol(cols.at("variable_color")));
 			}
 			{
 				std::string fs;
@@ -1394,7 +1377,7 @@ std::string MakePlotCommand(std::string_view output_name, bool inmemory,
 				if (!p.bordercolor.empty()) bd += std::format(" linecolor '{}'", p.bordercolor);
 				if (!bd.empty()) others += " border" + bd;
 			}
-		}
+		}*/
 		c += strstyle;
 		c += others;
 	}
@@ -1420,8 +1403,6 @@ std::string MakePlotCommand(std::string_view output_name, bool inmemory,
 			PrintWarning("WARNING : \"dots\" style is incompatible with line options.");
 		if (p.HasPointOption())
 			PrintWarning("WARNING : \"dots\" style is incompatible with point options.");
-		if (p.HasFillOption())
-			PrintWarning("WARNING : \"dots\" style is incompatible with fill options.");
 		MakeColorCommand<true>(cols, p, c, usg);
 	}
 	if (p.smooth != Smooth::none)
@@ -1503,8 +1484,14 @@ std::string MakePlotCommand(std::string_view output_name, bool inmemory,
 	MakeOutputNameCommand(inmemory, output_name, p, out);
 	MakeAxisCommand(labelcols, p, c, usg);
 	MakeTitleCommand(p, c);
-	c += " with filledcurves";
-
+	if (p.style == Style::boxes) c += " with boxes";
+	else if (p.style == Style::steps) c += " with fillsteps";
+	else
+	{
+		if (p.style != Style::lines)
+			PrintWarning("WARNING : Only \"lines\", \"boxes\" or \"steps\" styles are allowed for filled curves.");
+		c += " with filledcurves";
+	}
 	if (p.IsData() || p.IsFile())
 	{
 		usg += std::format(" using {}:{}", GetCol(cols.at("x")), GetCol(cols.at("y")));
@@ -1522,11 +1509,15 @@ std::string MakePlotCommand(std::string_view output_name, bool inmemory,
 
 	//std::string fillcolor = GetKeywordArg(plot::fillcolor, "", std::forward<Options>(opts)...);
 	//bool variablecolor_assigned = KeywordExists(plot::variablecolor, std::forward<Options>(opts)...);
-	if (!p.fillcolor.empty()) c += " fillcolor '" + p.fillcolor + "'";
-	else if constexpr (Param::HasVariableFillcolor())
+	if (!p.color.empty()) c += " fillcolor '" + p.color + "'";
+	else if constexpr (Param::HasVariablecolor())
 	{
-		c += " fillcolor palette";
-		if (p.IsData() || p.IsFile()) usg += std::format(":{}", GetCol(cols.at("variable_color")));
+		//現時点でfilledcurvesにはvariable colorを指定する方法がないらしい。
+		//色々と議論があったが、ver6.0現在シンプルな方法はなかった。
+		//様々なworkaroundは提案されていたので気が向いたら作るか。
+		//c += " fillcolor palette z";
+		//if (p.IsData() || p.IsFile()) usg += std::format(":{}", GetCol(cols.at("variable_color")));
+		PrintWarning("WARNING : variable color option is not implemented for filled curves.");
 	}
 	{
 		std::string fs;
@@ -1535,13 +1526,17 @@ std::string MakePlotCommand(std::string_view output_name, bool inmemory,
 		else if (p.fillpattern != -1) fs += std::format(" pattern {}", p.fillpattern);
 		if (!fs.empty()) c += " fillstyle" + fs;
 	}
-	{
+	/*{
 		std::string bd;
 		if (p.bordertype == -2) bd += " noborder";
-		else if (p.bordertype != -3) bd += std::format(" {}", p.bordertype);
+		else if (p.bordertype != -3) bd += std::format(" lt {}", p.bordertype);
 		if (!p.bordercolor.empty()) bd += " linecolor '" + p.bordercolor + "'";
 		if (!bd.empty()) c += " border" + bd;
-	}
+	}*/
+	//比較的新しいバージョンのGnuplotでは、
+	//filledcurvesとfillstepsは仕様上、closedモード時以外にborderを付けられない。
+	//クソ仕様だが仕方がないので、ボーダーは自前でPlotPoints関数に投げることにする。
+	c += " noborder";
 
 	if (p.IsData() || p.IsFile()) return out + usg + c;
 	else return out + c;

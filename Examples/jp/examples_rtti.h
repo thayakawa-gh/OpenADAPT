@@ -276,7 +276,7 @@ void CalculateWithLambda_rtti(const Tree& t)
 	//240点以上取ったことのある生徒を全クラスを対象に数える。
 	//1層（生徒）から-1層（学年全体）へ2層分引き上げるので、count2を使う。
 	//以下はLambda count_student_240 = count2(exist(jpn + math + eng >= 240));と同等である。
-	Lambda count_student_240 = count2(exist_3subjs_240);
+	Lambda count_student_240 = count_if2(exist_3subjs_240);
 	assert(count_student_240.GetLayer() == -1_layer);//ちゃんと-1層になっている。
 	int64_t num_student_240 = count_student_240(t).i64();//-1層（学年全体）のラムダ関数呼び出しであるため、位置情報には意味がなく、bposを与える必要はない。与えても問題はないが。
 	assert(num_student_240 == 2);//該当するのは角兎野誠人と子虚烏有花。
@@ -291,7 +291,7 @@ void CalculateWithLambda_rtti(const Tree& t)
 	//しかし{{参照中の試験}}と{{順位を求めたい生徒の点数}}はどのように表記すればよいのか。
 	//jpnは順位を求めたい生徒ではなく、count内のTraverserが現在指し示している生徒から取得されるので、適切ではない。
 	//これを可能にするのが次の表記である。
-	auto rank = count2(exam == exam.outer(0) && jpn > jpn.outer(0)) + 1;
+	auto rank = count_if2(exam == exam.outer(0) && jpn > jpn.outer(0)) + 1;
 	//階層関数は深度（depth）という値を持つ。階層関数外では0で、階層関数で囲われるごとに+1される。
 	//例えばcount(exist(jpn > 80))という式では、jpn > 80の部分の深度が2となる。
 	//上述のouterは、この深度を与えることで、
@@ -439,7 +439,7 @@ void Show_rtti(const Tree& t)
 	auto greatest_3subjs = greatest(sum_3subjs);
 
 	//o(a)はouter(a)の短縮版。
-	auto rank = count3(exam == 0 && sum_3subjs > jpn.o(0) + math.o(0) + eng.o(0)) + 1;
+	auto rank = count_if3(exam == 0 && sum_3subjs > jpn.o(0) + math.o(0) + eng.o(0)) + 1;
 
 	//rの全てのフィールドの情報を表示するようにしたいが、未実装。
 	//t | Show();

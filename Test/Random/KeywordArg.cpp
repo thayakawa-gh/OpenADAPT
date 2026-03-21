@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <gtest/gtest.h>
 #include <OpenADAPT/Utility/KeywordArgs.h>
 

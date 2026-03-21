@@ -24,7 +24,10 @@ struct PlotBuffer2D
 	PlotBuffer2D(Canvas2D* g) : m_canvas(g) {}
 	PlotBuffer2D(const PlotBuffer2D&) = delete;
 	PlotBuffer2D(PlotBuffer2D&& p) noexcept
-		: m_commands(std::move(p.m_commands)), m_canvas(p.m_canvas)
+		: m_commands(std::move(p.m_commands)), m_canvas(p.m_canvas),
+		m_min(p.m_min), m_max(p.m_max), m_nbin(p.m_nbin),
+		m_stacked_histogram_data(std::move(p.m_stacked_histogram_data)),
+		m_stacked_histogram_bins(std::move(p.m_stacked_histogram_bins))
 	{
 		p.m_canvas = nullptr;
 	}
@@ -33,37 +36,36 @@ struct PlotBuffer2D
 	{
 		m_canvas = p.m_canvas; p.m_canvas = nullptr;
 		m_commands = std::move(p.m_commands);
+		m_min = p.m_min; m_max = p.m_max; m_nbin = p.m_nbin;
+		m_stacked_histogram_data = std::move(p.m_stacked_histogram_data);
+		m_stacked_histogram_bins = std::move(p.m_stacked_histogram_bins);
 		return *this;
 	}
-	virtual ~PlotBuffer2D()
-	{
-		//mCanvasがnullptrでないときはこのPlotBufferが最終処理を担当する。
-		if (m_canvas != nullptr) Flush();
-	}
+	virtual ~PlotBuffer2D();
 
 	void Flush();
 
-	template <acceptable_arg X, acceptable_arg Y,
+	template <acceptable_arg_except_string X, acceptable_arg_except_string Y,
 			  point_option ...Options>
 	PlotBuffer2D PlotPoints(const X& x, const Y& y, Options ...ops)
 	{
 		auto p = MakePointParam(plot::x = x, plot::y = y, ops...);
-		return Plot(p);
+		return PlotPoints(p);
 	}
 	template <point_option ...Options>
 	PlotBuffer2D PlotPoints(std::string_view filename, std::string_view xcol, std::string_view ycol, Options ...ops)
 	{
 		auto p = MakePointParam(plot::input = filename, plot::x = xcol, plot::y = ycol, ops...);
-		return Plot(p);
+		return PlotPoints(p);
 	}
 	template <point_option ...Options>
 	PlotBuffer2D PlotPoints(std::string_view equation, Options ...ops)
 	{
 		auto p = MakePointParam(plot::input = equation, ops...);
-		return Plot(p);
+		return PlotPoints(p);
 	}
 
-	template <acceptable_arg X, acceptable_arg Y,
+	template <acceptable_arg_except_string X, acceptable_arg_except_string Y,
 			  point_option ...Options>
 	PlotBuffer2D PlotLines(X x, Y y, Options ...ops)
 	{
@@ -84,7 +86,18 @@ struct PlotBuffer2D
 	PlotBuffer2D PlotHistogram(const Data& data, double min, double max, size_t nbin, Options ...ops)
 	{
 		auto p = MakeHistogramParam(plot::data = data, plot::min = min, plot::max = max, plot::nbin = nbin, ops...);
-		return Plot(p, ops...);
+		return PlotHistogram(p, ops...);
+	}
+	template <ranges::arithmetic_range Data, histogram_option ...Options>
+	PlotBuffer2D PlotHistogram(const Data& data, Options ...ops)
+	{
+		static_assert(KeywordExists(plot::stack, ops...));
+		if ((this->m_min == 0 && this->m_max == 0 && this->m_nbin == 0) || this->m_stacked_histogram_data.empty())
+		{
+			throw InvalidArg("When stack option is specified, min, max, nbin options must be specified or there must be already plotted histogram data to be stacked on.");
+		}
+		auto p = MakeHistogramParam(plot::data = data, plot::min = this->m_min, plot::max = this->m_max, plot::nbin = this->m_nbin, ops...);
+		return PlotHistogram(p, ops...);
 	}
 	template <ranges::arithmetic_range DataX, ranges::arithmetic_range DataY, binscatter_option ...Options>
 	PlotBuffer2D PlotBinscatter(const DataX& x, double xmin, double xmax, size_t xnbin,
@@ -94,18 +107,18 @@ struct PlotBuffer2D
 		auto p = MakeBinscatterParam(plot::datax = x, plot::xmin = xmin, plot::xmax = xmax, plot::xnbin = xnbin,
 									 plot::datay = y, plot::ymin = ymin, plot::ymax = ymax, plot::ynbin = ynbin,
 									 ops...);
-		return Plot(p, ops...);
+		return PlotBinscatter(p, ops...);
 	}
 
-	template <acceptable_arg X, acceptable_arg Y,
-			  acceptable_arg XL, acceptable_arg YL,
+	template <acceptable_arg_except_string X, acceptable_arg_except_string Y,
+			  acceptable_arg_except_string XL, acceptable_arg_except_string YL,
 			  vector_option ...Options>
 	PlotBuffer2D PlotVectors(const X& xfrom, const Y& yfrom,
 							 const XL& xlen, const YL& ylen,
 							 Options ...ops)
 	{
 		auto p = MakeVectorParam(plot::x = xfrom, plot::y = yfrom, plot::xlen = xlen, plot::ylen = ylen, ops...);
-		return Plot(p);
+		return PlotVectors(p);
 	}
 	template <vector_option ...Options>
 	PlotBuffer2D PlotVectors(std::string_view filename,
@@ -115,50 +128,50 @@ struct PlotBuffer2D
 	{
 		auto p = MakeVectorParam(plot::input = filename,
 								 plot::x = xfrom, plot::xlen = xlen, plot::y = yfrom, plot::ylen = ylen, ops...);
-		return Plot(p);
+		return PlotVectors(p);
 	}
 
-	template <acceptable_arg X, acceptable_arg Y,
+	template <acceptable_arg_except_string X, acceptable_arg_except_string Y,
 			  filledcurve_option ...Options>
 	PlotBuffer2D PlotFilledCurves(const X& x, const Y& y, Options ...ops)
 	{
 		auto p = MakeFilledCurveParam(plot::x = x, plot::y = y, ops...);
-		return Plot(p);
+		return PlotFilledCurves(p);
 	}
 	template <filledcurve_option ...Options>
 	PlotBuffer2D PlotFilledCurves(std::string_view filename, std::string_view x, std::string_view y, Options ...ops)
 	{
 		auto p = MakeFilledCurveParam(plot::input = filename, plot::x = x, plot::y = y, ops...);
-		return Plot(p);
+		return PlotFilledCurves(p);
 	}
-	template <acceptable_arg X, acceptable_arg Y,
-			  acceptable_arg Y2,
+	template <acceptable_arg_except_string X, acceptable_arg_except_string Y,
+			  acceptable_arg_except_string Y2,
 			  filledcurve_option ...Options>
 	PlotBuffer2D PlotFilledCurves(const X& x, const Y& y, const Y2& ybelow, Options ...ops)
 	{
 		auto p = MakeFilledCurveParam(plot::x = x, plot::y = y, plot::ybelow = ybelow, ops...);
-		return Plot(p);
+		return PlotFilledCurves(p);
 	}
 	template <filledcurve_option ...Options>
 	PlotBuffer2D PlotFilledCurves(std::string_view filename, std::string_view x, std::string_view y, std::string_view ybelow,
 								  Options ...ops)
 	{
 		auto p = MakeFilledCurveParam(plot::input = filename, plot::x = x, plot::y = y, plot::ybelow = ybelow, ops...);
-		return Plot(p);
+		return PlotFilledCurves(p);
 	}
 
-	template <acceptable_arg X, acceptable_arg Y, acceptable_arg L,
-		label_option ...Options>
+	template <acceptable_arg_except_string X, acceptable_arg_except_string Y, acceptable_arg_except_string L,
+			  label_option ...Options>
 	PlotBuffer2D PlotLabels(const X& x, const Y& y, const L& label, Options ...ops)
 	{
 		auto p = MakeLabelParam(plot::x = x, plot::y = y, plot::label = label, ops...);
-		return Plot(p);
+		return PlotLabels(p);
 	}
 	template <label_option ...Options>
 	PlotBuffer2D PlotLabels(std::string_view filename, std::string_view xcol, std::string_view ycol, std::string_view labelcol, Options ...ops)
 	{
 		auto p = MakeLabelParam(plot::input = filename, plot::x = xcol, plot::y = ycol, plot::label = labelcol, ops...);
-		return Plot(p);
+		return PlotLabels(p);
 	}
 
 	template <acceptable_matrix_range Map,
@@ -168,50 +181,60 @@ struct PlotBuffer2D
 							  Options ...ops)
 	{
 		auto p = MakeColormapParam(plot::map = map_, plot::xrange = x, plot::yrange = y, ops...);
-		return Plot(p);
+		return PlotColormap(p);
 	}
 	template <acceptable_matrix_range Map, colormap_option ...Options>
 	PlotBuffer2D PlotColormap(const Map& map_, std::pair<double, double> x, std::pair<double, double> y,
 							  Options ...ops)
 	{
 		auto p = MakeColormapParam(plot::map = map_, plot::xminmax = x, plot::yminmax = y, ops...);
-		return Plot(p);
+		return PlotColormap(p);
 	}
 	template <colormap_option ...Options>
 	PlotBuffer2D PlotColormap(std::string_view filename, std::string_view x, std::string_view y, std::string_view map,
 							  Options ...ops)
 	{
 		auto p = MakeColormapParam(plot::input = filename, plot::map = map, plot::xrange = x, plot::yrange = y, ops...);
-		return Plot(p);
+		return PlotColormap(p);
 	}
 	template <colormap_option ...Options>
 	PlotBuffer2D PlotColormap(std::string_view equation, Options ...ops)
 	{
 		auto p = MakeColormapParam(plot::input = equation, ops...);
-		return Plot(p);
+		return PlotColormap(p);
 	}
 
 protected:
 
 	std::string GetSanitizedOutputName() const;
 
-	template <class X, class Y, class XE, class YE, class XEL, class XEH, class YEL, class YEH, class VC, class VS, class VFC>
-	PlotBuffer2D Plot(const PointParam<X, Y, XE, YE, XEL, XEH, YEL, YEH, VC, VS, VFC>& p);
+	template <class X, class Y, class XE, class YE, class XEL, class XEH, class YEL, class YEH, class VC, class VS>
+	PlotBuffer2D PlotPoints(const PointParam<X, Y, XE, YE, XEL, XEH, YEL, YEH, VC, VS>& p);
+	template <bool MakeDataObj, class X, class Y, class XE, class YE, class XEL, class XEH, class YEL, class YEH, class VC, class VS>
+	PlotBuffer2D PlotPoints(std::bool_constant<MakeDataObj>, const PointParam<X, Y, XE, YE, XEL, XEH, YEL, YEH, VC, VS>& p);
 	template <class Data, class Weight, class ...Options>
-	PlotBuffer2D Plot(const HistogramParam<Data, Weight>& p, Options ...ops);
+	PlotBuffer2D PlotHistogram(const HistogramParam<Data, Weight>& p, Options ...ops);
 	template <class X, class Y, class Weight, class ...Options>
-	PlotBuffer2D Plot(const BinscatterParam<X, Y, Weight>& p, Options ...ops);
+	PlotBuffer2D PlotBinscatter(const BinscatterParam<X, Y, Weight>& p, Options ...ops);
 	template <class X, class Y, class XL, class YL, class VC>
-	PlotBuffer2D Plot(const VectorParam<X, Y, XL, YL, VC>& p);
+	PlotBuffer2D PlotVectors(const VectorParam<X, Y, XL, YL, VC>& p);
 	template <class X, class Y, class Y2, class VC>
-	PlotBuffer2D Plot(const FilledCurveParam<X, Y, Y2, VC>& p);
+	PlotBuffer2D PlotFilledCurves(const FilledCurveParam<X, Y, Y2, VC>& p);
+	template <bool MakeDataObj, class X, class Y, class Y2, class VC>
+	PlotBuffer2D PlotFilledCurves(std::bool_constant<MakeDataObj>, const FilledCurveParam<X, Y, Y2, VC>& p);
 	template <class X, class Y, class L, class VTC>
-	PlotBuffer2D Plot(const LabelParam<X, Y, L, VTC>& p);
+	PlotBuffer2D PlotLabels(const LabelParam<X, Y, L, VTC>& p);
 	template <class Map, class X, class Y>
-	PlotBuffer2D Plot(const ColormapParam<Map, X, Y>& p);
+	PlotBuffer2D PlotColormap(const ColormapParam<Map, X, Y>& p);
 
 	std::vector<std::string> m_commands;
 	Canvas2D* m_canvas;
+
+	//スタックヒストグラムのデータを保持する。PlotHistogram_implでデータを追加していき、PlotHistogramの最後にまとめて出力する。
+	double m_min = 0, m_max = 0;
+	size_t m_nbin = 0;
+	std::vector<double> m_stacked_histogram_bins;//スタックヒストグラムの累積値を保持する。PlotHistogram_implで更新していく。
+	std::vector<std::pair<std::string, std::vector<double>>> m_stacked_histogram_data;
 };
 
 class Canvas2D : public Canvas<AxisX<Canvas2D>, AxisY<Canvas2D>, AxisX2<Canvas2D>, AxisY2<Canvas2D>, AxisCB<Canvas2D>>
@@ -221,7 +244,7 @@ public:
 	using Canvas<AxisX<Canvas2D>, AxisY<Canvas2D>, AxisX2<Canvas2D>, AxisY2<Canvas2D>, AxisCB<Canvas2D>>::Canvas;
 	friend class MultiPlotter;
 
-	template <acceptable_arg X, acceptable_arg Y,
+	template <acceptable_arg_except_string X, acceptable_arg_except_string Y,
 			  point_option ...Options>
 	PlotBuffer2D PlotPoints(const X& x, const Y& y, Options ...ops)
 	{
@@ -241,7 +264,7 @@ public:
 		return r.PlotPoints(equation, ops...);
 	}
 
-	template <acceptable_arg X, acceptable_arg Y,
+	template <acceptable_arg_except_string X, acceptable_arg_except_string Y,
 			  point_option ...Options>
 	PlotBuffer2D PlotLines(X x, Y y, Options ...ops)
 	{
@@ -277,8 +300,8 @@ public:
 		return r.PlotBinscatter(x, xmin, xmax, xnbin, y, ymin, ymax, ynbin, ops...);
 	}
 
-	template <acceptable_arg X, acceptable_arg Y,
-			  acceptable_arg XL, acceptable_arg YL,
+	template <acceptable_arg_except_string X, acceptable_arg_except_string Y,
+			  acceptable_arg_except_string XL, acceptable_arg_except_string YL,
 			  vector_option ...Options>
 	PlotBuffer2D PlotVectors(const X& xfrom, const Y& yfrom,
 							 const XL& xlen, const YL& ylen,
@@ -297,7 +320,7 @@ public:
 		return r.PlotVectors(filename, xbegin, ybegin, xlen, ylen, ops...);
 	}
 
-	template <acceptable_arg X, acceptable_arg Y,
+	template <acceptable_arg_except_string X, acceptable_arg_except_string Y,
 			  filledcurve_option ...Options>
 	PlotBuffer2D PlotFilledCurves(const X& x, const Y& y, Options ...ops)
 	{
@@ -310,8 +333,8 @@ public:
 		PlotBuffer2D r(this);
 		return r.PlotFilledCurves(filename, x, y, ops...);
 	}
-	template <acceptable_arg X, acceptable_arg Y,
-			  acceptable_arg Y2,
+	template <acceptable_arg_except_string X, acceptable_arg_except_string Y,
+			  acceptable_arg_except_string Y2,
 			  filledcurve_option ...Options>
 	PlotBuffer2D PlotFilledCurves(const X& x, const Y& y, const Y2& y2, Options ...ops)
 	{
@@ -325,7 +348,7 @@ public:
 		PlotBuffer2D r(this);
 		return r.PlotFilledCurves(filename, x, y, y2, ops...);
 	}
-	template <acceptable_arg X, acceptable_arg Y, acceptable_arg L,
+	template <acceptable_arg_except_string X, acceptable_arg_except_string Y, acceptable_arg_except_string L,
 		label_option ...Options>
 	PlotBuffer2D PlotLabels(const X& x, const Y& y, const L& label, Options ...ops)
 	{
@@ -373,6 +396,32 @@ public:
 	}
 };
 
+inline PlotBuffer2D::~PlotBuffer2D()
+{
+	//mCanvasがnullptrでないときはこのPlotBufferが最終処理を担当する。
+	if (m_canvas != nullptr)
+	{
+		if (!m_stacked_histogram_data.empty())
+		{
+			size_t stack_size = m_stacked_histogram_data.size();
+			for (size_t i = 0; i < stack_size; ++i)
+			{
+				// 自身より後ろのヒストグラムをすべて加算する。
+				for (size_t j = i + 1; j < stack_size; ++j)
+				{
+					auto& self = m_stacked_histogram_data[i].second;
+					const auto& data = m_stacked_histogram_data[j].second;
+					for (size_t k = 0; k < data.size(); ++k)
+					{
+						self[k] += data[k];
+					}
+				}
+				MakeDataObject(m_canvas, m_stacked_histogram_data[i].first, std::tie(m_stacked_histogram_bins, m_stacked_histogram_data[i].second));
+			}
+		}
+		Flush();
+	}
+}
 inline void PlotBuffer2D::Flush()
 {
 	if (m_canvas == nullptr) throw NotInitialized("Buffer is empty");
@@ -392,8 +441,13 @@ inline std::string PlotBuffer2D::GetSanitizedOutputName() const
 	else
 		return m_canvas->GetOutput() + ".tmp" + std::to_string(m_commands.size()) + ".txt";
 }
-template <class X, class Y, class XE, class YE, class XEL, class XEH, class YEL, class YEH, class VC, class VS, class VFC>
-PlotBuffer2D PlotBuffer2D::Plot(const PointParam<X, Y, XE, YE, XEL, XEH, YEL, YEH, VC, VS, VFC>& p)
+template <class X, class Y, class XE, class YE, class XEL, class XEH, class YEL, class YEH, class VC, class VS>
+PlotBuffer2D PlotBuffer2D::PlotPoints(const PointParam<X, Y, XE, YE, XEL, XEH, YEL, YEH, VC, VS>& p)
+{
+	return PlotPoints(std::true_type{}, p);
+}
+template <bool MakeDataObj, class X, class Y, class XE, class YE, class XEL, class XEH, class YEL, class YEH, class VC, class VS>
+PlotBuffer2D PlotBuffer2D::PlotPoints(std::bool_constant<MakeDataObj>, const PointParam<X, Y, XE, YE, XEL, XEH, YEL, YEH, VC, VS>& p)
 {
 	std::string command;
 	if (p.IsData())
@@ -412,13 +466,13 @@ PlotBuffer2D PlotBuffer2D::Plot(const PointParam<X, Y, XE, YE, XEL, XEH, YEL, YE
 			ArrangeColumnOption<0, 1>(column, labelcolumn, m_canvas,
 									  std::array<std::string, 11>{ "x", "y", "xerrorbar", "xerrlow", "xerrhigh",
 									  "yerrorbar", "yerrlow", "yerrhigh",
-									  "variable_color", "variable_size", "variable_fillcolor" },
+									  "variable_color", "variable_size" },
 									  std::array<std::string_view, 11>{ x_x2, y_y2, "", "", "", "", "", "", "", "", "" },
 									  p.x, p.y, p.xerrorbar, p.xerrlow, p.xerrhigh, p.yerrorbar, p.yerrlow, p.yerrhigh,
-									  p.variable_color, p.variable_size, p.variable_fillcolor);
+									  p.variable_color, p.variable_size);
 		//dataでない場合、コンパイル時にrangesが空になってエラーになりうる。
 		//ので、空tupleだったら何もしない。
-		if constexpr (std::tuple_size_v<decltype(ranges)> != 0)
+		if constexpr (std::tuple_size_v<decltype(ranges)> != 0 && MakeDataObj)
 			MakeDataObject(m_canvas, output_name, ranges);
 		//if (!labelcolumn.empty()) column.emplace_back(std::move(labelcolumn));
 
@@ -440,7 +494,6 @@ PlotBuffer2D PlotBuffer2D::Plot(const PointParam<X, Y, XE, YE, XEL, XEH, YEL, YE
 		AddColumn(p.yerrhigh, "yerrhigh", column);
 		AddColumn(p.variable_color, "variable_color", column);
 		AddColumn(p.variable_size, "variable_size", column);
-		AddColumn(p.variable_fillcolor, "variable_fillcolor", column);
 		command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
 	}
 	else if (p.IsEquation())
@@ -453,23 +506,80 @@ PlotBuffer2D PlotBuffer2D::Plot(const PointParam<X, Y, XE, YE, XEL, XEH, YEL, YE
 	return std::move(*this);
 }
 template <class Data, class Weight, class ...Options>
-PlotBuffer2D PlotBuffer2D::Plot(const HistogramParam<Data, Weight>& p, Options ...ops)
+PlotBuffer2D PlotBuffer2D::PlotHistogram(const HistogramParam<Data, Weight>& p, Options ...ops)
 {
 	constexpr bool HasWeight = !std::same_as<std::ranges::empty_view<double>, Weight>;
+
+	BinError be = p.binerror;
+	Style sty = Style::none;
+	// ユーザーからの指定がある場合は何よりそれを優先する。
+	if constexpr (KeywordExists(plot::style, ops...))
+		sty = GetKeywordArg(plot::style, ops...);
+	else
+	{
+		if (p.stack)
+		{
+			//stackオプションが指定されている場合は、fillstepsスタイルで出力する。
+			//stackのときはerrorを使用できない。
+			if (be != BinError::none) PrintWarning("BinError option is not supported when stack option is specified. BinError option will be ignored.");
+			sty = Style::steps;
+		}
+		else
+		{
+			//binerrorオプションが指定されている場合は、通常のヒストグラムでも累積でもpointsでよい。
+			//ただし、weightオプションが指定されているときはBinerror::poissonは使用不可であるので、histepsかlinespointsにする。
+			if (be != BinError::none)
+			{
+				if constexpr (HasWeight)
+				{
+					if (be == BinError::poisson68 || be == BinError::poisson95)
+					{
+						PrintWarning("Poisson error is not supported when weight option is specified. BinError option will be ignored.");
+						sty = (p.cumul || p.inv_cumul) ? Style::linespoints : Style::histeps;
+					}
+					else sty = (p.cumul || p.inv_cumul) ? Style::linespoints : Style::points;
+				}
+				else sty = (p.cumul || p.inv_cumul) ? Style::linespoints : Style::points;
+			}
+			else
+			{
+				sty = (p.cumul || p.inv_cumul) ? Style::linespoints : Style::histeps;
+			}
+		}
+	}
 	//histepsなら最後のビンに0を追加する必要はないらしい。
-	std::vector<std::conditional_t<HasWeight, double, int64_t>> hist;
+	std::vector<double> hist;
 	//累積ヒストグラムの場合、ビンの中身ではなく両側での値を境界部分にプロットする必要があるため、ビン数+1のサイズにする。
-	size_t binsize = (p.cumul || p.inv_cumul) ? (p.xnbin + 1) : p.xnbin;
-	hist.resize(binsize, 0.);
+	//またstepsを使うには最後のビンに0が入っていなければならないので、ビン数+1のサイズにする必要がある。
+	size_t binsize = (p.cumul || p.inv_cumul || sty == Style::steps) ? (p.xnbin + 1) : p.xnbin;
+	hist.resize(binsize, 0);
 	int64_t firstbin = p.cumul ? 1 : 0;
 	int64_t lastbin = p.cumul ? p.xnbin + 1 : p.xnbin;
-	[[maybe_unused]] std::vector<double> weighted_errors(binsize, 0.);
 	double wbin = (p.xmax - p.xmin) / p.xnbin;
-	//cumul==trueのときだけ（inv_cumulでは不要）最初のビンをずらす必要がある。
-	auto ibin = [&p, wbin, firstbin](double v)
+	double xerrors = 0.;
+	std::vector<double> yerrors;
+	if (be == BinError::normal68 || be == BinError::normal95)
 	{
-		return (int64_t)((v - p.xmin) / wbin) + firstbin;
-	};
+		yerrors.resize(binsize, 0.);
+		if (!(p.cumul || p.inv_cumul))
+		{
+			//累積相対度数の場合はyerrorlinesでプロットしたいので、xerrorsは0のままにしておく。
+			xerrors = wbin / 2.;
+		}
+	}
+	std::vector<double> yerrlow, yerrhigh;
+	if (be == BinError::poisson68 || be == BinError::poisson95)
+	{
+		yerrlow.resize(binsize, 0.);
+		yerrhigh.resize(binsize, 0.);
+		if (!(p.cumul || p.inv_cumul))
+		{
+			//累積相対度数の場合はyerrorlinesでプロットしたいので、xerrorsは0のままにしておく。
+			xerrors = wbin / 2.;
+		}
+	}
+	//cumul==trueのときだけ（inv_cumulでは不要）最初のビンをずらす必要がある。
+	auto ibin = [&p, wbin, firstbin](double v) { return (int64_t)((v - p.xmin) / wbin) + firstbin; };
 	if constexpr (HasWeight)
 	{
 		auto weight_ = [](const auto& w)
@@ -484,7 +594,7 @@ PlotBuffer2D PlotBuffer2D::Plot(const HistogramParam<Data, Weight>& p, Options .
 			int64_t i = ibin(v);
 			if (i < firstbin || std::cmp_greater_equal(i, lastbin)) continue;
 			hist[i] += w;
-			weighted_errors[i] += (w * w);
+			if (be == BinError::normal68 || be == BinError::normal95) yerrors[i] += (w * w);
 		}
 		//累積ヒストグラムの場合、単にビンごとに振り分けるだけではなく、
 		//その中身の累積を計算し割合にする必要がある。
@@ -494,13 +604,13 @@ PlotBuffer2D PlotBuffer2D::Plot(const HistogramParam<Data, Weight>& p, Options .
 			for (size_t i = 1; i < binsize; ++i)
 			{
 				hist[i] += hist[i - 1];
-				weighted_errors[i] += weighted_errors[i - 1];
+				if (be == BinError::normal68 || be == BinError::normal95) yerrors[i] += yerrors[i - 1];
 			}
 			double total = hist.back();
 			for (size_t i = 0; i < binsize; ++i)
 			{
 				hist[i] /= total;
-				weighted_errors[i] /= (total * total);
+				if (be == BinError::normal68 || be == BinError::normal95) yerrors[i] /= (total * total);
 			}
 		}
 		else if (p.inv_cumul)
@@ -509,13 +619,22 @@ PlotBuffer2D PlotBuffer2D::Plot(const HistogramParam<Data, Weight>& p, Options .
 			for (size_t i = binsize; i > 0; --i)
 			{
 				hist[i - 1] += hist[i];
-				weighted_errors[i - 1] += weighted_errors[i];
+				if (be == BinError::normal68 || be == BinError::normal95) yerrors[i - 1] += yerrors[i];
 			}
 			double total = hist[0];
 			for (size_t i = 0; i < binsize; ++i)
 			{
 				hist[i] /= total;
-				weighted_errors[i] /= (total * total);
+				if (be == BinError::normal68 || be == BinError::normal95) yerrors[i] /= (total * total);
+			}
+		}
+
+		if (be == BinError::normal68 || be == BinError::normal95)
+		{
+			for (size_t i = 0; i < binsize; ++i)
+			{
+				if (be == BinError::normal68) yerrors[i] = std::sqrt(yerrors[i]);
+				else yerrors[i] = std::sqrt(yerrors[i]) * 1.96;
 			}
 		}
 	}
@@ -533,75 +652,178 @@ PlotBuffer2D PlotBuffer2D::Plot(const HistogramParam<Data, Weight>& p, Options .
 		{
 			for (size_t i = 1; i < binsize; ++i)
 				hist[i] += hist[i - 1];
-			double total = hist.back();
-			for (auto& v : hist) v /= total;
 		}
 		else if (p.inv_cumul)
 		{
 			for (size_t i = binsize - 1; i > 0; --i)
 				hist[i - 1] += hist[i];
-			double total = hist[0];
-			for (auto& v : hist) v /= total;
 		}
-	}
 
-	std::vector<double> x;// (p.xnbin);
-	if (p.cumul || p.inv_cumul)
-	{
-		x.resize(p.xnbin + 1);
-		for (size_t i = 0; i <= p.xnbin; ++i) x[i] = p.xmin + wbin * i;
-	}
-	else
-	{
-		x.resize(p.xnbin);
-		for (size_t i = 0; i < p.xnbin; ++i) x[i] = p.xmin + wbin * (i + 0.5);
-	}
-	BinError be = p.binerror;
-
-	if (be != BinError::none)
-	{
-		if (be == BinError::poisson68 || be == BinError::poisson95)
+		if (be == BinError::normal68 || be == BinError::normal95)
 		{
-			if constexpr (HasWeight)
-				PrintWarning("WARNING : weight option is not supported for Poisson confidence interval error bars. Ignoring weight.");
-			std::vector<double> yerrlow(p.xnbin), yerrhigh(p.xnbin);
-			for (size_t i = 0; i < p.xnbin; ++i)
+			for (size_t i = 0; i < binsize; ++i)
+			{
+				if (be == BinError::normal68) yerrors[i] = std::sqrt(hist[i]);
+				else yerrors[i] = std::sqrt(hist[i]) * 1.96;
+			}
+		}
+		else if (be == BinError::poisson68 || be == BinError::poisson95)
+		{
+			for (size_t i = 0; i < binsize; ++i)
 			{
 				if (be == BinError::poisson68)
 					std::tie(yerrlow[i], yerrhigh[i]) = GetPoissonCI68((uint64_t)hist[i]);
 				else
 					std::tie(yerrlow[i], yerrhigh[i]) = GetPoissonCI95((uint64_t)hist[i]);
 			}
-			//エラーバーありなら累積でも通常でもxyerrorbarsでよい。
-			auto p2 = MakePointParam(plot::x = x, plot::y = hist, ops..., plot::s_points, plot::xerrorbar = wbin / 2., plot::yerrlow = yerrlow, plot::yerrhigh = yerrhigh);
-			return Plot(p2);
 		}
-		else
+
+		//最後に、cumul/inv_cumulの場合はビンごとの値を割合にする必要がある。
+		if (p.cumul || p.inv_cumul)
 		{
-			std::vector<double> yerr(p.xnbin);
-			for (size_t i = 0; i < p.xnbin; ++i)
+			double total = p.cumul ? hist.back() : hist[0];
+			for (auto& v : hist) v /= total;
+			if (be == BinError::normal68 || be == BinError::normal95)
 			{
-				if constexpr (HasWeight)
-					yerr[i] = std::sqrt(weighted_errors[i]);
-				else
-					yerr[i] = std::sqrt(hist[i]);
-				if (be == BinError::normal95) yerr[i] *= 1.96;
+				for (auto& v : yerrors) v /= total;
 			}
-			//エラーバーありなら累積でも通常でもxyerrorbarsでよい。
-			auto p2 = MakePointParam(plot::x = x, plot::y = hist, ops..., plot::s_points, plot::xerrorbar = wbin / 2., plot::yerrorbar = yerr);
-			return Plot(p2);
+			else if (be == BinError::poisson68 || be == BinError::poisson95)
+			{
+				for (size_t i = 0; i < binsize; ++i)
+				{
+					yerrlow[i] /= total;
+					yerrhigh[i] /= total;
+				}
+			}
 		}
+	}
+
+	std::vector<double> x;// (p.xnbin);
+	if (p.cumul || p.inv_cumul || sty == Style::steps)
+	{
+		x.resize(binsize);
+		for (size_t i = 0; i < binsize; ++i) x[i] = p.xmin + wbin * i;
 	}
 	else
 	{
-		//エラーバーなしなら累積の場合はlinespointsにする。
-		Style s = p.cumul || p.inv_cumul ? Style::linespoints : Style::histeps;
-		auto p2 = MakePointParam(plot::x = x, plot::y = hist, ops..., plot::style = s);
-		return Plot(p2);
+		x.resize(binsize);
+		for (size_t i = 0; i < binsize; ++i) x[i] = p.xmin + wbin * (i + 0.5);
+	}
+
+	if (p.stack)
+	{
+		//スタックヒストグラムの場合、データをまとめる必要がある。m_stacked_histogram_dataにデータを追加していき、Flushのときにまとめて出力する。
+		auto p2 = MakeFilledCurveParam(plot::x = x, plot::y = hist, ops..., plot::style = sty, plot::fillsolid = 0.5);
+
+		if (m_stacked_histogram_bins.empty())
+		{
+			m_min = p.xmin;
+			m_max = p.xmax;
+			m_nbin = p.xnbin;
+			std::ranges::copy(x, std::back_inserter(m_stacked_histogram_bins));
+		}
+		std::vector<double> y(hist.size());
+		std::ranges::copy(hist, y.begin());
+		m_stacked_histogram_data.emplace_back(GetSanitizedOutputName(), std::move(y));
+
+		return PlotFilledCurves(std::false_type{}, p2);
+	}
+	else
+	{
+		if (!yerrors.empty())
+		{
+			if (xerrors != 0.)
+			{
+				auto p2 = MakePointParam(plot::x = x, plot::y = hist, ops..., plot::style = sty, plot::xerrorbar = xerrors, plot::yerrorbar = yerrors);
+				return PlotPoints(p2);
+			}
+			else
+			{
+				auto p2 = MakePointParam(plot::x = x, plot::y = hist, ops..., plot::style = sty, plot::yerrorbar = yerrors);
+				return PlotPoints(p2);
+			}
+		}
+		else if (!yerrlow.empty() && !yerrhigh.empty())
+		{
+			if (xerrors != 0.)
+			{
+				auto p2 = MakePointParam(plot::x = x, plot::y = hist, ops..., plot::style = sty, plot::xerrorbar = xerrors, plot::yerrlow = yerrlow, plot::yerrhigh = yerrhigh);
+				return PlotPoints(p2);
+			}
+			else
+			{
+				auto p2 = MakePointParam(plot::x = x, plot::y = hist, ops..., plot::style = sty, plot::yerrlow = yerrlow, plot::yerrhigh = yerrhigh);
+				return PlotPoints(p2);
+			}
+		}
+		else
+		{
+			auto p2 = MakePointParam(plot::x = x, plot::y = hist, ops..., plot::style = sty);
+			return PlotPoints(p2);
+		}
 	}
 }
+/*template <class X, class Y, class XE, class YE, class XEL, class XEH, class YEL, class YEH, class VC, class VS>
+PlotBuffer2D PlotBuffer2D::PlotHistogram_impl(bool stack, double min, double max, size_t nbin, const PointParam<X, Y, XE, YE, XEL, XEH, YEL, YEH, VC, VS>& p)
+{
+	std::string output_name = GetSanitizedOutputName();
+	auto [x_x2, y_y2] = GetAxes2D(p);
+	if (x_x2 == "x2") m_canvas->Command("set x2tics");
+	if (y_y2 == "y2") m_canvas->Command("set y2tics");
+
+	//変数名とカラムのセット。
+	std::map<std::string, std::variant<int, std::string>> column;
+	std::vector<std::string> labelcolumn;
+
+	//rangesは各変数のうち空でないものがtupleとしてまとめられている。
+	auto ranges =
+		ArrangeColumnOption<0, 1>(column, labelcolumn, m_canvas,
+								  std::array<std::string, 11>{ "x", "y", "xerrorbar", "xerrlow", "xerrhigh",
+								  "yerrorbar", "yerrlow", "yerrhigh",
+								  "variable_color", "variable_size" },
+								  std::array<std::string_view, 11>{ x_x2, y_y2, "", "", "", "", "", "", "", "" },
+								  p.x, p.y, p.xerrorbar, p.xerrlow, p.xerrhigh, p.yerrorbar, p.yerrlow, p.yerrhigh,
+								  p.variable_color, p.variable_size);
+
+	MakeDataObject(m_canvas, output_name, ranges);
+
+	std::string command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, p);
+
+	m_commands.push_back(command);
+	return std::move(*this);
+}
+template <class X, class Y, class Y2, class VC>
+PlotBuffer2D PlotBuffer2D::PlotHistogram_impl(double min, double max, size_t nbin, const FilledCurveParam<X, Y, Y2, VC>& p)
+{
+	std::string output_name = GetSanitizedOutputName();
+	auto [x_x2, y_y2] = GetAxes2D(p);
+	if (x_x2 == "x2") m_canvas->Command("set x2tics");
+	if (y_y2 == "y2") m_canvas->Command("set y2tics");
+
+	//変数名とカラムのセット。
+	std::map<std::string, std::variant<int, std::string>> column;
+	std::vector<std::string> labelcolumn;
+
+	if (m_stacked_histogram_bins.empty())
+	{
+		m_min = min;
+		m_max = max;
+		m_nbin = nbin;
+		std::ranges::copy(p.x, std::back_inserter(m_stacked_histogram_bins));
+	}
+	std::vector<double> y(p.y.size());
+	std::ranges::copy(p.y, y.begin());
+	m_stacked_histogram_data.emplace_back(output_name, std::move(y));
+	column[x_x2] = 1;
+	column[y_y2] = 2;
+
+	std::string command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, p);
+	m_commands.push_back(command);
+	return std::move(*this);
+}*/
+
 template <class X, class Y, class Weight, class ...Options>
-PlotBuffer2D PlotBuffer2D::Plot(const BinscatterParam<X, Y, Weight>& p, Options ...ops)
+PlotBuffer2D PlotBuffer2D::PlotBinscatter(const BinscatterParam<X, Y, Weight>& p, Options ...ops)
 {
 	constexpr bool HasWeight = !std::same_as<std::ranges::empty_view<double>, Weight>;
 	Matrix<double, 2> hist(p.xnbin, p.ynbin);
@@ -636,7 +858,7 @@ PlotBuffer2D PlotBuffer2D::Plot(const BinscatterParam<X, Y, Weight>& p, Options 
 			d = hist[(uint32_t)ix][(uint32_t)iy];
 		}
 		auto p2 = MakePointParam(plot::x = vx, plot::y = vy, plot::variable_color = dens, ops..., plot::pt_fcir, plot::ps_ex_small);
-		return Plot(p2);
+		return PlotPoints(p2);
 	}
 	else
 	{
@@ -655,11 +877,11 @@ PlotBuffer2D PlotBuffer2D::Plot(const BinscatterParam<X, Y, Weight>& p, Options 
 			}
 		}
 		auto p2 = MakeColormapParam(plot::map = hist, plot::xminmax = xminmax, plot::yminmax = yminmax, ops...);
-		return Plot(p2);
+		return PlotColormap(p2);
 	}
 }
 template <class X, class Y, class XL, class YL, class VC>
-PlotBuffer2D PlotBuffer2D::Plot(const VectorParam<X, Y, XL, YL, VC>& p)
+PlotBuffer2D PlotBuffer2D::PlotVectors(const VectorParam<X, Y, XL, YL, VC>& p)
 {
 	std::string command;
 	if (p.IsData())
@@ -702,51 +924,98 @@ PlotBuffer2D PlotBuffer2D::Plot(const VectorParam<X, Y, XL, YL, VC>& p)
 	return std::move(*this);
 }
 template <class X, class Y, class Y2, class VC>
-PlotBuffer2D PlotBuffer2D::Plot(const FilledCurveParam<X, Y, Y2, VC>& p)
+PlotBuffer2D PlotBuffer2D::PlotFilledCurves(const FilledCurveParam<X, Y, Y2, VC>& p)
+{
+	return PlotFilledCurves(std::true_type{}, p);
+}
+template <bool MakeDataObj, class X, class Y, class Y2, class VC>
+PlotBuffer2D PlotBuffer2D::PlotFilledCurves(std::bool_constant<MakeDataObj>, const FilledCurveParam<X, Y, Y2, VC>& p)
 {
 	std::string command;
+	std::string output_name;
+	std::map<std::string, std::variant<int, std::string>> column;
+	std::vector<std::string> labelcolumn;
+
+	auto set_point_params = [&p](auto& pp)
+	{
+		if (p.style == Style::boxes) pp.style = Style::boxes;
+		else if (p.style == Style::steps) pp.style = Style::steps;
+		if (!p.bordercolor.empty()) pp.color = p.bordercolor;
+		else if (!p.color.empty()) pp.color = p.color;
+		if (p.bordertype != -2) pp.linetype = p.bordertype;
+	};
 	if (p.IsData())
 	{
-		std::string output_name = GetSanitizedOutputName();
+		output_name = GetSanitizedOutputName();
 		auto [x_x2, y_y2] = GetAxes2D(p);
 		if (x_x2 == "x2") m_canvas->Command("set x2tics");
 		if (y_y2 == "y2") m_canvas->Command("set y2tics");
-
-		std::map<std::string, std::variant<int, std::string>> column;
-		std::vector<std::string> labelcolumn;
-
 		auto ranges =
 			ArrangeColumnOption<0, 1>(column, labelcolumn, m_canvas,
-									  std::array<std::string, 4>{ "x", "y", "ybelow", "variable_fillcolor" },
-									  std::array<std::string_view, 4>{ x_x2, y_y2, y_y2, ""},
-									  p.x, p.y, p.ybelow, p.variable_fillcolor);
-		if constexpr (std::tuple_size_v<decltype(ranges)> != 0)
+									  std::array<std::string, 4>{ "x", "y", "ybelow", "variable_color" },
+									  std::array<std::string_view, 4>{ x_x2, y_y2, y_y2, "" },
+									  p.x, p.y, p.ybelow, p.variable_color);
+		if constexpr (std::tuple_size_v<decltype(ranges)> != 0 && MakeDataObj)
 			MakeDataObject(m_canvas, output_name, ranges);
 		//if (!labelcolumn.empty()) column.emplace_back(std::move(labelcolumn));
 
 		command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, p);
+		if (!p.noborder)
+		{
+			auto pp = MakePointParam(plot::x = p.x, plot::y = p.y, plot::variable_color = p.variable_color, plot::s_lines, plot::notitle, plot::axis = p.axis, plot::smooth = p.smooth);
+			set_point_params(pp);
+			command += ", " + MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, pp);
+			if constexpr (FilledCurveParam<X, Y, Y2, VC>::HasYBelow())
+			{
+				auto pp = MakePointParam(plot::x = p.x, plot::y = p.ybelow, plot::variable_color = p.variable_color, plot::s_lines, plot::notitle, plot::axis = p.axis, plot::smooth = p.smooth);
+				set_point_params(pp);
+				command += ", " + MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, pp);
+			}
+		}
 	}
 	else if (p.IsFile())
 	{
-		std::map<std::string, std::variant<int, std::string>> column;
-		std::vector<std::string> labelcolumn;
+		output_name = p.input;
 		AddColumn(p.x, "x", column);
 		AddColumn(p.y, "y", column);
 		AddColumn(p.ybelow, "y2", column);
-		AddColumn(p.variable_fillcolor, "variable_fillcolor", column);
+		AddColumn(p.variable_color, "variable_color", column);
 		command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+		if (!p.noborder)
+		{
+			auto pp = MakePointParam(plot::input = p.input, plot::x = p.x, plot::y = p.y, plot::variable_color = p.variable_color, plot::s_lines, plot::notitle, plot::axis = p.axis, plot::smooth = p.smooth);
+			set_point_params(pp);
+			command += ", " + MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, pp);
+			if constexpr (FilledCurveParam<X, Y, Y2, VC>::HasYBelow())
+			{
+				auto pp = MakePointParam(plot::input = p.input, plot::x = p.x, plot::y = p.ybelow, plot::variable_color = p.variable_color, plot::s_lines, plot::notitle, plot::axis = p.axis, plot::smooth = p.smooth);
+				set_point_params(pp);
+				command += ", " + MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, pp);
+			}
+		}
 	}
 	else if (p.IsEquation())
 	{
-		std::map<std::string, std::variant<int, std::string>> column;
-		std::vector<std::string> labelcolumn;
+		output_name = p.input;
 		command = MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), p.input, column, labelcolumn, p);
+		if (!p.noborder)
+		{
+			auto pp = MakePointParam(plot::input = p.input, plot::variable_color = p.variable_color, plot::s_lines, plot::notitle, plot::axis = p.axis, plot::smooth = p.smooth);
+			set_point_params(pp);
+			command += ", " + MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, pp);
+			if constexpr (FilledCurveParam<X, Y, Y2, VC>::HasYBelow())
+			{
+				auto pp = MakePointParam(plot::input = p.input, plot::variable_color = p.variable_color, plot::s_lines, plot::notitle, plot::axis = p.axis, plot::smooth = p.smooth);
+				set_point_params(pp);
+				command += ", " + MakePlotCommandCommon(m_canvas->IsInMemoryDataTransferEnabled(), output_name, column, labelcolumn, pp);
+			}
+		}
 	}
 	m_commands.push_back(command);
 	return std::move(*this);
 }
 template <class X, class Y, class L, class VTC>
-PlotBuffer2D PlotBuffer2D::Plot(const LabelParam<X, Y, L, VTC>& p)
+PlotBuffer2D PlotBuffer2D::PlotLabels(const LabelParam<X, Y, L, VTC>& p)
 {
 	std::string command;
 	if (p.IsData())
@@ -795,7 +1064,7 @@ PlotBuffer2D PlotBuffer2D::Plot(const LabelParam<X, Y, L, VTC>& p)
 	return std::move(*this);
 }
 template <class Map, class X, class Y>
-PlotBuffer2D PlotBuffer2D::Plot(const ColormapParam<Map, X, Y>& p)
+PlotBuffer2D PlotBuffer2D::PlotColormap(const ColormapParam<Map, X, Y>& p)
 {
 	constexpr bool xrange_assigned = !PlotParamBase::IsEmptyView<X>();
 	constexpr bool yrange_assigned = !PlotParamBase::IsEmptyView<Y>();
@@ -889,7 +1158,7 @@ struct PlotBuffer3D
 
 	void Flush();
 
-	template <acceptable_arg X, acceptable_arg Y, acceptable_arg Z,
+	template <acceptable_arg_except_string X, acceptable_arg_except_string Y, acceptable_arg_except_string Z,
 			  point_option ...Options>
 	PlotBuffer3D PlotPoints(const X& x, const Y& y, const Z& z, Options ...ops)
 	{
@@ -904,7 +1173,7 @@ struct PlotBuffer3D
 		auto p = MakePoint3DParam(plot::input = filename, plot::x = x, plot::y = y, plot::z = z, ops...);
 		return Plot(p);
 	}
-	template <acceptable_arg X, acceptable_arg Y,
+	template <acceptable_arg_except_string X, acceptable_arg_except_string Y,
 			  point_option ...Options>
 	PlotBuffer3D PlotPoints(const X& x, const Y& y, Options ...ops)
 	{
@@ -926,7 +1195,7 @@ struct PlotBuffer3D
 		return Plot(p);
 	}
 
-	template <acceptable_arg X, acceptable_arg Y, acceptable_arg Z,
+	template <acceptable_arg_except_string X, acceptable_arg_except_string Y, acceptable_arg_except_string Z,
 			  point_option ...Options>
 	PlotBuffer3D PlotLines(const X& x, const Y& y, const Z& z, Options ...ops)
 	{
@@ -939,7 +1208,7 @@ struct PlotBuffer3D
 	{
 		return PlotPoints(filename, x, y, z, plot::style = Style::lines, ops...);
 	}
-	template <acceptable_arg X, acceptable_arg Y,
+	template <acceptable_arg_except_string X, acceptable_arg_except_string Y,
 			  point_option ...Options>
 	PlotBuffer3D PlotLines(const X& x, const Y& y, Options ...ops)
 	{
@@ -958,8 +1227,8 @@ struct PlotBuffer3D
 		return PlotPoints(equation, plot::style = Style::lines, ops...);
 	}
 
-	template <acceptable_arg X, acceptable_arg Y, acceptable_arg Z,
-			  acceptable_arg XL, acceptable_arg YL, acceptable_arg ZL,
+	template <acceptable_arg_except_string X, acceptable_arg_except_string Y, acceptable_arg_except_string Z,
+			  acceptable_arg_except_string XL, acceptable_arg_except_string YL, acceptable_arg_except_string ZL,
 			  vector_option ...Options>
 	PlotBuffer3D PlotVectors(const X& xfrom, const Y& yfrom, const Z& zfrom,
 							 const XL& xlen, const YL& ylen, const ZL& zlen,
@@ -980,8 +1249,8 @@ struct PlotBuffer3D
 								   plot::xlen = xlen, plot::ylen = ylen, plot::zlen = zlen, ops...);
 		return Plot(p);
 	}
-	template <acceptable_arg X, acceptable_arg Y,
-			  acceptable_arg XL, acceptable_arg YL,
+	template <acceptable_arg_except_string X, acceptable_arg_except_string Y,
+			  acceptable_arg_except_string XL, acceptable_arg_except_string YL,
 			  vector_option ...Options>
 	PlotBuffer3D PlotVectors(const X& xfrom, const Y& yfrom,
 							 const XL& xlen, const YL& ylen,
@@ -1003,7 +1272,7 @@ struct PlotBuffer3D
 		return Plot(p);
 	}
 
-	template <acceptable_arg X, acceptable_arg Y, acceptable_arg L,
+	template <acceptable_arg_except_string X, acceptable_arg_except_string Y, acceptable_arg_except_string L,
 		label_option ...Options>
 	PlotBuffer3D PlotLabels(const X& x, const Y& y, const L& label, Options ...ops)
 	{
@@ -1017,7 +1286,7 @@ struct PlotBuffer3D
 								  plot::label = labelcol, ops...);
 		return Plot(p);
 	}
-	template <acceptable_arg X, acceptable_arg Y, acceptable_arg Z, acceptable_arg L,
+	template <acceptable_arg_except_string X, acceptable_arg_except_string Y, acceptable_arg_except_string Z, acceptable_arg_except_string L,
 		label_option ...Options>
 	PlotBuffer3D PlotLabels(const X& x, const Y& y, const Z& z, const L& label, Options ...ops)
 	{
@@ -1094,8 +1363,8 @@ protected:
 
 	std::string GetSanitizedOutputName() const;
 
-	template <class X, class Y, class Z, class XE, class XEL, class XEH, class YE, class YEL, class YEH, class VC, class VS, class VFC>
-	PlotBuffer3D Plot(const PointParam3D<X, Y, Z, XE, XEL, XEH, YE, YEL, YEH, VC, VS, VFC>& p);
+	template <class X, class Y, class Z, class XE, class XEL, class XEH, class YE, class YEL, class YEH, class VC, class VS>
+	PlotBuffer3D Plot(const PointParam3D<X, Y, Z, XE, XEL, XEH, YE, YEL, YEH, VC, VS>& p);
 	template <class X, class Y, class Z, class XL, class YL, class ZL, class VC>
 	PlotBuffer3D Plot(const VectorParam3D<X, Y, Z, XL, YL, ZL, VC>& p);
 	//CMはFilledCurveをサポートしない。
@@ -1142,7 +1411,7 @@ public:
 	void SetXYPlaneRelative(double frac) { this->Command("set xyplane relative ", frac); }
 	void SetXYPlaneAt(double z) { this->Command("set xyplane at ", z); }
 
-	template <acceptable_arg X, acceptable_arg Y, acceptable_arg Z,
+	template <acceptable_arg_except_string X, acceptable_arg_except_string Y, acceptable_arg_except_string Z,
 			  point_option ...Options>
 	PlotBuffer3D PlotPoints(const X& x, const Y& y, const Z& z, Options ...ops)
 	{
@@ -1157,7 +1426,7 @@ public:
 		PlotBuffer3D p(this);
 		return p.PlotPoints(filename, x, y, z, ops...);
 	}
-	template <acceptable_arg X, acceptable_arg Y,
+	template <acceptable_arg_except_string X, acceptable_arg_except_string Y,
 			  point_option ...Options>
 	PlotBuffer3D PlotPoints(const X& x, const Y& y, Options ...ops)
 	{
@@ -1179,7 +1448,7 @@ public:
 		return p.PlotPoints(equation, ops...);
 	}
 
-	template <acceptable_arg X, acceptable_arg Y, acceptable_arg Z,
+	template <acceptable_arg_except_string X, acceptable_arg_except_string Y, acceptable_arg_except_string Z,
 			  point_option ...Options>
 	PlotBuffer3D PlotLines(const X& x, const Y& y, const Z& z, Options ...ops)
 	{
@@ -1194,7 +1463,7 @@ public:
 		PlotBuffer3D p(this);
 		return p.PlotLines(filename, x, y, z, ops...);
 	}
-	template <acceptable_arg X, acceptable_arg Y,
+	template <acceptable_arg_except_string X, acceptable_arg_except_string Y,
 			  point_option ...Options>
 	PlotBuffer3D PlotLines(const X& x, const Y& y, Options ...ops)
 	{
@@ -1216,8 +1485,8 @@ public:
 		return p.PlotLines(equation, ops...);
 	}
 
-	template <acceptable_arg X, acceptable_arg Y, acceptable_arg Z,
-			  acceptable_arg XL, acceptable_arg YL, acceptable_arg ZL,
+	template <acceptable_arg_except_string X, acceptable_arg_except_string Y, acceptable_arg_except_string Z,
+			  acceptable_arg_except_string XL, acceptable_arg_except_string YL, acceptable_arg_except_string ZL,
 			  vector_option ...Options>
 	PlotBuffer3D PlotVectors(const X& xfrom, const Y& yfrom, const Z& zfrom,
 							 const XL& xlen, const YL& ylen, const ZL& zlen,
@@ -1235,8 +1504,8 @@ public:
 		PlotBuffer3D p(this);
 		return p.PlotVectors(filename, xfrom, yfrom, zfrom, xlen, ylen, zlen, ops...);
 	}
-	template <acceptable_arg X, acceptable_arg Y,
-			  acceptable_arg XL, acceptable_arg YL,
+	template <acceptable_arg_except_string X, acceptable_arg_except_string Y,
+			  acceptable_arg_except_string XL, acceptable_arg_except_string YL,
 			  vector_option ...Options>
 	PlotBuffer3D PlotVectors(const X& xfrom, const Y& yfrom,
 							 const XL& xlen, const YL& ylen,
@@ -1255,7 +1524,7 @@ public:
 		return p.PlotVectors(filename, xfrom, yfrom, xlen, ylen, ops...);
 	}
 
-	template <acceptable_arg X, acceptable_arg Y, acceptable_arg L,
+	template <acceptable_arg_except_string X, acceptable_arg_except_string Y, acceptable_arg_except_string L,
 		label_option ...Options>
 	PlotBuffer3D PlotLabels(const X& x, const Y& y, const L& label, Options ...ops)
 	{
@@ -1268,7 +1537,7 @@ public:
 		PlotBuffer3D p(this);
 		return p.PlotLabels(filename, xcol, ycol, labelcol, ops...);
 	}
-	template <acceptable_arg X, acceptable_arg Y, acceptable_arg Z, ranges::string_range L,
+	template <acceptable_arg_except_string X, acceptable_arg_except_string Y, acceptable_arg_except_string Z, ranges::string_range L,
 		label_option ...Options>
 	PlotBuffer3D PlotLabels(const X& x, const Y& y, const Z& z, const L& label, Options ...ops)
 	{
@@ -1365,8 +1634,8 @@ inline std::string PlotBuffer3D::GetSanitizedOutputName() const
 		return m_canvas->GetOutput() + ".tmp" + std::to_string(m_commands.size()) + ".txt";
 }
 
-template <class X, class Y, class Z, class XE, class XEL, class XEH, class YE, class YEL, class YEH, class VC, class VS, class VFC>
-PlotBuffer3D PlotBuffer3D::Plot(const PointParam3D<X, Y, Z, XE, XEL, XEH, YE, YEL, YEH, VC, VS, VFC>& p)
+template <class X, class Y, class Z, class XE, class XEL, class XEH, class YE, class YEL, class YEH, class VC, class VS>
+PlotBuffer3D PlotBuffer3D::Plot(const PointParam3D<X, Y, Z, XE, XEL, XEH, YE, YEL, YEH, VC, VS>& p)
 {
 	std::string command;
 	if (p.IsData())
@@ -1385,10 +1654,10 @@ PlotBuffer3D PlotBuffer3D::Plot(const PointParam3D<X, Y, Z, XE, XEL, XEH, YE, YE
 			ArrangeColumnOption<0, 1>(column, labelcolumn, m_canvas,
 									  std::array<std::string, 12>{ "x", "y", "z", "xerrorbar", "xerrlow", "xerrhigh",
 									  "yerrorbar", "yerrlow", "yerrhigh",
-									  "variable_color", "variable_size", "variable_fillcolor" },
-									  std::array<std::string_view, 12>{ x_x2, y_y2, z_z2, "", "", "", "", "", "", "", "", "" },
+									  "variable_color", "variable_size" },
+									  std::array<std::string_view, 12>{ x_x2, y_y2, z_z2, "", "", "", "", "", "", "", "" },
 									  p.x, p.y, p.z, p.xerrorbar, p.xerrlow, p.xerrhigh, p.yerrorbar, p.yerrlow, p.yerrhigh,
-									  p.variable_color, p.variable_size, p.variable_fillcolor);
+									  p.variable_color, p.variable_size);
 		if constexpr (std::tuple_size_v<decltype(ranges)> != 0)
 			MakeDataObject(m_canvas, output_name, ranges);
 		//if (!labelcolumn.empty()) column.emplace_back(std::move(labelcolumn));

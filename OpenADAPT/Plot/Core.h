@@ -34,6 +34,48 @@ inline constexpr double g_default_font_size = 19.0;
 inline constexpr double g_default_line_width = 2.0;
 inline constexpr double g_default_point_scale = 2.0;
 inline const std::string g_default_font_name = "Arial";
+inline std::string g_font_name = "";
+
+}
+
+inline void SetGnuplotPath(std::string_view path)
+{
+	plot_detail::g_gnuplot_path = path;
+}
+inline std::string GetGnuplotPath()
+{
+	if (!plot_detail::g_gnuplot_path.empty()) return plot_detail::g_gnuplot_path;
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4996)
+#endif 
+	if (const char* p = std::getenv("ADAPT_GNUPLOT_PATH")) return std::string(p);
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+	return plot_detail::g_default_gnuplot_path;
+}
+
+inline void SetPlotFontName(std::string_view name)
+{
+	plot_detail::g_font_name = name;
+}
+inline std::string GetPlotFontName()
+{
+	if (!plot_detail::g_font_name.empty()) return plot_detail::g_font_name;
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4996)
+#endif
+		if (const char* p = std::getenv("ADAPT_PLOT_FONT")) return std::string(p);
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+	return plot_detail::g_default_font_name;
+}
+
+namespace plot_detail
+{
 
 template <class Command>
 std::string SetTerminal(Command c, std::string_view output, double sizex, double sizey, int row, int column, double& size_ratio)
@@ -49,7 +91,7 @@ std::string SetTerminal(Command c, std::string_view output, double sizex, double
 		std::string com;
 		com += std::format("set terminal {} enhanced size {}{}, {}{} font \"{}, {}\"",
 						   ext, sizex, unit, sizey, unit,
-						   g_default_font_name, g_default_font_size * size_ratio);
+						   GetPlotFontName(), g_default_font_size * size_ratio);
 		//pdfcairoのときlinewidthやpointscaleの挙動がおかしいので、指定しないことにする。
 		//代わりにSetOutputの方でSetBorderWidthを呼ぶことで対応する。
 		if (ext != "pdfcairo")
@@ -110,24 +152,6 @@ inline void CloseGnuplot(FILE* pipe)
 
 }
 
-inline void SetGnuplotPath(std::string_view path)
-{
-	plot_detail::g_gnuplot_path = path;
-}
-inline std::string GetGnuplotPath()
-{
-	if (!plot_detail::g_gnuplot_path.empty()) return plot_detail::g_gnuplot_path;
-	#ifdef _MSC_VER
-	#pragma warning(push)
-	#pragma warning(disable: 4996)
-	#endif 
-	if (const char* p = std::getenv("GNUPLOT_PATH")) return std::string(p);
-	#ifdef _MSC_VER
-	#pragma warning(pop)
-	#endif
-	return plot_detail::g_default_gnuplot_path;
-}
-
 ADAPT_EXPORT
 class MultiPlot
 {
@@ -182,7 +206,7 @@ public:
 			if constexpr (KeywordExists(plot::page_title, opts...))
 				com += std::format(" title '{}' font \"{},{:>.1f}\"",
 								   GetKeywordArg(plot::page_title, opts...),
-								   plot_detail::g_default_font_name, plot_detail::g_default_font_size * ms_size_ratio * 1.4);
+								   GetPlotFontName(), plot_detail::g_default_font_size * ms_size_ratio * 1.4);
 			if constexpr (KeywordExists(plot::fillorder, opts...))
 			{
 				MPFillOrder fillorder = GetKeywordArg(plot::fillorder, opts...);
@@ -433,9 +457,9 @@ public:
 			ext = SetTerminal([this]<class ...Args>(Args&& ...args) { Command(std::forward<Args>(args)...); },
 							  output, sizex, sizey, 1, 1, m_size_ratio);
 		}
-		SetTitleFont(g_default_font_name, g_default_font_size * m_size_ratio * 1.3);
-		SetLabelFont(g_default_font_name, g_default_font_size * m_size_ratio * 1.2);
-		SetKeyFont(g_default_font_name, g_default_font_size * m_size_ratio);
+		SetTitleFont(GetPlotFontName(), g_default_font_size * m_size_ratio * 1.3);
+		SetLabelFont(GetPlotFontName(), g_default_font_size * m_size_ratio * 1.2);
+		SetKeyFont(GetPlotFontName(), g_default_font_size * m_size_ratio);
 		if (ext == ".pdf")
 		{
 			//pdfcairoのときlinewidthやpointscaleの挙動がおかしいので、terminal側では一切指定せず、

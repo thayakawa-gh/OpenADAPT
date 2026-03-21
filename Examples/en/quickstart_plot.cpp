@@ -9,6 +9,7 @@
 #include <random>
 #include <filesystem>
 #include <thread>
+#include <numbers>
 #ifdef ADAPT_IMPORT_MODULE
 #include <OpenADAPT/Macros.h>
 import adapt;
@@ -18,36 +19,16 @@ import adapt;
 
 int example_2d(const std::string& output_filename, bool enable_in_memory_data_transfer)
 {
-	std::string norm = std::to_string(250. / std::sqrt(2 * 3.1415926535));
-	std::string equation = norm + "*exp(-x*x/2)";
-
-	std::mt19937_64 mt(0);
-	std::normal_distribution<> nd(0., 1.);
-	std::vector<double> x1(32, 0);
-	std::vector<double> y1(32, 0);
-	std::vector<double> e1(32);
-	for (int i = 0; i < 1000; ++i)
-	{
-		double x = nd(mt);
-		if (x < -4.0 || x >= 4.0) continue;
-		++y1[static_cast<size_t>(std::floor(x / 0.25) + 16)];
-	}
-	for (int i = 0; i < 32; ++i)
-	{
-		x1[i] = i * 0.25 - 4. + 0.125;
-		e1[i] = std::sqrt(y1[i]);
-	}
-
 	/* options for PlotPoints(...)
 	title          ... title. If you specify "notitle", the title is not displayed.
-	  notitle     ... the same as title = "notitle".
+	  notitle      ... the same as title = "notitle".
 	axis           ... set of axes to scale lines. (e.g. plot::axis = "x1y2")
 	  axis_x1y1    ... the same as axis = "x1y1"
 	  axis_x1y2    ... the same as axis = "x1y2"
 	color          ... uniform color.
 	  c_black      ... the same as color = "black". Various color options are available, such as c_red, c_green, etc.
 	variable_color ... different colors at each point.
-	linetype       ... line type. see GNUPLOT's keyword "linetype"
+	linetype       ... line type. see GNUPLOT's keyword "linetype".
 	linewidth      ... uniform line width.
 	  lw_mediun    ... the same as linewidth = 1.0. lw_thin, lw_thick, lw_ex_thick, etc. are also available.
 	style          ... displaying style.
@@ -69,47 +50,49 @@ int example_2d(const std::string& output_filename, bool enable_in_memory_data_tr
 	bordercolor    ... specify the color of the border.
 	bordertype     ... specify the type of the border.
 	*/
+
+	auto x = std::views::iota(-20, 21) | std::views::transform([](int i) { return i * 0.1 * std::numbers::pi; });
+	std::vector<double> y1(41), y2(41), y3(41), y4(41), y5(41), y6(41);
+	for (size_t i = 0; i < 41; ++i)
+	{
+		y1[i] = std::sin(x[i]) + 10;
+		y2[i] = std::sin(x[i]) + 8;
+		y3[i] = std::sin(x[i]) + 6;
+		y4[i] = std::sin(x[i]) + 4;
+		y5[i] = std::sin(x[i]) + 2;
+		y6[i] = std::sin(x[i]);
+	}
+
 	namespace plot = adapt::plot;
 	adapt::Canvas2D g(output_filename);
 	//g.ShowCommands(true);
 	g.EnableInMemoryDataTransfer(enable_in_memory_data_transfer); // Enable or disable datablock feature of gnuplot
 	g.SetTitle("example\\_2d");
-	g.SetXRange(-4.0, 4.0);
+	g.SetKeyBox();
+	g.SetKeyOpaque();
+	g.SetXRange(-2 * std::numbers::pi, 2 * std::numbers::pi);
 	g.SetXLabel("x");
 	g.SetYLabel("y");
-	g.PlotPoints(equation, plot::title = "mu = 0, sigma = 1",
-				 plot::s_lines).
-		PlotPoints(x1, y1, plot::xerrorbar = 0.125, plot::yerrorbar = e1,
-				   plot::title = "data", plot::c_black,
-				   plot::s_points, plot::pt_fcir, plot::ps_med_small);
+	g.PlotPoints(x, y1, plot::title = "points", plot::c_light_rose, plot::pt_cir).// default style is plot::s_points
+		PlotPoints(x, y2, plot::title = "lines", plot::c_light_persimmon, plot::s_lines, plot::lw_thick).
+		PlotPoints(x, y3, plot::title = "linespoints", plot::c_light_goldenrod, plot::s_linespoints, plot::pt_box, plot::ps_med_small).
+		PlotPoints(x, y4, plot::title = "histeps", plot::c_light_leafgreen, plot::s_histeps).
+		PlotPoints(x, y5, plot::title = "impulses", plot::c_light_aquamarine, plot::s_impulses).
+		PlotPoints(x, y6, plot::title = "boxes", plot::c_light_cerulean, plot::s_boxes, plot::lw_med_fine);
 
-	if (!enable_in_memory_data_transfer)
-	{
-		adapt::Canvas2D g2(output_filename + ".fileplot.png");
-		//g2.ShowCommands(true);
-		g2.SetTitle("example\\_2d");
-		g2.SetXRange(-4.0, 4.0);
-		g2.SetXLabel("x");
-		g2.SetYLabel("y");
-		g2.PlotPoints(equation, plot::title = "mu = 0, sigma = 1",
-					  plot::s_lines).
-			PlotPoints(output_filename + ".tmp1.txt", "1", "2", plot::xerrorbar = 0.125, plot::yerrorbar = "3",
-					   plot::title = "data", plot::c_black,
-					   plot::s_points, plot::pt_fcir, plot::ps_med_small);
-	}
 	return 0;
 }
 
 int example_histogram(const std::string& output_filename, bool enable_in_memory_data_transfer)
 {
 	//similar to example_2d, but the histogram is automatically generated in the PlotHistogram function.
-	std::string norm = std::to_string(250. / std::sqrt(2 * 3.1415926535));
+	std::string norm = std::to_string(100. / std::sqrt(2 * 3.1415926535));
 	std::string equation = norm + "*exp(-x*x/2)";
 
 	std::mt19937_64 mt(0);
 	std::normal_distribution<> nd(0., 1.);
 	std::vector<double> data;
-	for (int i = 0; i < 1000; ++i)
+	for (int i = 0; i < 400; ++i)
 	{
 		double x = nd(mt);
 		if (x < -4.0 || x >= 4.0) continue;
@@ -122,13 +105,22 @@ int example_histogram(const std::string& output_filename, bool enable_in_memory_
 	g.EnableInMemoryDataTransfer(enable_in_memory_data_transfer); // Enable or disable datablock feature of gnuplot
 	g.SetTitle("example\\_histogram");
 	g.SetXRange(-4.0, 4.0);
+	g.SetYRange(0.0, 50.0);
+	g.SetY2Range(0.0, 1.4);
 	g.SetXLabel("x");
 	g.SetYLabel("y");
-	g.PlotPoints(equation, plot::title = "mu = 0, sigma = 1",
+	g.SetY2Label("cumulative relative frequency");
+	g.SetKeyTopLeft();
+	g.SetKeyBox();
+	g.PlotPoints(equation, plot::title = "{/Symbol m} = 0, {/Symbol s} = 1",
 				 plot::s_lines).
 		//err_poisson adds xy errorbars to each bin that indicate statistical errors corresponding to a 68% confidence interval.
 		PlotHistogram(data, -4, 4, 32, plot::he_poisson,
-					  plot::title = "data", plot::c_black, plot::pt_fcir, plot::ps_med_small);
+					  plot::title = "data", plot::c_black, plot::pt_fcir, plot::ps_med_small).
+		PlotHistogram(data, -4, 4, 32, plot::cumul, plot::ax_x1y2, plot::pt_ftri,
+					  plot::title = "cumul", plot::c_red).
+		PlotHistogram(data, -4, 4, 32, plot::inv_cumul, plot::ax_x1y2, plot::pt_fdtri,
+					  plot::title = "inv\\_cumul", plot::c_blue);
 
 	if (!enable_in_memory_data_transfer)
 	{
@@ -138,11 +130,67 @@ int example_histogram(const std::string& output_filename, bool enable_in_memory_
 		g2.SetXRange(-4.0, 4.0);
 		g2.SetXLabel("x");
 		g2.SetYLabel("y");
-		g2.PlotPoints(equation, plot::title = "mu = 0, sigma = 1",
+		g2.PlotPoints(equation, plot::title = "{/Symbol m} = 0, {/Symbol s} = 1",
 					  plot::s_lines).
 			PlotPoints(output_filename + ".tmp1.txt", "1", "2", plot::xerrorbar = "0.125", plot::yerrlow = "3", plot::yerrhigh = "4",
 					   plot::title = "data", plot::c_black, plot::pt_fcir, plot::ps_med_small);
 	}
+	return 0;
+}
+
+int example_stacked_histogram(const std::string& output_filename, bool enable_in_memory_data_transfer)
+{
+	std::mt19937_64 mt(0);
+	std::normal_distribution<> nd1(0., 2.);
+	std::normal_distribution<> nd2(-3., 1.);
+	std::normal_distribution<> nd3(3., 3.5);
+	std::vector<double> data1;
+	std::vector<double> data2;
+	std::vector<double> data3;
+	for (int i = 0; i < 200; ++i) data1.push_back(nd1(mt));
+	for (int i = 0; i < 600; ++i) data2.push_back(nd2(mt));
+	for (int i = 0; i < 1000; ++i) data3.push_back(nd3(mt));
+
+	namespace plot = adapt::plot;
+	adapt::Canvas2D g(output_filename);
+	//g.ShowCommands(true);
+	g.EnableInMemoryDataTransfer(enable_in_memory_data_transfer); // Enable or disable datablock feature of gnuplot
+	g.SetTitle("example\\_stacked\\_histogram");
+	g.SetXRange(-8.0, 8.0);
+	g.SetXLabel("x");
+	g.SetYLabel("y");
+	g.PlotHistogram(data1, -8, 8, 32, plot::c_dark_cobalt, plot::title = "{/Symbol m} = 0., {/Symbol s} = 2.", plot::stack).
+		PlotHistogram(data2, plot::c_dark_amethyst, plot::title = "{/Symbol m} = -3., {/Symbol s} = 1.", plot::stack).//min, max, nbin can be omitted for subsequent stacked histograms.
+		PlotHistogram(data3, plot::c_dark_pink, plot::title = "{/Symbol m} = 3., {/Symbol s} = 3.5", plot::stack);
+	return 0;
+}
+
+int example_weighted_histogram(const std::string& output_filename, bool enable_in_memory_data_transfer)
+{
+	//similar to example_2d, but the histogram is automatically generated in the PlotHistogram function.
+	std::string equation = "50/(x*sqrt(2*3.1415926535))*exp(-log(x)**2/2)";
+
+	std::mt19937_64 mt(0);
+	std::lognormal_distribution<> nd(0., 1.);
+	std::uniform_real_distribution<> ud(0., 2.);
+	std::vector<double> data;
+	std::vector<double> weights;
+	for (int i = 0; i < 100; ++i)
+	{
+		double x = nd(mt);
+		if (x < 0.0 || x >= 10.0) continue;
+		data.push_back(x);
+		weights.push_back(ud(mt));
+	}
+	namespace plot = adapt::plot;
+	adapt::Canvas2D g(output_filename);
+	g.EnableInMemoryDataTransfer(enable_in_memory_data_transfer); // Enable or disable datablock feature of gnuplot
+	g.SetTitle("example\\_weighted\\_histogram");
+	g.SetXRange(0.0, 10.0);
+	g.SetXLabel("x");
+	g.SetYLabel("y");
+	g.PlotPoints(equation, plot::title = "log normal distribution", plot::s_lines, plot::lw_med_thick, plot::c_rose).
+		PlotHistogram(data, 0, 10, 20, plot::weight = weights, plot::pt_fdia, plot::lw_med_thick, plot::c_muted_rose, plot::he_normal, plot::title = "weighted histogram");
 	return 0;
 }
 
@@ -179,7 +227,7 @@ int example_labels(const std::string& output_filename, bool enable_in_memory_dat
 
 	//If you want to plot labels with different sizes, label strings should be formatted as "{/=fontsize label}".
 	auto dscities = adapt::views::Zip(cities, populations) |
-		std::views::transform([](const auto& x) { return std::format("\"{{/={} {}}}\"", std::sqrt(std::get<1>(x) / 6700.), std::get<0>(x)); });
+		std::views::transform([](const auto& x) { return std::format("\"{{/={} {}}}\"", std::sqrt(std::get<1>(x) / 5000.), std::get<0>(x)); });
 
 	namespace plot = adapt::plot;
 	adapt::Canvas2D g(output_filename);
@@ -287,12 +335,12 @@ int example_colormap(const std::string& output_filename, bool enable_in_memory_d
 
 	namespace plot = adapt::plot;
 	{
-		adapt::MultiPlot multi(output_filename, 1, 2);
+		adapt::MultiPlot multi(output_filename, 1, 2, plot::page_title = "example\\_colormap", plot::multiplot_size = { 1800., 900. });
 
 		adapt::Canvas2D g1;
 		//g1.ShowCommands(true);
 		g1.EnableInMemoryDataTransfer(enable_in_memory_data_transfer); // Enable or disable datablock feature of gnuplot
-		g1.SetTitle("example\\_colormap");
+		g1.SetTitle("colormap");
 		g1.SetPaletteDefined({ {0, "yellow" }, { 4.5, "red" }, { 5., "black" }, { 5.5, "blue"}, { 10, "cyan" } });
 		g1.SetSizeRatio(-1);
 		g1.SetXLabel("x");
@@ -309,7 +357,7 @@ int example_colormap(const std::string& output_filename, bool enable_in_memory_d
 		adapt::Canvas2D g2;
 		//g2.ShowCommands(true);
 		g2.EnableInMemoryDataTransfer(enable_in_memory_data_transfer); // Enable or disable datablock feature of gnuplot
-		g2.SetTitle("example\\_contour");
+		g2.SetTitle("contour");
 		g2.SetPaletteDefined({ {0, "yellow" }, { 4.5, "red" }, { 5., "black" }, { 5.5, "blue"}, { 10, "cyan" } });
 		g2.SetSizeRatio(-1);
 		g2.SetXLabel("x");
@@ -355,7 +403,7 @@ int example_binscatter(const std::string& output_filename, bool enable_in_memory
 	}
 	namespace plot = adapt::plot;
 
-	adapt::MultiPlot multi(output_filename, 1, 2);
+	adapt::MultiPlot multi(output_filename, 1, 2, plot::page_title = "example\\_binscatter", plot::multiplot_size = { 1800., 900. });
 	adapt::Canvas2D g1;
 	g1.EnableInMemoryDataTransfer(enable_in_memory_data_transfer);
 	g1.SetXRange(-4, 4);
@@ -363,7 +411,7 @@ int example_binscatter(const std::string& output_filename, bool enable_in_memory
 	g1.SetSizeRatio(1);
 	g1.SetXLabel("x");
 	g1.SetYLabel("y");
-	g1.SetTitle("example binscatter map");
+	g1.SetTitle("binscatter map");
 	g1.PlotBinscatter(x, -4., 4., 80, y, -4., 4., 80, plot::notitle);
 
 	//sleep for a short time to avoid the output image broken by multiplot.
@@ -376,7 +424,7 @@ int example_binscatter(const std::string& output_filename, bool enable_in_memory
 	g2.SetSizeRatio(1);
 	g2.SetXLabel("x");
 	g2.SetYLabel("y");
-	g2.SetTitle("example binscatter points");
+	g2.SetTitle("binscatter points");
 	g2.PlotBinscatter(x, -4., 4., 80, y, -4., 4., 80, plot::notitle, plot::bs_points);
 
 	return 0;
@@ -504,13 +552,15 @@ int example_filledcurve(const std::string& output_filename, bool enable_in_memor
 	axis           ... set of axes to scale lines. (e.g. plot::axis = "x1y2")
 	  axis_x1y1    ... the same as axis = "x1y1"
 	  axis_x1y2    ... the same as axis = "x1y2"
+	style          ... Style::lines, boxes, steps can be used to plot filledcurve.
 	fillpattern    ... fill with a colored pattern.
 	fillsolid      ... fill with a solid color specified by fillcolor with density [ 0.0, 1.0 ].
 	filltransparent... make the filled area transparent to the background color.
-	fillcolor      ... specify the color of filled area.
-	variable_fillcolor ...
-	bordercolor    ... specify the color of the border.
-	bordertype     ... specify the type of the border.
+	color          ... specify the color of filled area.
+	~~variable_color~~ ... not yet implemented. Gnuplot does not simply support variable fill color for filledcurve.
+	bordercolor    ... specify the border color.
+	bordertype     ... specify the type of the border line.
+	noborder       ... plot filledcurve without border.
 	baseline       ... the area between the curve this line is filled. (e.g. plot::baseline = "y=10")
 	closed         ... the points are treated as a closed polygon and its inside is filled.
 	above          ... the filled area is limited to the above side of baseline or y2 curve.
@@ -526,12 +576,31 @@ int example_filledcurve(const std::string& output_filename, bool enable_in_memor
 	g.SetYRange(0, 1.0);
 	g.SetXLabel("x");
 	g.SetYLabel("y");
+	//It is recommended to assign colors explicitly to avoid unmatching colors of filled areas and borders.
 	g.PlotFilledCurves(x, y1, plot::title = "k = 1",
-					   plot::fillcolor = "red", plot::fillsolid = 0.4, plot::filltransparent).
+					   plot::c_vermilion, plot::fillsolid = 0.4, plot::filltransparent).
 		PlotFilledCurves(x, y2, plot::title = "k = 2",
-						 plot::fillcolor = "blue", plot::fillsolid = 0.4, plot::filltransparent).
+						 plot::c_jade, plot::fillsolid = 0.4, plot::filltransparent).
 		PlotFilledCurves(x, y3, plot::title = "k = 3",
-						 plot::fillcolor = "green", plot::fillsolid = 0.4, plot::filltransparent);
+						 plot::c_royalblue, plot::fillsolid = 0.4, plot::filltransparent);
+
+	if (!enable_in_memory_data_transfer)
+	{
+		adapt::Canvas2D g2(output_filename + ".fileplot.png");
+		//g2.ShowCommands(true);
+		g2.SetTitle("example\\_filledcurve");
+		g2.SetXRange(0, 8.0);
+		g2.SetYRange(0, 1.0);
+		g2.SetXLabel("x");
+		g2.SetYLabel("y");
+		//It is recommended to assign colors explicitly to avoid unmatching colors of filled areas and borders.
+		g2.PlotFilledCurves(output_filename + ".tmp0.txt", "1", "2", plot::title = "k = 1",
+						   plot::c_dark_vermilion, plot::fillsolid = 0.6, plot::filltransparent).
+			PlotFilledCurves(output_filename + ".tmp1.txt", "1", "2", plot::title = "k = 2",
+							 plot::c_dark_jade, plot::fillsolid = 0.6, plot::filltransparent).
+			PlotFilledCurves(output_filename + ".tmp2.txt", "1", "2", plot::title = "k = 3",
+							 plot::c_dark_royalblue, plot::fillsolid = 0.6, plot::filltransparent);
+	}
 	return 0;
 }
 
@@ -592,10 +661,10 @@ int example_datetime(const std::string& output_filename, bool enable_in_memory_d
 	g.SetKeyBox();
 	g.SetXDataTime("%Y-%m-%d");
 	g.SetFormatX("%02m/%02d");
-	g.PlotPoints(x, y, plot::title = "tested", plot::s_steps, plot::fillsolid = 0.5).
-		PlotPoints(x, y2, plot::title = "positive", plot::s_steps, plot::fillsolid = 0.5).
-		PlotLines(x, y3, plot::title = "tested\\_total", plot::ax_x1y2, plot::lw_ex_thick).
-		PlotLines(x, y4, plot::title = "positive\\_total", plot::ax_x1y2, plot::lw_ex_thick);
+	g.PlotFilledCurves(x, y, plot::title = "tested", plot::c_ultramarine, plot::s_steps, plot::fillsolid = 0.5).
+		PlotFilledCurves(x, y2, plot::title = "positive", plot::c_crimson, plot::s_steps, plot::fillsolid = 0.5).
+		PlotLines(x, y3, plot::title = "tested\\_total", plot::c_dark_ultramarine, plot::ax_x1y2, plot::lw_ex_thick).
+		PlotLines(x, y4, plot::title = "positive\\_total", plot::c_dark_crimson, plot::ax_x1y2, plot::lw_ex_thick);
 
 	return 0;
 }
@@ -651,6 +720,17 @@ void QuickstartPlot()
 {
 	std::cout << "[[Quickstart Plot]]" << std::endl;
 
+	// Set the path to gnuplot executable if needed.
+	// The default path is:
+	// * Windows: "C:/Program Files/gnuplot/bin/gnuplot.exe"
+	// * Linux/macOS: "gnuplot" (assuming gnuplot is in the system PATH)
+	// You can also set the path by the "ADAPT_GNUPLOT_PATH" environment variable.
+	adapt::SetGnuplotPath("C:/Progra~1/gnuplot/bin/gnuplot.exe");
+
+	// Set the font name. The default font is "Arial" on all platforms.
+	// You can also set the font by the "ADAPT_PLOT_FONT" environment variable.
+	adapt::SetPlotFontName("Noto Serif");
+
 	// ".pdf" and ".png" are supported for output_filename.
 	std::string extension = ".png";
 
@@ -660,6 +740,12 @@ void QuickstartPlot()
 
 	//example_histogram("PlotExamples/example_histogram" + extension, false);
 	example_histogram("PlotExamples/example_histogram-inmemory" + extension, true);
+
+	//example_stacked_histogram("PlotExamples/example_stacked_histogram" + extension, false);
+	example_stacked_histogram("PlotExamples/example_stacked_histogram-inmemory" + extension, true);
+
+	//example_weighted_histogram("PlotExamples/example_weighted_histogram" + extension, false);
+	example_weighted_histogram("PlotExamples/example_weighted_histogram-inmemory" + extension, true);
 
 	//example_scatter("PlotExamples/example_scatter" + extension, false);
 	example_scatter("PlotExamples/example_scatter-inmemory" + extension, true);

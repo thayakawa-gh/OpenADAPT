@@ -1,6 +1,7 @@
 #ifndef ADAPT_TEST_COMMON_AGGREGATOR_H
 #define ADAPT_TEST_COMMON_AGGREGATOR_H
 
+#include <algorithm>
 #include <format>
 #include <iostream>
 #include <vector>
