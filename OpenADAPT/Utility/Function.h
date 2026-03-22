@@ -315,6 +315,7 @@ auto MakeDecayedTuple(Args&& ...args)
 	return std::tuple<typename DecayRRef<Args>::Type...>(std::forward<Args>(args)...);
 }
 
+//((----, 0), ...)みたいな書き方でだとClangあたりが警告を出しやがるので、回避用に。
 ADAPT_EXPORT
 template <class ...Args>
 void DoNothing(Args&& ...) {}

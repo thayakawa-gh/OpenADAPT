@@ -450,7 +450,6 @@ void QuickstartDTree()
 	c.SetLogX();
 	c.SetLogY();
 	c.SetTitle("Area vs Population of Cities in California");
-	c.SetGrid();
 	c.PlotPoints(varea, vpop, plot::pt_cir, plot::ps_med_large, plot::notitle).
 		PlotLabels(varea, vpop, vcity, plot::labelpos = adapt::LabelPos::right, plot::notitle);
 

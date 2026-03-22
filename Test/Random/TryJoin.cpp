@@ -7,8 +7,8 @@ TEST_F(Aggregator_TryJoin, TryJoinInEvaluator)
 	//auto [number, name, dob] = m_dtree.GetPlaceholders("number", "name", "date_of_birth");
 	auto dtree_even = [this]()
 	{
-		DECL_TREE_PH_SET(*m_tree);
-		return *m_tree | Filter(number % 2 == 0) | ADAPT_EXTRACT(grade, class_, number, name, math, japanese, english);
+		DECL_TREE_PH_SET(*this->m_tree);
+		return *this->m_tree | Filter(number % 2 == 0) | ADAPT_EXTRACT(grade, class_, number, name, math, japanese, english);
 	}();
 	auto hash = [&dtree_even]()
 	{

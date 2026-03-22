@@ -24,7 +24,7 @@ ADAPT_EXPORT enum class BinError : int16_t { none, poisson68, poisson95, normal6
 ADAPT_EXPORT enum class Contour : int16_t { none, base, surface, both, };
 ADAPT_EXPORT enum class CntrSmooth : int16_t { none, linear, cubicspline, bspline };
 
-ADAPT_EXPORT enum class MPFillOrder : int16_t { rowfirst, columnfirst };
+ADAPT_EXPORT enum class MPFillOrder : int16_t { rowsfirst, colsfirst };
 ADAPT_EXPORT enum class MPVerticalDirection : int16_t { downwards, upwards };
 
 namespace plot_detail
@@ -470,8 +470,8 @@ ADAPT_EXPORT inline constexpr auto pm3d_surface = (pm3d_at = Pm3dPosition::surfa
 ADAPT_EXPORT inline constexpr auto pm3d_top = (pm3d_at = Pm3dPosition::top);
 
 // マルチプロットの配置順序指定の短縮版
-ADAPT_EXPORT inline constexpr auto rowfirst = (fillorder = MPFillOrder::rowfirst);
-ADAPT_EXPORT inline constexpr auto columnfirst = (fillorder = MPFillOrder::columnfirst);
+ADAPT_EXPORT inline constexpr auto rowsfirst = (fillorder = MPFillOrder::rowsfirst);
+ADAPT_EXPORT inline constexpr auto colsfirst = (fillorder = MPFillOrder::colsfirst);
 ADAPT_EXPORT inline constexpr auto downwards = (vertical_direction = MPVerticalDirection::downwards);
 ADAPT_EXPORT inline constexpr auto upwards = (vertical_direction = MPVerticalDirection::upwards);
 

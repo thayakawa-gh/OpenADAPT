@@ -210,14 +210,14 @@ public:
 			if constexpr (KeywordExists(plot::fillorder, opts...))
 			{
 				MPFillOrder fillorder = GetKeywordArg(plot::fillorder, opts...);
-				if (fillorder == MPFillOrder::rowfirst) com += " rowfirst";
-				else com += " columnfirst";
+				if (fillorder == MPFillOrder::rowsfirst) com += " rowsfirst";
+				else com += " colsfirst";
 			}
 			if constexpr (KeywordExists(plot::vertical_direction, opts...))
 			{
 				MPVerticalDirection vertical_direction = GetKeywordArg(plot::vertical_direction, opts...);
-				if (vertical_direction == MPVerticalDirection::topdown) com += " vertical";
-				else com += " horizontal";
+				if (vertical_direction == MPVerticalDirection::downwards) com += " downwards";
+				else com += " upwards";
 			}
 			//Command("set multiplot layout " + std::to_string(row) + ", " + std::to_string(column));
 			//Command(std::format("set title font \"{},{:>.1f}", plot_detail::g_default_font_name, plot_detail::g_default_font_size * ms_size_ratio * 1.1));
@@ -354,7 +354,7 @@ public:
 		Command(std::format("set {}tics rotate by {}", axis, ang));
 	}
 
-	void SetGrid(std::string_view color = "", int type = 1, double width = -1, std::string_view dashtype = "")
+	void SetGrid(std::string_view color = "", int type = -2, double width = -1, std::string_view dashtype = "")
 	{
 		//dashtypeはtypeを1以上の有効値にしないと機能しないらしい。
 		std::string c;
@@ -434,8 +434,8 @@ public:
 		Command(std::format("set {} font \"{}, {:>.1f}\"", name, font, size));
 	}
 	void SetTitleFont(std::string_view font, double size = 0.0) { SetFont("title", font, size); }
-	void SetTicsFont(std::string_view font, double size = 0.0) { ((Axes::SetTicsFont(font, size), 0) + ...); }
-	void SetLabelFont(std::string_view font, double size = 0.0) { ((Axes::SetLabelFont(font, size), 0) + ...); }
+	void SetTicsFont(std::string_view font, double size = 0.0) { DoNothing((Axes::SetTicsFont(font, size), 0)...); }
+	void SetLabelFont(std::string_view font, double size = 0.0) { DoNothing((Axes::SetLabelFont(font, size), 0)...); }
 	void SetKeyFont(std::string_view font, double size = 0.0) { SetFont("key", font, size); }
 
 	void SetOutput(std::string_view output, double sizex, double sizey)
@@ -454,7 +454,7 @@ public:
 		else
 		{
 			m_output = output;
-			ext = SetTerminal([this]<class ...Args>(Args&& ...args) { Command(std::forward<Args>(args)...); },
+			ext = SetTerminal([this]<class ...Args>(Args&& ...args) { this->Command(std::forward<Args>(args)...); },
 							  output, sizex, sizey, 1, 1, m_size_ratio);
 		}
 		SetTitleFont(GetPlotFontName(), g_default_font_size * m_size_ratio * 1.3);

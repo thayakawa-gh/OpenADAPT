@@ -85,7 +85,6 @@ int example_2d(const std::string& output_filename, bool enable_in_memory_data_tr
 
 int example_histogram(const std::string& output_filename, bool enable_in_memory_data_transfer)
 {
-	//similar to example_2d, but the histogram is automatically generated in the PlotHistogram function.
 	std::string norm = std::to_string(100. / std::sqrt(2 * 3.1415926535));
 	std::string equation = norm + "*exp(-x*x/2)";
 
@@ -114,7 +113,7 @@ int example_histogram(const std::string& output_filename, bool enable_in_memory_
 	g.SetKeyBox();
 	g.PlotPoints(equation, plot::title = "{/Symbol m} = 0, {/Symbol s} = 1",
 				 plot::s_lines).
-		//err_poisson adds xy errorbars to each bin that indicate statistical errors corresponding to a 68% confidence interval.
+		//he_poisson adds xy errorbars to each bin that indicate statistical errors corresponding to a 68% confidence interval.
 		PlotHistogram(data, -4, 4, 32, plot::he_poisson,
 					  plot::title = "data", plot::c_black, plot::pt_fcir, plot::ps_med_small).
 		PlotHistogram(data, -4, 4, 32, plot::cumul, plot::ax_x1y2, plot::pt_ftri,
@@ -159,15 +158,17 @@ int example_stacked_histogram(const std::string& output_filename, bool enable_in
 	g.SetXRange(-8.0, 8.0);
 	g.SetXLabel("x");
 	g.SetYLabel("y");
+	// plot::stack option stacks the histograms on top of each other. The height of each bin is the sum of the counts of all histograms in that bin.
+	// The first histogram must specify the min, max, nbin options to determine the bins for stacking.
+	// Subsequent histograms can omit these options, and the bins will be automatically determined to match the first histogram.
 	g.PlotHistogram(data1, -8, 8, 32, plot::c_dark_cobalt, plot::title = "{/Symbol m} = 0., {/Symbol s} = 2.", plot::stack).
-		PlotHistogram(data2, plot::c_dark_amethyst, plot::title = "{/Symbol m} = -3., {/Symbol s} = 1.", plot::stack).//min, max, nbin can be omitted for subsequent stacked histograms.
+		PlotHistogram(data2, plot::c_dark_amethyst, plot::title = "{/Symbol m} = -3., {/Symbol s} = 1.", plot::stack).
 		PlotHistogram(data3, plot::c_dark_pink, plot::title = "{/Symbol m} = 3., {/Symbol s} = 3.5", plot::stack);
 	return 0;
 }
 
 int example_weighted_histogram(const std::string& output_filename, bool enable_in_memory_data_transfer)
 {
-	//similar to example_2d, but the histogram is automatically generated in the PlotHistogram function.
 	std::string equation = "50/(x*sqrt(2*3.1415926535))*exp(-log(x)**2/2)";
 
 	std::mt19937_64 mt(0);
@@ -189,6 +190,8 @@ int example_weighted_histogram(const std::string& output_filename, bool enable_i
 	g.SetXRange(0.0, 10.0);
 	g.SetXLabel("x");
 	g.SetYLabel("y");
+	// plot::weight option specifies the weights for each data point.
+	// The height of each bin is the sum of the weights of the data points in that bin, instead of the count of the data points.
 	g.PlotPoints(equation, plot::title = "log normal distribution", plot::s_lines, plot::lw_med_thick, plot::c_rose).
 		PlotHistogram(data, 0, 10, 20, plot::weight = weights, plot::pt_fdia, plot::lw_med_thick, plot::c_muted_rose, plot::he_normal, plot::title = "weighted histogram");
 	return 0;
@@ -412,6 +415,8 @@ int example_binscatter(const std::string& output_filename, bool enable_in_memory
 	g1.SetXLabel("x");
 	g1.SetYLabel("y");
 	g1.SetTitle("binscatter map");
+	// PlotBinscatter(...) plots a 2D histogram of the input data.
+	// The color of each bin corresponds to the count of the data points in that bin.
 	g1.PlotBinscatter(x, -4., 4., 80, y, -4., 4., 80, plot::notitle);
 
 	//sleep for a short time to avoid the output image broken by multiplot.
@@ -425,6 +430,8 @@ int example_binscatter(const std::string& output_filename, bool enable_in_memory
 	g2.SetXLabel("x");
 	g2.SetYLabel("y");
 	g2.SetTitle("binscatter points");
+	// plot::bs_points option draws all the data points
+	// with the color corresponding to the count of the data points in the bin that the point belongs to.
 	g2.PlotBinscatter(x, -4., 4., 80, y, -4., 4., 80, plot::notitle, plot::bs_points);
 
 	return 0;

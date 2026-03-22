@@ -26,8 +26,8 @@ struct PlotBuffer2D
 	PlotBuffer2D(PlotBuffer2D&& p) noexcept
 		: m_commands(std::move(p.m_commands)), m_canvas(p.m_canvas),
 		m_min(p.m_min), m_max(p.m_max), m_nbin(p.m_nbin),
-		m_stacked_histogram_data(std::move(p.m_stacked_histogram_data)),
-		m_stacked_histogram_bins(std::move(p.m_stacked_histogram_bins))
+		m_stacked_histogram_bins(std::move(p.m_stacked_histogram_bins)),
+		m_stacked_histogram_data(std::move(p.m_stacked_histogram_data))
 	{
 		p.m_canvas = nullptr;
 	}
@@ -37,8 +37,8 @@ struct PlotBuffer2D
 		m_canvas = p.m_canvas; p.m_canvas = nullptr;
 		m_commands = std::move(p.m_commands);
 		m_min = p.m_min; m_max = p.m_max; m_nbin = p.m_nbin;
-		m_stacked_histogram_data = std::move(p.m_stacked_histogram_data);
 		m_stacked_histogram_bins = std::move(p.m_stacked_histogram_bins);
+		m_stacked_histogram_data = std::move(p.m_stacked_histogram_data);
 		return *this;
 	}
 	virtual ~PlotBuffer2D();
@@ -835,7 +835,7 @@ PlotBuffer2D PlotBuffer2D::PlotBinscatter(const BinscatterParam<X, Y, Weight>& p
 	{
 		return std::make_pair((int64_t)((x - p.xmin) / wxbin), (int64_t)((y - p.ymin) / wybin));
 	};
-	auto w_ = [&p]() { if constexpr (HasWeight) return p.weight; else return views::Repeat(0.); } ();
+	auto w_ = []([[maybe_unused]] auto& p) { if constexpr (HasWeight) return p.weight; else return views::Repeat(0.); } (p);
 	for ([[maybe_unused]] auto&& [x, y, w] : views::Zip(p.x, p.y, w_))
 	{
 		auto [ix, iy] = ibin(x, y);
