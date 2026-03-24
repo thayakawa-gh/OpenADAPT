@@ -392,11 +392,10 @@ and the hierarchical structure is automatically determined by the layers of the 
 	c.SetLogX();
 	c.SetLogY();
 	c.SetTitle("Area vs Population of Cities in California");
-	c.SetGrid();
 	c.PlotPoints(varea, vpop, plot::pt_cir, plot::ps_med_large, plot::notitle).
 		PlotLabels(varea, vpop, vcity, plot::labelpos = adapt::LabelPos::right, plot::notitle);
 ```
-<img width="480" alt="Area vs Population of Cities in California" src="https://github.com/user-attachments/assets/598bf0f5-110d-4d30-bfaa-329d448e2c99">
+<img width="480" alt="Area vs Population of Cities in California" src="https://github.com/user-attachments/assets/32c1dfee-ded9-47e1-9853-128b66732f24">
 
 ### Other plotting functionalities
 <table>
