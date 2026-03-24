@@ -764,7 +764,38 @@ private:
 			return ApplyLayerFuncN##NAME<10>(std::move(args[0]));
 		PARSER_LAYER_FUNCS
 		#undef X
-		
+
+		// if階層関数チェック (Check if layer functions)
+		#define X(NAME, SYM) \
+		if (func_name == #SYM) return ApplyLayerFuncIf##NAME(std::move(args[0]), std::move(args[1]));
+		PARSER_LAYER_FUNCS_IF
+		#undef X
+
+		// 番号付きif階層関数チェック (Check numbered if layer functions)
+		#define X(NAME, SYM) \
+		if (func_name == std::string(#SYM) + std::to_string(1)) \
+			return ApplyLayerFuncIfN##NAME<1>(std::move(args[0]), std::move(args[1])); \
+		if (func_name == std::string(#SYM) + std::to_string(2)) \
+			return ApplyLayerFuncIfN##NAME<2>(std::move(args[0]), std::move(args[1])); \
+		if (func_name == std::string(#SYM) + std::to_string(3)) \
+			return ApplyLayerFuncIfN##NAME<3>(std::move(args[0]), std::move(args[1])); \
+		if (func_name == std::string(#SYM) + std::to_string(4)) \
+			return ApplyLayerFuncIfN##NAME<4>(std::move(args[0]), std::move(args[1])); \
+		if (func_name == std::string(#SYM) + std::to_string(5)) \
+			return ApplyLayerFuncIfN##NAME<5>(std::move(args[0]), std::move(args[1])); \
+		if (func_name == std::string(#SYM) + std::to_string(6)) \
+			return ApplyLayerFuncIfN##NAME<6>(std::move(args[0]), std::move(args[1])); \
+		if (func_name == std::string(#SYM) + std::to_string(7)) \
+			return ApplyLayerFuncIfN##NAME<7>(std::move(args[0]), std::move(args[1])); \
+		if (func_name == std::string(#SYM) + std::to_string(8)) \
+			return ApplyLayerFuncIfN##NAME<8>(std::move(args[0]), std::move(args[1])); \
+		if (func_name == std::string(#SYM) + std::to_string(9)) \
+			return ApplyLayerFuncIfN##NAME<9>(std::move(args[0]), std::move(args[1])); \
+		if (func_name == std::string(#SYM) + std::to_string(10)) \
+			return ApplyLayerFuncIfN##NAME<10>(std::move(args[0]), std::move(args[1]));
+		PARSER_LAYER_FUNCS_IF
+		#undef X
+
 		// 通常関数チェック (Check regular functions)
 		#define X(NAME, SYM) \
 		if (func_name == #SYM) return ApplyRegularFunc##NAME(std::move(args[0]));

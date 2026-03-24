@@ -127,7 +127,7 @@ void QuickstartSTable()
 
 	std::cout << "------Calculate------" << std::endl;
 
-	// Lambda functions are made from placeholders.
+	// Lambda functions are made from placeholders and operators/functions like boost::lambda.
 	// They can be used when you want to calculate something from data and filter/convert data like <ranges> library.
 
 	//Make a lambda function to calculate population density of a city.

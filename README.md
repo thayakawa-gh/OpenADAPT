@@ -16,6 +16,13 @@ Its primary objective is to enable C++ to perform the kind of analysis and manip
 
 ADAPT is a header-only library, so simply clone and add the `OpenADAPT` directory to your project's include directries.
 
+### Dependencies
+
+The plotting functionality requires gnuplot to be installed.
+By default, gnuplot is expected to be found in "C:/Progra~1/gnuplot/bin/gnuplot.exe" on Windows and system path on Linux/macOS, but the path can be customized by defining `ADAPT_GNUPLOT_PATH` environment variable or by setting it in the code with `adapt::SetGnuplotPath("path_to_gnuplot")`.
+
+No other dependencies are required for the core functionalities of ADAPT, but the test codes require GTest and yaml-cpp.
+
 ### Install with CMake (optional)
 
 If needed, it can be built and installed with CMake using the following commands:
@@ -34,7 +41,11 @@ find_package(OpenADAPT REQUIRED)
 target_link_libraries(YOUR_PACKAGE_NAME PRIVATE OpenADAPT::OpenADAPT)
 ```
 
-The test and example codes are built by adding `-DBUILD_TEST=ON` and `-DBUILD_EXAMPLES=ON` to the cmake command, respectively. Note that GTest and yaml-cpp are required for these builds.
+If you want to use lambda functions from string expressions, it is recommended to pre-compile the expression parser by adding `-DENABLE_PREBUILT_PARSER=ON` to the cmake command.
+This option will build a static/shared library containing the implementation of adapt::Parse for DTree/DTable/DHist, which can be linked to your project with `OpenADAPT::Parser` target.
+You can also selectively pre-compile the expression parser for specific container types by passing `-DPREBUILT_PARSER_TARGET` with a semicolon-separated list of target container types, such as `-DPREBUILT_PARSER_TARGET=DTree;DTable`.
+
+The test and example codes are built by adding `-DBUILD_TEST=ON` and `-DBUILD_EXAMPLES=ON` to the cmake command, respectively.
 
 ### Include ADAPT
 ```cpp
@@ -59,7 +70,7 @@ import adapt;// Import the module.
 
 using namespace adapt::lit;// Import the ADAPT literals, such as "_fld" for field names.
 ```
-Maybe the following headers are required to be included before importing the module.
+The following headers may be required to be included before importing the module.
 ```cpp
 #include <format>
 #include <iostream>
@@ -235,6 +246,32 @@ They can be used when you want to calculate something from data and filter/conve
 	auto average_population_density = tostr(mean3(population / area) * 2.589988) + "(/mi^2)";
 	assert(average_population_density.GetLayer() == -1_layer);
 	// No need to specify the index when the layer of the result is -1, i.e., the root layer.
+	std::cout << average_population_density(usa).str() << std::endl;// 5362.28(/mi^2).
+```
+
+Lambda functions can also be made from string expressions. The following code produces the same results as the above code.  
+Note that building the expression parser is time-consuming, so it is recommended to use pre-built parser.
+Please refer to the Installation section for building the pre-built parser.
+```cpp
+#include <OpenADAPT/Parser.h>// Include the expression parser header.
+#include <OpenADAPT/Parser_impl.h>// Include the expression parser implementation if pre-built parser is not used, but it is recommended to use pre-built parser to avoid long compilation time.
+
+	auto population_density = adapt::Parse(usa, "population / area");
+	adapt::Bpos baytown_index = { 1, 0, 2 };
+	std::cout << population_density(usa, baytown_index).f64() << std::endl;// 83701 / 32.7 = 2559.66
+	
+	auto cat_state_county_city = adapt::Parse(usa, "state + \" - \" + county + \" - \" + city");
+	std::cout << cat_state_county_city(usa, baytown_index).str() << std::endl;// Texas - Harris County - Baytown
+
+	auto total_population_in_a_county = adapt::Parse(usa, "sum(population)");
+	adapt::Bpos harris_county_index = { 1, 0 };
+	std::cout << total_population_in_a_county(usa, harris_county_index).i32() << std::endl;// 2304580 + 151950 + 83701 = 2548231
+
+	auto total_population_in_a_state = adapt::Parse(usa, "sum2(population)");
+	adapt::Bpos texas_index = { 1 };
+	std::cout << total_population_in_a_state(usa, texas_index).i32() << std::endl;// 2304580 + 151950 + 83701 + 1304379 + 256684 + 246918 = 4348212
+
+	auto average_population_density = adapt::Parse(usa, "tostr(mean3(population / area) * 2.589988) + \"(/mi^2)\"");
 	std::cout << average_population_density(usa).str() << std::endl;// 5362.28(/mi^2).
 ```
 
