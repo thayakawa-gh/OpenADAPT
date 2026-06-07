@@ -13,7 +13,9 @@ import adapt;
 #include <OpenADAPT/ADAPT.h>
 #endif
 
+#ifdef ADAPT_ENABLE_PREBUILT_PARSER
 #include <OpenADAPT/Parser.h>
+#endif
 
 using namespace adapt::lit;
 
@@ -22,6 +24,7 @@ void StoreData(adapt::DTree& usa);
 
 void QuickstartParser()
 {
+#ifdef ADAPT_ENABLE_PREBUILT_PARSER
 	std::cout << "[[Quickstart Parser]]" << std::endl;
 
 	adapt::DTree usa = MakeDTree();
@@ -65,4 +68,5 @@ void QuickstartParser()
 	std::cout << average_population_density(usa).str() << std::endl;// 5362.28(/mi^2).
 
 	std::cout << std::endl;
+#endif
 }

@@ -38,28 +38,52 @@ adapt::NamedTuple<ADAPT_DETAIL_EXPAND_CONV_PAIR_COMMA(ADAPT_DETAIL_CONV_S_DEFINE
 #define S_DEFINE_LAYER ADAPT_S_DEFINE_LAYER
 #endif
 
+
 //----------GetPlaceholderのヘルパー----------
 
 #define ADAPT_DETAIL_CONV_FLD(args, x) #x##_fld
-#define ADAPT_DETAIL_CONV_FLD_PF(prefix, x) prefix #x##_fld
+#define ADAPT_DETAIL_CONV_FLD_PF(prefix, x) prefix##x
+//#define ADAPT_DETAIL_CONV_TYPED_FLD(cntr, name, type) auto name = (cntr).GetPlaceholder(#name##_fld).as<adapt::FieldType::type>()
+#define ADAPT_DETAIL_CONV_TYPED_FLD_VARS(foo, name, type) name
+#define ADAPT_DETAIL_CONV_TYPED_FLD_FUNC(foo, name, type) #name##_fld, Number<adapt::FieldType::type>{}
+#define ADAPT_DETAIL_CONV_TYPED_FLD_PF_VARS(prefix, name, type) prefix##name
 
 //例えばadapt::DTreeなどのコンテナcに対して、GET_PLACEHOLDERS(c, x, y, z)とすると、
 //これはauto[x, y, z] = c.GetPlaceholders("x"_fld, "y"_fld, "z"_fld);と展開される。
 #define ADAPT_GET_PLACEHOLDERS(c, ...)\
 auto[__VA_ARGS__] =\
 	(c).GetPlaceholders(ADAPT_DETAIL_EXPAND_CONV_COMMA(ADAPT_DETAIL_CONV_FLD, foo, __VA_ARGS__))
-
 #define ADAPT_GET_PLACEHOLDERS_PF(c, prefix, ...)\
 auto[ADAPT_DETAIL_EXPAND_CONV_COMMA(ADAPT_DETAIL_CONV_FLD_PF, prefix, __VA_ARGS__)] =\
 	(c).GetPlaceholders(ADAPT_DETAIL_EXPAND_CONV_COMMA(ADAPT_DETAIL_CONV_FLD, foo, __VA_ARGS__))
+
+//型指定版。ADAPT_GET_TYPED_PLACEHOLDERS(c, x, I32, y, F64, z, Str)とすると、
+// auto [x, y, z] = c.GetPlaceholders("x"_fld, Number<adapt::FieldType::I32>{}, "y"_fld, Number<adapt::FieldType::F64>{}, "z"_fld, Number<adapt::FieldType::Str>{});
+//と展開され、TypedPlaceholderを得られる。
+#define ADAPT_GET_TYPED_PLACEHOLDERS(c, ...)\
+auto[ADAPT_DETAIL_EXPAND_CONV_PAIR_COMMA(ADAPT_DETAIL_CONV_TYPED_FLD_VARS, foo, __VA_ARGS__)] =\
+	(c).GetPlaceholders(ADAPT_DETAIL_EXPAND_CONV_PAIR_COMMA(ADAPT_DETAIL_CONV_TYPED_FLD_FUNC, c, __VA_ARGS__))
+//ADAPT_DETAIL_EXPAND_CONV_PAIR(ADAPT_DETAIL_CONV_TYPED_FLD, c, ;, __VA_ARGS__);
+#define ADAPT_GET_TYPED_PLACEHOLDERS_PF(c, prefix, ...)\
+auto[ADAPT_DETAIL_EXPAND_CONV_PAIR_COMMA(ADAPT_DETAIL_CONV_TYPED_FLD_PF_VARS, prefix, __VA_ARGS__)] =\
+	(c).GetPlaceholders(ADAPT_DETAIL_EXPAND_CONV_PAIR_COMMA(ADAPT_DETAIL_CONV_TYPED_FLD_FUNC, c, __VA_ARGS__))
+
 //Rank指定版。auto[x, y, z] = c.GetPlaceholders<Rank>("x"_fld, "y"_fld, "z"_fld);のように展開される。
 #define ADAPT_GET_RANKED_PLACEHOLDERS(c, Rank, ...)\
 auto[__VA_ARGS__] =\
 	(c).GetPlaceholders<Rank>(ADAPT_DETAIL_EXPAND_CONV_COMMA(ADAPT_DETAIL_CONV_FLD, foo, __VA_ARGS__))
+#define ADAPT_GET_RANKED_PLACEHOLDERS_PF(c, Rank, prefix, ...)\
+auto[ADAPT_DETAIL_EXPAND_CONV_COMMA(ADAPT_DETAIL_CONV_FLD_PF, prefix, __VA_ARGS__)] =\
+	(c).GetPlaceholders<Rank>(ADAPT_DETAIL_EXPAND_CONV_COMMA(ADAPT_DETAIL_CONV_FLD, foo, __VA_ARGS__))
+
 #ifdef ADAPT_OMIT_MACRO_PREFIX
 #define GET_PLACEHOLDERS ADAPT_GET_PLACEHOLDERS
+#define GET_PLACEHOLDERS_PF ADAPT_GET_PLACEHOLDERS_PF
+#define GET_TYPED_PLACEHOLDERS ADAPT_GET_TYPED_PLACEHOLDERS
+#define GET_TYPED_PLACEHOLDERS_PF ADAPT_GET_TYPED_PLACEHOLDERS_PF
 #define GET_RANKED_PLACEHOLDERS ADAPT_GET_RANKED_PLACEHOLDERS
 #endif
+
 
 //----------named関数のヘルパー----------
 

@@ -103,12 +103,12 @@ namespace detail
 {
 
 template <keyword_name KeywordName>
-constexpr bool KeywordExists_impl(KeywordName) { return false; }
+constexpr bool KeywordExists_impl() { return false; }
 template <keyword_name KeywordName, keyword_arg Arg, keyword_arg ...Args>
-constexpr bool KeywordExists_impl(KeywordName, Arg&&, [[maybe_unused]] Args&& ...args)
+constexpr bool KeywordExists_impl()
 {
 	if constexpr (keyword_arg_named<Arg, KeywordName>) return true;
-	else return KeywordExists_impl(KeywordName{}, std::forward<Args>(args)...);
+	else return KeywordExists_impl<KeywordName, Args...>();
 }
 
 template <keyword_name KeywordName, class Default>
@@ -128,9 +128,21 @@ constexpr decltype(auto) GetKeywordArg_impl(KeywordName name, [[maybe_unused]] D
 
 ADAPT_EXPORT
 template <keyword_name KeywordName, keyword_arg ...Args>
-constexpr bool KeywordExists(KeywordName name, Args&& ...args)
+constexpr bool KeywordExists(KeywordName, Args&& ...)
 {
-	return detail::KeywordExists_impl(name, std::forward<Args>(args)...);
+	return detail::KeywordExists_impl<KeywordName, std::remove_cvref_t<Args>...>();
+}
+ADAPT_EXPORT
+template <keyword_name KeywordName, keyword_arg ...Args>
+constexpr bool KeywordExists(KeywordName, std::tuple<Args...>)
+{
+	return detail::KeywordExists_impl<KeywordName, std::remove_cvref_t<Args>...>();
+}
+ADAPT_EXPORT
+template <keyword_name KeywordName, keyword_arg ...Args>
+constexpr bool KeywordExists()
+{
+	return detail::KeywordExists_impl<KeywordName, std::remove_cvref_t<Args>...>();
 }
 
 //該当するキーワードから値を取り出して返す。
@@ -145,7 +157,8 @@ ADAPT_EXPORT
 template <keyword_name KeywordName, keyword_arg ...Args>
 constexpr decltype(auto) GetKeywordArg(KeywordName name, std::tuple<Args...> args)
 {
-	std::apply([&name](auto&& ...args) { return GetKeywordArg(name, std::forward<decltype(args)>(args)...); }, args);
+	return std::apply([](auto&& ...args) { return GetKeywordArg(std::forward<decltype(args)>(args)...); },
+					  TupleAddFront(name, std::move(args)));
 }
 ADAPT_EXPORT
 template <keyword_name KeywordName, class Default, keyword_arg ...Args> requires (!keyword_arg<std::decay_t<Default>>)

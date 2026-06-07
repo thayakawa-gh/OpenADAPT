@@ -623,6 +623,7 @@ auto MakeRttiFuncNode_cast_bool(Node&& node)
 		#undef CODE
 		return RttiConstNode((int8_t)tmp);
 	}
+	else if constexpr (stat_type_node<Node>) return cast_bool(node);
 	else throw MismatchType("");
 }
 

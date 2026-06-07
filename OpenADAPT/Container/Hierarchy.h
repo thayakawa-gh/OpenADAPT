@@ -670,6 +670,8 @@ public:
 	}*/
 	const RttiPlaceholder& GetPlaceholder(LayerType layer, uint16_t arr_index) const
 	{
+		assert(layer <= m_max_layer);
+		assert(arr_index < m_field_infos_by_layer[layer + (LayerType)1].size());
 		return m_field_infos_by_layer[layer + (LayerType)1][arr_index];
 	}
 	const RttiPlaceholder& GetPlaceholder(std::string_view name) const
@@ -691,6 +693,21 @@ public:
 	std::array<RttiPlaceholder, sizeof...(NAMES)> GetPlaceholders(const NAMES& ...names) const
 	{
 		return { GetPlaceholder(names)... };
+	}
+private:
+	template <FieldType Type, class ...Body>
+	auto GetPlaceholders_rec(std::string_view name, Number<Type>, const Body& ...body) const
+	{
+		if constexpr (sizeof...(Body) == 0)
+			return std::make_tuple(GetPlaceholder<Type>(name));
+		else
+			return std::tuple_cat(std::make_tuple(GetPlaceholder<Type>(name)), GetPlaceholders_rec(body...));
+	}
+public:
+	template <FieldType Type, class ...NAMES>
+	auto GetPlaceholders(std::string_view name, Number<Type>, const NAMES& ...names) const
+	{
+		return GetPlaceholders_rec(name, Number<Type>{}, names...);
 	}
 
 	const std::vector<RttiPlaceholder>& GetPlaceholdersIn(LayerType layer) const
@@ -893,6 +910,21 @@ public:
 	std::array<RttiPlaceholder, sizeof...(NAMES)> GetPlaceholders(const NAMES& ...names) const
 	{
 		return { GetPlaceholder(names)... };
+	}
+private:
+	template <FieldType Type, class ...Body>
+	auto GetPlaceholders_rec(std::string_view name, FieldType, const Body& ...body) const
+	{
+		if constexpr (sizeof...(Body) == 0)
+			return std::make_tuple(GetPlaceholder(name).template AddType<Type>());
+		else
+			return std::tuple_cat(std::make_tuple(GetPlaceholder<Type>(name)), GetPlaceholders_rec(body...));
+	}
+public:
+	template <FieldType Type, class ...NAMES>
+	auto GetPlaceholders(std::string_view name, Number<Type>, const NAMES& ...names) const
+	{
+		return GetPlaceholders_rec(name, Number<Type>{}, names...);
 	}
 
 	const std::string& GetFieldName(const RttiPlaceholder& m) const

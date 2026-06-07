@@ -19,7 +19,7 @@ ADAPT is a header-only library, so simply clone and add the `OpenADAPT` director
 ### Dependencies
 
 The plotting functionality requires gnuplot to be installed.
-By default, gnuplot is expected to be found in "C:/Progra~1/gnuplot/bin/gnuplot.exe" on Windows and system path on Linux/macOS, but the path can be customized by defining `ADAPT_GNUPLOT_PATH` environment variable or by setting it in the code with `adapt::SetGnuplotPath("path_to_gnuplot")`.
+By default, gnuplot is expected to be found in `C:/Progra~1/gnuplot/bin/gnuplot.exe` on Windows and system path on the other platforms, but the path can be customized by defining `ADAPT_GNUPLOT_PATH` environment variable or by setting it in the code with `adapt::SetGnuplotPath("path_to_gnuplot")`.
 
 No other dependencies are required for the core functionalities of ADAPT, but the test codes require GTest and yaml-cpp.
 

@@ -61,6 +61,8 @@ public:
 	using ElementRef = ElementRef_impl<Hierarchy, std::type_identity_t, LayerType>;
 	using ConstElementRef = ElementRef_impl<Hierarchy, std::add_const_t, LayerType>;
 
+	using iterator = ElementIterator_impl<Hierarchy, std::type_identity_t>;
+	using const_iterator = ElementIterator_impl<Hierarchy, std::add_const_t>;
 
 	using FieldRef = FieldRef_impl<std::type_identity_t>;
 	using ConstFieldRef = FieldRef_impl<std::add_const_t>;
@@ -341,6 +343,14 @@ public:
 	ConstRange GetRange(const Bpos& pos, LayerType trav) const { return ConstRange(static_cast<const Container&>(*this), pos, trav); }
 	ConstRange GetRange(LayerType fix, const Bpos& pos) const { return ConstRange(fix, static_cast<const Container&>(*this), pos); }
 	ConstRange GetRange(LayerType fix, const Bpos& pos, LayerType trav) const { return ConstRange(fix, static_cast<const Container&>(*this), pos, trav); }
+
+	//下層要素へのイテレータを得る。
+	iterator begin() { return GetLowerElements().begin(); }
+	iterator end() { return GetLowerElements().end(); }
+	const_iterator cbegin() const { return GetLowerElements().cbegin(); }
+	const_iterator cend() const { return GetLowerElements().cend(); }
+	const_iterator begin() const { return cbegin(); }
+	const_iterator end() const { return cend(); }
 
 
 	auto GetLowerElements() const

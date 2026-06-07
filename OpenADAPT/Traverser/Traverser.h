@@ -920,6 +920,11 @@ public:
 		assert(layer <= m_trav_layer);
 		return m_iterators[layer + 1];
 	}
+	ElementIterator& GetIterator(LayerType layer)
+	{
+		assert(layer <= m_trav_layer);
+		return m_iterators[layer + 1];
+	}
 	LayerType GetFixedLayer() const
 	{
 		return m_fixed_layer;
@@ -1575,6 +1580,11 @@ public:
 	}
 
 	const ElementIterator& GetIterator(LayerType layer) const
+	{
+		assert(layer <= 0);
+		return m_iterators[layer + 1];
+	}
+	ElementIterator& GetIterator(LayerType layer)
 	{
 		assert(layer <= 0);
 		return m_iterators[layer + 1];

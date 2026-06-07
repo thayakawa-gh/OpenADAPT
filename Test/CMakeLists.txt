@@ -42,7 +42,7 @@ add_executable(${PROJECT_NAME}
 	${TEST_SOURCES}
 	"Random/BinJoint.cpp" "Random/CrossJoint.cpp" "Random/Hist.cpp" "Random/KeywordArg.cpp" "Random/LayerInfo.cpp"
 	"Random/Matrix.cpp" "Random/Plot.cpp" "Random/Ranges.cpp"
-	"Random/TreeHandling.cpp" "Random/TryJoin.cpp" "Random/UserFunc.cpp")
+	"Random/TreeHandling.cpp" "Random/TryJoin.cpp" "Random/UserFunc.cpp" "Random/Optimization.cpp")
 
 if(${unordered_dense_FOUND})
 	message("unordered_dense found")

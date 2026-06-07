@@ -2,8 +2,6 @@ set(PROJECT_NAME Examples_en)
 
 project(${PROJECT_NAME})
 
-set(EXAMPLE_SRC "main.cpp" "quickstart_dtree.cpp" "quickstart_stree.cpp" "quickstart_dtable.cpp" "quickstart_stable.cpp"
-				"quickstart_join.cpp" "ctti_rtti_typed.cpp" "quickstart_plot.cpp" "quickstart_dhist.cpp" "quickstart_shist.cpp")
 
 if(BUILD_WITH_MODULE)
 	message("Building Example/en with Module")
@@ -16,11 +14,13 @@ else()
 endif()
 
 if (BUILD_PARSER)
-	list(APPEND EXAMPLE_SRC quickstart_parser.cpp)
 	list(APPEND EXAMPLES_EN_LINK_LIBS OpenADAPT::Parser)
+	list(APPEND EXAMPLES_EN_COMPILE_DEFS ADAPT_ENABLE_PREBUILT_PARSER)
 endif()
 
-add_executable(${PROJECT_NAME} ${EXAMPLE_SRC})
+add_executable(${PROJECT_NAME} "main.cpp" "quickstart_dtree.cpp" "quickstart_stree.cpp" "quickstart_dtable.cpp" "quickstart_stable.cpp"
+			   "quickstart_join.cpp" "ctti_rtti_typed.cpp" "quickstart_plot.cpp" "quickstart_dhist.cpp" "quickstart_shist.cpp" 
+			   "quickstart_parser.cpp")
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${EXAMPLES_EN_LINK_LIBS})
 target_compile_definitions(${PROJECT_NAME} PRIVATE ${EXAMPLES_EN_COMPILE_DEFS})

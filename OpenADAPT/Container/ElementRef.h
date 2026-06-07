@@ -509,10 +509,31 @@ public:
 		m_hierarchy = e.m_hierarchy;
 	}
 
+private:
+	template <LayerType Layer, class Type>
+	inline void CheckPHConsisntency(const CttiPlaceholder<Layer, Type>& ph) const
+	{
+#ifndef NDEBUG
+		//引数のphがこのElementRefのHierarchyに含まれているものと合致するかを確認する。
+		//s_hierarchyならCttiPlaceholderの型が一致せず呼び出せないので判定不要。
+		if constexpr (f_hierarchy<Hierarchy> || d_hierarchy<Hierarchy>)
+		{
+			const auto& h = GetHierarchy().value();
+			const auto& ph_check = h.GetPlaceholder(Layer, ph.GetIndex());
+			if (ph.GetType() != ph_check.GetType() || ph.GetPtrOffset() != ph_check.GetPtrOffset())
+				throw MismatchType("The placeholder does not match the hierarchy of this element.");
+		}
+#endif
+	}
+public:
+
 	//----------Ctti----------
 	template <LayerType Layer, class Type>
 	Qualifier<Type>& GetField(const CttiPlaceholder<Layer, Type>& ph) const
 	{
+		//多数のコンテナを同時に使用しているとき、無関係なコンテナのplaceholderを誤って使うことがあるため、
+		//デバッグ時はlayerだけでなく他の様々な変数もチェックすることが望ましい。
+		CheckPHConsisntency(ph);
 		if constexpr (HasStaticLayer) static_assert([]() { return Layer == LayerSD{}; }());
 		else assert(Layer == m_layer);
 		return *std::launder(reinterpret_cast<Qualifier<Type>*>(m_block + ph.GetPtrOffset()));
@@ -856,10 +877,12 @@ private:
 template <class Hierarchy_, template <class> class Qualifier>
 class ElementPtr_impl
 {
+	static constexpr bool IsNonConst = !std::is_const_v<Qualifier<char>>;
 public:
 	using Hierarchy = Hierarchy_;
 	ElementPtr_impl(ElementRef_impl<Hierarchy, Qualifier, LayerType> ref) : m_ref(ref) {}
 	const ElementRef_impl<Hierarchy, Qualifier, LayerType>* operator->() const { return &m_ref; }
+	ElementRef_impl<Hierarchy, Qualifier, LayerType>* operator->() requires IsNonConst { return &m_ref; }
 private:
 	ElementRef_impl<Hierarchy, Qualifier, LayerType> m_ref;
 };
