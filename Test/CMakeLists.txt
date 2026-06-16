@@ -5,6 +5,7 @@ project(${PROJECT_NAME})
 find_package(GTest REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(unordered_dense)
+find_package(rapidjson)
 
 set(TEST_TREE_TYPES DTree STree DJTree0 DJTree1 DJTree2 DJTree0_1 DJTree1_2)
 set(TEST_TABLE_TYPES DTable STable DJTable)
@@ -42,17 +43,23 @@ add_executable(${PROJECT_NAME}
 	${TEST_SOURCES}
 	"Random/BinJoint.cpp" "Random/CrossJoint.cpp" "Random/Hist.cpp" "Random/KeywordArg.cpp" "Random/LayerInfo.cpp"
 	"Random/Matrix.cpp" "Random/Plot.cpp" "Random/Ranges.cpp"
-	"Random/TreeHandling.cpp" "Random/TryJoin.cpp" "Random/UserFunc.cpp" "Random/Optimization.cpp")
-
+	"Random/TreeHandling.cpp" "Random/TryJoin.cpp" "Random/UserFunc.cpp" "Random/Optimization.cpp" "Random/Json.cpp")
+	
+set(TEST_COMPILE_DEFS)
+set(TEST_LINK_LIBS GTest::GTest GTest::Main yaml-cpp::yaml-cpp)
 if(${unordered_dense_FOUND})
 	message("unordered_dense found")
-	#target_compile_definitions(${PROJECT_NAME} PRIVATE USE_ANKERL_UNORDERED_DENSE)
-	set(TEST_COMPILE_DEFS USE_ANKERL_UNORDERED_DENSE)
-	set(TEST_LINK_LIBS GTest::GTest GTest::Main yaml-cpp unordered_dense::unordered_dense)
+	list(APPEND TEST_COMPILE_DEFS USE_ANKERL_UNORDERED_DENSE)
+	list(APPEND TEST_LINK_LIBS unordered_dense::unordered_dense)
 else()
 	message("unordered_dense not found")
-	set(TEST_COMPILE_DEFS)
-	set(TEST_LINK_LIBS GTest::GTest GTest::Main yaml-cpp)
+endif()
+
+if(${rapidjson_FOUND})
+	message("rapidjson found")
+	list(APPEND TEST_LINK_LIBS rapidjson)
+else()
+	message("rapidjson not found")
 endif()
 
 if(BUILD_WITH_MODULE)

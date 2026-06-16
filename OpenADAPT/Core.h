@@ -1,5 +1,6 @@
-#ifndef ADAPT_ADAPT_H
-#define ADAPT_ADAPT_H
+#ifndef ADAPT_CORE_H
+#define ADAPT_CORE_H
+
 
 #include <OpenADAPT/Utility/NamedTuple.h>
 #include <OpenADAPT/Container/Tree.h>
@@ -31,9 +32,5 @@
 #include <OpenADAPT/Range/MakeHashtable.h>
 
 #include <OpenADAPT/Common/Macros.h>
-
-#include <OpenADAPT/FileIO/Json.h>
-
-#include <OpenADAPT/Plot/Canvas.h>
 
 #endif
