@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <random>
 #include <gtest/gtest.h>
 #include <OpenADAPT/Plot/Canvas.h>
 
@@ -17,4 +18,23 @@ TEST(Random, Plot_XYErrorBars)
 	g.SetXLabel("X");
 	g.SetYLabel("Y");
 	g.PlotPoints(x, y, plot::xerrorbar = xerr, plot::yerrorbar = yerr, plot::variable_color = vc);
+}
+
+TEST(Random, Plot_Fitting)
+{
+	std::normal_distribution<double> gauss_dist(1.0, 2.0);
+	std::mt19937 rng(42);
+	std::vector<double> data_x(500);
+	for (size_t i = 0; i < data_x.size(); ++i)
+	{
+		double x = gauss_dist(rng);
+		data_x[i] = x;
+	}
+
+	Canvas2D g("Plot_fitting.png");
+	g.ShowCommands(true);
+	g.SetXRange(-9, 11);
+	std::vector<double> params{ 0., 1., 1. };
+	g.PlotHistogram(data_x, -9, 11, 50, plot::title = "data", plot::c_dark_persimmon, plot::fit_normal(params, plot::c_olive));
+
 }

@@ -3,6 +3,7 @@
 
 #include <string_view>
 #include <vector>
+#include <numbers>
 #include <OpenADAPT/Utility/Macros.h>
 #include <OpenADAPT/Utility/KeywordArgs.h>
 #include <OpenADAPT/Utility/Ranges.h>
@@ -27,6 +28,72 @@ ADAPT_EXPORT enum class CntrSmooth : int16_t { none, linear, cubicspline, bsplin
 ADAPT_EXPORT enum class MPFillOrder : int16_t { rowsfirst, colsfirst };
 ADAPT_EXPORT enum class MPVerticalDirection : int16_t { downwards, upwards };
 
+ADAPT_EXPORT
+struct ObjectiveFuncNormal
+{
+	inline double operator()(std::span<const double> var, std::span<const double> params) const
+	{
+		double mean = params[0];
+		double stddev = params[1];
+		double factor = params[2];
+		double x = var[0];
+		double y = var[1];
+		double d = (x - mean) / stddev;
+		double residual = std::exp(-0.5 * d * d) / (stddev * std::sqrt(2 * std::numbers::pi)) * factor - y;
+		return residual * residual;
+	}
+	static std::string GetEquation(std::span<const double> params)
+	{
+		double mean = params[0];
+		double stddev = params[1];
+		double factor = params[2];
+		return
+			std::format("{0} * exp(-0.5 * ((x - {1}) / {2})**2)",
+						factor / (stddev * std::sqrt(2 * std::numbers::pi)), mean, stddev);
+	}
+	static std::string GetTitle(std::span<const double> params)
+	{
+		double mean = params[0];
+		double stddev = params[1];
+		return std::format("{{/Symbol m}}={:.4g}, {{/Symbol s}}={:.4g}", mean, stddev);
+	}
+};
+ADAPT_EXPORT
+struct ObjectiveFuncLinear
+{
+	inline double operator()(std::span<const double> var, std::span<const double> params) const
+	{
+		double slope = params[0];
+		double intercept = params[1];
+		double x = var[0];
+		double y = var[1];
+		double residual = slope * x + intercept - y;
+		return residual * residual;
+	}
+	static std::string GetEquation(std::span<const double> params)
+	{
+		double slope = params[0];
+		double intercept = params[1];
+		return std::format("{:.4g} * x + {:.4g}", slope, intercept);
+	}
+	static std::string GetTitle(std::span<const double> params)
+	{
+		double slope = params[0];
+		double intercept = params[1];
+		return std::format("slope={:.4g}, intercept={:.4g}", slope, intercept);
+	}
+};
+
+
+ADAPT_EXPORT
+template <class FitFunc, class Params, class ...Options>
+struct FitOptions
+{
+	FitFunc func;
+	Params params;
+	std::tuple<Options...> options;
+};
+
 namespace plot_detail
 {
 
@@ -48,6 +115,10 @@ template <ranges::string_range Range>
 struct StringRange {};
 template <acceptable_arg>
 struct AcceptableArg {};
+template <class Options>
+struct FitArg;
+template <class FitFunc, class ...Options>
+struct FitArg<FitOptions<FitFunc, Options...>> {};
 
 using AnyArithmeticRange = AnyTypeKeyword<ArithmeticRange>;
 using AnyStringRange = AnyTypeKeyword<StringRange>;
@@ -232,6 +303,10 @@ ADAPT_EXPORT ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(page_title, std::stri
 ADAPT_EXPORT ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(fillorder, MPFillOrder, plot_detail::MultiplotOption)
 ADAPT_EXPORT ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(vertical_direction, MPVerticalDirection, plot_detail::MultiplotOption)
 ADAPT_EXPORT ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(multiplot_size, ADAPT_TIE_ARGS(std::pair<double, double>), plot_detail::MultiplotOption)
+
+// Fitting
+ADAPT_EXPORT ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(fitting, AnyTypeKeyword<plot_detail::FitArg>, plot_detail::PointOption)
+
 
 // タイトルなし指定の短縮版
 ADAPT_EXPORT inline constexpr auto notitle = (title = "notitle");
@@ -474,6 +549,20 @@ ADAPT_EXPORT inline constexpr auto rowsfirst = (fillorder = MPFillOrder::rowsfir
 ADAPT_EXPORT inline constexpr auto colsfirst = (fillorder = MPFillOrder::colsfirst);
 ADAPT_EXPORT inline constexpr auto downwards = (vertical_direction = MPVerticalDirection::downwards);
 ADAPT_EXPORT inline constexpr auto upwards = (vertical_direction = MPVerticalDirection::upwards);
+
+// フィッティング指定の短縮版
+ADAPT_EXPORT
+template <class Func, plot_detail::point_option ...Options>
+inline auto fit(Func&& func, std::vector<double>& params, Options&&... options)
+{
+	return (fitting = FitOptions<Func, std::span<double>, Options...>{ func, params, options... });
+}
+ADAPT_EXPORT
+template <plot_detail::point_option ...Options>
+inline auto fit_normal(std::vector<double>& params, Options&&... options)
+{
+	return fit(ObjectiveFuncNormal{}, params, options...);
+}
 
 }
 

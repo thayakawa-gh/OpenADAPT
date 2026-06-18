@@ -204,7 +204,7 @@ void EvaluateCostGradient(std::span<double> out,
 template <class X, class Func, class GradFunc>
 LeastSquaresResult SolveLeastSquares_impl(std::span<const X> xs,
 										  std::span<const double> weights,
-										  std::vector<double> params,
+										  std::span<const double> params,
 										  Func&& func,
 										  GradFunc&& grad,
 										  const LeastSquaresOptions& options)
@@ -220,7 +220,7 @@ LeastSquaresResult SolveLeastSquares_impl(std::span<const X> xs,
 	size_t m = params.size();
 
 	LeastSquaresResult result;
-	result.params = std::move(params);
+	result.params.assign(params.begin(), params.end());
 	double lambda = options.initial_lambda;
 	double cost = EvaluateCost(xs, weights, result.params, func);
 
@@ -337,7 +337,7 @@ template <detail::ls_model_function<std::span<const double>> Func,
 	ranges::arithmetic_range ...Data,
 	opts::least_squares_option ...Options>
 LeastSquaresResult SolveLeastSquares_rec(Func&& func,
-										 std::vector<double> params,
+										 std::span<const double> params,
 										 std::tuple<Data...> xs,
 										 std::tuple<Options...> options)
 {
@@ -392,7 +392,7 @@ template <detail::ls_model_function<std::span<const double>> Func,
 	opts::least_squares_option ...Options,
 	opts::least_squares_option Opt, class ...Args>
 LeastSquaresResult SolveLeastSquares_rec(Func&& func,
-										 std::vector<double> params,
+										 std::span<const double> params,
 										 std::tuple<Data...> xs,
 										 std::tuple<Options...> options,
 										 Opt&& o, Args&& ...args)
@@ -406,7 +406,7 @@ template <detail::ls_model_function<std::span<const double>> Func,
 		  opts::least_squares_option ...Options,
 		  ranges::arithmetic_range Var, class ...Args>
 LeastSquaresResult SolveLeastSquares_rec(Func&& func,
-										 std::vector<double> params,
+										 std::span<const double> params,
 										 std::tuple<Data...> xs,
 										 std::tuple<Options...> options,
 										 Var&& v, Args&& ...args)
@@ -420,7 +420,7 @@ LeastSquaresResult SolveLeastSquares_rec(Func&& func,
 ADAPT_EXPORT
 template <detail::ls_model_function<std::span<const double>> Func, class ...Args>
 LeastSquaresResult SolveLeastSquares(Func&& func,
-									 std::vector<double> params,
+									 std::span<const double> params,
 									 Args&& ...args)
 {
 	return detail::SolveLeastSquares_rec(
