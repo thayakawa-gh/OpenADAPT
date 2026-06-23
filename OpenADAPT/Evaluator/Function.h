@@ -892,7 +892,7 @@ struct Cast
 		requires std::convertible_to<Arg, Ret>
 	Ret operator()(const Arg& a) const
 	{
-		if constexpr (IsSame_XT_v<std::complex, Ret> && std::is_arithmetic_v<Arg>)
+		if constexpr (IsSpecializationOf_v<std::complex, Ret> && std::is_arithmetic_v<Arg>)
 			return Ret((typename Ret::value_type)(a));
 		else
 			return Ret(a);

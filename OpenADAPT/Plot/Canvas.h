@@ -9,7 +9,6 @@
 #include <OpenADAPT/Plot/Core.h>
 #include <OpenADAPT/Plot/Axes.h>
 #include <OpenADAPT/Plot/PlotCommand.h>
-#include <OpenADAPT/Optimization/LeastSquares.h>
 
 namespace adapt
 {
@@ -45,51 +44,6 @@ struct PlotBuffer2D
 	virtual ~PlotBuffer2D();
 
 	void Flush();
-
-private:
-	template <acceptable_arg_except_string X, acceptable_arg_except_string Y, point_option ...Options>
-	auto MakeFitPointParam(const X& x, const Y& y, Options ...ops)
-	{
-		if constexpr (KeywordExists(plot::fitting, ops...))
-		{
-			auto get_double_span = [](const auto& v)
-			{
-				static_assert(ranges::arithmetic_range<decltype(v)>);
-
-				if constexpr (std::convertible_to<decltype(v), std::span<const double>>)
-					return std::make_tuple(std::span<const double>(v), std::cref(v));
-				else
-				{
-					std::vector<double> vec;
-					std::ranges::copy(v, std::back_inserter(vec));
-					return std::make_tuple(std::span<const double>(vec), std::move(vec));
-				}
-			};
-			auto&& fit_opt = GetKeywordArg(plot::fitting, ops...);
-			std::span<const double> params = fit_opt.params;
-			auto&& [x_span, x_storage] = get_double_span(x);
-			auto&& [y_span, y_storage] = get_double_span(y);
-			LeastSquaresResult fit_result;
-			if constexpr (KeywordExists(plot::yerrorbar))
-			{
-				auto&& [w_span, w_storage] = get_double_span(GetKeywordArg(plot::yerrorbar, ops...));
-				fit_result = SolveLeastSquares(fit_opt.func, params, x_span, y_span, opts::ls_weight = w_span);
-				std::ranges::copy(fit_result.params, std::ranges::begin(fit_opt.params));
-			}
-			else
-			{
-				fit_result = SolveLeastSquares(fit_opt.func, params, x_span, y_span);
-				std::ranges::copy(fit_result.params, std::ranges::begin(fit_opt.params));
-			}
-			std::string equation = fit_opt.func.GetEquation(fit_opt.params);
-			auto make = [&equation](auto&&... args) { return MakePointParam(plot::input = equation, args...); };
-			std::string title = fit_opt.func.GetTitle(fit_opt.params);
-			return std::apply(make, TupleCat(fit_opt.options, std::forward_as_tuple(plot::title = title, plot::s_lines)));
-		}
-		else
-			return EmptyClass{};
-	}
-public:
 
 	template <acceptable_arg_except_string X, acceptable_arg_except_string Y,
 			  point_option ...Options>
@@ -238,8 +192,15 @@ public:
 	PlotBuffer2D PlotColormap(const Map& map_, std::pair<double, double> x, std::pair<double, double> y,
 							  Options ...ops)
 	{
+		size_t xsize = map_.size();
+		size_t ysize = map_.begin()->size();
+		auto p_annot = MakeAnnotParam(map_, CoordMinMax(x, xsize), CoordMinMax(y, ysize), ops...);
 		auto p = MakeColormapParam(plot::map = map_, plot::xminmax = x, plot::yminmax = y, ops...);
-		return PlotColormap(p);
+		auto buf = PlotColormap(p);
+		if constexpr (!std::is_same_v<std::decay_t<decltype(p_annot)>, EmptyClass>)
+			return buf.PlotLabels(p_annot);
+		else
+			return buf;
 	}
 	template <colormap_option ...Options>
 	PlotBuffer2D PlotColormap(std::string_view filename, std::string_view x, std::string_view y, std::string_view map,
@@ -781,36 +742,41 @@ PlotBuffer2D PlotBuffer2D::PlotHistogram(const HistogramParam<Data, Weight>& p, 
 	}
 	else
 	{
+		auto to_empty_option = []<class Op>(Op op)
+		{
+			if constexpr (point_option<Op>)
+				return op;
+			else
+				return KeywordName<EmptyClass, int, plot_detail::PointOption>{} = 0;
+		};
 		if (!yerrors.empty())
 		{
 			if (xerrors != 0.)
 			{
-				//auto p2 = MakePointParam(plot::x = x, plot::y = hist, ops..., plot::style = sty, plot::xerrorbar = xerrors, plot::yerrorbar = yerrors);
-				return PlotPoints(x, hist, ops..., plot::style = sty, plot::xerrorbar = xerrors, plot::yerrorbar = yerrors);
+				// PlotPoints(x, hist, ops...)と直接呼ぶことは出来ない。
+				// 上記のPlotPointsは引数にpoint_optionを要求するが、opsの中にはhistogram_optionが含まれる場合がある。
+				// point_option以外はからのオプションに変換することで渡すことにする。
+				return PlotPoints(x, hist, to_empty_option(ops)..., plot::style = sty, plot::xerrorbar = xerrors, plot::yerrorbar = yerrors);
 			}
 			else
 			{
-				//auto p2 = MakePointParam(plot::x = x, plot::y = hist, ops..., plot::style = sty, plot::yerrorbar = yerrors);
-				return PlotPoints(x, hist, ops..., plot::style = sty, ops..., plot::style = sty, plot::yerrorbar = yerrors);
+				return PlotPoints(x, hist, to_empty_option(ops)..., plot::style = sty, plot::yerrorbar = yerrors);
 			}
 		}
 		else if (!yerrlow.empty() && !yerrhigh.empty())
 		{
 			if (xerrors != 0.)
 			{
-				//auto p2 = MakePointParam(plot::x = x, plot::y = hist, ops..., plot::style = sty, plot::xerrorbar = xerrors, plot::yerrlow = yerrlow, plot::yerrhigh = yerrhigh);
-				return PlotPoints(x, hist, ops..., plot::style = sty, plot::xerrorbar = xerrors, plot::yerrlow = yerrlow, plot::yerrhigh = yerrhigh);
+				return PlotPoints(x, hist, to_empty_option(ops)..., plot::style = sty, plot::xerrorbar = xerrors, plot::yerrlow = yerrlow, plot::yerrhigh = yerrhigh);
 			}
 			else
 			{
-				//auto p2 = MakePointParam(plot::x = x, plot::y = hist, ops..., plot::style = sty, plot::yerrlow = yerrlow, plot::yerrhigh = yerrhigh);
-				return PlotPoints(x, hist, ops..., plot::style = sty, plot::yerrlow = yerrlow, plot::yerrhigh = yerrhigh);
+				return PlotPoints(x, hist, to_empty_option(ops)..., plot::style = sty, plot::yerrlow = yerrlow, plot::yerrhigh = yerrhigh);
 			}
 		}
 		else
 		{
-			//auto p2 = MakePointParam(plot::x = x, plot::y = hist, ops..., plot::style = sty);
-			return PlotPoints(x, hist, plot::y = hist, ops..., plot::style = sty);
+			return PlotPoints(x, hist, to_empty_option(ops)..., plot::style = sty);
 		}
 	}
 }

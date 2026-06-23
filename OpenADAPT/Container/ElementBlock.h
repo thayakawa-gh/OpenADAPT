@@ -376,9 +376,9 @@ private:
 		[[maybe_unused]] constexpr auto get_size = [](const auto& arr)
 		{
 			using Type = std::remove_cvref_t<decltype(arr)>;
-			if constexpr (same_as_xt<Type, std::vector>)
+			if constexpr (specialization_of<Type, std::vector>)
 				return arr.size();
-			else if constexpr (same_as_xt<Type, std::tuple>)
+			else if constexpr (specialization_of<Type, std::tuple>)
 				return std::tuple_size_v<Type>;
 		};
 		assert(GetSize(h, layer) < std::numeric_limits<BindexType>::max());

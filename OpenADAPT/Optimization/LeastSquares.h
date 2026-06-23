@@ -6,6 +6,7 @@
 #include <ranges>
 #include <cmath>
 #include <limits>
+#include <functional>
 #include <algorithm>
 #include <utility>
 #include <array>

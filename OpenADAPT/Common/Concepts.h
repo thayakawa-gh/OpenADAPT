@@ -142,7 +142,7 @@ ADAPT_EXPORT
 template <class T>
 concept rtti_placeholder =
 	placeholder<T> && dynamically_typed<T> && dynamically_layered<T> &&
-	derived_from_xt<std::remove_cvref_t<T>, eval::detail::RttiFieldMethods>&&
+	derived_from_template<std::remove_cvref_t<T>, eval::detail::RttiFieldMethods>&&
 	requires(std::remove_cvref_t<T> v)
 {
 	{ v.GetInternalLayer() } -> std::same_as<LayerType>;
@@ -151,12 +151,12 @@ ADAPT_EXPORT
 template <class T>
 concept typed_placeholder = placeholder<T> &&
 	statistically_typed<T> && dynamically_layered<T> &&
-	derived_from_xt<std::remove_cvref_t<T>, eval::detail::CttiFieldMethods>;
+	derived_from_template<std::remove_cvref_t<T>, eval::detail::CttiFieldMethods>;
 ADAPT_EXPORT
 template <class T>
 concept ctti_placeholder = placeholder<T> &&
 	statistically_typed<T> && statistically_layered<T> &&
-	derived_from_xt<std::remove_cvref_t<T>, eval::detail::CttiFieldMethods>;
+	derived_from_template<std::remove_cvref_t<T>, eval::detail::CttiFieldMethods>;
 
 ADAPT_EXPORT
 template <class T>
@@ -194,7 +194,7 @@ template <class T>
 concept rtti_const_node = std::same_as<std::remove_cvref_t<T>, eval::RttiConstNode>;
 ADAPT_EXPORT
 template <class T>
-concept ctti_const_node = same_as_xt<std::remove_cvref_t<T>, eval::CttiConstNode>;
+concept ctti_const_node = specialization_of<std::remove_cvref_t<T>, eval::CttiConstNode>;
 ADAPT_EXPORT
 template <class T>
 concept const_node = rtti_const_node<T> || ctti_const_node<T>;
@@ -219,10 +219,10 @@ concept rtti_node =
 	rtti_const_node<T> || (dynamically_typed<T> && dynamically_layered<T> && any_node<T>);
 ADAPT_EXPORT
 template <class T>
-concept rtti_field_node = rtti_node<T> && same_as_xt<std::remove_cvref_t<T>, eval::RttiFieldNode>;
+concept rtti_field_node = rtti_node<T> && specialization_of<std::remove_cvref_t<T>, eval::RttiFieldNode>;
 ADAPT_EXPORT
 template <class T>
-concept rtti_func_node = rtti_node<T> && same_as_xt<std::remove_cvref_t<T>, eval::RttiFuncNode>;
+concept rtti_func_node = rtti_node<T> && specialization_of<std::remove_cvref_t<T>, eval::RttiFuncNode>;
 
 ADAPT_EXPORT
 template <class T>
@@ -239,15 +239,15 @@ template <class T>
 concept stat_type_node = typed_node<T> || ctti_node<T>;
 
 /*template <class T>
-concept ctti_field_node = same_as_xt<std::remove_cvref_t<T>, eval::CttiFieldNode>;
+concept ctti_field_node = specialization_of<std::remove_cvref_t<T>, eval::CttiFieldNode>;
 template <class T>
-concept ctti_indexed_field_node = same_as_xt<std::remove_cvref_t<T>, eval::CttiIndexedFieldNode>;
+concept ctti_indexed_field_node = specialization_of<std::remove_cvref_t<T>, eval::CttiIndexedFieldNode>;
 template <class T>
 concept ctti_outer_field_node = same_as_tn<std::remove_cvref_t<T>, eval::CttiOuterFieldNode>;
 template <class T>
 concept ctti_indexed_outer_field_node = detail::IsCttiIndexedOuterFieldNode<std::remove_cvref_t<T>>::value;
 template <class T>
-concept ctti_func_node = same_as_xt<std::remove_cvref_t<T>, eval::CttiFuncNode>;
+concept ctti_func_node = specialization_of<std::remove_cvref_t<T>, eval::CttiFuncNode>;
 template <class T>
 concept ctti_layer_func_node = detail::IsCttiLayerFuncNode<std::remove_cvref_t<T>>::value;*/
 
@@ -536,7 +536,7 @@ class JointMethods;
 
 ADAPT_EXPORT
 template <class T>
-concept joined_container = any_container<T> && derived_from_nxt<std::remove_cvref_t<T>, detail::JointMethods>;
+concept joined_container = any_container<T> && derived_from_value_type_template<std::remove_cvref_t<T>, detail::JointMethods>;
 
 ADAPT_EXPORT
 template <template <class> class Modifier, class ...Containers>
@@ -582,7 +582,7 @@ concept s_container = s_tree<T> || s_table<T> || s_joined_container<T>;
 
 ADAPT_EXPORT
 template <class T>
-concept joined_traverser = any_traverser<T> && derived_from_nxt<std::remove_cvref_t<T>, detail::JointMethods>;
+concept joined_traverser = any_traverser<T> && derived_from_value_type_template<std::remove_cvref_t<T>, detail::JointMethods>;
 
 namespace detail
 {

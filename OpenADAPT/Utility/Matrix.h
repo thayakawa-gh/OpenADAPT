@@ -61,20 +61,20 @@ class Matrix
 
 		uint32_t size() const { return m_sizes[0]; }
 
-		Range<Dim_ - 1, std::type_identity_t> operator[](uint32_t i) requires (!IsConst)
+		Range<Dim_ - 1, std::type_identity_t> operator[](uint32_t i) const requires (!IsConst)
 		{
 			assert(i < m_sizes[0]);
 			return Range<Dim_ - 1, std::type_identity_t>(m_begin + i * m_unit, m_sizes);
 		}
-		Range<Dim_ - 1, std::add_const_t> operator[](uint32_t i) const
+		Range<Dim_ - 1, std::add_const_t> operator[](uint32_t i) const requires IsConst
 		{
 			assert(i < m_sizes[0]);
 			return Range<Dim_ - 1, std::add_const_t>(m_begin + i * m_unit, m_sizes);
 		}
-		iterator begin() requires (!IsConst) { return iterator(m_begin, m_sizes); }
-		iterator end() requires (!IsConst) { return iterator(m_begin + m_sizes[0] * m_unit, m_sizes); }
-		const_iterator begin() const { return cbegin(); }
-		const_iterator end() const { return cend(); }
+		iterator begin() const requires (!IsConst) { return iterator(m_begin, m_sizes); }
+		iterator end() const requires (!IsConst) { return iterator(m_begin + m_sizes[0] * m_unit, m_sizes); }
+		const_iterator begin() const requires IsConst { return cbegin(); }
+		const_iterator end() const requires IsConst { return cend(); }
 		const_iterator cbegin() const { return const_iterator(m_begin, m_sizes); }
 		const_iterator cend() const { return const_iterator(m_begin + m_sizes[0] * m_unit, m_sizes); }
 
@@ -96,6 +96,9 @@ class Matrix
 		Range(Qualifier<T>* begin, const std::array<uint32_t, Dim_>& sizes)
 			: m_begin(begin), m_end(begin + sizes.back())
 		{}
+		Range(Qualifier<T>* begin, Qualifier<T>* end)
+			: m_begin(begin), m_end(end)
+		{}
 		Range(const Range<1, Qualifier>& r)
 			: m_begin(r.m_begin), m_end(r.m_end)
 		{}
@@ -108,20 +111,20 @@ class Matrix
 
 		uint32_t size() const { return uint32_t(m_end - m_begin); }
 
-		const T& operator[](uint32_t i) const
+		const T& operator[](uint32_t i) const requires IsConst
 		{
 			assert(m_begin + i < m_end);
 			return m_begin[i];
 		}
-		T& operator[](uint32_t i) requires (!IsConst)
+		T& operator[](uint32_t i) const requires (!IsConst)
 		{
 			assert(m_begin + i < m_end);
 			return m_begin[i];
 		}
-		iterator begin() requires (!IsConst) { return iterator(m_begin); }
-		iterator end() requires (!IsConst) { return iterator(m_end); }
-		const_iterator begin() const { return cbegin(); }
-		const_iterator end() const { return cend(); }
+		iterator begin() const requires (!IsConst) { return iterator(m_begin); }
+		iterator end() const requires (!IsConst) { return iterator(m_end); }
+		const_iterator begin() const requires IsConst { return cbegin(); }
+		const_iterator end() const requires IsConst { return cend(); }
 		const_iterator cbegin() const { return const_iterator(m_begin); }
 		const_iterator cend() const { return const_iterator(m_end); }
 
@@ -133,6 +136,7 @@ class Matrix
 	struct RangePointerProxy
 	{
 		Range<Dim_, Qualifier> m_range;
+		const Range<Dim_, Qualifier>* operator->() const { return &m_range; }
 		Range<Dim_, Qualifier>* operator->() { return &m_range; }
 	};
 	template <size_t Dim_, template <class...> class Qualifier>
@@ -142,8 +146,9 @@ class Matrix
 	public:
 		using difference_type = ptrdiff_t;
 		using value_type = Range<Dim_, Qualifier>;
+		using pointer = RangePointerProxy<Dim_, Qualifier>;
 		using reference = Range<Dim_, Qualifier>;
-		using iterator_category = std::random_access_iterator_tag;
+		//using iterator_category = std::random_access_iterator_tag;
 
 		Iterator() = default;
 		Iterator(Qualifier<T>* pos, const std::array<uint32_t, Dim_ + 1>& sizes)
@@ -230,8 +235,9 @@ class Matrix
 	public:
 		using difference_type = ptrdiff_t;
 		using value_type = T;
+		using pointer = T*;
 		using reference = T&;
-		using iterator_category = std::random_access_iterator_tag;
+		//using iterator_category = std::random_access_iterator_tag;
 
 		Iterator() = default;
 		Iterator(Qualifier<T>* pos)
@@ -297,8 +303,9 @@ class Matrix
 		Qualifier<T>& operator*() const { return *m_current; }
 
 	private:
-		Qualifier<T>* m_current;
+		Qualifier<T>* m_current = nullptr;
 	};
+
 public:
 
 	using iterator = Iterator<Dim - 1, std::type_identity_t>;
@@ -357,6 +364,15 @@ public:
 	const_iterator end() const { return cend(); }
 	const_iterator cbegin() const { return const_iterator(m_matrix_data, m_sizes); }
 	const_iterator cend() const { return const_iterator(m_matrix_data + GetCapacity(), m_sizes); }
+
+	Range<1, std::type_identity_t> GetFlatRange()
+	{
+		return Range<1, std::type_identity_t>(m_matrix_data, m_matrix_data + GetCapacity());
+	}
+	Range<1, std::add_const_t> GetFlatRange() const
+	{
+		return Range<1, std::add_const_t>(m_matrix_data, m_matrix_data + GetCapacity());
+	}
 
 	Range<Dim - 1, std::type_identity_t> operator[](uint32_t i)
 	{

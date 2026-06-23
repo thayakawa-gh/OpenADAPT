@@ -27,7 +27,7 @@ public:
 	//container_simplexの場合、LayerSDがLayerConstantであればCttiとみなして良い。
 	//ただjoined_containerの場合、DJoinedContainerは原理的にCttiにできないため、
 	//SJoinedContainerであることを要求する必要がある。
-	static constexpr bool IsCtti = (container_simplex<Container> || s_container<Container>) && same_as_xn<LayerSD, LayerConstant>;
+	static constexpr bool IsCtti = (container_simplex<Container> || s_container<Container>) && value_specialization_of<LayerSD, LayerConstant>;
 
 	CttiPosNode() = default;
 	CttiPosNode(const LayerSD& layer, const Container& c) : m_layer(layer), m_container(&c) {}
@@ -105,7 +105,7 @@ public:
 	//ただjoined_containerの場合、DJoinedContainerは原理的にCttiにできないため、
 	//SJoinedContainerであることを要求する必要がある。
 	static constexpr bool IsCtti = (container_simplex<Container> || s_container<Container>) &&
-									same_as_xn<FromLayerSD, LayerConstant> && same_as_xn<ToLayerSD, LayerConstant>;
+									value_specialization_of<FromLayerSD, LayerConstant> && value_specialization_of<ToLayerSD, LayerConstant>;
 
 	CttiSizeNode() = default;
 	CttiSizeNode(FromLayerSD from, ToLayerSD to, const Container& c) : m_from(from), m_to(to), m_container(&c) {}

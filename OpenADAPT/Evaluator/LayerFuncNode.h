@@ -223,7 +223,7 @@ private:
 
 		{
 			//m_depthはIncreaseDepthによって増加させることにする。
-			//if constexpr (!IsSame_XN<DepthConstant, Depth>::value)
+			//if constexpr (!IsValueSpecializationOf<DepthConstant, Depth>::value)
 			//else m_depth = (DepthType)outer_t.size();
 			std::vector<std::tuple<const void*, const Bpos*, bool>> o;
 			o.reserve(outer_t.size() + 1);
@@ -467,7 +467,7 @@ protected:
 		if constexpr (!IsCtti) return false;
 		else
 		{
-			static_assert(IsSame_XN_v<DepthConstant, Dep>);
+			static_assert(IsValueSpecializationOf_v<DepthConstant, Dep>);
 			if constexpr (d > Depth{}) return std::false_type{};
 			else
 			{
@@ -857,7 +857,7 @@ struct LayerFuncMean
 		if (m_count == 0) throw NoElements();
 		//除算を行うとき、std::complexに対してはm_countの暗黙的な浮動小数点型への変換が行われるが、
 		//このときmsvcはC4244を出して鬱陶しいので、分岐して回避する。
-		if constexpr (IsSame_XT<std::complex, RetType>::value) m_result /= (typename RetType::value_type)m_count;
+		if constexpr (IsSpecializationOf<std::complex, RetType>::value) m_result /= (typename RetType::value_type)m_count;
 		else m_result /= RetType(m_count);
 		return m_result;
 	}

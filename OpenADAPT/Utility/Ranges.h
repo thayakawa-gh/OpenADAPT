@@ -372,7 +372,7 @@ namespace views
 {
 
 ADAPT_EXPORT
-template <class ...Range>
+template <std::ranges::input_range ...Range>
 ZipView<Range...> Zip(Range&& ...ranges)
 {
 	return ZipView<Range...>(std::forward<Range>(ranges)...);

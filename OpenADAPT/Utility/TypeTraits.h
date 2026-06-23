@@ -225,25 +225,8 @@ constexpr auto GetValue()
 }
 
 ADAPT_EXPORT
-template <template <class> class Base, class Derived>
-struct IsBaseOf_T
-{
-	template <class U>
-	static constexpr std::true_type check(const Base<U>*);
-	static constexpr std::false_type check(const void*);
-
-	static const Derived* d;
-public:
-	static constexpr bool value = decltype(check(d))::value;
-};
-
-ADAPT_EXPORT
-template <template <class> class Base, class Derived>
-inline constexpr bool IsBaseOf_T_v = IsBaseOf_T<Base, Derived>::value;
-
-ADAPT_EXPORT
 template <template <class...> class Base, class Derived>
-struct IsBaseOf_XT
+struct IsBaseOfTemplate
 {
 	template <class ...U>
 	static constexpr std::true_type check(const Base<U...>*);
@@ -256,11 +239,11 @@ public:
 
 ADAPT_EXPORT
 template <template <class...> class Base, class Derived>
-inline constexpr bool IsBaseOf_XT_v = IsBaseOf_XT<Base, Derived>::value;
+inline constexpr bool IsBaseOfTemplate_v = IsBaseOfTemplate<Base, Derived>::value;
 
 ADAPT_EXPORT
 template <template <auto...> class Base, class Derived>
-struct IsBaseOf_XN
+struct IsBaseOfValueTemplate
 {
 	template <auto ...U>
 	static constexpr std::true_type check(const Base<U...>*);
@@ -273,12 +256,31 @@ public:
 
 ADAPT_EXPORT
 template <template <auto...> class Base, class Derived>
-inline constexpr bool IsBaseOf_XN_v = IsBaseOf_XN<Base, Derived>::value;
+inline constexpr bool IsBaseOfValueTemplate_v = IsBaseOfValueTemplate<Base, Derived>::value;
 
+ADAPT_EXPORT
+template <template <class ...> class T, class U>
+struct IsSpecializationOf : public std::false_type {};
+template <template <class ...> class T, class ...X>
+struct IsSpecializationOf<T, T<X...>> : public std::true_type {};
+
+ADAPT_EXPORT
+template <template <class ...> class T, class U>
+inline constexpr bool IsSpecializationOf_v = IsSpecializationOf<T, U>::value;
+
+ADAPT_EXPORT
+template <template <auto ...> class T, class U>
+struct IsValueSpecializationOf : public std::false_type {};
+template <template <auto ...> class T, auto ...X>
+struct IsValueSpecializationOf<T, T<X...>> : public std::true_type {};
+
+ADAPT_EXPORT
+template <template <auto ...> class T, class U>
+inline constexpr bool IsValueSpecializationOf_v = IsValueSpecializationOf<T, U>::value;
 
 ADAPT_EXPORT
 template <template <auto, class...> class Base, class Derived>
-struct IsBaseOf_NXT
+struct IsSpecializationOfValueType
 {
 	template <auto N, class ...U>
 	static constexpr std::true_type check(const Base<N, U...>*);
@@ -291,47 +293,17 @@ public:
 
 ADAPT_EXPORT
 template <template <auto, class...> class Base, class Derived>
-inline constexpr bool IsBaseOf_NXT_v = IsBaseOf_NXT<Base, Derived>::value;
-
-ADAPT_EXPORT
-template <template <class ...> class T, class U>
-struct IsSame_XT : public std::false_type {};
-template <template <class ...> class T, class ...X>
-struct IsSame_XT<T, T<X...>> : public std::true_type {};
-
-ADAPT_EXPORT
-template <template <class ...> class T, class U>
-inline constexpr bool IsSame_XT_v = IsSame_XT<T, U>::value;
-
-ADAPT_EXPORT
-template <template <auto ...> class T, class U>
-struct IsSame_XN : public std::false_type {};
-template <template <auto ...> class T, auto ...X>
-struct IsSame_XN<T, T<X...>> : public std::true_type {};
-
-ADAPT_EXPORT
-template <template <auto ...> class T, class U>
-inline constexpr bool IsSame_XN_v = IsSame_XN<T, U>::value;
+inline constexpr bool IsSpecializationOfValueType_v = IsSpecializationOfValueType<Base, Derived>::value;
 
 ADAPT_EXPORT
 template <template <class, auto> class T, class U>
-struct IsSame_TN : public std::false_type {};
+struct IsSpecializationOfTypeValue : public std::false_type {};
 template <template <class, auto> class T, class X, auto Y>
-struct IsSame_TN<T, T<X, Y>> : public std::true_type {};
+struct IsSpecializationOfTypeValue<T, T<X, Y>> : public std::true_type {};
 
 ADAPT_EXPORT
 template <template <class, auto> class T, class U>
-inline constexpr bool IsSame_TN_v = IsSame_TN<T, U>::value;
-
-ADAPT_EXPORT
-template <template <auto, class> class T, class U>
-struct IsSame_NT : public std::false_type {};
-template <template <auto, class> class T, auto X, class Y>
-struct IsSame_NT<T, T<X, Y>> : public std::true_type {};
-
-ADAPT_EXPORT
-template <template <auto, class> class T, class U>
-inline constexpr bool IsSame_NT_v = IsSame_NT<T, U>::value;
+inline constexpr bool IsSpecializationOfTypeValue_v = IsSpecializationOfTypeValue<T, U>::value;
 
 
 ADAPT_EXPORT
@@ -391,47 +363,39 @@ ADAPT_EXPORT
 template <class ...T>
 using CommonRef_t = CommonRef<T...>::Type;
 
-//static constexpr auto x = ConstantSequence<1, 2, 3>();
-
 ADAPT_EXPORT
 template <class T>
 concept non_void = !std::same_as<T, void>;
 
 ADAPT_EXPORT
 template <class T, template <class...> class U>
-concept derived_from_xt = IsBaseOf_XT<U, T>::value;
+concept derived_from_template = IsBaseOfTemplate<U, T>::value;
 
 ADAPT_EXPORT
 template <class T, template <auto...> class U>
-concept derived_from_xn = IsBaseOf_XN<U, T>::value;
+concept derived_from_value_template = IsBaseOfValueTemplate<U, T>::value;
 
 ADAPT_EXPORT
 template <class T, template <auto, class...> class U>
-concept derived_from_nxt = IsBaseOf_NXT<U, T>::value;
+concept derived_from_value_type_template = IsSpecializationOfValueType<U, T>::value;
 
 ADAPT_EXPORT
 template <class T, template <class...> class U>
-concept same_as_xt = IsSame_XT<U, T>::value;
-//template <class T, template <class...> class U>
-//concept not_same_as_xt = !IsSame_XT<U, T>::value;
+concept specialization_of = IsSpecializationOf<U, T>::value;
 
 ADAPT_EXPORT
 template <class T, template <auto...> class U>
-concept same_as_xn = IsSame_XN<U, T>::value;
-//template <class T, template <auto...> class U>
-//concept not_same_as_xn = !IsSame_XN<U, T>::value;
+concept value_specialization_of = IsValueSpecializationOf<U, T>::value;
 
 ADAPT_EXPORT
 template <class T, template <class, auto> class U>
-concept same_as_tn = IsSame_TN<U, T>::value;
-//template <class T, template <class, auto> class U>
-//concept not_same_as_xn = !IsSame_TN<U, T>::value;
+concept same_as_type_value_template = IsSpecializationOfTypeValue<U, T>::value;
 
 ADAPT_EXPORT
 template <class T, template <auto, class> class U>
-concept same_as_nt = IsSame_NT<U, T>::value;
+concept same_as_value_type_template = IsSpecializationOfValueType<U, T>::value;
 //template <class T, template <auto...> class U>
-//concept not_same_as_xn = !IsSame_XN<U, T>::value;
+//concept not_value_specialization_of = !IsValueSpecializationOf<U, T>::value;
 
 
 ADAPT_EXPORT
@@ -439,10 +403,10 @@ template <class T, class U>
 concept similar_to = std::same_as<std::decay_t<T>, U>;
 ADAPT_EXPORT
 template <class T, template <class...> class U>
-concept similar_to_xt = same_as_xt<std::decay_t<T>, U>;
+concept similar_to_template = specialization_of<std::decay_t<T>, U>;
 ADAPT_EXPORT
 template <class T, template <auto...> class U>
-concept similar_to_xn = same_as_xn<std::decay_t<T>, U>;
+concept similar_to_value_template = value_specialization_of<std::decay_t<T>, U>;
 
 
 ADAPT_EXPORT

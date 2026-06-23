@@ -193,7 +193,8 @@ int example_weighted_histogram(const std::string& output_filename, bool enable_i
 	// plot::weight option specifies the weights for each data point.
 	// The height of each bin is the sum of the weights of the data points in that bin, instead of the count of the data points.
 	g.PlotPoints(equation, plot::title = "log normal distribution", plot::s_lines, plot::lw_med_thick, plot::c_rose).
-		PlotHistogram(data, 0, 10, 20, plot::weight = weights, plot::pt_fdia, plot::lw_med_thick, plot::c_muted_rose, plot::he_normal, plot::title = "weighted histogram");
+		PlotHistogram(data, 0, 10, 20, plot::weight = weights,
+					  plot::pt_fdia, plot::lw_med_thick, plot::c_muted_rose, plot::he_normal, plot::title = "weighted histogram");
 	return 0;
 }
 
@@ -218,6 +219,76 @@ int example_scatter(const std::string& output_filename, bool enable_in_memory_da
 		PlotPoints(longitudes, latitudes, plot::notitle,
 				   plot::s_points, plot::pt_fcir, plot::color_rgb = "0xAA6688FF", plot::variable_size = pop_size);
 
+	return 0;
+}
+
+int example_fitting(const std::string& output_filename, bool enable_in_memory_data_transfer)
+{
+	std::mt19937_64 mt(42);
+	std::uniform_real_distribution<> ur(-10., 10.);
+	std::normal_distribution<> nd(0., 2.);
+	std::vector<double> x, y;
+	for (int i = 0; i < 100; ++i)
+	{
+		double x_val = ur(mt);
+		double y_val = 2 * x_val + 1 + nd(mt);
+		x.push_back(x_val);
+		y.push_back(y_val);
+	}
+
+	// An example of fitting using the least squares method.
+	// plot::fit_linear(...) is equivalent to plot::fit(FitFuncLinear{}, ...),
+	// where FitFuncLinear is a builtin fitting function that represents a linear function y = p[0] * x + p[1].
+	// You can also specify your own fitting function. See example_fitting_with_errorbars() for an example of using a custom fitting function.
+	// plot::fit and its variations also accept point_option to customize the appearance of the fitted curve.
+	namespace plot = adapt::plot;
+	adapt::Canvas2D g(output_filename);
+	g.EnableInMemoryDataTransfer(enable_in_memory_data_transfer);
+	g.SetTitle("example\\_fitting");
+	g.SetXRange(-10.0, 10.0);
+	g.SetXLabel("x");
+	g.SetYLabel("y");
+	g.SetKeyTopLeft();
+	g.SetKeyOpaque();
+	g.SetKeyBox();
+	std::vector<double> params{ 0.0, 0.0 }; // initial guess for slope and intercept
+	g.PlotPoints(x, y, plot::title = "data", plot::c_dark_turquoise, plot::pt_fcir,
+				 plot::fit_linear(params, plot::c_light_cerulean));
+	std::cout << "Fitted parameters: slope = " << params[0] << ", intercept = " << params[1] << std::endl;
+	return 0;
+}
+
+int example_fitting_with_errorbars(const std::string& output_filename, bool enable_in_memory_data_transfer)
+{
+	std::mt19937_64 mt(42);
+	std::uniform_real_distribution<> ur2(0.2, 0.5);
+	std::normal_distribution<> nd1(0., 0.4);
+	std::vector<double> x, y, yerr;
+	for (int i = 0; i < 60; ++i)
+	{
+		double x_val = -10. + 20. * i / 59.;
+		double y_val = std::sin(0.7 * x_val + 1.5) + nd1(mt);
+		x.push_back(x_val);
+		y.push_back(y_val);
+		yerr.push_back(ur2(mt)); // constant error for simplicity
+	}
+
+	// This fitting takes into account the reciprocal numbers of yerr as weights by specifying plot::fit_use_yerrorbars_as_weights.
+	namespace plot = adapt::plot;
+	adapt::Canvas2D g(output_filename);
+	g.EnableInMemoryDataTransfer(enable_in_memory_data_transfer);
+	g.SetTitle("example\\_fitting\\_with\\_errorbars");
+	g.SetXRange(-10.0, 10.0);
+	g.SetXLabel("x");
+	g.SetYLabel("y");
+	g.SetKeyOpaque();
+	g.SetKeyBox();
+	std::vector<double> params{ 0.5, 1.0 }; // initial guess for fitting parameters
+	// A custom fitting function is used to fit the data to a sine wave.
+	auto fit_func = [](double x, double /*y*/, const std::span<const double>& p) { return std::sin(p[0] * x + p[1]); };
+	g.PlotPoints(x, y, plot::yerrorbar = yerr, plot::title = "data", plot::c_dark_mossgreen, plot::pt_fcir,
+				 plot::fit(fit_func, params, plot::c_light_emerald, plot::fit_use_yerrorbars_as_weights));
+	std::cout << "Fitted parameters: p[0] = " << params[0] << ", p[1] = " << params[1] << std::endl;
 	return 0;
 }
 
@@ -441,17 +512,19 @@ int example_labels_on_colormap(const std::string& output_filename, bool enable_i
 {
 	std::vector<int> x;
 	std::vector<int> y;
-	std::vector<int> label;
-	adapt::Matrix<double> m(10, 10);
+	adapt::Matrix<int> m(10, 10);
 	for (int i = 1; i <= 10; ++i)
 	{
 		for (int j = 1; j <= 10; ++j)
 		{
-			int lcm = std::lcm(i, j);
-			m[i - 1][j - 1] = lcm;
-			x.push_back(i);
-			y.push_back(j);
-			label.push_back(lcm);
+			if (i < j) m[i - 1][j - 1] = 0;
+			else
+			{
+				int lcm = std::lcm(i, j);
+				m[i - 1][j - 1] = lcm;
+				x.push_back(i);
+				y.push_back(j);
+			}
 		}
 	}
 
@@ -464,8 +537,13 @@ int example_labels_on_colormap(const std::string& output_filename, bool enable_i
 	g.SetSizeRatio(1);
 	g.SetXRange(0.5, 10.5);
 	g.SetYRange(0.5, 10.5);
-	g.PlotColormap(m, { 1, 10 }, { 1, 10 }, plot::notitle).
-		PlotLabels(x, y, label, plot::notitle, plot::lp_center, plot::c_white);
+
+	// plot::annot option adds labels which are determined by the value of the cell.
+	// It also accepts label_options to customize the appearance of the labels.
+	// Note that the format string for the labels is recommended to be used with double quotes if the result of the format contains spaces,
+	// otherwise gnuplot will not be able to parse the string correctly.
+	g.PlotColormap(m, { 1, 10 }, { 1, 10 }, plot::notitle,
+				   plot::annot(plot::notitle, plot::c_white, plot::labelformat = "\"{:>2}\""));
 	return 0;
 }
 
@@ -756,6 +834,12 @@ void QuickstartPlot()
 
 	//example_scatter("PlotExamples/example_scatter" + extension, false);
 	example_scatter("PlotExamples/example_scatter-inmemory" + extension, true);
+
+	//example_fitting("PlotExamples/example_fitting" + extension, false);
+	example_fitting("PlotExamples/example_fitting-inmemory" + extension, true);
+
+	//example_fitting_with_errorbars("PlotExamples/example_fitting_with_errorbars" + extension, false);
+	example_fitting_with_errorbars("PlotExamples/example_fitting_with_errorbars-inmemory" + extension, true);
 
 	//example_labels("PlotExamples/example_labels" + extension, false);
 	example_labels("PlotExamples/example_labels-inmemory" + extension, true);

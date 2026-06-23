@@ -3,6 +3,7 @@
 
 #include <tuple>
 #include <OpenADAPT/Utility/Common.h>
+#include <OpenADAPT/Utility/TypeTraits.h>
 
 namespace adapt
 {
@@ -32,17 +33,22 @@ namespace detail
 template <class ...T, class U, size_t ...Indices>
 auto TupleAdd_impl([[maybe_unused]] std::tuple<T...> t, U&& u, std::index_sequence<Indices...>)
 {
-	return std::forward_as_tuple(std::get<Indices>(std::move(t))..., std::forward<U>(u));
+	return std::tuple<T..., U>(std::get<Indices>(std::move(t))..., std::forward<U>(u));
 }
 template <class U, class ...T, size_t ...Indices>
 auto TupleAddFront_impl(U&& u, [[maybe_unused]] std::tuple<T...> t, std::index_sequence<Indices...>)
 {
-	return std::forward_as_tuple(std::forward<U>(u), std::get<Indices>(std::move(t))...);
+	return std::tuple<U, T...>(std::forward<U>(u), std::get<Indices>(std::move(t))...);
 }
 template <class ...T, class ...U, size_t ...Indices1, size_t ...Indices2>
 auto TupleCat_impl([[maybe_unused]] std::tuple<T...> t1, [[maybe_unused]] std::tuple<U...> t2, std::index_sequence<Indices1...>, std::index_sequence<Indices2...>)
 {
-	return std::forward_as_tuple(std::get<Indices1>(std::move(t1))..., std::get<Indices2>(std::move(t2))...);
+	return std::tuple<T..., U...>(std::get<Indices1>(std::move(t1))..., std::get<Indices2>(std::move(t2))...);
+}
+template <any_tuple T, any_tuple U, size_t ...Indices1, size_t ...Indices2>
+auto TupleCatForward_impl([[maybe_unused]] T&& t1, [[maybe_unused]] U&& t2, std::index_sequence<Indices1...>, std::index_sequence<Indices2...>)
+{
+	return std::forward_as_tuple(std::get<Indices1>(std::forward<T>(t1))..., std::get<Indices2>(std::forward<U>(t2))...);
 }
 }
 ADAPT_EXPORT
@@ -61,7 +67,17 @@ ADAPT_EXPORT
 template <class ...T, class ...U>
 auto TupleCat([[maybe_unused]] std::tuple<T...> t1, [[maybe_unused]] std::tuple<U...> t2)
 {
-	return detail::TupleCat_impl(std::move(t1), std::move(t2), std::make_index_sequence<sizeof...(T)>(), std::make_index_sequence<sizeof...(U)>());
+	return detail::TupleCat_impl(std::move(t1), std::move(t2),
+								 std::make_index_sequence<sizeof...(T)>(),
+								 std::make_index_sequence<sizeof...(U)>());
+}
+ADAPT_EXPORT
+template <any_tuple T, any_tuple U>
+auto TupleCatForward([[maybe_unused]] T&& t1, [[maybe_unused]] U&& t2)
+{
+	return detail::TupleCatForward_impl(std::forward<T>(t1), std::forward<U>(t2),
+										std::make_index_sequence<std::tuple_size_v<std::remove_reference_t<T>>>(),
+										std::make_index_sequence<std::tuple_size_v<std::remove_reference_t<U>>>());
 }
 
 // 通常、make_tupleは全てコピー、std::tieは全てlvalue ref、std::forwar_as_tupleは完全転送を行う。

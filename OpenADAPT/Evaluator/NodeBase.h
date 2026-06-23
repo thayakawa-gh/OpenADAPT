@@ -172,7 +172,7 @@ struct ExtractContainer<Node, Nodes...>
 //NPは、const refまたは値として与える。
 //もし別所で寿命が管理されているのならNPはconst refでよいが、
 //もし寿命が尽きる可能性のある一時オブジェクトならNPは値とする。
-//same_as_xtに与えたいので、HasBposはboolではなくbool_constantを取る。
+//specialization_ofに与えたいので、HasBposはboolではなくbool_constantを取る。
 ADAPT_EXPORT
 template <class TravOrStor, class NP, class HasBpos>
 struct RttiEvalProxy : public detail::RttiMethods<RttiEvalProxy<TravOrStor, NP, HasBpos>, std::add_const_t>

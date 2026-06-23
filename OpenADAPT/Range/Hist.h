@@ -110,7 +110,7 @@ class ToHistogram
 	}
 
 	template <bool AllStat, any_hist Hist, class PHs, any_traverser Trav,
-			  similar_to_xt<std::tuple> AxesTuple, similar_to_xt<std::tuple> VarsTuple,
+			  similar_to_template<std::tuple> AxesTuple, similar_to_template<std::tuple> VarsTuple,
 			  size_t ...AxIs, size_t ...VarIs>
 	void SetAxesAndVars(Hist& hist, [[maybe_unused]] const PHs& phs, Trav& t, const AxesTuple& axes, const VarsTuple& vars,
 						std::index_sequence<AxIs...>, std::index_sequence<VarIs...>) const
@@ -231,7 +231,7 @@ class ToHistogram
 
 public:
 
-	template <traversal_range Range_, bool AllStat, similar_to_xt<std::tuple> AxesTuple, similar_to_xt<std::tuple> VarsTuple>
+	template <traversal_range Range_, bool AllStat, similar_to_template<std::tuple> AxesTuple, similar_to_template<std::tuple> VarsTuple>
 	auto Exec(Range_&& range, std::bool_constant<AllStat> all_stat, AxesTuple&& axes, VarsTuple&& vars) const
 	{
 		constexpr size_t dim = std::tuple_size_v<std::remove_cvref_t<AxesTuple>>;
@@ -329,7 +329,7 @@ auto AddDefaultName(const AxisArgs<NP>& ax) { return AxisArgs{ ax.axis.named(Nam
 template <size_t I, node_or_placeholder NP, StaticString Name = StaticString<"axis">{} + ToStr(Number<I>{})>
 auto AddDefaultName(AxisArgs<NP>&& ax) { return AxisArgs{ std::move(ax.axis).named(Name), ax.wbin, ax.cbin }; }
 
-template <similar_to_xt<std::tuple> TupleAxes, similar_to_xt<std::tuple> TupleVars, size_t ...Is, size_t ...Js>
+template <similar_to_template<std::tuple> TupleAxes, similar_to_template<std::tuple> TupleVars, size_t ...Is, size_t ...Js>
 auto Hist_impl2(TupleAxes&& axes, TupleVars&& vars, std::index_sequence<Is...>, std::index_sequence<Js...>)
 {
 	// 全てのaxes、varsがstatistically_namedかつCttiであれば、出力はSHistになる。
@@ -344,7 +344,7 @@ auto Hist_impl2(TupleAxes&& axes, TupleVars&& vars, std::index_sequence<Is...>, 
 		(std::bool_constant<all_stat>{}, axes, vars);
 }
 
-template <similar_to_xt<std::tuple> TupleAxes, similar_to_xt<std::tuple> TupleVars, size_t ...Is, size_t ...Js>
+template <similar_to_template<std::tuple> TupleAxes, similar_to_template<std::tuple> TupleVars, size_t ...Is, size_t ...Js>
 auto Hist_impl(TupleAxes&& axes, TupleVars&& vars, std::index_sequence<Is...> is, std::index_sequence<Js...> js)
 {
 	// Hist_impl2に送るときは、std::tupleのrvalue refを外して値に変換しておく。
@@ -357,7 +357,7 @@ auto Hist_impl(TupleAxes&& axes, TupleVars&& vars, std::index_sequence<Is...> is
 }
 
 ADAPT_EXPORT
-template <similar_to_xt<std::tuple> TupleAxes, similar_to_xt<std::tuple> TupleVars>
+template <similar_to_template<std::tuple> TupleAxes, similar_to_template<std::tuple> TupleVars>
 auto Hist(TupleAxes&& axes, TupleVars&& vars)
 {
 	return detail::Hist_impl(std::forward<TupleAxes>(axes), std::forward<TupleVars>(vars),
@@ -365,7 +365,7 @@ auto Hist(TupleAxes&& axes, TupleVars&& vars)
 							 std::make_index_sequence<std::tuple_size_v<std::remove_cvref_t<TupleVars>>>{});
 }
 ADAPT_EXPORT
-template <similar_to_xt<AxisArgs> ...Axes>
+template <similar_to_template<AxisArgs> ...Axes>
 auto Hist(Axes&& ...axes)
 {
 	return Hist(std::forward_as_tuple(std::forward<Axes>(axes)...), std::make_tuple());
@@ -373,7 +373,7 @@ auto Hist(Axes&& ...axes)
 
 namespace detail
 {
-template <similar_to_xt<std::tuple> AxesTuple, named_or_anon_node_or_placeholder NP, named_or_anon_node_or_placeholder ...Args>
+template <similar_to_template<std::tuple> AxesTuple, named_or_anon_node_or_placeholder NP, named_or_anon_node_or_placeholder ...Args>
 auto Hist_impl(AxesTuple&& axes, NP&& np, double wbin, Args&& ...args)
 {
 	// AxisArgsの寿命が尽きるとaxes2の中身が空になってしまうので、ここはforward_as_tupleは使わずmake_tuple。
@@ -381,7 +381,7 @@ auto Hist_impl(AxesTuple&& axes, NP&& np, double wbin, Args&& ...args)
 	// argsの残りはextra fieldsなので、Histにわたす。
 	return Hist(std::move(axes2), std::forward_as_tuple(std::forward<Args>(args)...));
 }
-template <similar_to_xt<std::tuple> AxesTuple, named_or_anon_node_or_placeholder NP, named_or_anon_node_or_placeholder ...Args>
+template <similar_to_template<std::tuple> AxesTuple, named_or_anon_node_or_placeholder NP, named_or_anon_node_or_placeholder ...Args>
 auto Hist_impl(AxesTuple&& axes, NP&& np, double wbin, double cbin, Args&& ...args)
 {
 	// AxisArgsの寿命が尽きるとaxes2の中身が空になってしまうので、ここはforward_as_tupleは使わずmake_tuple。
@@ -389,7 +389,7 @@ auto Hist_impl(AxesTuple&& axes, NP&& np, double wbin, double cbin, Args&& ...ar
 	// argsの残りはextra fieldsなので、Histにわたす。
 	return Hist(std::move(axes2), std::forward_as_tuple(std::forward<Args>(args)...));
 }
-template <similar_to_xt<std::tuple> AxesTuple, named_or_anon_node_or_placeholder NP, named_or_anon_node_or_placeholder Next, class ...Args>
+template <similar_to_template<std::tuple> AxesTuple, named_or_anon_node_or_placeholder NP, named_or_anon_node_or_placeholder Next, class ...Args>
 	requires (std::convertible_to<Args, double> || ...)
 auto Hist_impl(AxesTuple&& axes, NP&& np, double wbin, Next&& next, Args&& ...args)
 {
@@ -398,7 +398,7 @@ auto Hist_impl(AxesTuple&& axes, NP&& np, double wbin, Next&& next, Args&& ...ar
 	// argsの中にはまだdouble類似型が残っている、つまりaxesに渡すべきものが残っている。
 	return Hist_impl(std::move(axes2), std::forward<Next>(next), std::forward<Args>(args)...);
 }
-template <similar_to_xt<std::tuple> AxesTuple, named_or_anon_node_or_placeholder NP, named_or_anon_node_or_placeholder Next, class ...Args>
+template <similar_to_template<std::tuple> AxesTuple, named_or_anon_node_or_placeholder NP, named_or_anon_node_or_placeholder Next, class ...Args>
 	requires (std::convertible_to<Args, double> || ...)
 auto Hist_impl(AxesTuple&& axes, NP&& np, double wbin, double cbin, Next&& next, Args&& ...args)
 {

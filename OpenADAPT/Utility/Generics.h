@@ -293,7 +293,7 @@ public:
 		: Base(std::forward_as_tuple(std::forward<Types>(args)...))
 	{}
 	template <class Type, std::enable_if_t<(sizeof...(Refs) == 1 &&
-											!IsBaseOf_XT<std::tuple, std::remove_cvref_t<Type>>::value &&
+											!IsBaseOfTemplate<std::tuple, std::remove_cvref_t<Type>>::value &&
 											!std::same_as<std::remove_cvref_t<Type>, Generics>), std::nullptr_t> = nullptr>
 		Generics(Type&& arg)
 		: Base(std::forward_as_tuple(std::forward<Type>(arg)))

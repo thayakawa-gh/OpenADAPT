@@ -138,7 +138,7 @@ public:
 		throw MismatchType("This field does not contain a floating-point.");
 	}
 	template <class Type>
-		requires IsSame_XT<std::complex, Type>::value
+		requires IsSpecializationOf<std::complex, Type>::value
 	Type to() const
 	{
 		if (this->IsC64()) return (Type)this->c64_unsafe();
@@ -146,7 +146,7 @@ public:
 		throw MismatchType("This field does not contain a complex.");
 	}
 	template <class Type>
-		requires (!std::integral<Type> && !std::floating_point<Type> && !IsSame_XT<std::complex, Type>::value)
+		requires (!std::integral<Type> && !std::floating_point<Type> && !IsSpecializationOf<std::complex, Type>::value)
 	decltype(auto) to() const
 	{
 		return as<Type>();
@@ -184,7 +184,7 @@ class ElementListRef_impl
 	using HierarchyRef = HierarchyWrapper<Hierarchy_>;
 	using ElementBlockPolicy = std::conditional_t<s_hierarchy<Hierarchy_>, SElementBlockPolicy, DElementBlockPolicy>;
 
-	static constexpr bool HasStaticLayer = same_as_xn<LayerSD, LayerConstant>;
+	static constexpr bool HasStaticLayer = value_specialization_of<LayerSD, LayerConstant>;
 
 	template <class Range> friend class CttiExtractor;
 	template <class Range> friend class RttiExtractor;
@@ -465,7 +465,7 @@ public:
 
 private:
 	using HierarchyRef = HierarchyWrapper<Hierarchy>;
-	static constexpr bool HasStaticLayer = same_as_xn<LayerSD, LayerConstant>;
+	static constexpr bool HasStaticLayer = value_specialization_of<LayerSD, LayerConstant>;
 	static constexpr bool HasFixedMaxLayer = f_hierarchy<Hierarchy> || s_hierarchy<Hierarchy>;
 public:
 

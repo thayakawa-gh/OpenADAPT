@@ -13,6 +13,7 @@
 #include <OpenADAPT/Utility/Ranges.h>
 #include <OpenADAPT/Plot/Core.h>
 #include <OpenADAPT/Plot/Axes.h>
+#include <OpenADAPT/Optimization/LeastSquares.h>
 
 
 
@@ -99,9 +100,9 @@ struct PointParam : public PlotParamBase
 	PointParam(X x_, Y y_, XE xe_, YE ye_,
 			   XEL xel_, XEH xeh_, YEL yel_, YEH yeh_,
 			   VC vc_, VS vs_, Ops ...ops)
-		: x(x_), y(y_), xerrorbar(xe_), yerrorbar(ye_),
-		xerrlow(xel_), xerrhigh(xeh_), yerrlow(yel_), yerrhigh(yeh_),
-		variable_color(vc_), variable_size(vs_)
+		: x(std::move(x_)), y(std::move(y_)), xerrorbar(std::move(xe_)), yerrorbar(std::move(ye_)),
+		xerrlow(std::move(xel_)), xerrhigh(std::move(xeh_)), yerrlow(std::move(yel_)), yerrhigh(std::move(yeh_)),
+		variable_color(std::move(vc_)), variable_size(std::move(vs_))
 	{
 		SetOptions(ops...);
 	}
@@ -174,6 +175,93 @@ template <keyword_arg ...Options>
 auto MakePointParam(Options ...ops)
 {
 	ADAPT_DETAIL_MAKE_PARAM_MACRO(PointParam, x, y, xerrorbar, yerrorbar, xerrlow, xerrhigh, yerrlow, yerrhigh, variable_color, variable_size);
+}
+
+template <acceptable_arg_except_string X, acceptable_arg_except_string Y, point_option ...Options>
+auto MakeFitPointParam(const X& x, const Y& y, Options ...ops)
+{
+	if constexpr (KeywordExists(plot::fit_detail, ops...))
+	{
+		auto get_double_span = [](const auto& v)
+		{
+			static_assert(ranges::arithmetic_range<decltype(v)>);
+
+			if constexpr (std::convertible_to<decltype(v), std::span<const double>>)
+				return std::make_tuple(std::span<const double>(v), std::cref(v));
+			else
+			{
+				std::vector<double> vec;
+				std::ranges::copy(v, std::back_inserter(vec));
+				return std::make_tuple(std::span<const double>(vec), std::move(vec));
+			}
+		};
+		auto&& fit_opt = GetKeywordArg(plot::fit_detail, ops...);
+		std::span<const double> params = fit_opt.params;
+		auto&& [x_span, x_storage] = get_double_span(x);
+		auto&& [y_span, y_storage] = get_double_span(y);
+		LeastSquaresResult fit_result;
+		auto obj_func = [f = fit_opt.func](std::span<const double> var, std::span<const double> params)
+		{
+			double x = var[0];
+			double y = var[1];
+			double y_ = f(x, y, params);
+			double residual = y - y_;
+			return residual * residual;
+		};
+		if (GetKeywordArg(plot::fit_use_yerrorbars_as_weights, false, fit_opt.options))
+		{
+			if constexpr (KeywordExists(plot::yerrorbar, ops...))
+			{
+				// yerrorbarを重みとして使う場合、エラーの逆数に変換する必要がある。
+				std::vector<double> weights;
+				const auto& yerr = GetKeywordArg(plot::yerrorbar, ops...);
+				if constexpr (std::ranges::sized_range<decltype(yerr)>)
+					weights.reserve(yerr.size());
+				double min = std::numeric_limits<double>::max();
+				double max = std::numeric_limits<double>::lowest();
+				for (auto e : yerr)
+				{
+					//エラーが0のときは重みが無限大になってしまうので、0でない最も0に近い値を最小値として記録しておく。
+					if (e > 0) min = std::min(min, e);
+					max = std::max(max, e);
+					weights.push_back(e);
+				}
+				for (auto& w : weights)
+				{
+					if (w == 0) w = min;//エラーが0のときは最小のエラーと同じ重みにする。
+					else w = 1.0 / w;
+				}
+
+				fit_result = SolveLeastSquares(obj_func, params, x_span, y_span, opts::ls_weight = weights);
+			}
+			else
+			{
+				PrintWarning("fit_use_yerrorbars_as_weights option is set but yerrorbar is not provided. Fit will be performed without weights.");
+				fit_result = SolveLeastSquares(obj_func, params, x_span, y_span);
+			}
+		}
+		else
+		{
+			fit_result = SolveLeastSquares(obj_func, params, x_span, y_span);
+		}
+		std::ranges::copy(fit_result.params, std::ranges::begin(fit_opt.params));
+
+		std::string title = GetObjFuncTitle(fit_opt.func, fit_result.params);
+		auto eq = GetObjFuncEquation(fit_opt.func, x_span, fit_result.params);
+		if constexpr (std::same_as<decltype(eq), std::string>)
+		{
+			auto make = [&eq](auto&&... args) { return MakePointParam(plot::input = eq, args...); };
+			return std::apply(make, TupleCat(fit_opt.options, std::forward_as_tuple(plot::title = title, plot::s_lines)));
+		}
+		else
+		{
+			auto&& [vx, vy] = eq;
+			auto make = [&vx, &vy](auto&&... args) { return MakePointParam(plot::x = std::move(vx), plot::y = std::move(vy), args...); };
+			return std::apply(make, TupleCat(fit_opt.options, std::forward_as_tuple(plot::title = title, plot::s_lines)));
+		}
+	}
+	else
+		return EmptyClass{};
 }
 
 template <acceptable_arg X, acceptable_arg Y, acceptable_arg Z,
@@ -386,9 +474,9 @@ auto MakeFilledCurveParam(Options ...ops)
 template <acceptable_arg X, acceptable_arg Y, acceptable_arg L, acceptable_arg VTC>
 struct LabelParam : public PlotParamBase
 {
-	template <keyword_arg ...Ops>
-	LabelParam(X x_, Y y_, L l_, VTC vtc, Ops ...ops)
-		: x(x_), y(y_), label(l_), variable_color(vtc)
+	template <class X_, class Y_, class L_, class VTC_, keyword_arg ...Ops>
+	LabelParam(X_&& x_, Y_&& y_, L_&& l_, VTC_&& vtc, Ops ...ops)
+		: x(std::forward<X_>(x_)), y(std::forward<Y_>(y_)), label(std::forward<L_>(l_)), variable_color(std::forward<VTC_>(vtc))
 	{
 		SetOptions(ops...);
 	}
@@ -428,9 +516,30 @@ struct LabelParam : public PlotParamBase
 };
 
 template <keyword_arg ...Options>
-auto MakeLabelParam(Options ...ops)
+auto MakeLabelParam(Options&& ...ops)
 {
-	ADAPT_DETAIL_MAKE_PARAM_MACRO(LabelParam, x, y, label, variable_color);
+	static constexpr bool has_label_format = KeywordExists(plot::labelformat, ops...);
+	auto fmt_str = GetKeywordArg(plot::labelformat, std::string_view{}, ops...);
+	auto fmt = [fmt_str]<class View>(View&& v)
+	{
+		if constexpr (has_label_format)
+		{
+			return std::forward<View>(v) | std::views::transform([fmt_str](auto&& a)
+			{
+				return std::vformat(fmt_str, std::make_format_args(a));
+			});
+		}
+		else
+			return std::forward<View>(v);
+	};
+	auto x = AllView(GetKeywordArg(plot::x, std::ranges::empty_view<double>{}, ops...));
+	auto y = AllView(GetKeywordArg(plot::y, std::ranges::empty_view<double>{}, ops...));
+	auto label = AllView(fmt(GetKeywordArg(plot::label, std::ranges::empty_view<double>{}, ops...)));
+	auto variable_color = AllView(GetKeywordArg(plot::variable_color, std::ranges::empty_view<double>{}, ops...));
+	return LabelParam<decltype(x), decltype(y), decltype(label), decltype(variable_color)>(
+		std::forward<decltype(x)>(x), std::forward<decltype(y)>(y),
+		std::forward<decltype(label)>(label),
+		std::forward<decltype(variable_color)>(variable_color), ops...);
 }
 
 template <acceptable_arg X, acceptable_arg Y, acceptable_arg Z, acceptable_arg L, acceptable_arg VTC>
@@ -547,10 +656,20 @@ struct CoordMinMax
 {
 	struct iterator
 	{
+		iterator() : current(0), parent(nullptr) {}
 		iterator(const CoordMinMax& p, size_t pos = 0)
 			: current(pos), parent(&p) {}
-		void operator++() { ++current; }
+		iterator(const iterator& i) = default;
+		iterator& operator=(const iterator& i) = default;
+
+		iterator& operator++() { ++current; return *this; }
+		iterator operator++(int) { iterator tmp(*this); ++current; return tmp; }
+		iterator& operator--() { --current; return *this; }
+		iterator operator--(int) { iterator tmp(*this); --current; return tmp; }
+		
 		bool operator==(const iterator& i) const { return current == i.current; }
+		bool operator!=(const iterator& i) const { return current != i.current; }
+
 		std::pair<double, double> operator*() const
 		{
 			return std::make_pair(parent->min + current * parent->width,
@@ -687,6 +806,41 @@ auto MakeColormapParam(Options ...ops)
 	auto yminmax = GetKeywordArg(plot::yminmax, std::pair<double, double>{ 0, 0 }, ops...);
 	return ColormapParam<decltype(map), decltype(xrange), decltype(yrange)>
 		(map, xrange, yrange, xminmax, yminmax, ops...);
+}
+template <acceptable_matrix_range Map, class X, class Y, keyword_arg ...Options>
+auto MakeAnnotParam(const Map& map, const X& x, const Y& y, Options ...ops)
+{
+	if constexpr (KeywordExists(plot::annot_detail, ops...))
+	{
+		std::vector<double> xvec, yvec;
+		size_t size = map.size() * map.begin()->size();
+		xvec.reserve(size);
+		yvec.reserve(size);
+		for (auto vx : x)
+		{
+			for (auto vy : y)
+			{
+				// vx、vyはstd::pair<double, double>であり、firstが左下座標、secondが中央座標なので、
+				// ここでは中央座標を使う。
+				xvec.push_back(vx.second);
+				yvec.push_back(vy.second);
+			}
+		}
+		auto f = []<class Map_, class X_, class Y_>(Map_&& m, X_&& x_, Y_&& y_, auto&&... args)
+		{
+			return MakeLabelParam(plot::label = std::forward<Map_>(m),
+								  plot::x = std::forward<X_>(x_),
+								  plot::y = std::forward<Y_>(y_),
+								  args...);
+		};
+
+		auto annot_opt = GetKeywordArg(plot::annot_detail, ops...);
+		return std::apply(
+			f,
+			TupleCatForward(std::forward_as_tuple(map.GetFlatRange(), std::move(xvec), std::move(yvec)),
+							std::move(annot_opt.options)));
+	}
+	else return EmptyClass{};
 }
 
 using EmptyPointParam = PointParam<
@@ -886,7 +1040,7 @@ auto MakeBinscatterParam(Options ...ops)
 
 
 template <class Range>
-auto ConvertUniqueToRange(Range&& range)
+decltype(auto) ConvertUniqueToRange(Range&& range)
 {
 	//arithmeticの場合、rangeではないのでそのままではviews::Zipに渡せない。
 	//そのため、rangeに変換する。
@@ -915,7 +1069,7 @@ bool IsAllEnd(TypeList<Ranges...>, const It& it, const Sen& end, std::index_sequ
 template <class Stream, class ...Ranges>
 auto MakeDataObject(Stream& stream, std::tuple<Ranges...> ranges)
 {
-	auto zipped = std::apply([]<class ...R>(R&& ...r) { return views::Zip(ConvertUniqueToRange(std::forward<R>(r))...); }, ranges);
+	auto zipped = std::apply([]<class ...R>(R&& ...r) { return views::Zip(ConvertUniqueToRange(std::forward<R>(r))...); }, std::move(ranges));
 	auto&& it = zipped.begin();
 	auto&& end = zipped.end();
 	for (; it != end; ++it)
@@ -1231,14 +1385,14 @@ void MakeAxisCommand(const std::vector<std::string>& labelcols, const Param& p, 
 }
 
 template <class Param>
-	requires derived_from_xt<Param, PointParam>
+	requires derived_from_template<Param, PointParam>
 std::string MakePlotCommand(std::string_view output_name, bool inmemory,
 							const std::map<std::string, std::variant<int, std::string>>& cols,
 							const std::vector<std::string>& labelcols,
 							const Param& p)
 {
 	constexpr bool is_3d = zaxis_param<Param>;
-	constexpr bool is_surface = derived_from_xt<Param, SurfaceParam>;
+	constexpr bool is_surface = derived_from_template<Param, SurfaceParam>;
 	constexpr bool xeb_assigned = Param::HasXErrorbar() || (Param::HasXErrLow() && Param::HasXErrHigh());
 	constexpr bool yeb_assigned = Param::HasYErrorbar() || (Param::HasYErrLow() && Param::HasYErrHigh());
 
@@ -1427,13 +1581,13 @@ std::string MakePlotCommand(std::string_view output_name, bool inmemory,
 	else return out + c;
 }
 template <class Param>
-	requires derived_from_xt<Param, VectorParam>
+	requires derived_from_template<Param, VectorParam>
 std::string MakePlotCommand(std::string_view output_name, bool inmemory,
 							const std::map<std::string, std::variant<int, std::string>>& cols,
 							const std::vector<std::string>& labelcols,
 							const Param& p)
 {
-	constexpr bool is_3d = derived_from_xt<Param, VectorParam3D>;
+	constexpr bool is_3d = derived_from_template<Param, VectorParam3D>;
 	std::string c;
 	std::string usg;
 	std::string out;
@@ -1471,7 +1625,7 @@ std::string MakePlotCommand(std::string_view output_name, bool inmemory,
 	else return out + c;
 }
 template <class Param>
-	requires derived_from_xt<Param, FilledCurveParam>
+	requires derived_from_template<Param, FilledCurveParam>
 std::string MakePlotCommand(std::string_view output_name, bool inmemory,
 							const std::map<std::string, std::variant<int, std::string>>& cols,
 							const std::vector<std::string>& labelcols,
@@ -1542,13 +1696,13 @@ std::string MakePlotCommand(std::string_view output_name, bool inmemory,
 	else return out + c;
 }
 template <class Param>
-	requires derived_from_xt<Param, LabelParam>
+	requires derived_from_template<Param, LabelParam>
 std::string MakePlotCommand(std::string_view output_name, bool inmemory,
 							const std::map<std::string, std::variant<int, std::string>>& cols,
 							const std::vector<std::string>& labelcols,
 							const Param& p)
 {
-	constexpr bool is_3d = derived_from_xt<Param, LabelParam3D>;
+	constexpr bool is_3d = derived_from_template<Param, LabelParam3D>;
 	std::string c;
 	std::string usg;
 	std::string out;

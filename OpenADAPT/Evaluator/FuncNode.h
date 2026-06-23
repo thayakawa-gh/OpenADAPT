@@ -656,7 +656,7 @@ RttiConstNode MakeRttiFuncNode_cast(Node&& node)
 	{\
 		if (node.GetType() == TTYPE)\
 		{\
-			if constexpr (IsSame_XT_v<std::complex, RetType> && DFieldInfo::IsArithmetic(TTYPE))\
+			if constexpr (IsSpecializationOf_v<std::complex, RetType> && DFieldInfo::IsArithmetic(TTYPE))\
 				return RttiConstNode(RetType(typename RetType::value_type(node.template as<TTYPE>())));\
 			else\
 				return RttiConstNode(RetType(node.template as<TTYPE>()));\

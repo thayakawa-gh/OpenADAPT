@@ -202,7 +202,7 @@ public:
 		return GetPlaceholder_rec<0, -1_layer>(name);
 	}
 	template <class ...Args>
-		requires (IsBaseOf_XN<StaticString, std::decay_t<Args>>::value && ...)
+		requires (IsBaseOfValueTemplate<StaticString, std::decay_t<Args>>::value && ...)
 	static constexpr auto GetPlaceholders(Args&& ...args)
 	{
 		return std::make_tuple(GetPlaceholder(std::forward<Args>(args))...);
@@ -214,7 +214,7 @@ public:
 		return std::make_tuple(GetPlaceholder<Names>()...);
 	}
 	template <class ...Args>
-		requires ((!IsSame_XN_v<StaticString, std::decay_t<Args>>&& std::convertible_to<Args, std::string_view>) && ...)
+		requires ((!IsValueSpecializationOf_v<StaticString, std::decay_t<Args>>&& std::convertible_to<Args, std::string_view>) && ...)
 	static std::array<RttiPlaceholder, sizeof...(Args)> GetPlaceholders(Args&& ...args)
 	{
 		return { GetPlaceholder(args)... };
@@ -471,7 +471,7 @@ public:
 	}
 
 	template <class ...Args>
-		requires (IsBaseOf_XN<StaticString, std::decay_t<Args>>::value && ...)
+		requires (IsBaseOfValueTemplate<StaticString, std::decay_t<Args>>::value && ...)
 	static constexpr auto GetPlaceholders(Args&& ...args)
 	{
 		return std::make_tuple(GetPlaceholder(std::forward<Args>(args))...);
@@ -482,7 +482,7 @@ public:
 		return std::make_tuple(GetPlaceholder<Names>()...);
 	}
 	template <class ...Args>
-		requires ((!IsSame_XN_v<StaticString, std::decay_t<Args>> && std::convertible_to<Args, std::string_view>) && ...)
+		requires ((!IsValueSpecializationOf_v<StaticString, std::decay_t<Args>> && std::convertible_to<Args, std::string_view>) && ...)
 	static std::array<RttiPlaceholder, sizeof...(Args)> GetPlaceholders(Args&& ...args)
 	{
 		return { GetPlaceholder(args)... };

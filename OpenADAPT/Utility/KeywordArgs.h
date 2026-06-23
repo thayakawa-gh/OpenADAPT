@@ -14,10 +14,21 @@ namespace adapt
 namespace detail
 {
 template <class> struct AlwaysTrue {};
+template <template <class ...> class U>
+struct KeywordSpecializationOf_impl
+{
+	template <class T> struct Type;
+	template <class ...Args> struct Type<U<Args...>> {};
+};
 }
 ADAPT_EXPORT
 template <template <class> class Concept = detail::AlwaysTrue>
 class AnyTypeKeyword {};
+
+template <template <class...> class Type>
+using KeywordSpecializationOf = AnyTypeKeyword<detail::KeywordSpecializationOf_impl<Type>::template Type>;
+
+// 1. 数値型のrange
 
 ADAPT_EXPORT
 template <class Name_, class Type_, class Tag_>
@@ -77,11 +88,11 @@ struct KeywordName<Name_, bool, Tag_>
 
 ADAPT_EXPORT
 template <class Name>
-concept keyword_name = derived_from_xt<std::remove_cvref_t<Name>, KeywordName>;
+concept keyword_name = derived_from_template<std::remove_cvref_t<Name>, KeywordName>;
 
 ADAPT_EXPORT
 template <class Option>
-concept keyword_value = derived_from_xt<std::remove_cvref_t<Option>, KeywordValue>;
+concept keyword_value = derived_from_template<std::remove_cvref_t<Option>, KeywordValue>;
 ADAPT_EXPORT
 template <class Option>
 concept keyword_name_of_bool = keyword_name<Option> && std::same_as<typename std::remove_cvref_t<Option>::Type, bool>;
@@ -167,6 +178,13 @@ constexpr decltype(auto) GetKeywordArg(KeywordName k, Default&& default_, Args&&
 	//該当するキーワードから値を取り出して返す。
 	//同じキーワードが複数与えられている場合、先のもの（左にあるもの）が優先される。
 	return detail::GetKeywordArg_impl(k, std::forward<Default>(default_), std::forward<Args>(args)...);
+}
+ADAPT_EXPORT
+template <keyword_name KeywordName, class Default, keyword_arg ...Args>
+constexpr decltype(auto) GetKeywordArg(KeywordName name, Default&& default_, std::tuple<Args...> args)
+{
+	return std::apply([&](auto&& ...args) { return GetKeywordArg(name, std::forward<Default>(default_), std::forward<decltype(args)>(args)...); },
+					  std::move(args));
 }
 
 ADAPT_EXPORT

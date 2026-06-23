@@ -28,19 +28,70 @@ ADAPT_EXPORT enum class CntrSmooth : int16_t { none, linear, cubicspline, bsplin
 ADAPT_EXPORT enum class MPFillOrder : int16_t { rowsfirst, colsfirst };
 ADAPT_EXPORT enum class MPVerticalDirection : int16_t { downwards, upwards };
 
-ADAPT_EXPORT
-struct ObjectiveFuncNormal
+namespace plot_detail
 {
-	inline double operator()(std::span<const double> var, std::span<const double> params) const
+
+template <class F>
+concept ls_obj_func_with_title = requires(F f, double x, double y, std::span<const double> params)
+{
+	{ f(x, y, params) } -> std::convertible_to<double>;
+	{ f.GetTitle(params) } -> std::convertible_to<std::string>;
+};
+template <class F>
+concept ls_obj_func_with_equation = requires(F f, double x, double y, std::span<const double> params)
+{
+	{ f(x, y, params) } -> std::convertible_to<double>;
+	{ f.GetEquation(params) } -> std::convertible_to<std::string>;
+};
+template <class Func>
+std::string GetObjFuncTitle(Func&& f, std::span<const double> params)
+{
+	if constexpr (ls_obj_func_with_title<Func>)
+		return f.GetTitle(params);
+	else
+	{
+		std::string res("params=(");
+		for (size_t i = 0; i < params.size(); ++i)
+		{
+			res += std::format("{:.4g}", params[i]);
+			if (i != params.size() - 1) res += ", ";
+		}
+		res += ")";
+		return res;
+	}
+}
+template <class Func>
+auto GetObjFuncEquation(Func&& f, std::span<const double> xs, std::span<const double> params)
+{
+	if constexpr (ls_obj_func_with_equation<Func>)
+		return f.GetEquation(params);
+	else
+	{
+		std::vector<double> vx(100), vy(100);
+		auto [xmin, xmax] = std::ranges::minmax(xs);
+		double w = (xmax - xmin) / 99;
+		for (size_t i = 0; i < 100; ++i)
+		{
+			double x = xmin + w * i;
+			vx[i] = x;
+			vy[i] = f(x, 0, params);
+		}
+		return std::make_tuple(std::move(vx), std::move(vy));
+	}
+}
+
+}
+
+ADAPT_EXPORT
+struct FitFuncNormal
+{
+	inline double operator()(double x, [[maybe_unused]] double y, std::span<const double> params) const
 	{
 		double mean = params[0];
 		double stddev = params[1];
 		double factor = params[2];
-		double x = var[0];
-		double y = var[1];
 		double d = (x - mean) / stddev;
-		double residual = std::exp(-0.5 * d * d) / (stddev * std::sqrt(2 * std::numbers::pi)) * factor - y;
-		return residual * residual;
+		return std::exp(-0.5 * d * d) / (stddev * std::sqrt(2 * std::numbers::pi)) * factor;
 	}
 	static std::string GetEquation(std::span<const double> params)
 	{
@@ -59,16 +110,13 @@ struct ObjectiveFuncNormal
 	}
 };
 ADAPT_EXPORT
-struct ObjectiveFuncLinear
+struct FitFuncLinear
 {
-	inline double operator()(std::span<const double> var, std::span<const double> params) const
+	inline double operator()(double x, [[maybe_unused]] double y, std::span<const double> params) const
 	{
 		double slope = params[0];
 		double intercept = params[1];
-		double x = var[0];
-		double y = var[1];
-		double residual = slope * x + intercept - y;
-		return residual * residual;
+		return slope * x + intercept;
 	}
 	static std::string GetEquation(std::span<const double> params)
 	{
@@ -84,7 +132,6 @@ struct ObjectiveFuncLinear
 	}
 };
 
-
 ADAPT_EXPORT
 template <class FitFunc, class Params, class ...Options>
 struct FitOptions
@@ -94,10 +141,16 @@ struct FitOptions
 	std::tuple<Options...> options;
 };
 
+ADAPT_EXPORT
+template <class ...Options>
+struct AnnotOptions
+{
+	std::tuple<Options...> options;
+};
+
 namespace plot_detail
 {
 
-// 1. 数値型のrange
 // 2. 文字列型のrange
 // 3. 単一の数値
 // いずれかを受け付ける。
@@ -115,10 +168,6 @@ template <ranges::string_range Range>
 struct StringRange {};
 template <acceptable_arg>
 struct AcceptableArg {};
-template <class Options>
-struct FitArg;
-template <class FitFunc, class ...Options>
-struct FitArg<FitOptions<FitFunc, Options...>> {};
 
 using AnyArithmeticRange = AnyTypeKeyword<ArithmeticRange>;
 using AnyStringRange = AnyTypeKeyword<StringRange>;
@@ -138,6 +187,7 @@ struct SurfaceOption {};
 struct WeightOption {};
 struct HistogramOption {};
 struct BinscatterOption {};
+struct FitOption {};
 struct MultiplotOption {};
 
 template <class T>
@@ -168,6 +218,9 @@ template <class Opt>
 concept histogram_option = keyword_arg_tagged_with<Opt, BaseOption, WeightOption, HistogramOption, ColorOption, LineOption, PointOption, FillOption>;
 template <class Opt>
 concept binscatter_option = keyword_arg_tagged_with<Opt, BaseOption, WeightOption, BinscatterOption, PointOption, ColormapOption>;
+
+template <class Opt>
+concept fit_option = keyword_arg_tagged_with<Opt, BaseOption, BaseOption, StyleOption, ColorOption, LineOption, PointOption, FitOption>;
 
 template <class Opt>
 concept multiplot_option = keyword_arg_tagged_with<Opt, MultiplotOption>;
@@ -274,6 +327,7 @@ ADAPT_EXPORT ADAPT_DEFINE_TAGGED_KEYWORD_OPTION(noenhanced, plot_detail::LabelOp
 ADAPT_EXPORT ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(labelfont, std::string_view, plot_detail::LabelOption);
 ADAPT_EXPORT ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(labeloverlay, LabelOverlay, plot_detail::LabelOption);
 ADAPT_EXPORT ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(labeloffset, ADAPT_TIE_ARGS(std::pair<double, double>), plot_detail::LabelOption);
+ADAPT_EXPORT ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(labelformat, std::string_view, plot_detail::LabelOption)
 
 //ColormapOption
 ADAPT_EXPORT ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(map, plot_detail::AnyMatrix, plot_detail::ColormapOption)
@@ -294,6 +348,8 @@ ADAPT_EXPORT ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrcolor, std::strin
 ADAPT_EXPORT ADAPT_DEFINE_TAGGED_KEYWORD_OPTION(variable_cntrcolor, plot_detail::ColormapOption)
 ADAPT_EXPORT ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrlinetype, int, plot_detail::ColormapOption)
 ADAPT_EXPORT ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrlinewidth, double, plot_detail::ColormapOption)
+//options for annotation
+ADAPT_EXPORT ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(annot_detail, KeywordSpecializationOf<AnnotOptions>, plot_detail::ColormapOption)
 
 //SurfaceOption
 ADAPT_EXPORT ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(pm3d_at, Pm3dPosition, plot_detail::SurfaceOption)
@@ -305,8 +361,8 @@ ADAPT_EXPORT ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(vertical_direction, M
 ADAPT_EXPORT ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(multiplot_size, ADAPT_TIE_ARGS(std::pair<double, double>), plot_detail::MultiplotOption)
 
 // Fitting
-ADAPT_EXPORT ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(fitting, AnyTypeKeyword<plot_detail::FitArg>, plot_detail::PointOption)
-
+ADAPT_EXPORT ADAPT_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(fit_detail, KeywordSpecializationOf<FitOptions>, plot_detail::PointOption)
+ADAPT_EXPORT ADAPT_DEFINE_TAGGED_KEYWORD_OPTION(fit_use_yerrorbars_as_weights, plot_detail::FitOption) // fittingの際に、yerrorbarの値を重みとして使うかどうか。
 
 // タイトルなし指定の短縮版
 ADAPT_EXPORT inline constexpr auto notitle = (title = "notitle");
@@ -552,16 +608,29 @@ ADAPT_EXPORT inline constexpr auto upwards = (vertical_direction = MPVerticalDir
 
 // フィッティング指定の短縮版
 ADAPT_EXPORT
-template <class Func, plot_detail::point_option ...Options>
-inline auto fit(Func&& func, std::vector<double>& params, Options&&... options)
+template <class Func, plot_detail::fit_option ...Options>
+inline auto fit(Func&& func, std::span<double> params, Options&&... options)
 {
-	return (fitting = FitOptions<Func, std::span<double>, Options...>{ func, params, options... });
+	return (fit_detail = FitOptions<Func, std::span<double>, Options...>{ func, params, std::forward_as_tuple(std::forward<Options>(options)...) });
 }
 ADAPT_EXPORT
-template <plot_detail::point_option ...Options>
-inline auto fit_normal(std::vector<double>& params, Options&&... options)
+template <plot_detail::fit_option ...Options>
+inline auto fit_normal(std::span<double> params, Options&&... options)
 {
-	return fit(ObjectiveFuncNormal{}, params, options...);
+	return fit(FitFuncNormal{}, params, options...);
+}
+ADAPT_EXPORT
+template <plot_detail::fit_option ...Options>
+inline auto fit_linear(std::span<double> params, Options&&... options)
+{
+	return fit(FitFuncLinear{}, params, options...);
+}
+
+ADAPT_EXPORT
+template <plot_detail::label_option ...Options>
+inline auto annot(Options&&... options)
+{
+	return (annot_detail = AnnotOptions<Options...>{ std::forward_as_tuple(std::forward<Options>(options)...) });
 }
 
 }
