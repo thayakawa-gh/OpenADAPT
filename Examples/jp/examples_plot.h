@@ -353,7 +353,7 @@ int example_colormap(const std::string& output_filename, bool enable_in_memory_d
 		g1.SetXRange(-10, 10);
 		g1.SetYRange(-10, 10);
 		g1.SetCBRange(-5, 5);
-		g1.PlotColormap(m, xrange, yrange, plot::notitle).
+		g1.PlotHeatmap(m, xrange, yrange, plot::notitle).
 			PlotVectors(xfrom, yfrom, xlen, ylen, plot::notitle, plot::c_white, plot::as_nofilled);
 
 		//sleep for a short time to avoid the output image broken by multiplot.
@@ -370,7 +370,7 @@ int example_colormap(const std::string& output_filename, bool enable_in_memory_d
 		g2.SetXRange(-10, 10);
 		g2.SetYRange(-10, 10);
 		g2.SetCBRange(-5, 5);
-		g2.PlotColormap(m, xrange, yrange, plot::notitle,
+		g2.PlotHeatmap(m, xrange, yrange, plot::notitle,
 						plot::with_contour, plot::without_surface, plot::variable_cntrcolor,
 						plot::cntrlevels_incremental = { -20., 0.2, 20. }).
 			PlotVectors(xfrom, yfrom, xlen, ylen, plot::notitle, plot::variable_color = arrowcolor, plot::as_nofilled);
@@ -388,7 +388,7 @@ int example_colormap(const std::string& output_filename, bool enable_in_memory_d
 		g1.SetXRange(-10, 10);
 		g1.SetYRange(-10, 10);
 		g1.SetCBRange(-5, 5);
-		g1.PlotColormap(output_filename + ".map_tmp.tmp0.txt", "3", "4", "5", plot::notitle).
+		g1.PlotHeatmap(output_filename + ".map_tmp.tmp0.txt", "3", "4", "5", plot::notitle).
 			PlotVectors(output_filename + ".map_tmp.tmp1.txt", "1", "2", "3", "4", plot::notitle, plot::c_white, plot::as_nofilled);
 	}
 	return 0;
@@ -462,7 +462,7 @@ int example_labels_on_colormap(const std::string& output_filename, bool enable_i
 	g.SetSizeRatio(1);
 	g.SetXRange(0.5, 10.5);
 	g.SetYRange(0.5, 10.5);
-	g.PlotColormap(m, { 1, 10 }, { 1, 10 }, plot::notitle).
+	g.PlotHeatmap(m, { 1, 10 }, { 1, 10 }, plot::notitle).
 		PlotLabels(x, y, label, plot::notitle, plot::lp_center, plot::c_white);
 	return 0;
 }

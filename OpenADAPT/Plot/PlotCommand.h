@@ -734,10 +734,10 @@ auto MakeYCoordRange([[maybe_unused]] const Map& map, Ops ...ops)
 }
 
 template <acceptable_matrix_range Map, ranges::arithmetic_range XRange, ranges::arithmetic_range YRange>
-struct ColormapParam : PlotParamBase
+struct HeatmapParam : PlotParamBase
 {
 	template <keyword_arg ...Ops>
-	ColormapParam(Map map_, XRange xrange_, YRange yrange_,
+	HeatmapParam(Map map_, XRange xrange_, YRange yrange_,
 				  std::pair<double, double> xminmax_, std::pair<double, double> yminmax_,
 				  Ops ...ops)
 		: map(map_), xrange(xrange_), yrange(yrange_), xminmax(xminmax_), yminmax(yminmax_)
@@ -797,14 +797,14 @@ struct ColormapParam : PlotParamBase
 	double cntrlinewidth = -1;
 };
 template <keyword_arg ...Options>
-auto MakeColormapParam(Options ...ops)
+auto MakeHeatmapParam(Options ...ops)
 {
 	auto map = AllView(GetKeywordArg(plot::map, std::ranges::empty_view<std::ranges::empty_view<double>>{}, ops...));
 	auto xrange = AllView(GetKeywordArg(plot::xrange, std::ranges::empty_view<double>{}, ops...));
 	auto yrange = AllView(GetKeywordArg(plot::yrange, std::ranges::empty_view<double>{}, ops...));
 	auto xminmax = GetKeywordArg(plot::xminmax, std::pair<double, double>{ 0, 0 }, ops...);
 	auto yminmax = GetKeywordArg(plot::yminmax, std::pair<double, double>{ 0, 0 }, ops...);
-	return ColormapParam<decltype(map), decltype(xrange), decltype(yrange)>
+	return HeatmapParam<decltype(map), decltype(xrange), decltype(yrange)>
 		(map, xrange, yrange, xminmax, yminmax, ops...);
 }
 template <acceptable_matrix_range Map, class X, class Y, keyword_arg ...Options>
@@ -1749,7 +1749,7 @@ template <class Map, class X, class Y>
 std::string MakePlotCommand(std::string_view output_name, bool inmemory,
 							const std::map<std::string, std::variant<int, std::string>>& cols,
 							const std::vector<std::string>& labelcols,
-							const ColormapParam<Map, X, Y>& p)
+							const HeatmapParam<Map, X, Y>& p)
 {
 	std::string c;
 	std::string usg;

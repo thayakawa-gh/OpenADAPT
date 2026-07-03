@@ -40,15 +40,10 @@ int example_2d(const std::string& output_filename, bool enable_in_memory_data_tr
 	smooth         ... interpolation and approximation by some routines.
 	xerrorbar      ... xerrorbar. This is available only if you specify Style::lines, points or boxes option.
 	yerrorbar      ... yerrorbar. This is available only if you specify Style::lines, points or boxes option.
+	xerrlow/high   ... xerrorbar's lower and upper values, exclusive with xerrorbar.
+	yerrlow/high   ... yerrorbar's lower and upper values, exclusive with yerrorbar.
 
-	//The following options are available only with Style::boxes or Style::steps
-	fillpattern    ... fill with a colored pattern.
-	fillsolid      ... fill with a solid color specified by fillcolor with density [ 0.0, 1.0 ].
-	filltransparent... make the filled area transparent to the background color.
-	fillcolor      ... specify the color of filled area.
-	variable_fillcolor ...
-	bordercolor    ... specify the color of the border.
-	bordertype     ... specify the type of the border.
+	The fill~ and border~ options were removed from the PlotPoints functions, instead you can use them in the PlotFilledCurves function.
 	*/
 
 	auto x = std::views::iota(-20, 21) | std::views::transform([](int i) { return i * 0.1 * std::numbers::pi; });
@@ -97,6 +92,21 @@ int example_histogram(const std::string& output_filename, bool enable_in_memory_
 		if (x < -4.0 || x >= 4.0) continue;
 		data.push_back(x);
 	}
+
+	/* options for PlotHistogram
+	This function internally calls the PlotPoints function, so you can use the same options as PlotPoints.
+
+	In addition, the following options are available.
+	binerror       ... add statistical uncertainties for each bin. (e.g. plot::binerror = BinError::poisson68)
+	  be_poisson   ... the same as binerror = BinError::poisson68
+	  be_poisson95 ... the same as binerror = BinError::poisson95
+	  be_normal    ... the same as binerror = BinError::normal68
+	  be_normal95  ... the same as binerror = BinError::normal95
+	cumul          ... plot cumulative relative frequency instead of standard histogram.
+	inv_cumul      ... plot inverse cumulative relative frequency instead of standard histogram.
+	stack          ... stack histograms on top of each other. See example_stacked_histogram for details.
+	weight         ... weight each data point by the specified value. See example_weighted_histogram for details.
+	*/
 
 	namespace plot = adapt::plot;
 	adapt::Canvas2D g(output_filename);
@@ -158,7 +168,7 @@ int example_stacked_histogram(const std::string& output_filename, bool enable_in
 	g.SetXRange(-8.0, 8.0);
 	g.SetXLabel("x");
 	g.SetYLabel("y");
-	// plot::stack option stacks the histograms on top of each other. The height of each bin is the sum of the counts of all histograms in that bin.
+	// plot::stack option stacks the histograms on top of each other.
 	// The first histogram must specify the min, max, nbin options to determine the bins for stacking.
 	// Subsequent histograms can omit these options, and the bins will be automatically determined to match the first histogram.
 	g.PlotHistogram(data1, -8, 8, 32, plot::c_dark_cobalt, plot::title = "{/Symbol m} = 0., {/Symbol s} = 2.", plot::stack).
@@ -198,7 +208,7 @@ int example_weighted_histogram(const std::string& output_filename, bool enable_i
 	return 0;
 }
 
-int example_scatter(const std::string& output_filename, bool enable_in_memory_data_transfer)
+int example_variable_point_size_scatter(const std::string& output_filename, bool enable_in_memory_data_transfer)
 {
 	std::vector<double> longitudes{ 141.3469, 140.74, 141.1526, 140.8694, 140.1023, 140.3633, 140.4676, 140.4468, 139.8836, 139.0608, 139.6489, 140.1233, 139.6917, 139.6423, 139.0235, 137.2113, 136.6256, 136.2219, 138.5684, 138.1812, 136.7223, 138.3828, 136.9066, 136.5086, 135.8686, 135.7556, 135.5023, 135.183, 135.8048, 135.1675, 134.2383, 133.0505, 133.9344, 132.4553, 131.4714, 134.5594, 134.0434, 132.7657, 133.5311, 130.4017, 130.3009, 129.8737, 130.7417, 131.6126, 131.4202, 130.5581, 127.6809 };
 	std::vector<double> latitudes{ 43.0642, 40.8244, 39.7036, 38.2682, 39.7186, 38.2404, 37.7503, 36.3418, 36.5658, 36.3911, 35.8569, 35.6051, 35.6895, 35.4475, 37.9026, 36.6953, 36.5944, 36.0652, 35.6642, 36.6513, 35.3912, 34.9756, 35.1802, 34.7303, 35.0045, 35.021, 34.6937, 34.6913, 34.6851, 34.226, 35.5036, 35.4723, 34.6618, 34.3853, 34.1858, 34.0658, 34.3402, 33.8416, 33.5597, 33.5902, 33.2635, 32.7448, 32.7898, 33.2382, 31.9077, 31.5602, 26.2124 };
@@ -303,6 +313,27 @@ int example_labels(const std::string& output_filename, bool enable_in_memory_dat
 	auto dscities = adapt::views::Zip(cities, populations) |
 		std::views::transform([](const auto& x) { return std::format("\"{{/={} {}}}\"", std::sqrt(std::get<1>(x) / 5000.), std::get<0>(x)); });
 
+	/* options for PlotLabels
+	This function plots texts at specified points.
+	The labels argument accepts not only a range of string, but also a range of numbers,
+	which can be formatted using the labelformat option. (e.g. plot::labelformat = "{:.2f}")
+
+	The following options are available.
+	labelpos       ... position of the label relative to the point. (e.g. plot::labelpos = LabelPos::left)
+	  lp_center    ... the same as labelpos = LabelPos::center
+	  lp_left      ... the same as labelpos = LabelPos::left
+	  lp_right     ... the same as labelpos = LabelPos::right
+	labelrotate    ... rotation angle of the label in degrees. (e.g. plot::labelrotate = 45)
+	labelfont      ... font and size of the label. (e.g. plot::labelfont = "Times New Roman,12")
+	labeloverlay   ... overlay the label on the point. (e.g. plot::labeloverlay = LabelOverlay::front)
+	  lo_front     ... the same as labeloverlay = LabelOverlay::front
+	  lo_back      ... the same as labeloverlay = LabelOverlay::back
+	labeloffset    ... offset of the label from the point. (e.g. plot::labeloffset = {0.0, 0.5})
+	labelformat    ... format of the label based on the std::format syntax. (e.g. plot::labelformat = "{:.2f}")
+	noenhanced     ... disable enhanced text mode for the label.
+	variable_color ... different colors at each label.
+	*/
+
 	namespace plot = adapt::plot;
 	adapt::Canvas2D g(output_filename);
 	g.EnableInMemoryDataTransfer(enable_in_memory_data_transfer);
@@ -350,7 +381,7 @@ double fieldy(double x, double y)
 	double f2 = 3 * y / std::pow(calc_r(x + 3, y), 3);
 	return f1 - f2;
 }
-int example_colormap(const std::string& output_filename, bool enable_in_memory_data_transfer)
+int example_heatmap(const std::string& output_filename, bool enable_in_memory_data_transfer)
 {
 	adapt::Matrix<double> m(100, 100);
 	std::pair<double, double> xrange = { -9.9, 9.9 };
@@ -385,7 +416,7 @@ int example_colormap(const std::string& output_filename, bool enable_in_memory_d
 		}
 	}
 
-	/* options for Colormap
+	/* options for PlotHeatmap
 	title           ... title.
 	  no_title      ... the same as title = "notitle".
 	axis            ... set of axes to scale lines. (e.g. plot::axis = "x1y2")
@@ -422,7 +453,7 @@ int example_colormap(const std::string& output_filename, bool enable_in_memory_d
 		g1.SetXRange(-10, 10);
 		g1.SetYRange(-10, 10);
 		g1.SetCBRange(-5, 5);
-		g1.PlotColormap(m, xrange, yrange, plot::notitle).
+		g1.PlotHeatmap(m, xrange, yrange, plot::notitle).
 			PlotVectors(xfrom, yfrom, xlen, ylen, plot::notitle, plot::c_white, plot::as_nofilled);
 
 		//sleep for a short time to avoid the output image broken by multiplot.
@@ -439,7 +470,7 @@ int example_colormap(const std::string& output_filename, bool enable_in_memory_d
 		g2.SetXRange(-10, 10);
 		g2.SetYRange(-10, 10);
 		g2.SetCBRange(-5, 5);
-		g2.PlotColormap(m, xrange, yrange, plot::notitle,
+		g2.PlotHeatmap(m, xrange, yrange, plot::notitle,
 						plot::with_contour, plot::without_surface, plot::variable_cntrcolor,
 						plot::cntrlevels_incremental = { -20., 0.2, 20. }).
 			PlotVectors(xfrom, yfrom, xlen, ylen, plot::notitle, plot::variable_color = arrowcolor, plot::as_nofilled);
@@ -457,9 +488,48 @@ int example_colormap(const std::string& output_filename, bool enable_in_memory_d
 		g1.SetXRange(-10, 10);
 		g1.SetYRange(-10, 10);
 		g1.SetCBRange(-5, 5);
-		g1.PlotColormap(output_filename + ".map_tmp.tmp0.txt", "3", "4", "5", plot::notitle).
+		g1.PlotHeatmap(output_filename + ".map_tmp.tmp0.txt", "3", "4", "5", plot::notitle).
 			PlotVectors(output_filename + ".map_tmp.tmp1.txt", "1", "2", "3", "4", plot::notitle, plot::c_white, plot::as_nofilled);
 	}
+	return 0;
+}
+
+int example_labels_on_heatmap(const std::string& output_filename, bool enable_in_memory_data_transfer)
+{
+	std::vector<int> x;
+	std::vector<int> y;
+	adapt::Matrix<int> m(10, 10);
+	for (int i = 1; i <= 10; ++i)
+	{
+		for (int j = 1; j <= 10; ++j)
+		{
+			if (i < j) m[i - 1][j - 1] = 0;
+			else
+			{
+				int lcm = std::lcm(i, j);
+				m[i - 1][j - 1] = lcm;
+				x.push_back(i);
+				y.push_back(j);
+			}
+		}
+	}
+
+	namespace plot = adapt::plot;
+	adapt::Canvas2D g(output_filename);
+	g.EnableInMemoryDataTransfer(enable_in_memory_data_transfer);
+	g.SetTitle("example\\_labels\\_on\\_heatmap");
+	g.SetXLabel("m");
+	g.SetYLabel("n");
+	g.SetSizeRatio(1);
+	g.SetXRange(0.5, 10.5);
+	g.SetYRange(0.5, 10.5);
+
+	// plot::annot option adds labels which are determined by the value of the cell.
+	// It also accepts label_options to customize the appearance of the labels.
+	// Note that the format string for the labels is recommended to be used with double quotes if the result of the format contains spaces,
+	// otherwise gnuplot will not be able to parse the string correctly.
+	g.PlotHeatmap(m, { 1, 10 }, { 1, 10 }, plot::notitle,
+				  plot::annot(plot::notitle, plot::c_white, plot::labelformat = "\"{:>2}\""));
 	return 0;
 }
 
@@ -475,8 +545,8 @@ int example_binscatter(const std::string& output_filename, bool enable_in_memory
 		x[i] = nd(mt);
 		y[i] = nd(mt);
 	}
-	namespace plot = adapt::plot;
 
+	namespace plot = adapt::plot;
 	adapt::MultiPlot multi(output_filename, 1, 2, plot::page_title = "example\\_binscatter", plot::multiplot_size = { 1800., 900. });
 	adapt::Canvas2D g1;
 	g1.EnableInMemoryDataTransfer(enable_in_memory_data_transfer);
@@ -508,45 +578,6 @@ int example_binscatter(const std::string& output_filename, bool enable_in_memory
 	return 0;
 }
 
-int example_labels_on_colormap(const std::string& output_filename, bool enable_in_memory_data_transfer)
-{
-	std::vector<int> x;
-	std::vector<int> y;
-	adapt::Matrix<int> m(10, 10);
-	for (int i = 1; i <= 10; ++i)
-	{
-		for (int j = 1; j <= 10; ++j)
-		{
-			if (i < j) m[i - 1][j - 1] = 0;
-			else
-			{
-				int lcm = std::lcm(i, j);
-				m[i - 1][j - 1] = lcm;
-				x.push_back(i);
-				y.push_back(j);
-			}
-		}
-	}
-
-	namespace plot = adapt::plot;
-	adapt::Canvas2D g(output_filename);
-	g.EnableInMemoryDataTransfer(enable_in_memory_data_transfer);
-	g.SetTitle("example\\_labels\\_on\\_colormap");
-	g.SetXLabel("m");
-	g.SetYLabel("n");
-	g.SetSizeRatio(1);
-	g.SetXRange(0.5, 10.5);
-	g.SetYRange(0.5, 10.5);
-
-	// plot::annot option adds labels which are determined by the value of the cell.
-	// It also accepts label_options to customize the appearance of the labels.
-	// Note that the format string for the labels is recommended to be used with double quotes if the result of the format contains spaces,
-	// otherwise gnuplot will not be able to parse the string correctly.
-	g.PlotColormap(m, { 1, 10 }, { 1, 10 }, plot::notitle,
-				   plot::annot(plot::notitle, plot::c_white, plot::labelformat = "\"{:>2}\""));
-	return 0;
-}
-
 int example_surface(const std::string& output_filename, bool enable_in_memory_data_transfer)
 {
 	adapt::Matrix<double> m(51, 51);
@@ -561,6 +592,13 @@ int example_surface(const std::string& output_filename, bool enable_in_memory_da
 			m[ix + 25][iy + 25] = -potential(x, y);
 		}
 	}
+
+	/* options for PlotSurface
+	pm3d_at        ... specify the position of the pm3d surface relative to the xy plane (e.g. plot::pm3d_at = Pm3dPosition::bottom)
+	  pm3d_bottom  ... the same as pm3d_at = Pm3dPosition::bottom
+	  pm3d_top     ... the same as pm3d_at = Pm3dPosition::top
+	  pm3d_surface ... the same as pm3d_at = Pm3dPosition::surface
+	*/
 
 	namespace plot = adapt::plot;
 	adapt::Canvas3D g(output_filename);
@@ -754,7 +792,7 @@ int example_datetime(const std::string& output_filename, bool enable_in_memory_d
 	return 0;
 }
 
-int example_string(const std::string& output_filename, bool enable_in_memory_data_transfer)
+int example_string_label(const std::string& output_filename, bool enable_in_memory_data_transfer)
 {
 	std::vector<std::string> x;
 	std::vector<double> y;
@@ -777,7 +815,7 @@ int example_string(const std::string& output_filename, bool enable_in_memory_dat
 	g.SetXRange(-1, 10);
 	g.SetYRange(0, 11);
 	g.SetXTicsRotate(-45);
-	g.SetTitle("example\\_string");
+	g.SetTitle("example\\_string\\_label");
 	g.PlotPoints(x, y, plot::s_boxes, plot::notitle);
 	return 0;
 }
@@ -832,8 +870,8 @@ void QuickstartPlot()
 	//example_weighted_histogram("PlotExamples/example_weighted_histogram" + extension, false);
 	example_weighted_histogram("PlotExamples/example_weighted_histogram-inmemory" + extension, true);
 
-	//example_scatter("PlotExamples/example_scatter" + extension, false);
-	example_scatter("PlotExamples/example_scatter-inmemory" + extension, true);
+	//example_variable_point_size_scatter("PlotExamples/example_scatter" + extension, false);
+	example_variable_point_size_scatter("PlotExamples/example_scatter-inmemory" + extension, true);
 
 	//example_fitting("PlotExamples/example_fitting" + extension, false);
 	example_fitting("PlotExamples/example_fitting-inmemory" + extension, true);
@@ -844,11 +882,11 @@ void QuickstartPlot()
 	//example_labels("PlotExamples/example_labels" + extension, false);
 	example_labels("PlotExamples/example_labels-inmemory" + extension, true);
 
-	//example_labels_on_colormap("PlotExamples/example_labels_on_colormap" + extension, false);
-	example_labels_on_colormap("PlotExamples/example_labels_on_colormap-inmemory" + extension, true);
+	//example_labels_on_heatmap("PlotExamples/example_labels_on_heatmap" + extension, false);
+	example_labels_on_heatmap("PlotExamples/example_labels_on_heatmap-inmemory" + extension, true);
 
-	//example_colormap("PlotExamples/example_colormap" + extension, false);
-	example_colormap("PlotExamples/example_colormap-inmemory" + extension, true);
+	//example_heatmap("PlotExamples/example_heatmap" + extension, false);
+	example_heatmap("PlotExamples/example_heatmap-inmemory" + extension, true);
 
 	//example_binscatter("PlotExamples/example_binscatter" + extension, false);
 	example_binscatter("PlotExamples/example_binscatter-inmemory" + extension, true);
@@ -862,8 +900,8 @@ void QuickstartPlot()
 	//example_datetime("PlotExamples/example_datetime" + extension, false);
 	example_datetime("PlotExamples/example_datetime-inmemory" + extension, true);
 
-	//example_string("PlotExamples/example_string_label" + extension, false);
-	example_string("PlotExamples/example_string_label-inmemory" + extension, true);
+	//example_string_label("PlotExamples/example_string_label" + extension, false);
+	example_string_label("PlotExamples/example_string_label-inmemory" + extension, true);
 
 	//example_for_loop("PlotExamples/example_for_loop" + extension, false);
 	example_for_loop("PlotExamples/example_for_loop-inmemory" + extension, true);

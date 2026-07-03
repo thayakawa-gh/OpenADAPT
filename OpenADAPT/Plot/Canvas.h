@@ -182,38 +182,38 @@ struct PlotBuffer2D
 	template <acceptable_matrix_range Map,
 		ranges::arithmetic_range XRange, ranges::arithmetic_range YRange,
 		colormap_option ...Options>
-	PlotBuffer2D PlotColormap(const Map& map_, const XRange& x, const YRange& y,
+	PlotBuffer2D PlotHeatmap(const Map& map_, const XRange& x, const YRange& y,
 							  Options ...ops)
 	{
-		auto p = MakeColormapParam(plot::map = map_, plot::xrange = x, plot::yrange = y, ops...);
-		return PlotColormap(p);
+		auto p = MakeHeatmapParam(plot::map = map_, plot::xrange = x, plot::yrange = y, ops...);
+		return PlotHeatmap(p);
 	}
 	template <acceptable_matrix_range Map, colormap_option ...Options>
-	PlotBuffer2D PlotColormap(const Map& map_, std::pair<double, double> x, std::pair<double, double> y,
+	PlotBuffer2D PlotHeatmap(const Map& map_, std::pair<double, double> x, std::pair<double, double> y,
 							  Options ...ops)
 	{
 		size_t xsize = map_.size();
 		size_t ysize = map_.begin()->size();
 		auto p_annot = MakeAnnotParam(map_, CoordMinMax(x, xsize), CoordMinMax(y, ysize), ops...);
-		auto p = MakeColormapParam(plot::map = map_, plot::xminmax = x, plot::yminmax = y, ops...);
-		auto buf = PlotColormap(p);
+		auto p = MakeHeatmapParam(plot::map = map_, plot::xminmax = x, plot::yminmax = y, ops...);
+		auto buf = PlotHeatmap(p);
 		if constexpr (!std::is_same_v<std::decay_t<decltype(p_annot)>, EmptyClass>)
 			return buf.PlotLabels(p_annot);
 		else
 			return buf;
 	}
 	template <colormap_option ...Options>
-	PlotBuffer2D PlotColormap(std::string_view filename, std::string_view x, std::string_view y, std::string_view map,
+	PlotBuffer2D PlotHeatmap(std::string_view filename, std::string_view x, std::string_view y, std::string_view map,
 							  Options ...ops)
 	{
-		auto p = MakeColormapParam(plot::input = filename, plot::map = map, plot::xrange = x, plot::yrange = y, ops...);
-		return PlotColormap(p);
+		auto p = MakeHeatmapParam(plot::input = filename, plot::map = map, plot::xrange = x, plot::yrange = y, ops...);
+		return PlotHeatmap(p);
 	}
 	template <colormap_option ...Options>
-	PlotBuffer2D PlotColormap(std::string_view equation, Options ...ops)
+	PlotBuffer2D PlotHeatmap(std::string_view equation, Options ...ops)
 	{
-		auto p = MakeColormapParam(plot::input = equation, ops...);
-		return PlotColormap(p);
+		auto p = MakeHeatmapParam(plot::input = equation, ops...);
+		return PlotHeatmap(p);
 	}
 
 protected:
@@ -237,7 +237,7 @@ protected:
 	template <class X, class Y, class L, class VTC>
 	PlotBuffer2D PlotLabels(const LabelParam<X, Y, L, VTC>& p);
 	template <class Map, class X, class Y>
-	PlotBuffer2D PlotColormap(const ColormapParam<Map, X, Y>& p);
+	PlotBuffer2D PlotHeatmap(const HeatmapParam<Map, X, Y>& p);
 
 	std::vector<std::string> m_commands;
 	Canvas2D* m_canvas;
@@ -375,31 +375,31 @@ public:
 	}
 	template <acceptable_matrix_range Map, ranges::arithmetic_range X, ranges::arithmetic_range Y,
 		colormap_option ...Options>
-	PlotBuffer2D PlotColormap(const Map& map, const X& x, const Y& y,
+	PlotBuffer2D PlotHeatmap(const Map& map, const X& x, const Y& y,
 							  Options ...ops)
 	{
 		PlotBuffer2D p(this);
-		return p.PlotColormap(map, x, y, ops...);
+		return p.PlotHeatmap(map, x, y, ops...);
 	}
 	template <acceptable_matrix_range Map, colormap_option ...Options>
-	PlotBuffer2D PlotColormap(const Map& map, std::pair<double, double> x, std::pair<double, double> y,
+	PlotBuffer2D PlotHeatmap(const Map& map, std::pair<double, double> x, std::pair<double, double> y,
 							  Options ...ops)
 	{
 		PlotBuffer2D p(this);
-		return p.PlotColormap(map, x, y, ops...);
+		return p.PlotHeatmap(map, x, y, ops...);
 	}
 	template <colormap_option ...Options>
-	PlotBuffer2D PlotColormap(std::string_view filename, std::string_view x, std::string_view y, std::string_view z,
+	PlotBuffer2D PlotHeatmap(std::string_view filename, std::string_view x, std::string_view y, std::string_view z,
 							  Options ...ops)
 	{
 		PlotBuffer2D p(this);
-		return p.PlotColormap(filename, x, y, z, ops...);
+		return p.PlotHeatmap(filename, x, y, z, ops...);
 	}
 	template <colormap_option ...Options>
-	PlotBuffer2D PlotColormap(std::string_view equation, Options ...ops)
+	PlotBuffer2D PlotHeatmap(std::string_view equation, Options ...ops)
 	{
 		PlotBuffer2D p(this);
-		return p.PlotColormap(equation, ops...);
+		return p.PlotHeatmap(equation, ops...);
 	}
 
 	PlotBuffer2D GetBuffer()
@@ -893,8 +893,8 @@ PlotBuffer2D PlotBuffer2D::PlotBinscatter(const BinscatterParam<X, Y, Weight>& p
 				}
 			}
 		}
-		auto p2 = MakeColormapParam(plot::map = hist, plot::xminmax = xminmax, plot::yminmax = yminmax, ops...);
-		return PlotColormap(p2);
+		auto p2 = MakeHeatmapParam(plot::map = hist, plot::xminmax = xminmax, plot::yminmax = yminmax, ops...);
+		return PlotHeatmap(p2);
 	}
 }
 template <class X, class Y, class XL, class YL, class VC>
@@ -1081,7 +1081,7 @@ PlotBuffer2D PlotBuffer2D::PlotLabels(const LabelParam<X, Y, L, VTC>& p)
 	return std::move(*this);
 }
 template <class Map, class X, class Y>
-PlotBuffer2D PlotBuffer2D::PlotColormap(const ColormapParam<Map, X, Y>& p)
+PlotBuffer2D PlotBuffer2D::PlotHeatmap(const HeatmapParam<Map, X, Y>& p)
 {
 	constexpr bool xrange_assigned = !PlotParamBase::IsEmptyView<X>();
 	constexpr bool yrange_assigned = !PlotParamBase::IsEmptyView<Y>();
@@ -1323,30 +1323,30 @@ struct PlotBuffer3D
 	template <acceptable_matrix_range Map,
 			  ranges::arithmetic_range XRange, ranges::arithmetic_range YRange,
 			  colormap_option ...Options>
-	PlotBuffer3D PlotColormap(const Map& map_, const XRange& x, const YRange& y,
+	PlotBuffer3D PlotHeatmap(const Map& map_, const XRange& x, const YRange& y,
 							  Options ...ops)
 	{
-		auto p = MakeColormapParam(plot::map = map_, plot::xrange = x, plot::yrange = y, ops...);
+		auto p = MakeHeatmapParam(plot::map = map_, plot::xrange = x, plot::yrange = y, ops...);
 		return Plot(p);
 	}
 	template <acceptable_matrix_range Map, colormap_option ...Options>
-	PlotBuffer3D PlotColormap(const Map& map_, std::pair<double, double> x, std::pair<double, double> y,
+	PlotBuffer3D PlotHeatmap(const Map& map_, std::pair<double, double> x, std::pair<double, double> y,
 							  Options ...ops)
 	{
-		auto p = MakeColormapParam(plot::map = map_, plot::xminmax = x, plot::yminmax = y, ops...);
+		auto p = MakeHeatmapParam(plot::map = map_, plot::xminmax = x, plot::yminmax = y, ops...);
 		return Plot(p);
 	}
 	template <colormap_option ...Options>
-	PlotBuffer3D PlotColormap(std::string_view filename, std::string_view x, std::string_view y, std::string_view map,
+	PlotBuffer3D PlotHeatmap(std::string_view filename, std::string_view x, std::string_view y, std::string_view map,
 							  Options ...ops)
 	{
-		auto p = MakeColormapParam(plot::input = filename, plot::map = map, plot::xrange = x, plot::yrange = y, ops...);
+		auto p = MakeHeatmapParam(plot::input = filename, plot::map = map, plot::xrange = x, plot::yrange = y, ops...);
 		return Plot(p);
 	}
 	template <colormap_option ...Options>
-	PlotBuffer3D PlotColormap(std::string_view equation, Options ...ops)
+	PlotBuffer3D PlotHeatmap(std::string_view equation, Options ...ops)
 	{
-		auto p = MakeColormapParam(plot::input = equation, ops...);
+		auto p = MakeHeatmapParam(plot::input = equation, ops...);
 		return Plot(p);
 	}
 
@@ -1388,7 +1388,7 @@ protected:
 	template <class X, class Y, class Z, class L, class VTC>
 	PlotBuffer3D Plot(const LabelParam3D<X, Y, Z, L, VTC>& p);
 	template <class Map, class X, class Y>
-	PlotBuffer3D Plot(const ColormapParam<Map, X, Y>& p);
+	PlotBuffer3D Plot(const HeatmapParam<Map, X, Y>& p);
 	template <class Map, class X, class Y, class VC, class VS>
 	PlotBuffer3D Plot(const SurfaceParam<Map, X, Y, VC, VS>& p);
 
@@ -1572,31 +1572,31 @@ public:
 
 	template <acceptable_matrix_range Map, ranges::arithmetic_range X, ranges::arithmetic_range Y,
 			  colormap_option ...Options>
-	PlotBuffer3D PlotColormap(const Map& map, const X& x, const Y& y,
+	PlotBuffer3D PlotHeatmap(const Map& map, const X& x, const Y& y,
 							  Options ...ops)
 	{
 		PlotBuffer3D p(this);
-		return p.PlotColormap(map, x, y, ops...);
+		return p.PlotHeatmap(map, x, y, ops...);
 	}
 	template <acceptable_matrix_range Map, colormap_option ...Options>
-	PlotBuffer3D PlotColormap(const Map& map, std::pair<double, double> x, std::pair<double, double> y,
+	PlotBuffer3D PlotHeatmap(const Map& map, std::pair<double, double> x, std::pair<double, double> y,
 							  Options ...ops)
 	{
 		PlotBuffer3D p(this);
-		return p.PlotColormap(map, x, y, ops...);
+		return p.PlotHeatmap(map, x, y, ops...);
 	}
 	template <colormap_option ...Options>
-	PlotBuffer3D PlotColormap(std::string_view filename, std::string_view x, std::string_view y, std::string_view z,
+	PlotBuffer3D PlotHeatmap(std::string_view filename, std::string_view x, std::string_view y, std::string_view z,
 							  Options ...ops)
 	{
 		PlotBuffer3D p(this);
-		return p.PlotColormap(filename, x, y, z, ops...);
+		return p.PlotHeatmap(filename, x, y, z, ops...);
 	}
 	template <colormap_option ...Options>
-	PlotBuffer3D PlotColormap(std::string_view equation, Options ...ops)
+	PlotBuffer3D PlotHeatmap(std::string_view equation, Options ...ops)
 	{
 		PlotBuffer3D p(this);
-		return p.PlotColormap(equation, ops...);
+		return p.PlotHeatmap(equation, ops...);
 	}
 
 	template <acceptable_matrix_range Map, ranges::arithmetic_range X, ranges::arithmetic_range Y,
@@ -1809,7 +1809,7 @@ PlotBuffer3D PlotBuffer3D::Plot(const LabelParam3D<X, Y, Z, L, VTC>& p)
 	return std::move(*this);
 }
 template <class Map, class X, class Y>
-PlotBuffer3D PlotBuffer3D::Plot(const ColormapParam<Map, X, Y>& p)
+PlotBuffer3D PlotBuffer3D::Plot(const HeatmapParam<Map, X, Y>& p)
 {
 	constexpr bool xrange_assigned = !PlotParamBase::IsEmptyView<X>();
 	constexpr bool yrange_assigned = !PlotParamBase::IsEmptyView<Y>();
