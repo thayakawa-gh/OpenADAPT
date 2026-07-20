@@ -14,46 +14,64 @@ TEST(Random, Json_ParseAndInfer)
 	doc.Parse(json);
 	ASSERT_FALSE(doc.HasParseError());
 	auto schema = adapt::json::InferSchema(doc);
-	EXPECT_GE(schema.TopFields().size(), 1u);
-	EXPECT_FALSE(schema.Layers().empty());
-	EXPECT_EQ(schema.TopFields()[0].first, "company");
-	EXPECT_EQ(schema.TopFields()[0].second, FieldType::Str);
-	EXPECT_EQ(schema.Layers()[0].fields.size(), 1u);
-	EXPECT_EQ(schema.Layers()[0].fields[0].first, "departments_name");
+	EXPECT_GE(schema.GetLayerSpec(-1_layer).fields.size(), 1u);
+	EXPECT_EQ(schema.GetLayerSpec(-1_layer).fields[0].first, "company");
+	EXPECT_EQ(schema.GetLayerSpec(-1_layer).fields[0].second, FieldType::Str);
+	EXPECT_EQ(schema.GetLayerSpec(0_layer).fields.size(), 1u);
+	EXPECT_EQ(schema.GetLayerSpec(0_layer).fields[0].first, "departments_name");
 }
 constexpr char json_str[] = R"(
 	{
 		"company": {
-			"name": "A",
-			"location": "NY"
+			"name": "",
+			"location": "New York"
 		},
-		"departments": [
+		"department": [
 			{
-				"name": "HR",
-				"employees": []
+				"name": "Human resources",
+				"division": []
 			},
 			{
-				"name": "R&D",
-				"employees": [
+				"name": "Research&development",
+				"division": [
 					{
-						"id": 1,
-						"name": "Alice",
-						"salary": 1000.0
+						"name": "AI",
+						"employee": []
 					},
 					{
-						"id": 3,
-						"name": "Charlie",
-						"salary": 1200.0
+						"name": "Robotics",
+						"employee": [
+							{
+								"id": 4,
+								"name": "David",
+								"salary": 1500.0
+							}
+						]
 					}
 				]
 			},
 			{
 				"name": "Sales",
-				"employees": [
+				"division": [
 					{
-						"id": 2,
-						"name": "Bob",
-						"salary": 800.0
+						"name": "Domestic",
+						"employee": [
+							{
+								"id": 5,
+								"name": "Eve",
+								"salary": 1100.0
+							}
+						]
+					},
+					{
+						"name": "International",
+						"employee": [
+							{
+								"id": 6,
+								"name": "Frank",
+								"salary": 1300.0
+							}
+						]
 					}
 				]
 			}
@@ -65,12 +83,11 @@ TEST(Random, Json_ParseNestedObject)
 	doc.Parse(json_str);
 	ASSERT_FALSE(doc.HasParseError());
 	auto schema = adapt::json::InferSchema(doc);
-	EXPECT_GE(schema.TopFields().size(), 2u);
-	EXPECT_FALSE(schema.Layers().empty());
-	EXPECT_EQ(schema.TopFields()[0].first, "company_name");
-	EXPECT_EQ(schema.TopFields()[0].second, FieldType::Str);
-	EXPECT_EQ(schema.TopFields()[1].first, "company_location");
-	EXPECT_EQ(schema.TopFields()[1].second, FieldType::Str);
+	EXPECT_GE(schema.GetLayerSpec(-1_layer).fields.size(), 2u);
+	EXPECT_EQ(schema.GetLayerSpec(-1_layer).fields[0].first, "company_name");
+	EXPECT_EQ(schema.GetLayerSpec(-1_layer).fields[0].second, FieldType::Str);
+	EXPECT_EQ(schema.GetLayerSpec(-1_layer).fields[1].first, "company_location");
+	EXPECT_EQ(schema.GetLayerSpec(-1_layer).fields[1].second, FieldType::Str);
 }
 
 TEST(Random, Json_ImportDTree)
@@ -79,7 +96,11 @@ TEST(Random, Json_ImportDTree)
 	doc.Parse(json_str);
 	ASSERT_FALSE(doc.HasParseError());
 	auto schema = adapt::json::InferSchema(doc);
-	//auto tree = adapt::json::ImportDTree(doc, schema);
+	auto tree = adapt::json::ImportDTree(doc, schema);
 
+	ADAPT_GET_PLACEHOLDERS(tree, company_name, company_location, department_name, division_name, employee_id, employee_name, employee_salary);
+	tree | Show("{:>10} {:>10} {:>24}", company_name, company_location, department_name);
+	tree | Show("{:>10} {:>10} {:>24} {:>16}", company_name, company_location, department_name, division_name);
+	tree | Show("{:>10} {:>10} {:>24} {:>16} {:>3} {:>10} {:>7.1f}", company_name, company_location, department_name, division_name, employee_id, employee_name, employee_salary);
 }
 #endif

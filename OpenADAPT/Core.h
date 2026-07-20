@@ -1,7 +1,6 @@
 #ifndef ADAPT_CORE_H
 #define ADAPT_CORE_H
 
-
 #include <OpenADAPT/Utility/NamedTuple.h>
 #include <OpenADAPT/Container/Tree.h>
 #include <OpenADAPT/Container/Hist.h>
