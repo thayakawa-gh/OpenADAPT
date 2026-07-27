@@ -8,7 +8,7 @@ target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 
 if(${unordered_dense_FOUND})
 	message("unordered_dense found")
-	target_compile_definitions(${PROJECT_NAME} PRIVATE USE_ANKERL_UNORDERED_DENSE)
+	target_compile_definitions(${PROJECT_NAME} PRIVATE ADAPT_USE_ANKERL_UNORDERED_DENSE)
 	target_link_libraries(${PROJECT_NAME} PUBLIC OpenADAPT unordered_dense::unordered_dense)
 else()
 	message("unordered_dense not found")

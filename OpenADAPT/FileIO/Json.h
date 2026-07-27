@@ -1,21 +1,12 @@
 #ifndef ADAPT_FILEIO_JSON_H
 #define ADAPT_FILEIO_JSON_H
 
-#if __has_include(<rapidjson/document.h>)
-#define ADAPT_JSON_HAS_RAPIDJSON 1
+#ifdef ADAPT_USE_RAPIDJSON
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
+#include <rapidjson/ostreamwrapper.h>
+#include <rapidjson/prettywriter.h>
 #include <rapidjson/writer.h>
-#elif __has_include("rapidjson/document.h")
-#define ADAPT_JSON_HAS_RAPIDJSON 1
-#include "rapidjson/document.h"
-#include "rapidjson/stringbuffer.h"
-#include "rapidjson/writer.h"
-#else
-#define ADAPT_JSON_HAS_RAPIDJSON 0
-#endif
-
-#if ADAPT_JSON_HAS_RAPIDJSON == 1
 
 #include <algorithm>
 #include <charconv>
@@ -24,6 +15,7 @@
 #include <limits>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -54,7 +46,7 @@ struct ImportOptions
 namespace detail
 {
 
-inline std::vector<std::string> SplitPath(std::string_view path)
+/*inline std::vector<std::string> SplitPath(std::string_view path)
 {
 	std::vector<std::string> tokens;
 	std::string current;
@@ -86,7 +78,7 @@ inline std::vector<std::string> SplitPath(std::string_view path)
 	if (!current.empty())
 		tokens.push_back(current);
 	return tokens;
-}
+}*/
 
 /*inline std::string JoinPath(const std::string& lhs, std::string_view rhs, std::string_view sep)
 {
@@ -101,9 +93,7 @@ inline std::string JoinPath(const std::vector<std::string>& path, const std::str
 	{
 		if (!result.empty())
 		{
-			//pathの途中にarrayが含まれる場合、その部分はpathの要素が空なので、そこだけスキップする。
-			if (!seg.empty())
-				result += (sep + seg);
+			result += (sep + seg);
 		}
 		else result += seg;
 	}
@@ -116,15 +106,12 @@ inline std::string JoinPath(const std::vector<std::string>& path, const std::vec
 	{
 		if (!result.empty())
 		{
-			//pathの途中に[]が含まれる場合、その部分はpathの要素が空なので、そこだけスキップする。
-			if (seg != "[]")
-				result += (sep + seg);
+			result += (sep + seg);
 		}
 		else result += seg;
 	}
 	for (const auto& seg : keys)
 	{
-		//keysの方に[]が含まれることはない。
 		if (!result.empty()) result += sep;
 		result += seg;
 	}
@@ -145,14 +132,23 @@ struct LayerSpec
 {
 	std::vector<std::pair<std::string, FieldType>> fields;//コンテナへのAddLayer等を呼び出すための引数。
 	std::vector<FieldBinding> bindings;
+	std::unordered_map<std::string, size_t> field_indices;//フィールド名からfieldsのインデックスを引くためのマップ。
 	//このレイヤーの要素がJSON内のどこにあるかを示すパス。
 	//この要素までの経路を、階層を意味する配列やオブジェクトのネスト経路を含めて保存する。
-	//例えばある企業の部署、課、従業員という構造がある場合、
-	//[ "employee", "[]" ]
-	//のような形で保管される。
+	//例えばある企業の部署、課、従業員という構造があり、課から従業員までの経路を表す場合、
+	//[ "employee" ]
+	//のような形で保管される。オブジェクトのネストがある場合はその経路も含めて。
 	std::vector<std::string> route;
 	//LayerType parent = -2_layer;
 };
+
+inline void RebuildFieldIndices(LayerSpec& layerspec)
+{
+	layerspec.field_indices.clear();
+	layerspec.field_indices.reserve(layerspec.fields.size());
+	for (size_t i = 0; i < layerspec.fields.size(); ++i)
+		layerspec.field_indices.emplace(layerspec.fields[i].first, i);
+}
 
 inline const rapidjson::Value* FindMember(const rapidjson::Value& value, std::string_view key)
 {
@@ -167,14 +163,14 @@ inline const rapidjson::Value* FindMember(const rapidjson::Value& value, std::st
 	return nullptr;
 }
 
-inline std::string LastPathSegment(std::string_view path)
+/*inline std::string LastPathSegment(std::string_view path)
 {
 	const auto tokens = SplitPath(path);
 	for (auto it = tokens.rbegin(); it != tokens.rend(); ++it)
 		if (*it != "*")
 			return *it;
 	return {};
-}
+}*/
 
 inline FieldType InferFieldType(const rapidjson::Value& value)
 {
@@ -214,16 +210,15 @@ inline static void EnsureField(detail::LayerSpec& layerspec,
 {
 	//std::views::concatはC++26から……
 	std::string field_name = detail::JoinPath(layerspec.route, keys, "_");
-	auto it = std::find_if(layerspec.fields.begin(), layerspec.fields.end(),
-						   [&field_name](const auto& pair) { return pair.first == field_name; });
-	if (it == layerspec.fields.end())
+	if (auto it = layerspec.field_indices.find(field_name); it == layerspec.field_indices.end())
 	{
+		layerspec.field_indices.emplace(field_name, layerspec.fields.size());
 		layerspec.fields.emplace_back(field_name, type);
 		layerspec.bindings.push_back(detail::FieldBinding{ keys, false });
 	}
 	else
 	{
-		it->second = detail::MergeFieldType(it->second, type);
+		layerspec.fields[it->second].second = detail::MergeFieldType(layerspec.fields[it->second].second, type);
 	}
 }
 
@@ -232,26 +227,21 @@ inline static void EnsureField(detail::LayerSpec& layerspec,
 class Schema
 {
 public:
-	void SetTopLayer(const std::vector<std::pair<std::string, FieldType>>& mems)
+	inline void SetTopLayer(const std::vector<std::pair<std::string, FieldType>>& mems)
 	{
 		m_top_layer.fields = mems;
 		m_top_layer.bindings.assign(m_top_layer.fields.size(), detail::FieldBinding{});
 		for (size_t i = 0; i < m_top_layer.fields.size(); ++i)
-			m_top_layer.bindings[i].path = detail::SplitPath(m_top_layer.fields[i].first);
+			m_top_layer.bindings[i].path.push_back(m_top_layer.fields[i].first);
 	}
 
-	void AddLayer(std::vector<std::pair<std::string, FieldType>> mems)
+	inline void AddLayer(const std::vector<std::pair<std::string, FieldType>>& mems)
 	{
 		m_layers.emplace_back();
-		auto& layer = m_layers.back();
-		layer.fields = std::move(mems);
-		layer.bindings.assign(layer.fields.size(), detail::FieldBinding{});
-		for (size_t i = 0; i < layer.fields.size(); ++i)
-			layer.bindings[i].path = detail::SplitPath(layer.fields[i].first);
-		//		layer.parent = m_layers.size() == 1 ? -1_layer : LayerType(m_layers.size()) - 2_layer;
+		SetLayer(LayerType(m_layers.size()) - 1_layer, mems);
 	}
 
-	void SetLayer(LayerType layer, const std::vector<std::pair<std::string, FieldType>>& mems)
+	inline void SetLayer(LayerType layer, const std::vector<std::pair<std::string, FieldType>>& mems)
 	{
 		if (layer < 0) return SetTopLayer(mems);
 		const size_t idx = static_cast<size_t>(layer);
@@ -259,73 +249,101 @@ public:
 		m_layers[idx].fields = mems;
 		m_layers[idx].bindings.assign(m_layers[idx].fields.size(), detail::FieldBinding{});
 		for (size_t i = 0; i < m_layers[idx].fields.size(); ++i)
-			m_layers[idx].bindings[i].path = detail::SplitPath(m_layers[idx].fields[i].first);
+			m_layers[idx].bindings[i].path.push_back(m_layers[idx].fields[i].first);
 		//m_layers[idx].parent = layer - 1_layer;
 	}
 
-	void BindLayer(LayerType layer, std::string path)
+	// あるlayerまでのobjectのネスト経路を指定する。LayerSpec::routeに保存される。
+	// 例えば、ある企業の部署、課、従業員という構造があり、課から従業員への経路を指定する場合、
+	// [ "employee" ]
+	// のような形で指定する。オブジェクトのネストがある場合はその経路も含めて。
+	// デフォルトでは[ "layer0" ]、[ "layer1" ]などになる。
+	inline void BindLayer(LayerType layer, const std::vector<std::string>& route)
 	{
 		if (layer < 0)
 		{
 			assert(layer == -1_layer);
-			assert(path.empty());
+			m_top_layer.route = route;
 			return;
 		}
-		const size_t idx = static_cast<size_t>(layer);
-		if (m_layers.size() <= idx) m_layers.resize(idx + 1);
+		size_t layer_ = (size_t)layer;
+		if (m_layers.size() <= layer_) m_layers.resize(layer_ + 1);
+		m_layers[layer_].route = route;
 	}
-
-	void BindParent(LayerType layer, LayerType parent)
+private:
+	// BindFieldの実装。
+	// ユーザーが何らかの指定をしている場合、VerifyStructureからは書き換えたくないので、overwrite==falseで呼ぶ。
+	// ユーザーが明示的にBindFieldを呼んでいる場合は、overwrite==trueとする。
+	// BindLayerならrouteがemptyかどうかでユーザー指定の有無を判別できるが、
+	// BindFieldはunordered_mapからの検索を挟んでおり、検索の二度手間を防ぐためにoverwriteの有無で判別する。
+	inline void BindField_impl(LayerType layer, std::string_view fieldname, const std::vector<std::string>& path, bool optional = false, bool overwrite = true)
 	{
-		if (layer < 0) return;
-		const size_t idx = static_cast<size_t>(layer);
-		if (m_layers.size() <= idx)
-			m_layers.resize(idx + 1);
-		//m_layers[idx].parent = parent;
-	}
-
-	void BindField(LayerType layer, std::string_view field, std::string path, bool optional = false)
-	{
-		auto bind_impl = [&](auto& fields, auto& bindings, std::string_view layer_name)
+		auto bind_impl = [&](detail::LayerSpec& layerspec)
 		{
-			auto it = std::find_if(fields.begin(), fields.end(), [&](const auto& pair) { return pair.first == field; });
-			if (it == fields.end())
-				throw InvalidArg(std::format("No field '{}' in {}.", field, layer_name));
-			const size_t index = static_cast<size_t>(it - fields.begin());
-			bindings[index].path = detail::SplitPath(path);
-			bindings[index].optional = optional;
+			auto it = layerspec.field_indices.find(std::string(fieldname));
+			if (it == layerspec.field_indices.end())
+				throw InvalidArg(std::format("No field '{}' in layer {}.", fieldname, layer));
+			const size_t index = it->second;
+
+			// empty()==trueの場合はそもそも指定されていないので、問答無用で代入する。
+			// empty()==falseの場合は何らかの理由で既に指定されているので、overwrite==trueの場合のみ上書きする。
+			if (overwrite || layerspec.bindings[index].path.empty())
+				layerspec.bindings[index].path = path;
+			if (overwrite)
+				layerspec.bindings[index].optional = optional;
 		};
 
 		if (layer < 0)
 		{
-			bind_impl(m_top_layer.fields, m_top_layer.bindings, "top layer");
+			bind_impl(m_top_layer);
 			return;
 		}
 
-		const size_t idx = static_cast<size_t>(layer);
-		if (m_layers.size() <= idx)
-			m_layers.resize(idx + 1);
-		bind_impl(m_layers[idx].fields, m_layers[idx].bindings, "layer");
+		size_t layer_ = (size_t)layer;
+		if (m_layers.size() <= layer_) m_layers.resize(layer_ + 1);
+		bind_impl(m_layers[layer_]);
+	}
+public:
+	// あるlayerのfieldnameに対して、JSON内のパスを指定する。LayerSpec::bindings[...].pathに保存される。
+	// デフォルトでは[ fieldname ]である。
+	inline void BindField(LayerType layer, std::string_view fieldname, const std::vector<std::string>& path, bool optional = false)
+	{
+		BindField_impl(layer, fieldname, path, optional, true);
 	}
 
-	void VerifyStructure() const
+	inline void VerifyStructure()
 	{
-		if (m_top_layer.bindings.size() != m_top_layer.fields.size())
-			throw InvalidArg("Top layer binding mismatch.");
-		for (const auto& layer : m_layers)
-			if (layer.bindings.size() != layer.fields.size())
-				throw InvalidArg("Layer binding mismatch.");
+		auto bind = [this](detail::LayerSpec& layerspec, LayerType l)
+		{
+			RebuildFieldIndices(layerspec);
+			for (const auto& [name, type] : layerspec.fields)
+			{
+				if (type == FieldType::Emp)
+					throw InvalidArg(std::format("Top layer field '{}' has empty type.", name));
+				// BindFieldについては、ユーザーが明示していない限り書き換える。
+				BindField_impl(l, name, { name }, false, false);
+			}
+		};
+		// top layerのBindLayerは呼ぶ意味がない。
+		// デフォルトの空配列のままでよいし、ユーザーが指定しているなら書き換える必要はない。
+		bind(m_top_layer, -1_layer);
+		for (auto&&[i, layer] : views::Enumerate(m_layers))
+		{
+			if (layer.route.empty())
+				layer.route = { std::format("layer{}", i) };
+			bind(layer, (LayerType)i);
+		}
 	}
 
 	//const std::vector<std::pair<std::string, FieldType>>& TopFields() const { return m_top_layer.fields; }
 	//const std::vector<detail::FieldBinding>& TopBindings() const { return m_top_layer.bindings; }
 	//const std::vector<detail::LayerSpec>& Layers() const { return m_layers; }
-	const detail::LayerSpec& GetLayerSpec(LayerType layer) const
+	inline const detail::LayerSpec& GetLayerSpec(LayerType layer) const
 	{
 		assert(layer >= -1);
 		return layer == -1 ? m_top_layer : m_layers[static_cast<size_t>(layer)];
 	}
-	LayerType MaxLayer() const { return m_layers.empty() ? -1_layer : LayerType(m_layers.size()) - 1_layer; }
+	inline LayerType MaxLayer() const { return m_layers.empty() ? -1_layer : LayerType(m_layers.size()) - 1_layer; }
 
 	template <class Container>
 	void Apply(Container& container) const
@@ -337,7 +355,7 @@ public:
 	}
 
 	inline static bool InferObjectFields(const rapidjson::Value& obj, const InferOptions& opt, Schema& schema,
-										 LayerType layer, const std::vector<std::string>& route)
+									 LayerType layer, std::vector<std::string>& route)
 	{
 		if (!obj.IsObject())
 			return true;
@@ -346,13 +364,12 @@ public:
 		bool result = true;
 		for (auto it = obj.MemberBegin(); it != obj.MemberEnd(); ++it)
 		{
-			const std::string key(it->name.GetString(), it->name.GetStringLength());
+			std::string_view key(it->name.GetString(), it->name.GetStringLength());
 			const auto& value = it->value;
-			std::vector<std::string> nested_route = route;
-			nested_route.push_back(key);
+			route.emplace_back(key);
 			if (value.IsObject() && opt.flatten_objects)
 			{
-				InferObjectFields(value, opt, schema, layer, nested_route);
+				InferObjectFields(value, opt, schema, layer, route);
 			}
 			else if (value.IsArray())
 			{
@@ -368,28 +385,29 @@ public:
 					if (schema.m_layers.size() <= size_t(next_layer))
 						schema.m_layers.resize(size_t(next_layer) + 1);
 					auto& next_layer_spec = schema.m_layers[size_t(next_layer)];
-					nested_route.push_back("[]");
-					next_layer_spec.route = nested_route;
+					next_layer_spec.route = route;
+					std::vector<std::string> child_route;
 					for (auto it = value.Begin(); it != value.End(); ++it)
 					{
 						//もし戻り値がfalseの場合、next_layerの中に何らかのarrayが含まれており、かつ配列が空だったことを意味する。
 						//この場合、この配列が下層要素になりうるのか、それともarray<scalar>なのかを識別できない。
 						//よって、要素を１つ進めて再度構造推定を行う。
-						if (InferObjectFields(*it, opt, schema, next_layer, {})) break;
+						if (InferObjectFields(*it, opt, schema, next_layer, child_route)) break;
 					}
 				}
 				else
 				{
 					//detail::EnsureField(fields, bindings, prefix.empty() ? key : JoinPath(prefix, key, opt.nested_name_separator), FieldType::Str);
 					adapt::PrintWarning("scalar array is not supported. Field '{}' will be ignored.",
-										route.empty() ? key : detail::JoinPath(route, opt.nested_name_separator));
+										detail::JoinPath(route, opt.nested_name_separator));
 				}
 			}
 			else
 			{
 				//オブジェクトでも配列でもないので、フィールドとして扱う。
-				detail::EnsureField(layerspec, nested_route, detail::InferFieldType(value));
+				detail::EnsureField(layerspec, route, detail::InferFieldType(value));
 			}
+			route.pop_back();
 		}
 		return result;
 	}
@@ -452,8 +470,6 @@ inline const rapidjson::Value& GetChild(const rapidjson::Value& parent, const st
 	const rapidjson::Value* current = &parent;
 	for (const std::string& key : path)
 	{
-		if (key == "[]")
-			throw InvalidArg("path includes array");
 		if (!current->IsObject())
 			throw InvalidArg("not an object");
 		current = &(*current)[key.c_str()];
@@ -463,31 +479,14 @@ inline const rapidjson::Value& GetChild(const rapidjson::Value& parent, const st
 
 inline const rapidjson::Value& GetLowerLayer(const rapidjson::Value& parent, const std::vector<std::string>& path)
 {
-#ifndef NDEBUG
-	size_t i = 0;
-	size_t n = path.size();
-#endif
 	const rapidjson::Value* current = &parent;
 	for (const std::string& key : path)
 	{
-		if (key == "[]")
-		{
-			#ifndef NDEBUG
-			if (i + 1 != n)
-				throw InvalidArg("path includes array but not at the end");
-			#endif
-			if (!current->IsArray())
-				throw InvalidArg("path includes array but parent is not an array");
-			return *current;
-		}
-		if (!current->IsObject())
-			throw InvalidArg("not an object");
+		if (!current->IsObject()) throw InvalidArg("not an object");
 		current = &(*current)[key.c_str()];
-		#ifndef NDEBUG
-		++i;
-		#endif
 	}
-	throw InvalidArg("path does not include array");
+	if (!current->IsArray()) throw InvalidArg("not an array");
+	return *current;
 }
 
 template <class Writer, class ElementRefT>
@@ -554,7 +553,13 @@ T ConvertJsonScalar(const rapidjson::Value& value, const ImportOptions& opt)
 		if (value.IsUint64()) return static_cast<T>(value.GetUint64());
 		if (value.IsNumber()) return static_cast<T>(value.GetDouble());
 		if (value.IsString() && opt.allow_string_to_number)
-			return static_cast<T>(std::stod(std::string(value.GetString(), value.GetStringLength())));
+		{
+			std::string_view s(value.GetString(), value.GetStringLength());
+			double out{};
+			auto [ptr, ec] = std::from_chars(s.data(), s.data() + s.size(), out);
+			if (ec == std::errc{} && ptr == s.data() + s.size())
+				return static_cast<T>(out);
+		}
 		throw MismatchType("JSON value cannot be converted to a floating-point number.");
 	}
 	else if constexpr (std::same_as<T, bool>)
@@ -613,6 +618,7 @@ case FieldType::ttype: ref[ph].template as<FieldType::ttype>() = ConvertJsonScal
 		ADAPT_FOR_EACH_TYPE(CODE)
 		default: throw MismatchType("Unsupported field type in JSON import.");
 		}
+		#undef CODE
 	}
 
 	if (layer >= schema.MaxLayer()) return;
@@ -641,33 +647,98 @@ case FieldType::ttype: ref[ph].template as<FieldType::ttype>() = ConvertJsonScal
 	}
 }
 
-/*template <class Writer, class ElementRefT>
-void WriteElement(Writer& writer, const DTree& tree, const ElementRefT& ref, const Schema& schema, LayerType layer)
+template <class Allocator, class ElementRefT>
+rapidjson::Value MakeFieldValue(Allocator& alloc, const DTree& tree, const ElementRefT& ref, LayerType layer, uint16_t index, FieldType type)
 {
-	writer.StartObject();
-	const auto& fields = layer < 0 ? schema.TopFields() : schema.GetLayer(layer).fields;
-	for (size_t i = 0; i < fields.size(); ++i)
+	auto ph = tree.GetPlaceholder(layer, index);
+	auto field = ref[ph];
+	switch (type)
 	{
-		writer.Key(fields[i].first.c_str(), static_cast<rapidjson::SizeType>(fields[i].first.size()));
-		WriteFieldValue(writer, tree, ref, layer, static_cast<uint16_t>(i), fields[i].second);
+	case FieldType::I08: return rapidjson::Value(field.template as<int8_t>());
+	case FieldType::I16: return rapidjson::Value(field.template as<int16_t>());
+	case FieldType::I32: return rapidjson::Value(field.template as<int32_t>());
+	case FieldType::I64: return rapidjson::Value(field.template as<int64_t>());
+	case FieldType::F32: return rapidjson::Value(field.template as<float>());
+	case FieldType::F64: return rapidjson::Value(field.template as<double>());
+	case FieldType::Str:
+	{
+		auto s = field.template as<std::string>();
+		return rapidjson::Value(s.c_str(), static_cast<rapidjson::SizeType>(s.size()), alloc);
+	}
+	default:
+		return rapidjson::Value(rapidjson::kNullType);
+	}
+}
+
+template <class Iterator, class Allocator>
+void AddValueAtPath(rapidjson::Value& object, Iterator path_begin, Iterator path_end, rapidjson::Value&& value, Allocator& alloc)
+{
+	if (!object.IsObject())
+		throw InvalidArg("JSON export target must be an object.");
+	if (path_begin == path_end)
+		throw InvalidArg("JSON export path must not be empty.");
+
+	rapidjson::Value* current = &object;
+	Iterator leaf_it = path_end;
+	--leaf_it;
+	for (Iterator it = path_begin; it != leaf_it; ++it)
+	{
+		const auto& key = *it;
+
+		if (!current->HasMember(key.c_str()))
+		{
+			rapidjson::Value name(key.c_str(), static_cast<rapidjson::SizeType>(key.size()), alloc);
+			rapidjson::Value child(rapidjson::kObjectType);
+			current->AddMember(name, child, alloc);
+		}
+
+		auto member = current->FindMember(key.c_str());
+		if (member == current->MemberEnd())
+			throw InvalidArg("Failed to create nested JSON object.");
+		if (!member->value.IsObject())
+			throw InvalidArg("JSON export path collides with a non-object value.");
+		current = &member->value;
+	}
+
+	const auto& leaf = *leaf_it;
+
+	rapidjson::Value name(leaf.c_str(), static_cast<rapidjson::SizeType>(leaf.size()), alloc);
+	if (auto member = current->FindMember(leaf.c_str()); member != current->MemberEnd())
+	{
+		member->value = std::move(value);
+	}
+	else
+	{
+		current->AddMember(name, value, alloc);
+	}
+}
+template <any_container Container, class ElementRefT>
+rapidjson::Value ExportElement(const Container& t, const ElementRefT& ref, const Schema& schema, LayerType layer, rapidjson::Document::AllocatorType& alloc)
+{
+	rapidjson::Value object(rapidjson::kObjectType);
+	const auto& layerspec = schema.GetLayerSpec(layer);
+	for (size_t i = 0; i < layerspec.fields.size(); ++i)
+	{
+		AddValueAtPath(object,
+			layerspec.bindings[i].path.begin(),
+			layerspec.bindings[i].path.end(),
+			MakeFieldValue(alloc, t, ref, layer, static_cast<uint16_t>(i), layerspec.fields[i].second),
+			alloc);
 	}
 
 	if (layer < schema.MaxLayer())
 	{
 		const LayerType child_layer = layer + 1_layer;
-		const auto& child_spec = schema.GetLayer(child_layer);
-		const auto child_name = LastPathSegment(child_spec.prefix);
-		if (!child_name.empty())
-		{
-			writer.Key(child_name.c_str(), static_cast<rapidjson::SizeType>(child_name.size()));
-			writer.StartArray();
-			for (const auto& child_ref : ref.GetLowerElements())
-				WriteElement(writer, tree, child_ref, schema, child_layer);
-			writer.EndArray();
-		}
+		const auto& child_spec = schema.GetLayerSpec(child_layer);
+		rapidjson::Value children(rapidjson::kArrayType);
+		auto lower_elements = ref.GetLowerElements();
+		for (const auto& child_ref : lower_elements)
+			children.PushBack(ExportElement(t, child_ref, schema, child_layer, alloc), alloc);
+
+		AddValueAtPath(object, child_spec.route.begin(), child_spec.route.end(), std::move(children), alloc);
 	}
-	writer.EndObject();
-}*/
+	return object;
+}
 
 } // namespace detail
 
@@ -676,17 +747,17 @@ inline Schema InferSchema(const rapidjson::Value& root, const InferOptions& opt 
 	if (!root.IsObject())
 		throw InvalidArg("InferSchema expects a JSON object root.");
 	Schema schema;
-	Schema::InferObjectFields(root, opt, schema, -1_layer, {});
+	std::vector<std::string> route;
+	Schema::InferObjectFields(root, opt, schema, -1_layer, route);
 	schema.VerifyStructure();
 	return schema;
 }
-
 inline Schema InferSchema(const rapidjson::Document& doc, const InferOptions& opt = {})
 {
 	return InferSchema(static_cast<const rapidjson::Value&>(doc), opt);
 }
 
-inline DTree ImportDTree(const rapidjson::Value& root, const Schema& schema, const ImportOptions& opt = {})
+inline DTree ImportJson(const rapidjson::Value& root, const Schema& schema, const ImportOptions& opt = {})
 {
 	DTree tree;
 	schema.Apply(tree);
@@ -694,28 +765,50 @@ inline DTree ImportDTree(const rapidjson::Value& root, const Schema& schema, con
 	detail::PopulateElement(tree, top_ref, schema, -1_layer, root, opt);
 	return tree;
 }
-
-inline DTree ImportDTree(const rapidjson::Document& doc, const Schema& schema, const ImportOptions& opt = {})
+inline DTree ImportJson(const rapidjson::Document& doc, const Schema& schema, const ImportOptions& opt = {})
 {
-	return ImportDTree(static_cast<const rapidjson::Value&>(doc), schema, opt);
+	return ImportJson(static_cast<const rapidjson::Value&>(doc), schema, opt);
+}
+inline DTree ImportJson(const rapidjson::Document& doc)
+{
+	Schema schema = InferSchema(doc);
+	return ImportJson(doc, schema);
+}
+inline DTree ImportJson(const rapidjson::Value& root)
+{
+	Schema schema = InferSchema(root);
+	return ImportJson(root, schema);
 }
 
-inline DTree ImportDTree(std::string_view json_text, const Schema& schema, const ImportOptions& opt = {})
+template <any_container Container>
+Schema InferSchema(const Container& container, const InferOptions& opt = {})
+{
+	Schema schema;
+	schema.SetTopLayer(container.GetFieldInfosIn(-1_layer));
+	LayerType max_layer = container.GetMaxLayer();
+	for (LayerType layer = 0_layer; layer <= max_layer; ++layer)
+	{
+		schema.AddLayer(container.GetFieldInfosIn(layer));
+	}
+	schema.VerifyStructure();
+	return schema;
+}
+
+inline rapidjson::Document ExportJson(const DTree& tree, const Schema& schema)
 {
 	rapidjson::Document doc;
-	doc.Parse(json_text.data(), json_text.size());
-	if (doc.HasParseError())
-		throw InvalidArg(std::format("Failed to parse JSON text at offset {}.", doc.GetErrorOffset()));
-	return ImportDTree(doc, schema, opt);
-}
-
-/*inline std::string ExportJson(const DTree& tree, const Schema& schema)
-{
+	auto& alloc = doc.GetAllocator();
+	doc.CopyFrom(detail::ExportElement(tree, tree.GetTopElement(), schema, -1_layer, alloc), alloc);
 	rapidjson::StringBuffer buffer;
 	rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-	detail::WriteElement(writer, tree, tree.GetTopElement(), schema, -1_layer);
-	return { buffer.GetString(), buffer.GetSize() };
-}*/
+	doc.Accept(writer);
+	return doc;
+}
+inline rapidjson::Document ExportJson(const DTree& tree)
+{
+	Schema schema = InferSchema(tree);
+	return ExportJson(tree, schema);
+}
 
 } // namespace adapt::json
 

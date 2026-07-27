@@ -9,6 +9,7 @@ void QuickstartKeyJoin();
 void QuickstartCrossJoin();
 void DifferenceCttiRttiTyped();
 void QuickstartPlot();
+void QuickstartJson();
 
 int main()
 {
@@ -69,6 +70,9 @@ int main()
 	// The plotting example demonstrates ADAPT's gnuplot-based visualization utilities (Canvas2D/Canvas3D)
 	// and how to output common chart types.
 	QuickstartPlot();
+
+	// The JSON example demonstrates how to import/export JSON data into/from DTree.
+	QuickstartJson();
 
 	return 0;
 }

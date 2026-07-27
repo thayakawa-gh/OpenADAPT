@@ -5,7 +5,7 @@
 #include <OpenADAPT/Common/Macros.h>
 #include <OpenADAPT/Common/Definition.h>
 #include <OpenADAPT/Common/Bpos.h>
-#ifdef USE_ANKERL_UNORDERED_DENSE
+#ifdef ADAPT_USE_ANKERL_UNORDERED_DENSE
 #include <ankerl/unordered_dense.h>
 #else
 #include <unordered_map>
@@ -207,7 +207,7 @@ template <class Key>
 struct Hasher<std::tuple<Key>, 1>
 {
 	using is_transparent = void;
-#ifdef USE_ANKERL_UNORDERED_DENSE
+#ifdef ADAPT_USE_ANKERL_UNORDERED_DENSE
 	using is_avalanching = void;
 #endif
 	template <class T>
@@ -227,7 +227,7 @@ template <class ...Keys, size_t Size>
 struct Hasher<std::tuple<Keys...>, Size>
 {
 	using is_transparent = void;
-#ifdef USE_ANKERL_UNORDERED_DENSE
+#ifdef ADAPT_USE_ANKERL_UNORDERED_DENSE
 	using is_avalanching = void;
 #endif
 private:
@@ -250,7 +250,7 @@ public:
 };
 }
 
-#ifdef USE_ANKERL_UNORDERED_DENSE
+#ifdef ADAPT_USE_ANKERL_UNORDERED_DENSE
 template <class ...Types>
 using Hashtable = ankerl::unordered_dense::map<std::tuple<Types...>, Bpos, detail::Hasher<std::tuple<Types...>>>;
 #else

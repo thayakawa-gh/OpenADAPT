@@ -7,7 +7,7 @@
 #include <OpenADAPT/Common/Definition.h>
 #include <OpenADAPT/Common/Bpos.h>
 #include <OpenADAPT/Common/Common.h>
-#ifdef USE_ANKERL_UNORDERED_DENSE
+#ifdef ADAPT_USE_ANKERL_UNORDERED_DENSE
 #include <ankerl/unordered_dense.h>
 #endif
 

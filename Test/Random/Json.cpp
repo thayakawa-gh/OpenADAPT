@@ -3,7 +3,7 @@
 
 #include <OpenADAPT/FileIO/Json.h>
 
-#if ADAPT_JSON_HAS_RAPIDJSON == 1
+#ifdef ADAPT_USE_RAPIDJSON
 
 using namespace adapt;
 
@@ -96,11 +96,69 @@ TEST(Random, Json_ImportDTree)
 	doc.Parse(json_str);
 	ASSERT_FALSE(doc.HasParseError());
 	auto schema = adapt::json::InferSchema(doc);
-	auto tree = adapt::json::ImportDTree(doc, schema);
+	auto tree = adapt::json::ImportJson(doc, schema);
 
 	ADAPT_GET_PLACEHOLDERS(tree, company_name, company_location, department_name, division_name, employee_id, employee_name, employee_salary);
 	tree | Show("{:>10} {:>10} {:>24}", company_name, company_location, department_name);
 	tree | Show("{:>10} {:>10} {:>24} {:>16}", company_name, company_location, department_name, division_name);
 	tree | Show("{:>10} {:>10} {:>24} {:>16} {:>3} {:>10} {:>7.1f}", company_name, company_location, department_name, division_name, employee_id, employee_name, employee_salary);
+}
+
+TEST(Random, Json_ExportDTree)
+{
+	rapidjson::Document doc;
+	doc.Parse(json_str);
+	ASSERT_FALSE(doc.HasParseError());
+	auto schema = adapt::json::InferSchema(doc);
+	adapt::DTree tree = adapt::json::ImportJson(doc, schema);
+	{
+		// Import時のschemaを使ってExportする場合のテスト。
+		rapidjson::Document exported = adapt::json::ExportJson(tree, schema);
+
+		ASSERT_FALSE(exported.HasParseError());
+		ASSERT_TRUE(exported.HasMember("company"));
+		ASSERT_TRUE(exported["company"].IsObject());
+		EXPECT_STREQ(exported["company"]["location"].GetString(), "New York");
+		ASSERT_TRUE(exported.HasMember("department"));
+		ASSERT_TRUE(exported["department"].IsArray());
+		EXPECT_EQ(exported["department"].Size(), 3u);
+
+		std::ofstream ofs("exported.json");
+		rapidjson::OStreamWrapper osw(ofs);
+		rapidjson::PrettyWriter<rapidjson::OStreamWrapper> writer(osw);
+		exported.Accept(writer);
+	}
+	{
+		// Treeからschemaを推論してExportする場合のテスト。
+		rapidjson::Document exported = adapt::json::ExportJson(tree);
+		std::ofstream ofs("exported2.json");
+		rapidjson::OStreamWrapper osw(ofs);
+		rapidjson::PrettyWriter<rapidjson::OStreamWrapper> writer(osw);
+		exported.Accept(writer);
+	}
+	{
+		// Treeから推論したschemaを、BindField/BindLayerで加工してExportする場合のテスト。
+		adapt::json::Schema schema2 = adapt::json::InferSchema(tree);
+
+		schema2.BindField(-1_layer, "company_name", { "company", "name" });
+		schema2.BindField(-1_layer, "company_location", { "company", "location" });
+
+		schema2.BindLayer(0_layer, { "department" });
+		schema2.BindField(0_layer, "department_name", { "name" });
+
+		schema2.BindLayer(1_layer, { "division" });
+		schema2.BindField(1_layer, "division_name", { "name" });
+
+		schema2.BindLayer(2_layer, { "employee" });
+		schema2.BindField(2_layer, "employee_id", { "id" });
+		schema2.BindField(2_layer, "employee_name", { "name" });
+		schema2.BindField(2_layer, "employee_salary", { "salary" });
+
+		rapidjson::Document exported = adapt::json::ExportJson(tree, schema2);
+		std::ofstream ofs("exported3.json");
+		rapidjson::OStreamWrapper osw(ofs);
+		rapidjson::PrettyWriter<rapidjson::OStreamWrapper> writer(osw);
+		exported.Accept(writer);
+	}
 }
 #endif

@@ -311,6 +311,44 @@ public:
 	}
 
 private:
+	template <LayerType Layer>
+	static std::string GetFieldName_impl(LayerType layer, size_t index)
+	{
+		if constexpr (Layer <= MaxLayer)
+		{
+			//自身が該当するLayerでない場合は、下層に任せる。
+			if (Layer < layer)
+				return GetFieldName_impl<Layer + 1>(layer, index);
+			auto names = GetFieldNamesIn(LayerConstant<Layer>{});
+			if (index >= std::tuple_size_v<decltype(names)>)
+				throw InvalidArg(std::format("Index {} is out of range.", index));
+			return std::get<index>(names).GetChar();
+		}
+		else throw InvalidArg("Layer is out of range.");
+	}
+public:
+	static std::string GetFieldName(LayerType layer, size_t index)
+	{
+		return GetFieldName_impl<-1_layer>(layer, index);
+	}
+
+
+	static std::vector<std::pair<std::string, FieldType>> GetFieldInfosIn(LayerType layer)
+	{
+		if (layer < -1_layer || layer > MaxLayer)
+			throw InvalidArg(std::format("Layer {} is out of range.", layer));
+		std::vector<std::pair<std::string, FieldType>> res;
+		std::vector<RttiPlaceholder> phs = GetPlaceholdersIn(layer);
+		for (const auto& ph : phs)
+		{
+			std::string name = GetFieldName(layer, ph.GetIndex());
+			FieldType type = ph.GetType();
+			res.emplace_back(std::move(name), type);
+		}
+		return res;
+	}
+
+private:
 	template <LayerType Layer, size_t Index, class PHs, class Names>
 	static void ShowHierarchy_index(std::ostream& o, PHs phs, Names names)
 	{
@@ -748,6 +786,19 @@ public:
 		}
 		return res;
 	}
+
+	std::vector<std::pair<std::string, FieldType>> GetFieldInfosIn(LayerType layer) const
+	{
+		std::vector<std::pair<std::string, FieldType>> res;
+		const auto& fields = m_field_infos_by_layer[layer + 1_layer];
+		res.reserve(fields.size());
+		for (const auto& field : fields)
+		{
+			res.push_back(std::make_pair(GetFieldName(field), field.GetType()));
+		}
+		return res;
+	}
+
 	size_t GetElementSize(LayerType layer) const
 	{
 		assert(layer <= m_max_layer);
@@ -938,6 +989,7 @@ public:
 	}
 	std::vector<std::string> GetFieldNamesIn(LayerType layer) const
 	{
+		if (layer < -1_layer || layer > MaxLayer) throw InvalidLayer	("layer is out of range.");
 		const auto& fields = m_field_infos_by_layer[layer + 1_layer];
 		std::vector<std::string> res;
 		res.reserve(fields.size());
@@ -956,6 +1008,20 @@ public:
 		}
 		return res;
 	}
+
+	std::vector<std::pair<std::string, FieldType>> GetFieldInfosIn(LayerType layer) const
+	{
+		if (layer < -1_layer || layer > MaxLayer) throw InvalidLayer("layer is out of range.");
+		std::vector<std::pair<std::string, FieldType>> res;
+		const auto& fields = m_field_infos_by_layer[layer + 1_layer];
+		res.reserve(fields.size());
+		for (const auto& field : fields)
+		{
+			res.push_back(std::make_pair(GetFieldName(field), field.GetType()));
+		}
+		return res;
+	}
+
 	size_t GetElementSize(LayerType layer) const
 	{
 		return m_element_sizes[layer + 1_layer];

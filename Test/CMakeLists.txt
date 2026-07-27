@@ -45,11 +45,11 @@ add_executable(${PROJECT_NAME}
 	"Random/Matrix.cpp" "Random/Plot.cpp" "Random/Ranges.cpp"
 	"Random/TreeHandling.cpp" "Random/TryJoin.cpp" "Random/UserFunc.cpp" "Random/Optimization.cpp" "Random/Json.cpp")
 	
-set(TEST_COMPILE_DEFS)
+set(TEST_COMPILE_DEFS ADAPT_USE_RAPIDJSON)
 set(TEST_LINK_LIBS GTest::GTest GTest::Main yaml-cpp::yaml-cpp)
 if(${unordered_dense_FOUND})
 	message("unordered_dense found")
-	list(APPEND TEST_COMPILE_DEFS USE_ANKERL_UNORDERED_DENSE)
+	list(APPEND TEST_COMPILE_DEFS ADAPT_USE_ANKERL_UNORDERED_DENSE)
 	list(APPEND TEST_LINK_LIBS unordered_dense::unordered_dense)
 else()
 	message("unordered_dense not found")
