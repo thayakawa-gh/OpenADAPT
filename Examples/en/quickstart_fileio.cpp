@@ -22,12 +22,11 @@ using namespace adapt::lit;
 
 void QuickstartJson()
 {
-	#ifndef ADAPT_USE_RAPIDJSON
 	std::cout << "[[Quickstart JSON file I/O]]" << std::endl;
-	std::cout << "This example requires ADAPT_USE_RAPIDJSON." << std::endl;
+	#ifndef ADAPT_USE_RAPIDJSON
+	std::cout << "This example requires RapidJSON and ADAPT_USE_RAPIDJSON to be defined." << std::endl;
 	return;
 	#else
-	std::cout << "[[Quickstart JSON file I/O]]" << std::endl;
 
 	// In many cases, JSON data comes from a file.
 	// For this quickstart, we first create a small sample file so that the example is self-contained.
@@ -59,20 +58,16 @@ void QuickstartJson()
 		})";
 	}
 
-	std::cout << "------Read a JSON file------" << std::endl;
+	std::cout << "------Read and parse JSON from a file------" << std::endl;
+	// ADAPT uses RapidJSON for JSON parsing and writing.
 	std::ifstream ifs(input_path);
-	std::ostringstream oss;
-	oss << ifs.rdbuf();
-	std::string json_text = oss.str();
-	std::cout << std::format("Loaded {} bytes from {}", json_text.size(), input_path) << std::endl;
-	std::cout << std::endl;
-
-	std::cout << "------Parse JSON and infer a schema------" << std::endl;
+	rapidjson::IStreamWrapper isw(ifs);
 	rapidjson::Document doc;
-	doc.Parse(json_text.c_str());
+	doc.ParseStream(isw);
 	if (doc.HasParseError())
 		throw adapt::InvalidArg("Failed to parse quickstart_input.json.");
 
+	std::cout << "------Import JSON into a DTree------" << std::endl;
 	// InferSchema(doc) inspects the JSON structure and builds a schema from it.
 	// The inferred schema records not only field types but also JSON-side routes such as
 	// where each lower layer is found and which JSON path each field belongs to.
@@ -81,12 +76,19 @@ void QuickstartJson()
 	adapt::json::Schema schema = adapt::json::InferSchema(doc);
 	std::cout << std::endl;
 
-	std::cout << "------Import JSON into a DTree------" << std::endl;
 	adapt::DTree tree = adapt::json::ImportJson(doc, schema);
 	tree.ShowHierarchy();
+	// Output:
+	// Layer[-1] { { "company_name", Str } { "company_location", Str } }
+	// Layer[ 0] { { "department_name", Str } }
+	// Layer[ 1] { { "employee_id", I64 } { "employee_name", Str } { "employee_salary", F64 } }
 	ADAPT_GET_PLACEHOLDERS(tree, company_name, company_location, department_name, employee_id, employee_name, employee_salary);
 	tree | adapt::Show("{:>16} {:>10} {:>10} {:>3} {:>10} {:>7.1f}",
 		company_name, company_location, department_name, employee_id, employee_name, employee_salary);
+	// Output:
+	//	[   0,   0]  OpenADAPT Inc.      Tokyo   Research   1      Alice  1200.0
+	//	[   0,   1]  OpenADAPT Inc.      Tokyo   Research   2        Bob  1350.0
+	//	[   1,   0]  OpenADAPT Inc.      Tokyo      Sales   3      Carol  1100.0
 	std::cout << std::endl;
 
 	std::cout << "------Export the DTree back to JSON------" << std::endl;
