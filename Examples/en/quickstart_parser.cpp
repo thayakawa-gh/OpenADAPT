@@ -33,6 +33,7 @@ void QuickstartParser()
 	using Lambda = adapt::eval::RttiFuncNode<adapt::DTree>;
 
 	// This example demonstrates how to make lambda functions by parsing string expressions.
+	// It is intended mainly for DTree/DTable/DHist, where runtime-managed expressions are especially useful.
 	// Before reading this example, please read the "quickstart_dtree.cpp"/"quickstart_dtable.cpp"
 	// to understand what lambda functions are and how to use them.
 

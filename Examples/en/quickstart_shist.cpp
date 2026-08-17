@@ -58,6 +58,7 @@ void StoreData(SHist_& usa)
 	// When storing data in SHist using Append, the bin range is automatically expanded if necessary.
 	// Or you can use Resize to expand the bin range in advance,
 	// in order to avoid the overhead of expanding the bin range multiple times.
+	// Pre-sizing is preferable if you already know the expected bin range.
 	//adapt::Bin2D min{ 0, 0 }; // Minimum bin indices for each axis.
 	//adapt::Bin2D max{ 7, 7 }; // Maximum bin indices for each axis.
 	//usa.Resize(min, max);
@@ -84,6 +85,7 @@ void QuickstartSHist()
 	std::cout << std::endl;
 
 	// You can also create a SHist from another container by using Hist (or ADAPT_HIST macro) range conversion.
+	// In practice, this is often the most convenient way to build a histogram from table/tree data.
 	// Please make sure that all the placeholders or lambdas used in Hist are Ctti,
 	// that is, they must have compile-time type and layer information.
 	// auto [stree_population, stree_area] = stree.GetPlaceholders("population"_fld, "area"_fld);// Get Ctti placeholders.

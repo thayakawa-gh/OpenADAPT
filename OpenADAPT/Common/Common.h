@@ -5,7 +5,7 @@
 #include <OpenADAPT/Common/Macros.h>
 #include <OpenADAPT/Common/Definition.h>
 #include <OpenADAPT/Common/Bpos.h>
-#ifdef USE_ANKERL_UNORDERED_DENSE
+#ifdef ADAPT_USE_ANKERL_UNORDERED_DENSE
 #include <ankerl/unordered_dense.h>
 #else
 #include <unordered_map>
@@ -52,21 +52,6 @@ enum class FieldType : uint32_t
 	Jbp = FieldTypeFlag::JBP | (sizeof(JBpos) << 16) | (alignof(JBpos) << 24),
 };
 
-#define ADAPT_SWITCH_FIELD_TYPE(FIELD_TYPE, CODE, DEFAULT) \
-	switch (FIELD_TYPE) \
-	{ \
-	case FieldType::I08: CODE(FieldType::I08) break; \
-	case FieldType::I16: CODE(FieldType::I16) break; \
-	case FieldType::I32: CODE(FieldType::I32) break; \
-	case FieldType::I64: CODE(FieldType::I64) break; \
-	case FieldType::F32: CODE(FieldType::F32) break; \
-	case FieldType::F64: CODE(FieldType::F64) break; \
-	case FieldType::C32: CODE(FieldType::C32) break; \
-	case FieldType::C64: CODE(FieldType::C64) break; \
-	case FieldType::Str: CODE(FieldType::Str) break; \
-	case FieldType::Jbp: CODE(FieldType::Jbp) break; \
-	default: DEFAULT \
-	}
 
 #ifndef ADAPT_DETAIL_MSVC_TRADITIONAL
 
@@ -176,7 +161,13 @@ enum class FieldType : uint32_t
 
 #endif
 
-
+#define ADAPT_DETAIL_SWITCH_FIELD_TYPE(TTYPE, FTYPE, VTYPE, CODE) case FieldType::TTYPE: CODE(FieldType::TTYPE) break;
+#define ADAPT_SWITCH_FIELD_TYPE(FIELD_TYPE, CODE, DEFAULT) \
+	switch (FIELD_TYPE) \
+	{ \
+	ADAPT_FOR_EACH_TYPE(ADAPT_DETAIL_SWITCH_FIELD_TYPE, CODE) \
+	default: DEFAULT \
+	}
 
 
 // 関数オブジェクト群には、Rttiモードでのコンパイルコストおよびバイナリファイルサイズ削減のために
@@ -216,7 +207,7 @@ template <class Key>
 struct Hasher<std::tuple<Key>, 1>
 {
 	using is_transparent = void;
-#ifdef USE_ANKERL_UNORDERED_DENSE
+#ifdef ADAPT_USE_ANKERL_UNORDERED_DENSE
 	using is_avalanching = void;
 #endif
 	template <class T>
@@ -236,7 +227,7 @@ template <class ...Keys, size_t Size>
 struct Hasher<std::tuple<Keys...>, Size>
 {
 	using is_transparent = void;
-#ifdef USE_ANKERL_UNORDERED_DENSE
+#ifdef ADAPT_USE_ANKERL_UNORDERED_DENSE
 	using is_avalanching = void;
 #endif
 private:
@@ -259,7 +250,7 @@ public:
 };
 }
 
-#ifdef USE_ANKERL_UNORDERED_DENSE
+#ifdef ADAPT_USE_ANKERL_UNORDERED_DENSE
 template <class ...Types>
 using Hashtable = ankerl::unordered_dense::map<std::tuple<Types...>, Bpos, detail::Hasher<std::tuple<Types...>>>;
 #else

@@ -9,10 +9,15 @@ void QuickstartKeyJoin();
 void QuickstartCrossJoin();
 void DifferenceCttiRttiTyped();
 void QuickstartPlot();
+void QuickstartJson();
 
 int main()
 {
 	// Examples of how to use ADAPT.
+	// This executable is organized as a guided tour of the main feature groups:
+	// 1. containers, 2. placeholders/lambda functions, 3. joins, 4. parser,
+	// 5. plotting, and 6. JSON file I/O.
+	//
 	// ADAPT provides hierarchically structured containers, STree/DTree, and table containers, STable/DTable.
 	// 
 	// * STree/STable have compile-time structure defined by templates.
@@ -51,6 +56,7 @@ int main()
 	// Basically, we recommend you to use DTree/DTable/DHist with Rtti/Typed and STree/STable/SHist with Ctti.
 	// But you can use them in any way you want.
 
+	// ----- Core quickstarts for each container family -----
 	QuickstartDTree();
 	QuickstartSTree();
 	QuickstartDTable();
@@ -58,17 +64,25 @@ int main()
 	QuickstartDHist();
 	QuickstartSHist();
 
+	// ----- Supplementary comparison of Ctti, Rtti and Typed placeholders -----
+	DifferenceCttiRttiTyped();
+
+	// ----- Join quickstarts -----
 	QuickstartKeyJoin();
 	QuickstartCrossJoin();
 
-	DifferenceCttiRttiTyped();
-
+	// ----- Parser quickstart -----
 	// The parser example shows how to build lambda functions from string expressions for DTree/DTable.
 	QuickstartParser();
 
+	// ----- Plot quickstart -----
 	// The plotting example demonstrates ADAPT's gnuplot-based visualization utilities (Canvas2D/Canvas3D)
 	// and how to output common chart types.
 	QuickstartPlot();
+
+	// ----- File I/O quickstart -----
+	// The JSON example demonstrates how to import/export JSON data into/from DTree.
+	QuickstartJson();
 
 	return 0;
 }

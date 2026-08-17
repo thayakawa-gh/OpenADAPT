@@ -145,6 +145,11 @@ void QuickstartKeyJoin()
 
 	// Join is similar to inner join or left join, but strictly speaking, it differs from both,
 	// and there is no functionality like right join or outer join in ADAPT.
+	//
+	// The joined container provides two traversal modes used below:
+	// * prompt joint mode  ... resolve the lower-rank join target before iteration proceeds.
+	// * delayed joint mode ... resolve it only when accessed or when TryJoin is called.
+	// Delayed mode is useful when you want to skip expensive joins or emulate pseudo-left-join behavior.
 
 
 	std::cout << "------Access------" << std::endl;
