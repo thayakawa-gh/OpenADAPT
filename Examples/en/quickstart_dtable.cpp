@@ -18,6 +18,8 @@ using namespace adapt::lit;
 adapt::DTable MakeDTable()
 {
 	// Define a DTable, which determines a tabular structure and fields (like columns) at runtime.
+	// Use DTable when you need a runtime-defined schema but do not need parent-child relationships.
+	// Compared with DTree, it is flatter and typically a little faster to traverse.
 	// The structure of DTable is defined by calling SetTopLayer and SetLayer methods.
 	// It is almost the same as DTree with layer -1 and 0, but the performance is better than DTree.
 
@@ -73,7 +75,8 @@ void StoreData(adapt::DTable& usa)
 void QuickstartDTable()
 {
 	// Simple example of how to use DTable.
-	// There are few differences between DTable and DTree in terms of how to use them.
+	// There are few differences between DTable and DTree in terms of how to use them,
+	// but DTable is the better fit for flat datasets.
 
 	std::cout << "[[Quickstart DTable]]" << std::endl;
 

@@ -554,7 +554,25 @@ class RttiExtractor
 		const std::vector<DTree::RttiPlaceholder>& phs = res.GetPlaceholdersIn(0_layer);
 		bool pushflag = true;
 		const int32_t gran = GetGranularity();
-		auto t = range.begin();
+		using Traverser = decltype(range.begin());
+		std::optional<Traverser> t_opt = [&range]()
+		{
+			try
+			{
+				return std::make_optional(range.begin());
+			}
+			catch (NoElements)
+			{
+				// rangeが空だった場合。
+				// Filterによって条件を満たすものがなかった場合は例外は投げられずEnd状態となるが、
+				// そもそも元のコンテナが空だった場合などはNoElementsが投げられる。
+				return std::optional<Traverser>{};
+			}
+		}();
+
+		if (!t_opt) return;
+		auto& t = *t_opt;
+		
 		for (auto& n : local.nodes) for (auto& nn : n) nn.Init(t);
 		BindexType row = 0;
 		BindexType end = 0;
@@ -668,7 +686,25 @@ public:
 				buf.Reserve((BindexType)range.GetSize(0_layer));
 			}
 			range.SetTravLayer(maxlayer);
-			auto t = std::forward<Range_>(range).begin();
+			using Traverser = decltype(range.begin());
+			std::optional<Traverser> t_opt = [&range]()
+			{
+				try
+				{
+					return std::make_optional(range.begin());
+				}
+				catch (NoElements)
+				{
+					// rangeが空だった場合。
+					// Filterによって条件を満たすものがなかった場合は例外は投げられずEnd状態となるが、
+					// そもそも元のコンテナが空だった場合などはNoElementsが投げられる。
+					return std::optional<Traverser>{};
+				}
+			}();
+
+			if (!t_opt) return res;
+
+			auto& t = *t_opt;
 			for (auto& n : nodes) for (auto& nn : n) nn.Init(t);
 			auto ref = res.GetTopElement();
 			Exec_rec(b, std::true_type{}, res, t, 0_layer, maxlayer, ref, bufs, nodes);

@@ -18,6 +18,8 @@ using namespace adapt::lit;
 adapt::DTree MakeDTree()
 {
 	// Define a DTree, which determines a hierarchical structure and fields (like columns) at runtime.
+	// Use DTree when the field names, types or number of layers must be decided dynamically.
+	// If the structure is already known at compile-time, STree is usually faster and simpler.
 	// The structure of DTree is defined by calling SetTopLayer and AddLayer methods.
 	// It is similar to a nested structure of Fields + std::vector<Fields + std::vector<Fields + std::vector<Fields>>>;
 	// Fields of each layer and a vector of lower-layer elements.
@@ -105,6 +107,8 @@ void StoreData(adapt::DTree& usa)
 void QuickstartDTree()
 {
 	// Simple example of how to use DTree.
+	// This is the most flexible tree container in ADAPT, and is a good starting point
+	// if your schema is not fixed at compile-time.
 
 	std::cout << "[[Quickstart DTree]]" << std::endl;
 

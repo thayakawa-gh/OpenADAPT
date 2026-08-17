@@ -55,6 +55,7 @@ void StoreData(adapt::DHist& usa)
 	// When storing data in DHist using Append, the bin range is automatically expanded if necessary.
 	// Or you can use Resize to expand the bin range in advance,
 	// in order to avoid the overhead of expanding the bin range multiple times.
+	// Pre-sizing is preferable if you already know the expected bin range.
 	//adapt::Bin2D min{ 0, 0 }; // Minimum bin indices for each axis.
 	//adapt::Bin2D max{ 7, 7 }; // Maximum bin indices for each axis.
 	//usa.Resize(min, max);
@@ -81,6 +82,7 @@ void QuickstartDHist()
 	std::cout << std::endl;
 
 	// You can also create a DHist from another container by using Hist (or ADAPT_HIST macro) range conversion.
+	// In practice, this is often the most convenient way to build a histogram from table/tree data.
 	// auto [dtree_population, dtree_area] = dtree.GetPlaceholders("population", "area");
 	// auto fpopulation = cast_f64(dtree_population);
 	// auto farea = cast_f64(dtree_area);

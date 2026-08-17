@@ -120,6 +120,13 @@ public:
 		Construct();
 	}
 
+	void CopyStructureTo(Tree_base& t) const
+		requires d_hierarchy<Hierarchy> || f_hierarchy<Hierarchy>
+	{
+		Hierarchy::CopyStructureTo(t);
+		t.Construct();
+	}
+
 	template <class ...Args>
 	void SetTopFields(Args&& ...args)
 	{

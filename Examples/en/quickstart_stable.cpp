@@ -18,10 +18,12 @@ using namespace adapt::lit;
 auto MakeSTable()
 {
 	// Define a STable, which determines a tabular structure and fields (like columns) at compile-time using templates.
+	// Use STable when the schema is fixed at compile-time and the data is flat rather than hierarchical.
+	// If you need parent-child relationships, use STree instead.
 	// The structure of STable is defined by adapt::NamedTuple and adapt::Named.
 	// As a matter of fact, STable has completely the same functionality as STree with layer -1 and 0, except for the type name.
 
-	// STree supports any types of fields, as long as they are default constructible.
+	// STable supports any types of fields, as long as they are default constructible.
 
 	using TopLayer = ADAPT_S_DEFINE_LAYER(nation, std::string, capital, std::string);
 	using Layer0   = ADAPT_S_DEFINE_LAYER(state, std::string, county, std::string, city, std::string,
@@ -89,7 +91,7 @@ void QuickstartSTable()
 	std::cout << "------Placeholders------" << std::endl;
 
 	// Placeholders are used to access/calculate data stored in STable.
-	// Node that you should use _fld literal to get STable::CttiPlaceholder<Type, Layer> that has compile-time type/layer informations.
+	// Note that you should use _fld literal to get STable::CttiPlaceholder<Type, Layer> that has compile-time type/layer informations.
 	// If no _fld literal name is used, the return type is STable::RttiPlaceholder that has runtime type/layer information.
 	// RttiPlaceholder can also be used for STable, but its performance is lower than CttiPlaceholder, especially in the use of lambda functions.
 	ADAPT_GET_PLACEHOLDERS(usa, nation, state, county, city, city_population, city_area);

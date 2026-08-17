@@ -43,6 +43,7 @@ endif()
 if(BUILD_EXAMPLES)
 	add_subdirectory(Examples/jp)
 	add_subdirectory(Examples/en)
+	add_subdirectory(Examples/Patterns)
 endif()
 	
 include(CMakePackageConfigHelpers)

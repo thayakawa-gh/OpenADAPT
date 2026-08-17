@@ -368,3 +368,17 @@ TEST_F(Aggregator_STree, Concat)
 		TestContainer(*t2, m_class, layer0, layer1, layer2);
 	}
 }
+
+TEST_F(Aggregator_DTree, Prediction)
+{
+	// 空のDTreeからのExtractによる構造変化の予測のテスト。
+	std::optional<DTree> t1, t2(std::in_place);
+	MakeContainer(t1, m_class);
+	t1->CopyStructureTo(*t2);
+
+	DECL_TREE_PH_SET(*t1);
+	auto total = math + japanese + english;
+	auto numname = tostr(number) + name;
+	auto pred = *t2 | ADAPT_EXTRACT(total, numname);
+	pred.ShowHierarchy();
+}

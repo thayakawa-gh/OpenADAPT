@@ -168,6 +168,13 @@ constexpr decltype(auto) GetKeywordArg(KeywordName k, Default&& default_, Args&&
 	//同じキーワードが複数与えられている場合、先のもの（左にあるもの）が優先される。
 	return detail::GetKeywordArg_impl(k, std::forward<Default>(default_), std::forward<Args>(args)...);
 }
+ADAPT_EXPORT
+template <keyword_name KeywordName, class Default, keyword_arg ...Args> requires (!keyword_arg<std::decay_t<Default>>)
+constexpr decltype(auto) GetKeywordArg(KeywordName name, Default&& default_, std::tuple<Args...> args)
+{
+	return std::apply([](auto&& ...args) { return GetKeywordArg(std::forward<decltype(args)>(args)...); },
+					  std::tuple_cat(std::forward_as_tuple(name, std::forward<Default>(default_)), std::move(args)));
+}
 
 ADAPT_EXPORT
 template <keyword_name Name, keyword_arg ...Options>

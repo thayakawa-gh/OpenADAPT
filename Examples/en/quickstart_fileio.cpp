@@ -28,6 +28,7 @@ void QuickstartJson()
 	return;
 	#else
 
+	// This quickstart focuses on JSON <-> DTree conversion for nested object trees.
 	// In many cases, JSON data comes from a file.
 	// For this quickstart, we first create a small sample file so that the example is self-contained.
 	const std::string input_path = "quickstart_input.json";
@@ -72,7 +73,7 @@ void QuickstartJson()
 	// The inferred schema records not only field types but also JSON-side routes such as
 	// where each lower layer is found and which JSON path each field belongs to.
 	// The current importer is intended for object trees whose lower layers are arrays of objects.
-	// Scalar arrays are not imported as DTree layers.
+	// Scalar arrays are not imported as DTree layers, so this example uses nested objects and arrays of objects.
 	adapt::json::Schema schema = adapt::json::InferSchema(doc);
 	std::cout << std::endl;
 
@@ -95,7 +96,7 @@ void QuickstartJson()
 	// ExportJson(tree) first calls InferSchema(tree), then exports with that schema.
 	// InferSchema(tree) only sees the DTree structure itself, so it reconstructs a default JSON layout
 	// from layer names and field names. It does not preserve the original JSON-side routes inferred from doc.
-	// If the original import schema matters, pass it explicitly as ExportJson(tree, schema).
+	// If the original import schema matters, keep that schema and pass it explicitly as ExportJson(tree, schema).
 	rapidjson::Document exported = adapt::json::ExportJson(tree);
 	{
 		std::ofstream ofs(output_path);

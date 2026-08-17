@@ -26,27 +26,39 @@ class ToContainer
 	template <traversal_range Range_, stat_type_node_or_placeholder ...NPs_>
 	auto Exec_complex(Range_&& range, NPs_&& ...nps)
 	{
-		auto erange = std::forward<Range_>(range) | Evaluate(std::forward<NPs_>(nps)...);
 		std::tuple<std::vector<typename std::decay_t<NPs_>::RetType>...> res;
-		for (auto&& t : erange) PushBack<0>(t, res);
+		try
+		{
+			auto erange = std::forward<Range_>(range) | Evaluate(std::forward<NPs_>(nps)...);
+			for (auto&& t : erange) PushBack<0>(t, res);
+		}
+		catch (NoElements) {}
 		return res;
 	}
 	template <traversal_range Range_, stat_type_node_or_placeholder ...NPs_>
 	auto Exec_complex(Range_&& range, Combine, NPs_&& ...nps)
 	{
-		auto erange = std::forward<Range_>(range) | Evaluate(std::forward<NPs_>(nps)...);
 		using Type = std::tuple<typename std::decay_t<NPs_>::RetType...>;
 		std::vector<Type> res;
-		std::ranges::copy(erange, std::back_inserter(res));
+		try
+		{
+			auto erange = std::forward<Range_>(range) | Evaluate(std::forward<NPs_>(nps)...);
+			std::ranges::copy(erange, std::back_inserter(res));
+		}
+		catch (NoElements) {}
 		return res;
 	}
 
 	template <traversal_range Range_, stat_type_node_or_placeholder NP>
 	auto Exec_simplex(Range_&& range, NP&& np)
 	{
-		auto erange = std::forward<Range_>(range) | Evaluate(std::forward<NP>(np));
 		std::vector<std::decay_t<typename std::decay_t<NP>::RetType>> res;
-		std::ranges::copy(erange, std::back_inserter(res));
+		try
+		{
+			auto erange = std::forward<Range_>(range) | Evaluate(std::forward<NP>(np));
+			std::ranges::copy(erange, std::back_inserter(res));
+		}
+		catch (NoElements) {}
 		return res;
 	}
 

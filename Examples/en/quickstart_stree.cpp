@@ -18,6 +18,8 @@ using namespace adapt::lit;
 auto MakeSTree()
 {
 	// Define a STree, which determines hierarchical structure and fields (like columns) at compile-time using templates.
+	// Use STree when the schema is known at compile-time and you want the best access and evaluation performance.
+	// If you need a runtime-defined schema instead, use DTree.
 	// The structure of STree is defined by adapt::NamedTuple and adapt::Named.
 	// It is similar to std::tuple<Fields...> + std::vector<std::tuple<Fields...>, std::vector<std::tuple<Fields...>>>;
 
@@ -118,7 +120,7 @@ void QuickstartSTree()
 	std::cout << "------Placeholders------" << std::endl;
 
 	// Placeholders are used to access/calculate data stored in containers.
-	// Node that you should use _fld literal to get STree::CttiPlaceholder<Type, Layer> that has compile-time type/layer informations.
+	// Note that you should use _fld literal to get STree::CttiPlaceholder<Type, Layer> that has compile-time type/layer informations.
 	// If no _fld literal is used, the return type is STree::RttiPlaceholder that has runtime type/layer information.
 	// RttiPlaceholder can also be used for STree, but its performance is lower than CttiPlaceholder, especially in the use of lambda functions.
 	ADAPT_GET_PLACEHOLDERS(usa, nation, state, state_capital, county, county_seat, city, population, area);

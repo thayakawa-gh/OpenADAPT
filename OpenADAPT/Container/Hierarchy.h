@@ -591,6 +591,43 @@ public:
 	DHierarchy()
 		: m_element_sizes(1, 0), m_totally_trivial(1, true), m_field_infos_by_layer(1)
 	{}
+	DHierarchy(const DHierarchy&) = delete;
+	DHierarchy(DHierarchy&& other) noexcept
+	{
+		*this = std::move(other);
+	}
+	DHierarchy& operator=(const DHierarchy&) = delete;
+	DHierarchy& operator=(DHierarchy&& other) noexcept
+	{
+		if (this != &other)
+		{
+			m_element_sizes = std::move(other.m_element_sizes);
+			m_totally_trivial = std::move(other.m_totally_trivial);
+			m_field_map = std::move(other.m_field_map);
+			m_field_infos_by_layer = std::move(other.m_field_infos_by_layer);
+			m_max_layer = other.m_max_layer;
+			other.m_max_layer = -1_layer;
+			m_element_sizes.assign(1, 0);
+			m_totally_trivial.assign(1, true);
+			m_field_infos_by_layer.resize(1);
+		}
+		return *this;
+	}
+
+	void CopyStructureTo(DHierarchy& other) const
+	{
+		// m_field_mapがポインタで管理されているため、再生成には各種関数を呼んでしまったほうが良い。
+		other.m_element_sizes.assign(1, 0);
+		other.m_totally_trivial.assign(1, true);
+		other.m_field_infos_by_layer.assign(1, {});
+		other.m_field_map.clear();
+		other.m_max_layer = -1_layer;
+		if (!m_field_infos_by_layer[0].empty()) other.SetTopLayer(GetFieldInfosIn(-1_layer));
+		for (LayerType i = 0; i <= m_max_layer; i++)
+		{
+			other.AddLayer(GetFieldInfosIn(i));
+		}
+	}
 
 	void SetTopLayer(const std::vector<std::pair<std::string, FieldType>>& mems)
 	{
@@ -964,7 +1001,7 @@ public:
 	}
 private:
 	template <FieldType Type, class ...Body>
-	auto GetPlaceholders_rec(std::string_view name, FieldType, const Body& ...body) const
+	auto GetPlaceholders_rec(std::string_view name, Number<Type>, const Body& ...body) const
 	{
 		if constexpr (sizeof...(Body) == 0)
 			return std::make_tuple(GetPlaceholder(name).template AddType<Type>());

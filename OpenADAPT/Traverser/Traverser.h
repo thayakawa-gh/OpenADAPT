@@ -265,6 +265,10 @@ private:
 		m_iterators.resize(m_trav_layer + 2);//globalの分も含む。
 		m_iterators[0] = c.GetTopIterator();
 
+		// Assignに失敗した場合、本当ならEnd状態にしたいのだが、
+		// End状態はm_fixed_layer + 1層が末尾要素となっていることが条件であり、
+		// これは例えば全要素画からであったりするとm_fixed_layer + 1層どころかもっと上の層が空で、
+		// m_fixed_layer + 1層にはそもそも末尾要素という概念が存在し得なくなる可能性がある。
 		if (!Assign_renew(0, Flag{})) throw NoElements();
 	}
 	//Bposを与えるInitの場合、固定層まではBposの位置に設定する。
@@ -293,6 +297,7 @@ private:
 			if (uit->GetSize() <= i) throw NoElements();
 			it = uit->begin() + i;
 		}
+		// 上のInit_implと同様の理由で、End状態には出来ず、例外を投げるしかない。
 		if (!Assign_renew(m_fixed_layer + 1, Flag{})) throw NoElements();
 	}
 

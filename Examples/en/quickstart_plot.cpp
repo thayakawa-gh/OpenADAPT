@@ -726,6 +726,23 @@ int example_for_loop(const std::string& output_filename, bool enable_in_memory_d
 void QuickstartPlot()
 {
 	std::cout << "[[Quickstart Plot]]" << std::endl;
+	// This quickstart is a catalog of plotting examples rather than a single linear tutorial.
+	// The examples below cover:
+	// * example_2d                 : basic 2D lines/points/boxes styles
+	// * example_histogram          : histogram and cumulative histogram
+	// * example_stacked_histogram  : stacked histograms
+	// * example_weighted_histogram : weighted histograms
+	// * example_scatter            : scatter plot with variable point size/color
+	// * example_labels             : text labels on points
+	// * example_labels_on_colormap : labels combined with a colormap
+	// * example_colormap           : 2D color-mapped data
+	// * example_binscatter         : binned scatter-style visualization
+	// * example_surface            : 3D surface plotting
+	// * example_filledcurve        : filled curves and bands
+	// * example_datetime           : datetime axes
+	// * example_string             : categorical/string labels
+	// * example_for_loop           : buffered / repeated plotting pattern
+	// The in-memory variants are enabled below because they are usually the most convenient setup.
 
 	// Set the path to gnuplot executable if needed.
 	// The default path is:

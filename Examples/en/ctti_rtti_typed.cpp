@@ -35,6 +35,10 @@ void DifferenceCttiRttiTyped()
 {
 	// In this function, we will show the difference between Ctti, Typed and Rtti placeholders.
 	// They can be used almost the same way, but there are some differences.
+	// Rough rule of thumb:
+	// * STree/STable  -> prefer Ctti when possible.
+	// * DTree/DTable  -> Typed is often the practical compromise between flexibility and speed.
+	// * Rtti          -> useful when placeholders/lambdas must be managed dynamically.
 
 	using TopLayer = adapt::NamedTuple<adapt::Named<"a", int>>;
 	using Layer0 = adapt::NamedTuple<adapt::Named<"b", double>, adapt::Named<"c", double>>;
@@ -64,17 +68,17 @@ void DifferenceCttiRttiTyped()
 
 
 
-	// #------How to get Ctti placeholders------
+	// ------ How to get Ctti placeholders ------
 
-	// ## STree/STable
-	//    Use GetPlaceholder or GetPlaceholders and arguments with _fld literals. 
+	// STree/STable
+	// Use GetPlaceholder or GetPlaceholders with _fld literals.
 	using namespace adapt::lit;
 	auto [a_stree_ctti, b_stree_ctti, d_stree_ctti] = stree.GetPlaceholders("a"_fld, "b"_fld, "d"_fld);
 	auto [a_stable_ctti, b_stable_ctti] = stable.GetPlaceholders("a"_fld, "b"_fld);
 
-	// ## DTree/DTable
-	//    It is a little bit complicated, you have to use GetPlaceholder with the static type and layer of the fields.
-	//    Even if you pass the names with _fld literals, 
+	// DTree/DTable
+	// True Ctti placeholders are also available, but you have to specify the static type and layer explicitly.
+	// Even if you pass names with _fld literals, the runtime-defined schema itself does not become static.
 	auto a_dtree_ctti = dtree.GetPlaceholder<-1_layer, int32_t>("a");
 	auto b_dtree_ctti = dtree.GetPlaceholder<0_layer, double>("b");
 	auto a_dtable_ctti = dtable.GetPlaceholder<-1_layer, int32_t>("a");
@@ -82,21 +86,22 @@ void DifferenceCttiRttiTyped()
 
 
 
-	// #------How to get Rtti placeholders------
-	//    Use GetPlaceholders with no _fld literals.
-	//    The return tyope is a std::array of Container::RttiPlaceholder.
+	// ------ How to get Rtti placeholders ------
+	// Use GetPlaceholders with no _fld literals.
+	// The return type is a std::array of Container::RttiPlaceholder.
 	auto [a_stree_rtti, b_stree_rtti] = stree.GetPlaceholders("a", "b");
 	auto [a_stable_rtti, b_stable_rtti] = stable.GetPlaceholders("a", "b");
 	auto [a_dtree_rtti, b_dtree_rtti] = dtree.GetPlaceholders("a", "b");
 	auto [a_dtable_rtti, b_dtable_rtti] = dtable.GetPlaceholders("a", "b");
 
-	//    You cannot use placeholders of the type not declared in the adapt::FieldType.
+	// You cannot use Rtti placeholders for field types not declared in adapt::FieldType.
 	//auto d_stree_rtti = stree.GetPlaceholder("d");
 
 
 
-	// #------How to get Typed placeholders------
-	//    Convert RttiPlaceholders to Typed ones with i32(), str(), f64() etc.
+	// ------ How to get Typed placeholders ------
+	// Convert RttiPlaceholders to Typed ones with i32(), str(), f64() etc.
+	// Typed placeholders keep runtime layer information, but recover compile-time return types.
 	auto a_stree_typed = a_stree_rtti.i32();
 	auto b_stree_typed = b_stree_rtti.f64();
 	auto a_stable_typed = a_stable_rtti.i32();
@@ -108,7 +113,7 @@ void DifferenceCttiRttiTyped()
 
 
 
-	// #------How to use placeholders------
+	// ------ How to use placeholders ------
 	auto usage = [](auto& container,
 		const auto& a_ctti, const auto& b_ctti,
 		const auto& a_rtti, const auto& b_rtti,
@@ -134,6 +139,7 @@ void DifferenceCttiRttiTyped()
 
 		// If the components of the lambda function includes at least one Typed placeholder, and the others are Ctti,
 		// the lambda function becomes Typed.
+		// This is why Typed placeholders are often a good fit for DTree/DTable calculations.
 		auto lambda_typed = a_typed * b_ctti;
 		std::cout << "a * b = " << lambda_typed(container, adapt::Bpos{ 0 }) << std::endl;
 
