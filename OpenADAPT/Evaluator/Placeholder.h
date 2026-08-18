@@ -17,16 +17,10 @@ struct DFieldInfo
 private:
 	template <FieldType Tag, std::nullptr_t = nullptr>
 	struct TagTypeToValueType_impl;
-	template <std::nullptr_t N> struct TagTypeToValueType_impl<I08, N> { using Type = int8_t; };
-	template <std::nullptr_t N> struct TagTypeToValueType_impl<I16, N> { using Type = int16_t; };
-	template <std::nullptr_t N> struct TagTypeToValueType_impl<I32, N> { using Type = int32_t; };
-	template <std::nullptr_t N> struct TagTypeToValueType_impl<I64, N> { using Type = int64_t; };
-	template <std::nullptr_t N> struct TagTypeToValueType_impl<F32, N> { using Type = float; };
-	template <std::nullptr_t N> struct TagTypeToValueType_impl<F64, N> { using Type = double; };
-	template <std::nullptr_t N> struct TagTypeToValueType_impl<C32, N> { using Type = std::complex<float>; };
-	template <std::nullptr_t N> struct TagTypeToValueType_impl<C64, N> { using Type = std::complex<double>; };
-	template <std::nullptr_t N> struct TagTypeToValueType_impl<Str, N> { using Type = std::string; };
-	template <std::nullptr_t N> struct TagTypeToValueType_impl<Jbp, N> { using Type = JBpos; };
+#define CODE(Tag, name, type)\
+	template <std::nullptr_t N> struct TagTypeToValueType_impl<Tag, N> { using Type = type; };
+	ADAPT_FOR_EACH_TYPE(CODE)
+#undef CODE
 
 	template <class Type, size_t Size>
 	static constexpr bool is_integral_with_size = std::is_integral_v<Type> && sizeof(Type) == Size;
@@ -38,34 +32,22 @@ public:
 	static constexpr FieldType ValueTypeToTagType()
 	{
 		using enum FieldType;
-		if constexpr (std::is_same_v<ValueType, int8_t>) return I08;
-		else if constexpr (std::is_same_v<ValueType, int16_t>) return I16;
-		else if constexpr (std::is_same_v<ValueType, int32_t>) return I32;
-		else if constexpr (std::is_same_v<ValueType, int64_t>) return I64;
-		else if constexpr (std::is_same_v<ValueType, float>) return F32;
-		else if constexpr (std::is_same_v<ValueType, double>) return F64;
-		else if constexpr (std::is_same_v<ValueType, std::complex<float>>) return C32;
-		else if constexpr (std::is_same_v<ValueType, std::complex<double>>) return C64;
-		else if constexpr (std::is_same_v<ValueType, std::string>) return Str;
-		else if constexpr (std::is_same_v<ValueType, JBpos>) return Jbp;
-		else return Emp;
+#define CODE(Tag, name, type)\
+		if constexpr (std::is_same_v<ValueType, type>) return Tag; else 
+		ADAPT_FOR_EACH_TYPE(CODE)
+#undef CODE
+		return Emp;
 	}
 
 	template <class T>
 	static constexpr FieldType GetSameSizeTagType()
 	{
 		using enum FieldType;
-		if constexpr (IsI08<T>()) return I08;
-		else if constexpr (IsI16<T>()) return I16;
-		else if constexpr (IsI32<T>()) return I32;
-		else if constexpr (IsI64<T>()) return I64;
-		else if constexpr (IsF32<T>()) return F32;
-		else if constexpr (IsF64<T>()) return F64;
-		else if constexpr (IsC32<T>()) return C32;
-		else if constexpr (IsC64<T>()) return C64;
-		else if constexpr (IsStr<T>()) return Str;
-		else if constexpr (IsJbp<T>()) return Jbp;
-		else return Emp;
+#define CODE(Tag, name, type)\
+		if constexpr (Is##Tag<T>()) return Tag; else 
+		ADAPT_FOR_EACH_TYPE(CODE)
+#undef CODE
+		return Emp;
 	}
 
 	//GetSameSizeTagType() != Emp、つまり
@@ -83,33 +65,21 @@ public:
 	static constexpr auto GetTagTypeString()
 	{
 		using enum FieldType;
-		if constexpr (Type == I08) return StaticString<"I08">{};
-		else if constexpr (Type == I16) return StaticString<"I16">{};
-		else if constexpr (Type == I32) return StaticString<"I32">{};
-		else if constexpr (Type == I64) return StaticString<"I64">{};
-		else if constexpr (Type == F32) return StaticString<"F32">{};
-		else if constexpr (Type == F64) return StaticString<"F64">{};
-		else if constexpr (Type == C32) return StaticString<"C32">{};
-		else if constexpr (Type == C64) return StaticString<"C64">{};
-		else if constexpr (Type == Str) return StaticString<"Str">{};
-		else if constexpr (Type == Jbp) return StaticString<"Jbp">{};
-		else if constexpr (Type == Emp) return StaticString<"Emp">{};
+#define CODE(Tag, name, type)\
+		if constexpr (Type == Tag) return StaticString<#Tag>{};
+		ADAPT_FOR_EACH_TYPE(CODE)
+#undef CODE
+		if constexpr (Type == Emp) return StaticString<"Emp">{};
 	}
 	static std::string GetTagTypeString(FieldType Type)
 	{
 		using enum FieldType;
-		if (Type == I08) return std::string("I08");
-		else if (Type == I16) return std::string("I16");
-		else if (Type == I32) return std::string("I32");
-		else if (Type == I64) return std::string("I64");
-		else if (Type == F32) return std::string("F32");
-		else if (Type == F64) return std::string("F64");
-		else if (Type == C32) return std::string("C32");
-		else if (Type == C64) return std::string("C64");
-		else if (Type == Str) return std::string("Str");
-		else if (Type == Jbp) return std::string("Jbp");
-		else if (Type == Emp) return std::string("Emp");
-		throw MismatchType("");
+#define CODE(Tag, name, type)\
+		if (Type == Tag) return #Tag; else 
+		ADAPT_FOR_EACH_TYPE(CODE)
+#undef CODE
+		if (Type == Emp) return std::string("Emp");
+		else throw MismatchType("");
 	}
 
 	static constexpr size_t GetSizeOf(FieldType tag)
@@ -146,13 +116,15 @@ public:
 	template <class T>
 	static constexpr bool IsF64() { return std::is_same_v<T, double>; }
 
-	template <class T>
-	static constexpr bool IsC32() { return std::is_same_v<T, std::complex<float>>; }
-	template <class T>
-	static constexpr bool IsC64() { return std::is_same_v<T, std::complex<double>>; }
+	//template <class T>
+	//static constexpr bool IsC32() { return std::is_same_v<T, std::complex<float>>; }
+	//template <class T>
+	//static constexpr bool IsC64() { return std::is_same_v<T, std::complex<double>>; }
 
 	template <class T>
 	static constexpr bool IsStr() { return std::is_convertible_v<T, std::string>; }
+	template <class T>
+	static constexpr bool IsBps() { return std::is_convertible_v<T, Bpos>; }
 	template <class T>
 	static constexpr bool IsJbp() { return std::is_convertible_v<T, JBpos>; }
 
@@ -160,27 +132,16 @@ public:
 	static constexpr bool IsTrivial(FieldType type) { return (uint32_t)type & FieldTypeFlag::TRIVIAL; }
 
 	// 数値型または複素数型。INT、FLT、CPXが該当。
-	static constexpr bool IsCpxAri(FieldType type) { return (uint32_t)type & (FieldTypeFlag::CPX | FieldTypeFlag::NUM); }
+	//static constexpr bool IsCpxAri(FieldType type) { return (uint32_t)type & (FieldTypeFlag::CPX | FieldTypeFlag::NUM); }
 	// 数値型。INT、FLTが該当。
 	static constexpr bool IsArithmetic(FieldType type) { return (uint32_t)type & FieldTypeFlag::NUM; }
-
 	static constexpr bool IsInt(FieldType type) { return (uint32_t)type & FieldTypeFlag::INT; }
-	static constexpr bool IsI08(FieldType type) { return type == FieldType::I08; }
-	static constexpr bool IsI16(FieldType type) { return type == FieldType::I16; }
-	static constexpr bool IsI32(FieldType type) { return type == FieldType::I32; }
-	static constexpr bool IsI64(FieldType type) { return type == FieldType::I64; }
-
 	static constexpr bool IsFlt(FieldType type) { return (uint32_t)type & FieldTypeFlag::FLT; }
-	static constexpr bool IsF32(FieldType type) { return type == FieldType::F32; }
-	static constexpr bool IsF64(FieldType type) { return type == FieldType::F64; }
 
-	static constexpr bool IsCpx(FieldType type) { return (uint32_t)type & FieldTypeFlag::CPX; }
-	static constexpr bool IsC32(FieldType type) { return type == FieldType::C32; }
-	static constexpr bool IsC64(FieldType type) { return type == FieldType::C64; }
-
-	static constexpr bool IsStr(FieldType type) { return type == FieldType::Str; }
-	static constexpr bool IsJbp(FieldType type) { return type == FieldType::Jbp; }
-
+#define CODE(Tag, Name, Type)\
+	static constexpr bool Is##Tag(FieldType type) { return type == FieldType::Tag; }
+	ADAPT_FOR_EACH_TYPE(CODE)
+#undef CODE
 	static constexpr bool IsEmp(FieldType type) { return type == FieldType::Emp; }
 
 	template <FieldType From, FieldType To>
@@ -199,19 +160,23 @@ public:
 		else if (IsFlt(from))
 		{
 			if (IsInt(to) || IsFlt(to)) return true;
-			else if (IsCpx(to))
-			{
-				if (IsF64(from) && IsC32(to)) return false;
-				else return true;
-			}
+			//else if (IsCpx(to))
+			//{
+			//	if (IsF64(from) && IsC32(to)) return false;
+			//	else return true;
+			//}
 		}
-		else if (IsCpx(from))
-		{
-			if (IsCpx(to)) return true;
-		}
+		//else if (IsCpx(from))
+		//{
+		//	if (IsCpx(to)) return true;
+		//}
 		else if (IsStr(from))
 		{
 			if (IsStr(to)) return true;
+		}
+		else if (IsBps(from))
+		{
+			if (IsJbp(to)) return true;
 		}
 		else if (IsJbp(from))
 		{
@@ -221,11 +186,9 @@ public:
 	}
 	static constexpr bool IsConvertibleToBool(FieldType from)
 	{
-		#define CODE(TTYPE1, SYM, VTYPE1) \
-			if (from == TTYPE1)\
-				return std::convertible_to<VTYPE1, bool>;
+#define CODE(TTYPE1, SYM, VTYPE1) if (from == TTYPE1) return std::convertible_to<VTYPE1, bool>;
 		ADAPT_FOR_EACH_TYPE(CODE)
-		#undef CODE
+#undef CODE
 		throw MismatchType("");
 	}
 };
@@ -258,21 +221,10 @@ public:
 
 	static constexpr bool IsInt() { return DFieldInfo::IsInt<typename Derived::RetType>(); }
 
-	static constexpr bool IsI08() { return DFieldInfo::IsI08<typename Derived::RetType>(); }
-	static constexpr bool IsI16() { return DFieldInfo::IsI16<typename Derived::RetType>(); }
-	static constexpr bool IsI32() { return DFieldInfo::IsI32<typename Derived::RetType>(); }
-	static constexpr bool IsI64() { return DFieldInfo::IsI64<typename Derived::RetType>(); }
-
-	static constexpr bool IsF32() { return DFieldInfo::IsF32<typename Derived::RetType>(); }
-	static constexpr bool IsF64() { return DFieldInfo::IsF64<typename Derived::RetType>(); }
-
-	static constexpr bool IsC32() { return DFieldInfo::IsC32<typename Derived::RetType>(); }
-	static constexpr bool IsC64() { return DFieldInfo::IsC64<typename Derived::RetType>(); }
-
-	static constexpr bool IsStr() { return DFieldInfo::IsStr<typename Derived::RetType>(); }
-	static constexpr bool IsJbp() { return DFieldInfo::IsJbp<typename Derived::RetType>(); }
-
-	//static constexpr bool IsEmp() const { return false; }
+#define CODE(Tag, Name, Type)\
+	static constexpr bool Is##Tag() { return DFieldInfo::Is##Tag<typename Derived::RetType>(); }
+	ADAPT_FOR_EACH_TYPE(CODE)
+#undef CODE
 
 	template <StaticChar Name_>
 	constexpr std::tuple<StaticString<Name_>, Derived> named() const&
@@ -334,132 +286,47 @@ public:
 		return !(*this == that);
 	}
 
-	decltype(auto) i08() const& { return Cast().template as<FieldType::I08>(); }
-	decltype(auto) i16() const& { return Cast().template as<FieldType::I16>(); }
-	decltype(auto) i32() const& { return Cast().template as<FieldType::I32>(); }
-	decltype(auto) i64() const& { return Cast().template as<FieldType::I64>(); }
-	decltype(auto) f32() const& { return Cast().template as<FieldType::F32>(); }
-	decltype(auto) f64() const& { return Cast().template as<FieldType::F64>(); }
-	decltype(auto) c32() const& { return Cast().template as<FieldType::C32>(); }
-	decltype(auto) c64() const& { return Cast().template as<FieldType::C64>(); }
-	decltype(auto) str() const& { return Cast().template as<FieldType::Str>(); }
-	decltype(auto) jbp() const& { return Cast().template as<FieldType::Jbp>(); }
-
-	decltype(auto) i08()& requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as<FieldType::I08>(); }
-	decltype(auto) i16()& requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as<FieldType::I16>(); }
-	decltype(auto) i32()& requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as<FieldType::I32>(); }
-	decltype(auto) i64()& requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as<FieldType::I64>(); }
-	decltype(auto) f32()& requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as<FieldType::F32>(); }
-	decltype(auto) f64()& requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as<FieldType::F64>(); }
-	decltype(auto) c32()& requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as<FieldType::C32>(); }
-	decltype(auto) c64()& requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as<FieldType::C64>(); }
-	decltype(auto) str()& requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as<FieldType::Str>(); }
-	decltype(auto) jbp()& requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as<FieldType::Jbp>(); }
-
-	decltype(auto) i08() && requires (!std::is_const_v<Qualifier<char>>) { return Cast_move().template as<FieldType::I08>(); }
-	decltype(auto) i16() && requires (!std::is_const_v<Qualifier<char>>) { return Cast_move().template as<FieldType::I16>(); }
-	decltype(auto) i32() && requires (!std::is_const_v<Qualifier<char>>) { return Cast_move().template as<FieldType::I32>(); }
-	decltype(auto) i64() && requires (!std::is_const_v<Qualifier<char>>) { return Cast_move().template as<FieldType::I64>(); }
-	decltype(auto) f32() && requires (!std::is_const_v<Qualifier<char>>) { return Cast_move().template as<FieldType::F32>(); }
-	decltype(auto) f64() && requires (!std::is_const_v<Qualifier<char>>) { return Cast_move().template as<FieldType::F64>(); }
-	decltype(auto) c32() && requires (!std::is_const_v<Qualifier<char>>) { return Cast_move().template as<FieldType::C32>(); }
-	decltype(auto) c64() && requires (!std::is_const_v<Qualifier<char>>) { return Cast_move().template as<FieldType::C64>(); }
-	decltype(auto) str() && requires (!std::is_const_v<Qualifier<char>>) { return Cast_move().template as<FieldType::Str>(); }
-	decltype(auto) jbp() && requires (!std::is_const_v<Qualifier<char>>) { return Cast_move().template as<FieldType::Jbp>(); }
-
-	decltype(auto) i08_unsafe() const& { return Cast().template as_unsafe<FieldType::I08>(); }
-	decltype(auto) i16_unsafe() const& { return Cast().template as_unsafe<FieldType::I16>(); }
-	decltype(auto) i32_unsafe() const& { return Cast().template as_unsafe<FieldType::I32>(); }
-	decltype(auto) i64_unsafe() const& { return Cast().template as_unsafe<FieldType::I64>(); }
-	decltype(auto) f32_unsafe() const& { return Cast().template as_unsafe<FieldType::F32>(); }
-	decltype(auto) f64_unsafe() const& { return Cast().template as_unsafe<FieldType::F64>(); }
-	decltype(auto) c32_unsafe() const& { return Cast().template as_unsafe<FieldType::C32>(); }
-	decltype(auto) c64_unsafe() const& { return Cast().template as_unsafe<FieldType::C64>(); }
-	decltype(auto) str_unsafe() const& { return Cast().template as_unsafe<FieldType::Str>(); }
-	decltype(auto) jbp_unsafe() const& { return Cast().template as_unsafe<FieldType::Jbp>(); }
-
-	decltype(auto) i08_unsafe()& requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as_unsafe<FieldType::I08>(); }
-	decltype(auto) i16_unsafe()& requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as_unsafe<FieldType::I16>(); }
-	decltype(auto) i32_unsafe()& requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as_unsafe<FieldType::I32>(); }
-	decltype(auto) i64_unsafe()& requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as_unsafe<FieldType::I64>(); }
-	decltype(auto) f32_unsafe()& requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as_unsafe<FieldType::F32>(); }
-	decltype(auto) f64_unsafe()& requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as_unsafe<FieldType::F64>(); }
-	decltype(auto) c32_unsafe()& requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as_unsafe<FieldType::C32>(); }
-	decltype(auto) c64_unsafe()& requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as_unsafe<FieldType::C64>(); }
-	decltype(auto) str_unsafe()& requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as_unsafe<FieldType::Str>(); }
-	decltype(auto) jbp_unsafe()& requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as_unsafe<FieldType::Jbp>(); }
-
-	decltype(auto) i08_unsafe() && requires (!std::is_const_v<Qualifier<char>>) { return Cast_move().template as_unsafe<FieldType::I08>(); }
-	decltype(auto) i16_unsafe() && requires (!std::is_const_v<Qualifier<char>>) { return Cast_move().template as_unsafe<FieldType::I16>(); }
-	decltype(auto) i32_unsafe() && requires (!std::is_const_v<Qualifier<char>>) { return Cast_move().template as_unsafe<FieldType::I32>(); }
-	decltype(auto) i64_unsafe() && requires (!std::is_const_v<Qualifier<char>>) { return Cast_move().template as_unsafe<FieldType::I64>(); }
-	decltype(auto) f32_unsafe() && requires (!std::is_const_v<Qualifier<char>>) { return Cast_move().template as_unsafe<FieldType::F32>(); }
-	decltype(auto) f64_unsafe() && requires (!std::is_const_v<Qualifier<char>>) { return Cast_move().template as_unsafe<FieldType::F64>(); }
-	decltype(auto) c32_unsafe() && requires (!std::is_const_v<Qualifier<char>>) { return Cast_move().template as_unsafe<FieldType::C32>(); }
-	decltype(auto) c64_unsafe() && requires (!std::is_const_v<Qualifier<char>>) { return Cast_move().template as_unsafe<FieldType::C64>(); }
-	decltype(auto) str_unsafe() && requires (!std::is_const_v<Qualifier<char>>) { return Cast_move().template as_unsafe<FieldType::Str>(); }
-	decltype(auto) jbp_unsafe() && requires (!std::is_const_v<Qualifier<char>>) { return Cast_move().template as_unsafe<FieldType::Jbp>(); }
-
-	decltype(auto) i08_ptr() const { return Cast().template as_ptr<FieldType::I08>(); }
-	decltype(auto) i16_ptr() const { return Cast().template as_ptr<FieldType::I16>(); }
-	decltype(auto) i32_ptr() const { return Cast().template as_ptr<FieldType::I32>(); }
-	decltype(auto) i64_ptr() const { return Cast().template as_ptr<FieldType::I64>(); }
-	decltype(auto) f32_ptr() const { return Cast().template as_ptr<FieldType::F32>(); }
-	decltype(auto) f64_ptr() const { return Cast().template as_ptr<FieldType::F64>(); }
-	decltype(auto) c32_ptr() const { return Cast().template as_ptr<FieldType::C32>(); }
-	decltype(auto) c64_ptr() const { return Cast().template as_ptr<FieldType::C64>(); }
-	decltype(auto) str_ptr() const { return Cast().template as_ptr<FieldType::Str>(); }
-	decltype(auto) jbp_ptr() const { return Cast().template as_ptr<FieldType::Jbp>(); }
-
-	decltype(auto) i08_ptr() requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as_ptr<FieldType::I08>(); }
-	decltype(auto) i16_ptr() requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as_ptr<FieldType::I16>(); }
-	decltype(auto) i32_ptr() requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as_ptr<FieldType::I32>(); }
-	decltype(auto) i64_ptr() requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as_ptr<FieldType::I64>(); }
-	decltype(auto) f32_ptr() requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as_ptr<FieldType::F32>(); }
-	decltype(auto) f64_ptr() requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as_ptr<FieldType::F64>(); }
-	decltype(auto) c32_ptr() requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as_ptr<FieldType::C32>(); }
-	decltype(auto) c64_ptr() requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as_ptr<FieldType::C64>(); }
-	decltype(auto) str_ptr() requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as_ptr<FieldType::Str>(); }
-	decltype(auto) jbp_ptr() requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as_ptr<FieldType::Jbp>(); }
+	// i08(), i08_unsafe(), i08_ptr()などの関数を自動的に追加する。
+#define CODE(Tag, Name, Type)\
+	decltype(auto) Name() const& { return Cast().template as<FieldType::Tag>(); }\
+	decltype(auto) Name()& requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as<FieldType::Tag>(); }\
+	decltype(auto) Name() && requires (!std::is_const_v<Qualifier<char>>) { return Cast_move().template as<FieldType::Tag>(); }\
+	decltype(auto) Name##_unsafe() const& { return Cast().template as_unsafe<FieldType::Tag>(); }\
+	decltype(auto) Name##_unsafe()& requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as_unsafe<FieldType::Tag>(); }\
+	decltype(auto) Name##_unsafe() && requires (!std::is_const_v<Qualifier<char>>) { return Cast_move().template as_unsafe<FieldType::Tag>(); }\
+	decltype(auto) Name##_ptr() const { return Cast().template as_ptr<FieldType::Tag>(); }\
+	decltype(auto) Name##_ptr() requires (!std::is_const_v<Qualifier<char>>) { return Cast().template as_ptr<FieldType::Tag>(); }
+	ADAPT_FOR_EACH_TYPE(CODE)
+#undef CODE
 
 	FieldVariant var() const;
 
-	int8_t to_i08() const { return Cast().template to<FieldType::I08>(); }
-	int16_t to_i16() const { return Cast().template to<FieldType::I16>(); }
-	int32_t to_i32() const { return Cast().template to<FieldType::I32>(); }
-	int64_t to_i64() const { return Cast().template to<FieldType::I64>(); }
-	float to_f32() const { return Cast().template to<FieldType::F32>(); }
-	double to_f64() const { return Cast().template to<FieldType::F64>(); }
-	std::complex<float> to_c32() const { return Cast().template to<FieldType::C32>(); }
-	std::complex<double> to_c64() const { return Cast().template to<FieldType::C64>(); }
-	const std::string& to_str() const { return str(); }
-	const JBpos& to_jbp() const { return jbp(); }
+	// to_i08()などの関数を自動的に追加する。
+	// to_はトリビアル型については変換を行うが、非トリビアル型については変換を行わず、単にstr()などをを呼び出す。
+#define CODE(Tag, Name, Type)\
+	Type to_##Name() const { return Cast().template to<FieldType::Tag>(); }
+	ADAPT_FOR_EACH_TRIVIAL_TYPE(CODE)
+#undef CODE
+
+#define CODE(Tag, Name, Type)\
+	const Type& to_##Name() const { return Name(); }
+		ADAPT_FOR_EACH_NONTRIVIAL_TYPE(CODE)
+#undef CODE
 
 	constexpr size_t GetSize() const { return DFieldInfo::GetSizeOf(Cast().GetType()); }
 	constexpr size_t GetAlign() const { return DFieldInfo::GetAlignOf(Cast().GetType()); }
 
 	constexpr bool IsTrivial() const { return DFieldInfo::IsTrivial(Cast().GetType()); }
-
 	constexpr bool IsArithmetic() const { return DFieldInfo::IsArithmetic(Cast().GetType()); }
-
 	constexpr bool IsInt() const { return DFieldInfo::IsInt(Cast().GetType()); }
-	constexpr bool IsI08() const { return DFieldInfo::IsI08(Cast().GetType()); }
-	constexpr bool IsI16() const { return DFieldInfo::IsI16(Cast().GetType()); }
-	constexpr bool IsI32() const { return DFieldInfo::IsI32(Cast().GetType()); }
-	constexpr bool IsI64() const { return DFieldInfo::IsI64(Cast().GetType()); }
-
 	constexpr bool IsFlt() const { return DFieldInfo::IsFlt(Cast().GetType()); }
-	constexpr bool IsF32() const { return DFieldInfo::IsF32(Cast().GetType()); }
-	constexpr bool IsF64() const { return DFieldInfo::IsF64(Cast().GetType()); }
-
-	constexpr bool IsCpx() const { return DFieldInfo::IsCpx(Cast().GetType()); }
-	constexpr bool IsC32() const { return DFieldInfo::IsC32(Cast().GetType()); }
-	constexpr bool IsC64() const { return DFieldInfo::IsC64(Cast().GetType()); }
-
-	constexpr bool IsStr() const { return DFieldInfo::IsStr(Cast().GetType()); }
-	constexpr bool IsJbp() const { return DFieldInfo::IsJbp(Cast().GetType()); }
-
 	constexpr bool IsEmp() const { return DFieldInfo::IsEmp(Cast().GetType()); }
+
+
+#define CODE(Tag, Name, Type)\
+	constexpr bool Is##Tag() const { return DFieldInfo::Is##Tag(Cast().GetType()); }
+	ADAPT_FOR_EACH_TYPE(CODE)
+#undef CODE
 
 	template <StaticChar Name_>
 	constexpr std::tuple<StaticString<Name_>, Derived> named(StaticString<Name_> name) const&
@@ -727,17 +594,17 @@ public:
 	template <FieldType Type>
 	DFieldInfo::TagTypeToValueType<Type>& as() &
 	{
-		return std::get<FieldTypeToIndex<Type>()>(m_var);
+		return std::get<DFieldInfo::TagTypeToValueType<Type>>(m_var);
 	}
 	template <FieldType Type>
 	const DFieldInfo::TagTypeToValueType<Type>& as() const &
 	{
-		return std::get<FieldTypeToIndex<Type>()>(m_var);
+		return std::get<DFieldInfo::TagTypeToValueType<Type>>(m_var);
 	}
 	template <FieldType Type>
 	DFieldInfo::TagTypeToValueType<Type>&& as() &&
 	{
-		return std::get<FieldTypeToIndex<Type>()>(m_var);
+		return std::get<DFieldInfo::TagTypeToValueType<Type>>(m_var);
 	}
 
 	template <FieldType Type>
@@ -759,14 +626,16 @@ public:
 	template <FieldType Type>
 	DFieldInfo::TagTypeToValueType<Type>* as_ptr() &
 	{
-		return std::get_if<FieldTypeToIndex<Type>()>(m_var);
+		return std::get_if<DFieldInfo::TagTypeToValueType<Type>>(m_var);
 	}
 	template <FieldType Type>
 	const DFieldInfo::TagTypeToValueType<Type>* as_ptr() const &
 	{
-		return std::get_if<FieldTypeToIndex<Type>()>(m_var);
+		return std::get_if<DFieldInfo::TagTypeToValueType<Type>>(m_var);
 	}
 
+	// m_varはprivateなので、外部からは直接std::visitを使ってアクセスできない。
+	// 代わりにVisit()を用意しておく。
 	template <class Visitor>
 	decltype(auto) Visit(Visitor&& v)
 	{
@@ -783,9 +652,11 @@ public:
 	bool operator==(const FieldVariant& that) const
 	{
 		if (GetType() != that.GetType()) return false;
-		auto visitor = [&that]<class T>(const T & v)
+		auto visitor = [&that]<class T>(const T& v) -> bool
 		{
-			return v == that.as<DFieldInfo::ValueTypeToTagType<T>()>();
+			if constexpr (!std::same_as<T, std::nullptr_t>)
+				return v == that.as<DFieldInfo::ValueTypeToTagType<T>()>();
+			else throw MismatchType("");
 		};
 		return Visit(visitor);
 	}
@@ -818,18 +689,27 @@ public:
 
 private:
 
-	template <FieldType Type>
+	/*template <FieldType Type>
 	static constexpr size_t FieldTypeToIndex()
 	{
 		for (size_t i = 0; i < sizeof(corr_table); ++i)
 			if (corr_table[i] == Type) return i;
 		return std::numeric_limits<size_t>::max();
-	}
+	}*/
 
 	void named() const {}//namedはおよそ使う機会がないはずなので隠蔽しておく。
 
-	static constexpr FieldType corr_table[] = {I08, I16, I32, I64, F32, F64, C32, C64, Str, Jbp, Emp};
-	std::variant<int8_t, int16_t, int32_t, int64_t, float, double, std::complex<float>, std::complex<double>, std::string, JBpos> m_var;
+#define CODE(Tag, Name, Type) Tag,
+	static constexpr FieldType corr_table[] = {
+		ADAPT_FOR_EACH_TYPE(CODE)
+		Emp
+	};
+#undef CODE
+
+#define CODE(Tag, Name, Type) Type,
+	using Variant = std::variant<ADAPT_FOR_EACH_TYPE(CODE) std::nullptr_t>;
+#undef CODE
+	Variant m_var;
 };
 
 namespace detail
@@ -935,10 +815,17 @@ private:
 
 	void named() const {}//namedはおよそ使う機会がないはずなので隠蔽しておく。
 
-	static constexpr FieldType corr_table[] = { I08, I16, I32, I64, F32, F64, C32, C64, Str, Jbp, Emp };
-	std::variant<Qualifier<int8_t>*, Qualifier<int16_t>*, Qualifier<int32_t>*, Qualifier<int64_t>*,
-		Qualifier<float>*, Qualifier<double>*, Qualifier<std::complex<float>>*, Qualifier<std::complex<double>>*,
-		Qualifier<std::string>*, Qualifier<JBpos>*> m_var;
+#define CODE(Tag, Name, Type) Tag,
+	static constexpr FieldType corr_table[] = {
+		ADAPT_FOR_EACH_TYPE(CODE)
+		Emp
+	};
+#undef CODE
+
+#define CODE(Tag, Name, Type) Qualifier<Type>*,
+	using Variant = std::variant<ADAPT_FOR_EACH_TYPE(CODE) std::nullptr_t>;
+#undef CODE
+	Variant m_var;
 };
 
 }

@@ -22,10 +22,11 @@ struct FieldTypeFlag
 {
 	static constexpr uint32_t INT = 0b0000000000000001;
 	static constexpr uint32_t FLT = 0b0000000000000010;
-	static constexpr uint32_t CPX = 0b0000000000000100;
+	//static constexpr uint32_t CPX = 0b0000000000000100;
 	static constexpr uint32_t STR = 0b0000000000001000;
-	static constexpr uint32_t YMD = 0b0000000000100000;
-	static constexpr uint32_t JBP = 0b0100000000000000;
+	static constexpr uint32_t YMD = 0b0000000000010000;
+	static constexpr uint32_t BPS = 0b0000000000100000;
+	static constexpr uint32_t JBP = 0b0000000001000000;
 	//static constexpr uint32_t ANY = 0b1000000000000000;
 
 	static constexpr uint32_t NUM = FLT | INT;
@@ -33,7 +34,7 @@ struct FieldTypeFlag
 	static constexpr uint32_t SIZE_MASK = 0x00ff0000;
 	static constexpr uint32_t ALIGN_MASK = 0xff000000;
 
-	static constexpr uint32_t TRIVIAL = INT | FLT | CPX;
+	static constexpr uint32_t TRIVIAL = INT | FLT;// | CPX;
 };
 
 ADAPT_EXPORT
@@ -46,9 +47,10 @@ enum class FieldType : uint32_t
 	I64 = FieldTypeFlag::INT | (sizeof(int64_t) << 16) | (alignof(int64_t) << 24),
 	F32 = FieldTypeFlag::FLT | (sizeof(float) << 16) | (alignof(float) << 24),
 	F64 = FieldTypeFlag::FLT | (sizeof(double) << 16) | (alignof(double) << 24),
-	C32 = FieldTypeFlag::CPX | (sizeof(std::complex<float>) << 16) | (alignof(std::complex<float>) << 24),
-	C64 = FieldTypeFlag::CPX | (sizeof(std::complex<double>) << 16) | (alignof(std::complex<double>) << 24),
+	//C32 = FieldTypeFlag::CPX | (sizeof(std::complex<float>) << 16) | (alignof(std::complex<float>) << 24),
+	//C64 = FieldTypeFlag::CPX | (sizeof(std::complex<double>) << 16) | (alignof(std::complex<double>) << 24),
 	Str = FieldTypeFlag::STR | (sizeof(std::string) << 16) | (alignof(std::string) << 24),
+	Bps = FieldTypeFlag::BPS | (sizeof(Bpos) << 16) | (alignof(Bpos) << 24),
 	Jbp = FieldTypeFlag::JBP | (sizeof(JBpos) << 16) | (alignof(JBpos) << 24),
 };
 
@@ -64,9 +66,8 @@ enum class FieldType : uint32_t
 	CODE(I64, i64, int64_t __VA_OPT__(,) __VA_ARGS__) \
 	CODE(F32, f32, float __VA_OPT__(,) __VA_ARGS__) \
 	CODE(F64, f64, double __VA_OPT__(,) __VA_ARGS__) \
-	CODE(C32, c32, std::complex<float> __VA_OPT__(,) __VA_ARGS__) \
-	CODE(C64, c64, std::complex<double> __VA_OPT__(,) __VA_ARGS__) \
 	CODE(Str, str, std::string __VA_OPT__(,) __VA_ARGS__) \
+	CODE(Bps, bps, Bpos __VA_OPT__(,) __VA_ARGS__) \
 	CODE(Jbp, jbp, JBpos __VA_OPT__(,) __VA_ARGS__)
 #define ADAPT_FOR_EACH_TYPE_PROD(CODE, ...)\
 	ADAPT_FOR_EACH_TYPE(CODE, I08, i08, int8_t __VA_OPT__(,) __VA_ARGS__) \
@@ -75,9 +76,8 @@ enum class FieldType : uint32_t
 	ADAPT_FOR_EACH_TYPE(CODE, I64, i64, int64_t __VA_OPT__(,) __VA_ARGS__) \
 	ADAPT_FOR_EACH_TYPE(CODE, F32, f32, float __VA_OPT__(,) __VA_ARGS__) \
 	ADAPT_FOR_EACH_TYPE(CODE, F64, f64, double __VA_OPT__(,) __VA_ARGS__) \
-	ADAPT_FOR_EACH_TYPE(CODE, C32, c32, std::complex<float> __VA_OPT__(,) __VA_ARGS__) \
-	ADAPT_FOR_EACH_TYPE(CODE, C64, c64, std::complex<double> __VA_OPT__(,) __VA_ARGS__) \
 	ADAPT_FOR_EACH_TYPE(CODE, Str, str, std::string __VA_OPT__(,) __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, Bps, bps, Bpos __VA_OPT__(,) __VA_ARGS__) \
 	ADAPT_FOR_EACH_TYPE(CODE, Jbp, jbp, JBpos __VA_OPT__(,) __VA_ARGS__)
 
 #define ADAPT_FOR_EACH_INT_TYPE(CODE, ...) \
@@ -102,9 +102,12 @@ enum class FieldType : uint32_t
 	ADAPT_EXPAND_VARS(CODE, (I32, i32, int32_t)) \
 	ADAPT_EXPAND_VARS(CODE, (I64, i64, int64_t)) \
 	ADAPT_EXPAND_VARS(CODE, (F32, f32, float)) \
-	ADAPT_EXPAND_VARS(CODE, (F64, f64, double)) \
-	ADAPT_EXPAND_VARS(CODE, (C32, c32, std::complex<float>)) \
-	ADAPT_EXPAND_VARS(CODE, (C64, c64, std::complex<double>))
+	ADAPT_EXPAND_VARS(CODE, (F64, f64, double))
+
+#define ADAPT_FOR_EACH_NONTRIVIAL_TYPE(CODE) \
+	ADAPT_EXPAND_VARS(CODE, (Str, str, std::string)) \
+	ADAPT_EXPAND_VARS(CODE, (Bps, bps, Bpos)) \
+	ADAPT_EXPAND_VARS(CODE, (Jbp, jbp, JBpos))
 
 #else
 
@@ -117,9 +120,8 @@ enum class FieldType : uint32_t
 	ADAPT_EXPAND_VARS(CODE, (I64, i64, int64_t, __VA_ARGS__)) \
 	ADAPT_EXPAND_VARS(CODE, (F32, f32, float, __VA_ARGS__)) \
 	ADAPT_EXPAND_VARS(CODE, (F64, f64, double, __VA_ARGS__)) \
-	ADAPT_EXPAND_VARS(CODE, (C32, c32, std::complex<float>, __VA_ARGS__)) \
-	ADAPT_EXPAND_VARS(CODE, (C64, c64, std::complex<double>, __VA_ARGS__)) \
 	ADAPT_EXPAND_VARS(CODE, (Str, str, std::string, __VA_ARGS__)) \
+	ADAPT_EXPAND_VARS(CODE, (Bps, bps, Bpos, __VA_ARGS__)) \
 	ADAPT_EXPAND_VARS(CODE, (Jbp, jbp, JBpos, __VA_ARGS__))
 #define ADAPT_FOR_EACH_TYPE_PROD(CODE, ...)\
 	ADAPT_FOR_EACH_TYPE(CODE, I08, i08, int8_t, __VA_ARGS__) \
@@ -128,9 +130,8 @@ enum class FieldType : uint32_t
 	ADAPT_FOR_EACH_TYPE(CODE, I64, i64, int64_t, __VA_ARGS__) \
 	ADAPT_FOR_EACH_TYPE(CODE, F32, f32, float, __VA_ARGS__) \
 	ADAPT_FOR_EACH_TYPE(CODE, F64, f64, double, __VA_ARGS__) \
-	ADAPT_FOR_EACH_TYPE(CODE, C32, c32, std::complex<float>, __VA_ARGS__) \
-	ADAPT_FOR_EACH_TYPE(CODE, C64, c64, std::complex<double>, __VA_ARGS__) \
 	ADAPT_FOR_EACH_TYPE(CODE, Str, str, std::string, __VA_ARGS__) \
+	ADAPT_FOR_EACH_TYPE(CODE, Bps, bps, Bpos, __VA_ARGS__) \
 	ADAPT_FOR_EACH_TYPE(CODE, Jbp, jbp, JBpos, __VA_ARGS__)
 
 #define ADAPT_FOR_EACH_INT_TYPE(CODE, ...) \
@@ -155,9 +156,12 @@ enum class FieldType : uint32_t
 	ADAPT_EXPAND_VARS(CODE, (I32, i32, int32_t)) \
 	ADAPT_EXPAND_VARS(CODE, (I64, i64, int64_t)) \
 	ADAPT_EXPAND_VARS(CODE, (F32, f32, float)) \
-	ADAPT_EXPAND_VARS(CODE, (F64, f64, double)) \
-	ADAPT_EXPAND_VARS(CODE, (C32, c32, std::complex<float>)) \
-	ADAPT_EXPAND_VARS(CODE, (C64, c64, std::complex<double>))
+	ADAPT_EXPAND_VARS(CODE, (F64, f64, double))
+
+#define ADAPT_FOR_EACH_NONTRIVIAL_TYPE(CODE) \
+	ADAPT_EXPAND_VARS(CODE, (Str, str, std::string)) \
+	ADAPT_EXPAND_VARS(CODE, (Bps, bps, Bpos)) \
+	ADAPT_EXPAND_VARS(CODE, (Jbp, jbp, JBpos))
 
 #endif
 
@@ -178,7 +182,7 @@ enum class FieldType : uint32_t
 // Level1  Promo: 算術変換はせず整数昇格のみ行う。シフト演算子が該当。
 // Level2  Integ: 整数の算術変換を行う。剰余、ビット演算子が該当。
 // Level3  Usual: 整数と浮動小数点の算術変換を行う。比較演算子が該当。
-// Level4  Compl: 整数と浮動小数点と複素数の算術変換を行う。加減乗除が該当。
+// Level4  Compl: 整数と浮動小数点と複素数の算術変換を行う。加減乗除が該当。->複素数型の削除に伴い無効化。
 // Level指定なしはLevel0に同じ。
 // これらのレベルに応じて、MakeRttiFuncNodeでは引数に与えられたnode_or_placeholderの型変換を暗黙的に行う。
 
@@ -193,7 +197,7 @@ enum class ArithmeticConvLevel : int32_t
 	Promo = 1,
 	Integ = 2,
 	Usual = 3,
-	Compl = 4
+	//Compl = 4
 };
 
 ADAPT_EXPORT

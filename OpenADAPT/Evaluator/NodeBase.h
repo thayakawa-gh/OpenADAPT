@@ -429,7 +429,31 @@ struct RttiFuncNode_base
 	virtual void Init(const Container& s) = 0;
 	virtual void Init() = 0;
 
+#define CODE_DEF_TRIV(Tag, Name, Type)\
+	virtual DFieldInfo::TagTypeToValueType<FieldType::Tag>\
+		Evaluate(const Traverser&, Number<FieldType::Tag>) const { throw Forbidden("Evaluate for " #Tag " is not overwritten."); }\
+	virtual DFieldInfo::TagTypeToValueType<FieldType::Tag>\
+		Evaluate(const ConstTraverser&, Number<FieldType::Tag>) const { throw Forbidden("Evaluate for " #Tag " is not overwritten."); }\
+	virtual DFieldInfo::TagTypeToValueType<FieldType::Tag>\
+		Evaluate(const Container&, Number<FieldType::Tag>) const { throw Forbidden("Evaluate for " #Tag " is not overwritten."); }\
+	virtual DFieldInfo::TagTypeToValueType<FieldType::Tag>\
+		Evaluate(const Container&, const Bpos&, Number<FieldType::Tag>) const { throw Forbidden("Evaluate for " #Tag " is not overwritten."); }
+	ADAPT_FOR_EACH_TRIVIAL_TYPE(CODE_DEF_TRIV)
+#undef CODE_DEF_TRIV
 
+#define CODE_DEF_UNTRIV(Tag, Name, Type)\
+	virtual const DFieldInfo::TagTypeToValueType<FieldType::Tag>&\
+		Evaluate(const Traverser&, Number<FieldType::Tag>) const { throw Forbidden("Evaluate for " #Tag " is not overwritten."); }\
+	virtual const DFieldInfo::TagTypeToValueType<FieldType::Tag>&\
+		Evaluate(const ConstTraverser&, Number<FieldType::Tag>) const { throw Forbidden("Evaluate for " #Tag " is not overwritten."); }\
+	virtual const DFieldInfo::TagTypeToValueType<FieldType::Tag>&\
+		Evaluate(const Container&, Number<FieldType::Tag>) const { throw Forbidden("Evaluate for " #Tag " is not overwritten."); }\
+	virtual const DFieldInfo::TagTypeToValueType<FieldType::Tag>&\
+		Evaluate(const Container&, const Bpos&, Number<FieldType::Tag>) const { throw Forbidden("Evaluate for " #Tag " is not overwritten."); }
+	ADAPT_FOR_EACH_NONTRIVIAL_TYPE(CODE_DEF_UNTRIV)
+#undef CODE_DEF_UNTRIV
+
+	/*
 	virtual DFieldInfo::TagTypeToValueType<FieldType::I08>
 		Evaluate(const Traverser&, Number<FieldType::I08>) const { throw Forbidden("Evaluate for I08 is not overwritten."); }
 	virtual DFieldInfo::TagTypeToValueType<FieldType::I16>
@@ -513,7 +537,7 @@ struct RttiFuncNode_base
 		Evaluate(const Container&, const Bpos&, Number<FieldType::Str>) const { throw Forbidden("Evaluate for Str is not overwritten."); }
 	virtual const DFieldInfo::TagTypeToValueType<FieldType::Jbp>&
 		Evaluate(const Container&, const Bpos&, Number<FieldType::Jbp>) const { throw Forbidden("Evaluate for Jbp is not overwritten."); }
-
+	*/
 	virtual FieldType GetType() const = 0;
 };
 

@@ -4,6 +4,7 @@
 #include <string_view>
 #include <vector>
 #include <numbers>
+#include <algorithm>
 #include <OpenADAPT/Utility/Macros.h>
 #include <OpenADAPT/Utility/KeywordArgs.h>
 #include <OpenADAPT/Utility/Ranges.h>

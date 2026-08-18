@@ -173,14 +173,10 @@ constexpr auto GetOptions()
 	return GetOptions_impl<TypeList<Args...>>::apply();
 }
 
-template <class F>
-inline void Flush_(FILE* fp) { fflush(fp); }
-template <>
-inline void Flush_<std::false_type>(FILE*) {}
-template <class F>
-inline void Flush_(std::ostream& ost) { ost << std::flush; }
-template <>
-inline void Flush_<std::false_type>(std::ostream&) {}
+inline void Flush_(FILE* fp, std::true_type) { fflush(fp); }
+inline void Flush_(FILE*, std::false_type) {}
+inline void Flush_(std::ostream& ost, std::true_type) { ost << std::flush; }
+inline void Flush_(std::ostream&, std::false_type) {}
 
 template <class Del, class End, class Quo>
 constexpr auto MakeFormatStr_rec()
@@ -218,7 +214,7 @@ struct PrintToStream
 	void operator()(std::ostream& ost, Del, End, Fls, Quo) const
 	{
 		ost << CatArray(End::Get(), std::array<char, 1>{ '\0' }).data();
-		Flush_<Fls>(ost);
+		Flush_(ost, Fls{});
 	}
 	template <class Del, class End, class Fls, class Quo, class Head>
 	void operator()(std::ostream& ost, Del, End, Fls, Quo, Head&& head) const
@@ -227,7 +223,7 @@ struct PrintToStream
 			ost << '\"' << std::forward<Head>(head) << '\"' << CatArray(End::Get(), std::array<char, 1>{ '\0' }).data();
 		else
 			ost << std::forward<Head>(head) << CatArray(End::Get(), std::array<char, 1>{ '\0' }).data();
-		Flush_<Fls>(ost);
+		Flush_(ost, Fls{});
 	}
 	template <class Del, class End, class Fls, class Quo, class Head, class ...Args, std::enable_if_t<sizeof...(Args) != 0, std::nullptr_t> = nullptr>
 	void operator()(std::ostream& ost, Del d, End e, Fls f, Quo q, Head&& head, Args&& ...args) const
@@ -274,7 +270,7 @@ void Print(FILE* fp, Args&& ...args)
 	constexpr size_t n = std::get<4>(t).value;
 	constexpr auto fmt = print::detail::MakeFormatStr<decltype(d), decltype(e), decltype(q), GetFormerNTypes_t<n, std::decay_t<Args>...>>::apply();
 	std::apply(&fprintf, std::tuple_cat(std::make_tuple(fp), std::make_tuple(fmt.data()), GetFormerNArgs<n>(print::detail::ConvStringToCharPtr(std::forward<Args>(args))...)));
-	print::detail::Flush_<decltype(f)>(fp);
+	print::detail::Flush_(fp, f);
 }
 ADAPT_EXPORT
 template <class ...Args>
@@ -296,7 +292,7 @@ void Print(std::ostream& ost, Args&& ...args)
 	constexpr auto t = print::detail::GetOptions<std::decay_t<Args>...>();
 	constexpr auto d = std::get<0>(t);
 	constexpr auto e = std::get<1>(t);
-	constexpr auto f = std::get<2>(t).value;
+	constexpr auto f = std::get<2>(t);
 	constexpr auto q = std::get<3>(t);
 	constexpr size_t n = std::get<4>(t).value;
 	std::apply(print::detail::PrintToStream(), std::tuple_cat(std::forward_as_tuple(ost, d, e, f, q), GetFormerNArgs<n>(std::forward<Args>(args)...)));

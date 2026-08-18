@@ -89,7 +89,7 @@ auto operator-(Arg&& a)
 
 struct Plus
 {
-	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Compl;
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Usual;
 	auto operator()(const auto& a, const auto& b) const -> decltype(a + b) { return a + b; }
 	auto operator()(auto& buf, const auto& a, const auto& b) const { buf = a; buf += b; }
 };
@@ -102,7 +102,7 @@ auto operator+(Arg1&& a, Arg2&& b)
 }
 struct Minus
 {
-	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Compl;
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Usual;
 	auto operator()(const auto& a, const auto& b) const -> decltype(a - b) { return a - b; }
 	auto operator()(auto& buf, const auto& a, const auto& b) const { buf = a; buf -= b; }
 };
@@ -115,7 +115,7 @@ auto operator-(Arg1&& a, Arg2&& b)
 }
 struct Multiply
 {
-	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Compl;
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Usual;
 	auto operator()(const auto& a, const auto& b) const -> decltype(a * b) { return a * b; }
 	auto operator()(auto& buf, const auto& a, const auto& b) const { buf = a; buf *= b; }
 };
@@ -128,7 +128,7 @@ auto operator*(Arg1&& a, Arg2&& b)
 }
 struct Divide
 {
-	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Compl;
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Usual;
 	auto operator()(const auto& a, const auto& b) const -> decltype(a / b) { return a / b; }
 	auto operator()(auto& buf, const auto& a, const auto& b) const { buf = a; buf /= b; }
 };
@@ -155,7 +155,7 @@ auto operator%(Arg1&& a, Arg2&& b)
 
 struct Power
 {
-	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Compl;
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Usual;
 	auto operator()(const auto& a, const auto& b) const -> decltype(std::pow(a, b)) { return std::pow(a, b); }
 };
 ADAPT_EXPORT
@@ -167,7 +167,7 @@ auto pow(Arg1&& a, Arg2&& b)
 }
 struct Equal
 {
-	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Compl;
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Usual;
 	auto operator()(const auto& a, const auto& b) const -> decltype(a == b) { return a == b; }
 };
 ADAPT_EXPORT
@@ -179,7 +179,7 @@ auto operator==(Arg1&& a, Arg2&& b)
 }
 struct NotEqual
 {
-	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Compl;
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Usual;
 	auto operator()(const auto& a, const auto& b) const -> decltype(a != b) { return a != b; }
 };
 ADAPT_EXPORT
@@ -609,7 +609,7 @@ auto cbrt(Arg&& a)
 }
 struct Log
 {
-	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Compl;
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::Usual;
 	auto operator()(const auto& a) const -> decltype(std::log(a)) { return std::log(a); }
 	auto operator()(const auto& a, const auto& b) const -> decltype(std::log(a) / std::log(b)) { return std::log(a) / std::log(b); }
 };
@@ -927,10 +927,6 @@ ADAPT_EXPORT
 template <node_or_placeholder NP> auto cast_f32(NP&& np) { return cast<FieldType::F32>(std::forward<NP>(np)); }
 ADAPT_EXPORT
 template <node_or_placeholder NP> auto cast_f64(NP&& np) { return cast<FieldType::F64>(std::forward<NP>(np)); }
-ADAPT_EXPORT
-template <node_or_placeholder NP> auto cast_c32(NP&& np) { return cast<FieldType::C32>(std::forward<NP>(np)); }
-ADAPT_EXPORT
-template <node_or_placeholder NP> auto cast_c64(NP&& np) { return cast<FieldType::C64>(std::forward<NP>(np)); }
 
 struct CastBool
 {

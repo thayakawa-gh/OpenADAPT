@@ -181,7 +181,7 @@ void QuickstartKeyJoin()
 		// But the following throws an exception because jt tries to access t1 and cannot find Dallas County.
 		std::cout << jt.GetBranch(bpos_to_dallas)[jt1_county].str();
 	}
-	catch (adapt::JointError)
+	catch (const adapt::JointError&)
 	{
 		std::cout << "cannot access Dallas " << std::endl;
 	}

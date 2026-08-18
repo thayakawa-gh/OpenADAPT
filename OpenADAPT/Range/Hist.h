@@ -123,8 +123,8 @@ class ToHistogram
 					std::forward_as_tuple(std::get<1>(std::get<AxIs>(axes).axis).Evaluate(t)...),
 					std::forward_as_tuple(std::get<1>(std::get<VarIs>(vars)).Evaluate(t)...));
 			}
-			catch (JointError) {}
-			catch (NoElements) {}
+			catch (const JointError&) {}
+			catch (const NoElements&) {}
 		}
 		else
 		{
@@ -166,16 +166,16 @@ class ToHistogram
 				back = binref.Back();
 			}
 			// これらの例外処理の時点ではAppendが不成立なので、それらをPopする必要はない。
-			catch (JointError) { return; }
-			catch (NoElements) { return; }
+			catch (const JointError&) { return; }
+			catch (const NoElements&) { return; }
 			try
 			{
 				(set_var(phs[VarIs + dim], std::get<1>(std::get<VarIs>(vars))), ...);
 			}
 			// こちらでは上のAppendが成立してしまっており余計な要素が追加されているので、
 			// 例外が飛んだ場合はそれを削除しておく必要がある。
-			catch (JointError) { binref.Pop(); }
-			catch (NoElements) { binref.Pop(); }
+			catch (const JointError&) { binref.Pop(); }
+			catch (const NoElements&) { binref.Pop(); }
 		}
 	}
 

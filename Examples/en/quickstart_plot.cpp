@@ -865,7 +865,9 @@ void QuickstartPlot()
 	// * Windows: "C:/Program Files/gnuplot/bin/gnuplot.exe"
 	// * Linux/macOS: "gnuplot" (assuming gnuplot is in the system PATH)
 	// You can also set the path by the "ADAPT_GNUPLOT_PATH" environment variable.
-	adapt::SetGnuplotPath("C:/Progra~1/gnuplot/bin/gnuplot.exe");
+#ifdef _WIN32
+	 adapt::SetGnuplotPath("C:/Progra~1/gnuplot/bin/gnuplot.exe");
+#endif
 
 	// Set the font name. The default font is "Arial" on all platforms.
 	// You can also set the font by the "ADAPT_PLOT_FONT" environment variable.

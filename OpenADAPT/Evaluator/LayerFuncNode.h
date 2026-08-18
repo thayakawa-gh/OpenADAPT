@@ -714,7 +714,7 @@ struct RttiLayerFuncNode_impl<Func_, Container_, Node_, Cond_, Type, std::index_
 	{\
 		if constexpr (Type == TTYPE)\
 			return Base::Evaluate_impl(t, nullptr);\
-		else if constexpr (DFieldInfo::IsCpxAri(TTYPE) && DFieldInfo::IsConvertibleTo<Type, TTYPE>())\
+		else if constexpr (DFieldInfo::IsArithmetic(TTYPE) && DFieldInfo::IsConvertibleTo<Type, TTYPE>())\
 			return static_cast<RetTypeRef<TTYPE>>(Base::Evaluate_impl(t, nullptr));\
 		else\
 			throw InvalidArg("The return type of the function is not compatible with the requested type.");\
@@ -723,7 +723,7 @@ struct RttiLayerFuncNode_impl<Func_, Container_, Node_, Cond_, Type, std::index_
 	{\
 		if constexpr (Type == TTYPE)\
 			return Base::Evaluate_impl(t, nullptr);\
-		else if constexpr (DFieldInfo::IsCpxAri(TTYPE) && DFieldInfo::IsConvertibleTo<Type, TTYPE>())\
+		else if constexpr (DFieldInfo::IsArithmetic(TTYPE) && DFieldInfo::IsConvertibleTo<Type, TTYPE>())\
 			return static_cast<RetTypeRef<TTYPE>>(Base::Evaluate_impl(t, nullptr));\
 		else\
 			throw InvalidArg("The return type of the function is not compatible with the requested type.");\
@@ -732,7 +732,7 @@ struct RttiLayerFuncNode_impl<Func_, Container_, Node_, Cond_, Type, std::index_
 	{\
 		if constexpr (Type == TTYPE)\
 			return Base::Evaluate_impl(s, nullptr);\
-		else if constexpr (DFieldInfo::IsCpxAri(TTYPE) && DFieldInfo::IsConvertibleTo<Type, TTYPE>())\
+		else if constexpr (DFieldInfo::IsArithmetic(TTYPE) && DFieldInfo::IsConvertibleTo<Type, TTYPE>())\
 			return static_cast<RetTypeRef<TTYPE>>(Base::Evaluate_impl(s, nullptr));\
 		else\
 			throw InvalidArg("The return type of the function is not compatible with the requested type.");\
@@ -741,7 +741,7 @@ struct RttiLayerFuncNode_impl<Func_, Container_, Node_, Cond_, Type, std::index_
 	{\
 		if constexpr (Type == TTYPE)\
 			return Base::Evaluate_impl(s, bpos);\
-		else if constexpr (DFieldInfo::IsCpxAri(TTYPE) && DFieldInfo::IsConvertibleTo<Type, TTYPE>())\
+		else if constexpr (DFieldInfo::IsArithmetic(TTYPE) && DFieldInfo::IsConvertibleTo<Type, TTYPE>())\
 			return static_cast<RetTypeRef<TTYPE>>(Base::Evaluate_impl(s, bpos));\
 		else\
 			throw InvalidArg("The return type of the function is not compatible with the requested type.");\

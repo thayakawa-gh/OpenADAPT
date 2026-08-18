@@ -150,8 +150,8 @@ constexpr bool KeywordExists(KeywordName, std::tuple<Args...>)
 	return detail::KeywordExists_impl<KeywordName, std::remove_cvref_t<Args>...>();
 }
 ADAPT_EXPORT
-template <keyword_name KeywordName, keyword_arg ...Args>
-constexpr bool KeywordExists()
+template <keyword_arg ...Args, keyword_name KeywordName>
+constexpr bool KeywordExists(KeywordName)
 {
 	return detail::KeywordExists_impl<KeywordName, std::remove_cvref_t<Args>...>();
 }

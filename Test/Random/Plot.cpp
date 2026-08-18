@@ -43,7 +43,7 @@ TEST(Random, Plot_Fitting)
 		g.ShowCommands(true);
 		g.SetXRange(-9, 11);
 		std::vector<double> params{ 0., 1., 1. };
-		auto gauss_fit = [](double x, double y, std::span<const double> params)
+		auto gauss_fit = [](double x, double /*y*/, std::span<const double> params)
 		{
 			double mean = params[0];
 			double stddev = params[1];

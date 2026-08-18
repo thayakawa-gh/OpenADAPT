@@ -504,7 +504,9 @@ public:
 	{
 		if (m_pipe != nullptr && m_pipe != MultiPlot::GetPipe())
 		{
-			Command("exit");
+			//CloseGnuplot内部で"exit"を送信してからpcloseするため、ここで送信すると二重になる。
+			//二重送信すると、1回目のexitで既にgnuplotが終了した後に2回目のexitを書き込むことになり、
+			//書き込みタイミング次第ではSIGPIPEでプロセスごと落ちることがある（特にGCC/Linux環境）。
 			CloseGnuplot(m_pipe);
 		}
 		m_pipe = nullptr;

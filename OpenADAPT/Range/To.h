@@ -32,7 +32,7 @@ class ToContainer
 			auto erange = std::forward<Range_>(range) | Evaluate(std::forward<NPs_>(nps)...);
 			for (auto&& t : erange) PushBack<0>(t, res);
 		}
-		catch (NoElements) {}
+		catch (const NoElements&) {}
 		return res;
 	}
 	template <traversal_range Range_, stat_type_node_or_placeholder ...NPs_>
@@ -45,7 +45,7 @@ class ToContainer
 			auto erange = std::forward<Range_>(range) | Evaluate(std::forward<NPs_>(nps)...);
 			std::ranges::copy(erange, std::back_inserter(res));
 		}
-		catch (NoElements) {}
+		catch (const NoElements&) {}
 		return res;
 	}
 
@@ -58,7 +58,7 @@ class ToContainer
 			auto erange = std::forward<Range_>(range) | Evaluate(std::forward<NP>(np));
 			std::ranges::copy(erange, std::back_inserter(res));
 		}
-		catch (NoElements) {}
+		catch (const NoElements&) {}
 		return res;
 	}
 

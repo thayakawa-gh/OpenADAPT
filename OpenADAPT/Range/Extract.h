@@ -150,13 +150,13 @@ class CttiExtractor
 				if constexpr (Layer < MaxLayer)
 					Exec_rec(b, res, t, layer + 1_layer, maxlayer, elmref, bufs, nps);
 			}
-			catch (JointError)
+			catch (const JointError&)
 			{
 				//Jointに失敗した場合などに投げられることがある。
 				//既にPush済みなので、
 				pushflag = false;
 			}
-			catch (NoElements)
+			catch (const NoElements&)
 			{
 				pushflag = false;
 			}
@@ -251,13 +251,13 @@ class CttiExtractor
 						Exec_rec(b, res, t, 1_layer, maxlayer, elmref, local.bufs, local.nodes);
 					++(*count);
 				}
-				catch (JointError)
+				catch (const JointError&)
 				{
 					//Jointに失敗した場合などに投げられることがある。
 					//既にPush済みなので、
 					pushflag = false;
 				}
-				catch (NoElements)
+				catch (const NoElements&)
 				{
 					pushflag = false;
 				}
@@ -506,13 +506,13 @@ class RttiExtractor
 
 				if (layer < maxlayer) Exec_rec(b, std::false_type{}, res, t, layer + 1_layer, maxlayer, elmref, bufs, nodes);
 			}
-			catch (JointError)
+			catch (const JointError&)
 			{
 				//Jointに失敗した場合などに投げられることがある。
 				//既にPush済みなので、
 				pushflag = false;
 			}
-			catch (NoElements)
+			catch (const NoElements&)
 			{
 				pushflag = false;
 			}
@@ -561,7 +561,7 @@ class RttiExtractor
 			{
 				return std::make_optional(range.begin());
 			}
-			catch (NoElements)
+			catch (const NoElements&)
 			{
 				// rangeが空だった場合。
 				// Filterによって条件を満たすものがなかった場合は例外は投げられずEnd状態となるが、
@@ -609,13 +609,13 @@ class RttiExtractor
 					if (0_layer < maxlayer) Exec_rec(b, std::false_type{}, res, t, 1_layer, maxlayer, elmref, local.bufs, local.nodes);
 					++(*count);
 				}
-				catch (JointError)
+				catch (const JointError&)
 				{
 					//Jointに失敗した場合などに投げられることがある。
 					//既にPush済みなので、
 					pushflag = false;
 				}
-				catch (NoElements)
+				catch (const NoElements&)
 				{
 					pushflag = false;
 				}
@@ -693,7 +693,7 @@ public:
 				{
 					return std::make_optional(range.begin());
 				}
-				catch (NoElements)
+				catch (const NoElements&)
 				{
 					// rangeが空だった場合。
 					// Filterによって条件を満たすものがなかった場合は例外は投げられずEnd状態となるが、

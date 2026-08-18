@@ -607,9 +607,9 @@ public:
 			m_field_infos_by_layer = std::move(other.m_field_infos_by_layer);
 			m_max_layer = other.m_max_layer;
 			other.m_max_layer = -1_layer;
-			m_element_sizes.assign(1, 0);
-			m_totally_trivial.assign(1, true);
-			m_field_infos_by_layer.resize(1);
+			other.m_element_sizes.assign(1, 0);
+			other.m_totally_trivial.assign(1, true);
+			other.m_field_infos_by_layer.resize(1);
 		}
 		return *this;
 	}

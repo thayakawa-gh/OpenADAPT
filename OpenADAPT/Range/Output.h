@@ -276,7 +276,10 @@ void WriteAsText_print(std::ostream& out, const Trav& trav, NP&& np, [[maybe_unu
 	++name_len;//スペース一個分追加。
 	std::ios_base::fmtflags f = out.flags();
 	using enum FieldType;
-	switch (np.GetType())
+#define CODE(TYPE) WriteAsText_print(out, np(trav).template as<TYPE>());
+	ADAPT_SWITCH_FIELD_TYPE(np.GetType(), CODE, out << "      Unknown";)
+#undef CODE
+	/*switch(np.GetType())
 	{
 	case I08:
 		WriteAsText_print(out, np(trav).i08());
@@ -310,7 +313,7 @@ void WriteAsText_print(std::ostream& out, const Trav& trav, NP&& np, [[maybe_unu
 		break;
 	case Emp:
 		out << "      Unknown";
-	}
+	}*/
 	out.flags(f);
 }
 

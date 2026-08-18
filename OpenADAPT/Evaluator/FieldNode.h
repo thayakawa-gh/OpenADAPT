@@ -940,12 +940,9 @@ struct RttiIndexedFieldNode_impl<Container, Placeholder, Type, TypeList<Nodes...
 	{
 		if constexpr (Type == TType)
 			return t.GetField(m_placeholder, (BindexType)this->template GetArg<Indices>(t)...).template as_unsafe<Type>();
-		else if constexpr (DFieldInfo::IsCpxAri(TType) && DFieldInfo::IsConvertibleTo<Type, TType>())
+		else if constexpr (DFieldInfo::IsArithmetic(TType) && DFieldInfo::IsConvertibleTo<Type, TType>())
 		{
-			if constexpr (DFieldInfo::IsCpx(TType) && DFieldInfo::IsArithmetic(Type))
-				return static_cast<RetType<TType>>((typename RetType<TType>::value_type)Evaluate_impl(t, Number<Type>{}));
-			else
-				return static_cast<RetType<TType>>(Evaluate_impl(t, Number<Type>{}));
+			return static_cast<RetType<TType>>(Evaluate_impl(t, Number<Type>{}));
 		}
 		else
 			throw MismatchType("");
@@ -955,12 +952,9 @@ struct RttiIndexedFieldNode_impl<Container, Placeholder, Type, TypeList<Nodes...
 	{
 		if constexpr (Type == TType)
 			return s.GetBranch((BindexType)this->template GetArg<Indices>(s)...).GetField(m_placeholder).template as_unsafe<Type>();
-		else if constexpr (DFieldInfo::IsCpxAri(TType) && DFieldInfo::IsConvertibleTo<Type, TType>())
+		else if constexpr (DFieldInfo::IsArithmetic(TType) && DFieldInfo::IsConvertibleTo<Type, TType>())
 		{
-			if constexpr (DFieldInfo::IsCpx(TType) && DFieldInfo::IsArithmetic(Type))
-				return static_cast<RetType<TType>>((typename RetType<TType>::value_type)Evaluate_impl(s, Number<Type>{}));
-			else
-				return static_cast<RetType<TType>>(Evaluate_impl(s, Number<Type>{}));
+			return static_cast<RetType<TType>>(Evaluate_impl(s, Number<Type>{}));
 		}
 		else
 			throw MismatchType("");
@@ -983,12 +977,9 @@ struct RttiIndexedFieldNode_impl<Container, Placeholder, Type, TypeList<Nodes...
 				return s.GetField(m_placeholder, bpos, this->template GetArg<Indices>(s, bpos)...).template as_unsafe<Type>();
 			}
 		}
-		else if constexpr (DFieldInfo::IsCpxAri(TType) && DFieldInfo::IsConvertibleTo<Type, TType>())
+		else if constexpr (DFieldInfo::IsArithmetic(TType) && DFieldInfo::IsConvertibleTo<Type, TType>())
 		{
-			if constexpr (DFieldInfo::IsCpx(TType) && DFieldInfo::IsArithmetic(Type))
-				return static_cast<RetType<TType>>((typename RetType<TType>::value_type)Evaluate_impl(s, bpos, Number<Type>{}));
-			else
-				return static_cast<RetType<TType>>(Evaluate_impl(s, bpos, Number<Type>{}));
+			return static_cast<RetType<TType>>(Evaluate_impl(s, bpos, Number<Type>{}));
 		}
 		else throw MismatchType("");
 	}

@@ -518,7 +518,7 @@ struct LabelParam : public PlotParamBase
 template <keyword_arg ...Options>
 auto MakeLabelParam(Options&& ...ops)
 {
-	static constexpr bool has_label_format = KeywordExists(plot::labelformat, ops...);
+	static constexpr bool has_label_format = KeywordExists<std::remove_cvref_t<Options>...>(plot::labelformat);
 	auto fmt_str = GetKeywordArg(plot::labelformat, std::string_view{}, ops...);
 	auto fmt = [fmt_str]<class View>(View&& v)
 	{
@@ -530,7 +530,11 @@ auto MakeLabelParam(Options&& ...ops)
 			});
 		}
 		else
+		{
+			// fmt_strが使われていないので、未使用警告を出さないようにする。
+			static_cast<void>(fmt_str);
 			return std::forward<View>(v);
+		}
 	};
 	auto x = AllView(GetKeywordArg(plot::x, std::ranges::empty_view<double>{}, ops...));
 	auto y = AllView(GetKeywordArg(plot::y, std::ranges::empty_view<double>{}, ops...));

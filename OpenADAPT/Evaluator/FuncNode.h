@@ -324,7 +324,6 @@ struct RttiFuncNode_impl<Func, Container, TypeList<Nodes...>, Type, std::index_s
 	: public RttiFuncNode_body<Container, TypeList<Nodes...>, std::index_sequence<Indices...>,
 							   TypeList<typename Func::template ArgType<Indices>...>>
 {
-	static_assert(DFieldInfo::IsInt(Type) || DFieldInfo::IsFlt(Type) || DFieldInfo::IsCpx(Type));
 	using Base = RttiFuncNode_body<Container, TypeList<Nodes...>, std::index_sequence<Indices...>,
 								   TypeList<typename Func::template ArgType<Indices>...>>;
 	using Traverser = Container::Traverser;
@@ -411,7 +410,7 @@ struct RttiFuncNode_impl<Func, Container, TypeList<Nodes...>, Type, std::index_s
 							   TypeList<typename Func::template ArgType<Indices>...>>
 {
 	//m_bufをメンバとして保つ必要があるため、trivialの方と統合できない。
-	static_assert(DFieldInfo::IsStr(Type) || DFieldInfo::IsJbp(Type));
+	static_assert(DFieldInfo::IsStr(Type) || DFieldInfo::IsBps(Type) || DFieldInfo::IsJbp(Type));
 	using Base = RttiFuncNode_body<Container, TypeList<Nodes...>,
 								   std::index_sequence<Indices...>, TypeList<typename Func::template ArgType<Indices>...>>;
 	using Traverser = Container::Traverser;
@@ -816,7 +815,7 @@ auto UsualArithmeticConversion(Func&& f, Node1&& node1, Node2&& node2)
 		return IntegralArithmeticConversion<Container>(std::forward<Func>(f), std::forward<Node1>(node1), std::forward<Node2>(node2));
 	}
 }
-template <class Container, class Func, any_node Node1, any_node Node2>
+/*template <class Container, class Func, any_node Node1, any_node Node2>
 auto ComplexArithmeticConversion(Func&& f, Node1&& node1, Node2&& node2)
 {
 	using enum FieldType;
@@ -865,7 +864,7 @@ auto ComplexArithmeticConversion(Func&& f, Node1&& node1, Node2&& node2)
 		//両方とも非複素数型の場合は通常の算術変換を呼び出せば良い。
 		return UsualArithmeticConversion<Container>(std::forward<Func>(f), std::forward<Node1>(node1), std::forward<Node2>(node2));
 	}
-}
+}*/
 template <class Container, class Func, any_node Node1, any_node Node2>
 	requires (std::decay_t<Func>::Level == ArithmeticConvLevel::Bool)
 auto MakeRttiFuncNode(Func&& f, Node1&& node1, Node2&& node2)
@@ -1022,7 +1021,7 @@ auto MakeRttiFuncNode(Func&& f, Node1&& node1, Node2&& node2)
 		throw MismatchType("");
 	}
 }
-template <class Container, class Func, any_node Node1, any_node Node2>
+/*template <class Container, class Func, any_node Node1, any_node Node2>
 	requires (std::decay_t<Func>::Level == ArithmeticConvLevel::Compl)
 auto MakeRttiFuncNode(Func&& f, Node1&& node1, Node2&& node2)
 {
@@ -1046,7 +1045,7 @@ auto MakeRttiFuncNode(Func&& f, Node1&& node1, Node2&& node2)
 		#undef CODE
 		throw MismatchType("");
 	}
-}
+}*/
 /*template <class Container, class Func, any_node Node1, any_node Node2, any_node Node3>
 auto MakeRttiFuncNode(Func&& f, Node1&& node1, Node2&& node2, Node3&& node3)
 {

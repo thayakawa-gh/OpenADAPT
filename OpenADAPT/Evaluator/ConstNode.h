@@ -5,6 +5,7 @@
 #include <variant>
 #include <OpenADAPT/Utility/Utility.h>
 #include <OpenADAPT/Common/Concepts.h>
+#include <OpenADAPT/Common/Bpos.h>
 #include <OpenADAPT/Joint/LayerInfo.h>
 #include <OpenADAPT/Evaluator/Placeholder.h>
 
@@ -101,14 +102,10 @@ struct RttiConstNode
 	template <std::floating_point Type>
 		requires (sizeof(Type) >= 8)
 	RttiConstNode(Type v) : m_value((double)v) {}
-	template <class T>
-		requires std::floating_point<T> && (sizeof(T) <= 4)
-	RttiConstNode(std::complex<T> v) : m_value(std::complex<float>(v)) {}
-	template <class T>
-		requires std::floating_point<T> && (sizeof(T) >= 8)
-	RttiConstNode(std::complex<T> v) : m_value(std::complex<double>(v)) {}
 	RttiConstNode(const std::string& v) : m_value(v) {}
 	RttiConstNode(std::string&& v) : m_value(std::move(v)) {}
+	RttiConstNode(const Bpos& v) : m_value(v) {}
+	RttiConstNode(Bpos&& v) : m_value(std::move(v)) {}
 	RttiConstNode(const JBpos& v) : m_value(v) {}
 	RttiConstNode(JBpos&& v) : m_value(std::move(v)) {}
 
@@ -156,17 +153,11 @@ struct RttiConstNode
 	template <FieldType Type>
 	const DFieldInfo::TagTypeToValueType<Type>& GetValue(Number<Type>) const
 	{
-		if constexpr (Type == FieldType::I08) return std::get<0>(m_value);
-		else if constexpr (Type == FieldType::I16) return std::get<1>(m_value);
-		else if constexpr (Type == FieldType::I32) return std::get<2>(m_value);
-		else if constexpr (Type == FieldType::I64) return std::get<3>(m_value);
-		else if constexpr (Type == FieldType::F32) return std::get<4>(m_value);
-		else if constexpr (Type == FieldType::F64) return std::get<5>(m_value);
-		else if constexpr (Type == FieldType::C32) return std::get<6>(m_value);
-		else if constexpr (Type == FieldType::C64) return std::get<7>(m_value);
-		else if constexpr (Type == FieldType::Str) return std::get<8>(m_value);
-		else if constexpr (Type == FieldType::Jbp) return std::get<9>(m_value);
-		else throw MismatchType("");
+#define CODE(Tag, Name, type)\
+		if constexpr (Type == FieldType::Tag) return std::get<(size_t)Index##Tag>(m_value); else 
+		ADAPT_FOR_EACH_TYPE(CODE)
+#undef CODE
+		throw MismatchType("");
 	}
 	template <FieldType Type>
 	const DFieldInfo::TagTypeToValueType<Type>& as() const { return GetValue(Number<Type>()); }
@@ -182,16 +173,10 @@ struct RttiConstNode
 		return GetValue(n);
 	}
 
-	bool IsI08() const { return m_value.index() == 0; }
-	bool IsI16() const { return m_value.index() == 1; }
-	bool IsI32() const { return m_value.index() == 2; }
-	bool IsI64() const { return m_value.index() == 3; }
-	bool IsF32() const { return m_value.index() == 4; }
-	bool IsF64() const { return m_value.index() == 5; }
-	bool IsC32() const { return m_value.index() == 6; }
-	bool IsC64() const { return m_value.index() == 7; }
-	bool IsStr() const { return m_value.index() == 8; }
-	bool IsJbp() const { return m_value.index() == 9; }
+#define CODE(Tag, Name, Type)\
+	bool Is##Tag() const { return m_value.index() == (size_t)Index##Tag; }
+	ADAPT_FOR_EACH_TYPE(CODE)
+#undef CODE
 
 	FieldType GetType() const
 	{
@@ -200,10 +185,18 @@ struct RttiConstNode
 	}
 
 private:
-	std::variant<int8_t, int16_t, int32_t, int64_t,
-		float, double,
-		std::complex<float>, std::complex<double>,
-		std::string, JBpos> m_value;
+
+#define CODE(Tag, Name, Type) Index##Tag,
+	enum ValueIndex : size_t
+	{
+		ADAPT_FOR_EACH_TYPE(CODE)
+	};
+#undef CODE
+
+#define CODE(Tag, Name, Type) Type,
+	using Variant = std::variant<ADAPT_FOR_EACH_TYPE(CODE) std::nullptr_t>;
+#undef CODE
+	Variant m_value;
 };
 
 

@@ -153,7 +153,7 @@ void AccessAndCalc_jtree(const JTree& jt)
 	{
 		jt.GetBranch(bpos4)[resident_name].str();
 	}
-	catch (adapt::JointError)
+	catch (const adapt::JointError&)
 	{
 		cannot_access = true;
 	}
