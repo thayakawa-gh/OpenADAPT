@@ -775,6 +775,32 @@ auto min(Arg1&& a, Arg2&& b)
 	return detail::MakeFunctionNode(Min{}, std::forward<Arg1>(a), std::forward<Arg2>(b));
 }
 
+struct MakeBpos
+{
+	static constexpr ArithmeticConvLevel Level = ArithmeticConvLevel::None;
+	template <std::integral ...Args>
+	Bpos operator()(Args ...args) const { return Bpos{ std::forward<Args>(args)... }; }
+	template <std::integral ...Args>
+	void operator()(Bpos& buf, Args ...args) const
+	{
+		if (buf.GetLayer() != (LayerType)(sizeof...(Args)) - 1_layer) [[unlikely]] { buf = Bpos{ args... }; }
+		else buf.Assign(args...);
+	}
+};
+ADAPT_EXPORT
+template <class ...Args>
+	requires (node_or_placeholder<Args> || ...)
+auto make_bpos(Args&& ...args)
+{
+	return detail::MakeFunctionNode(MakeBpos{}, std::forward<Args>(args)...);
+}
+template <std::integral ...Args>
+Bpos make_bpos(Args&& ...args)
+{
+	return Bpos{ std::forward<Args>(args)... };
+}
+
+
 ADAPT_EXPORT
 template <class A, class B, class C>
 concept if_function_applicable = requires(A a, B b, C c)

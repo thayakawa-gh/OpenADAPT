@@ -100,7 +100,8 @@ public:
 	X(ISNAN,     isnan) \
 	X(ISNORMAL,  isnormal) \
 	X(LEN,       len) \
-	X(TOSTR,     tostr)
+	X(TOSTR,     tostr) \
+	X(MAKEBPOS,  make_bpos)
 
 // 2引数関数
 #define PARSER_REGULAR_FUNCS_2ARG \
@@ -108,12 +109,14 @@ public:
 	X(ATAN2,     atan2) \
 	X(HYPOT,     hypot) \
 	X(MIN,       min) \
-	X(MAX,       max)
+	X(MAX,       max) \
+	X(MAKEBPOS,  make_bpos)
 
 // 3引数関数
 #define PARSER_REGULAR_FUNCS_3ARG \
 	X(IF,        if_) \
-	X(SUBSTR,    substr)
+	X(SUBSTR,    substr) \
+	X(MAKEBPOS,  make_bpos)
 
 
 // 階層関数定義 (Layer functions)
@@ -162,7 +165,8 @@ public:
 
 // コンテナメソッド定義
 #define PARSER_CONTAINER_METHODS_1ARG \
-	X(POS, pos)
+	X(POS, pos) \
+	X(BPOS, bpos)
 #define PARSER_CONTAINER_METHODS_2ARG \
 	X(SIZE, size)
 
@@ -176,7 +180,17 @@ public:
 	X(POS6, pos6, POS, 6)\
 	X(POS7, pos7, POS, 7)\
 	X(POS8, pos8, POS, 8)\
-	X(POS9, pos9, POS, 9)
+	X(POS9, pos9, POS, 9)\
+	X(BPOS0, bpos0, BPOS, 0)\
+	X(BPOS1, bpos1, BPOS, 1)\
+	X(BPOS2, bpos2, BPOS, 2)\
+	X(BPOS3, bpos3, BPOS, 3)\
+	X(BPOS4, bpos4, BPOS, 4)\
+	X(BPOS5, bpos5, BPOS, 5)\
+	X(BPOS6, bpos6, BPOS, 6)\
+	X(BPOS7, bpos7, BPOS, 7)\
+	X(BPOS8, bpos8, BPOS, 8)\
+	X(BPOS9, bpos9, BPOS, 9)
 
 #define PARSER_CONTAINER_METHODS_1ARG_RED\
 	X(SIZE, size, SIZE, ADAPT_TIE_ARGS(Subtract(arg, 1), arg))\

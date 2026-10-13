@@ -87,6 +87,87 @@ private:
 };
 
 ADAPT_EXPORT
+template <class LayerSD, class Container_>
+class CttiBposNode : public detail::CttiMethods<CttiBposNode<LayerSD, Container_>, std::add_const_t>
+{
+public:
+
+	using Container = Container_;
+	using Traverser = Container::Traverser;
+	using ConstTraverser = Container::ConstTraverser;
+
+	using RetType = Bpos;
+
+	static constexpr RankType MaxRank = Container::MaxRank;
+
+	//index nodeのCtti判定はちょっとややこしい。
+	//container_simplexの場合、LayerSDがLayerConstantであればCttiとみなして良い。
+	//ただjoined_containerの場合、DJoinedContainerは原理的にCttiにできないため、
+	//SJoinedContainerであることを要求する必要がある。
+	static constexpr bool IsCtti = (container_simplex<Container> || s_container<Container>) && value_specialization_of<LayerSD, LayerConstant>;
+
+	CttiBposNode() = default;
+	CttiBposNode(const LayerSD& layer, const Container& c) : m_layer(layer), m_container(&c)
+	{
+		m_res.Init(m_layer);
+	}
+
+	CttiBposNode IncreaseDepth() const { return *this; }
+
+	static constexpr JointLayerArray<MaxRank> GetJointLayerArray() requires IsCtti
+	{
+		if constexpr (MaxRank > 0) return Container::GetJointLayers();
+		else return JointLayerArray<MaxRank>{};
+	}
+	JointLayerArray<MaxRank> GetJointLayerArray() const requires (!IsCtti)
+	{
+		if constexpr (MaxRank > 0) return m_container->GetJointLayers();
+		else return JointLayerArray<MaxRank>{};
+	}
+	static constexpr LayerInfo<MaxRank> GetLayerInfo() requires IsCtti { return GetLayerInfo(LayerInfo<MaxRank>(GetJointLayerArray())); }
+	LayerInfo<MaxRank> GetLayerInfo() const requires (!IsCtti) { return GetLayerInfo(LayerInfo<MaxRank>(GetJointLayerArray())); }
+	static constexpr LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli) requires IsCtti
+	{
+		auto res = eli;
+		res.EnableAndSetTravLayer(LayerSD{}, false);
+		return res;
+	}
+	LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli) const requires (!IsCtti)
+	{
+		auto res = eli;
+		res.EnableAndSetTravLayer(m_layer, false);
+		return res;
+	}
+	static constexpr LayerInfo<MaxRank> GetLayerInfo(LayerInfo<MaxRank> eli, DepthType) { return eli; }
+	static constexpr LayerType GetLayer() requires IsCtti { return GetLayerInfo().GetTravLayer(); }
+	LayerType GetLayer() const requires (!IsCtti) { return GetLayerInfo().GetTravLayer(); }
+
+	void Init(const Traverser&, const std::vector<std::tuple<const void*, const Bpos*, bool>>&) {}
+	void Init(const ConstTraverser&, const std::vector<std::tuple<const void*, const Bpos*, bool>>&) {}
+	void Init(const Traverser&) {}
+	void Init(const ConstTraverser&) {}
+	void Init(const Container&, const Bpos&) {}
+	void Init(const Container&) {}
+	void Init() {}
+
+	const RetType& Evaluate(const Traverser& t) const { t.GetBpos(m_res); return m_res; }
+	const RetType& Evaluate(const ConstTraverser& t) const { t.GetBpos(m_res); return m_res; }
+	const RetType& Evaluate(const Container&) const { throw NoElements(); }
+	const RetType& Evaluate([[maybe_unused]] const Container& c, const Bpos& bpos) const { m_res.Assign(bpos); return m_res; }
+
+	const RetType& operator()(const Traverser& t) const { return Evaluate(t); }
+	const RetType& operator()(const ConstTraverser& t) const { return Evaluate(t); }
+	const RetType& operator()(const Container& t) const { return Evaluate(t); }
+	const RetType& operator()(const Container& t, const Bpos& bpos) const { return Evaluate(t, bpos); }
+
+private:
+
+	mutable Bpos m_res;
+	[[no_unique_address]] LayerSD m_layer = {};
+	const Container* m_container = nullptr;
+};
+
+ADAPT_EXPORT
 template <class FromLayerSD, class ToLayerSD, class Container_>
 class CttiSizeNode : public detail::CttiMethods<CttiSizeNode<FromLayerSD, ToLayerSD, Container_>, std::add_const_t>
 {

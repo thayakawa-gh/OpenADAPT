@@ -780,7 +780,6 @@ public:
 	//もしbpos.GetLayer() > m_trav_layerの場合、余剰分は0で初期化する。
 	void GetBpos(Bpos& bpos) const
 	{
-		assert(bpos.GetLayer() >= 0_layer);
 		LayerType x = bpos.GetLayer();
 		if (x < m_trav_layer)
 		{
@@ -1503,7 +1502,6 @@ public:
 	//bpos.GetLayer() >= 1_layerの場合、1以上の層は0とする。
 	void GetBpos(Bpos& bpos) const
 	{
-		assert(bpos.GetLayer() >= 0_layer);
 		bpos[0] = GetPos(0_layer);
 		LayerType max = bpos.GetLayer();
 		for (LayerType l = 1_layer; l <= max; ++l) bpos[l] = 0;

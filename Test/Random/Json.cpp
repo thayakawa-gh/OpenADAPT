@@ -97,6 +97,7 @@ TEST(Random, Json_ImportDTree)
 	ASSERT_FALSE(doc.HasParseError());
 	auto schema = adapt::json::InferSchema(doc);
 	auto tree = adapt::json::ImportJson(doc, schema);
+	tree.ShowHierarchy();
 
 	ADAPT_GET_PLACEHOLDERS(tree, company_name, company_location, department_name, division_name, employee_id, employee_name, employee_salary);
 	tree | Show("{:>10} {:>10} {:>24}", company_name, company_location, department_name);

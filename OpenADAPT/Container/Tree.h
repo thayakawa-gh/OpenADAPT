@@ -398,6 +398,30 @@ public:
 	auto pos8() const { return pos(8_layer); }
 	auto pos9() const { return pos(9_layer); }
 
+	//指定された層までのBposを返すラムダ関数。
+	template <LayerType Layer>
+	eval::CttiBposNode<LayerConstant<Layer>, Container> bpos(LayerConstant<Layer> layer) const
+	{
+		if constexpr (f_hierarchy<Container> || s_hierarchy<Container>) static_assert(Layer <= Hierarchy::GetMaxLayer());
+		else assert(Layer <= Hierarchy::GetMaxLayer());
+		return eval::CttiBposNode<LayerConstant<Layer>, Container>(layer, static_cast<const Container&>(*this));
+	}
+	eval::CttiBposNode<LayerType, Container> bpos(LayerType layer) const
+	{
+		assert(layer <= Hierarchy::GetMaxLayer());
+		return eval::CttiBposNode<LayerType, Container>(layer, static_cast<const Container&>(*this));
+	}
+	auto bpos0() const { return bpos(0_layer); }
+	auto bpos1() const { return bpos(1_layer); }
+	auto bpos2() const { return bpos(2_layer); }
+	auto bpos3() const { return bpos(3_layer); }
+	auto bpos4() const { return bpos(4_layer); }
+	auto bpos5() const { return bpos(5_layer); }
+	auto bpos6() const { return bpos(6_layer); }
+	auto bpos7() const { return bpos(7_layer); }
+	auto bpos8() const { return bpos(8_layer); }
+	auto bpos9() const { return bpos(9_layer); }
+
 	//現在のfrom層要素に属す全to層要素の数を返す。
 	template <LayerType From, LayerType To>
 	eval::CttiSizeNode<LayerConstant<From>, LayerConstant<To>, Container> size(LayerConstant<From> from, LayerConstant<To> to) const

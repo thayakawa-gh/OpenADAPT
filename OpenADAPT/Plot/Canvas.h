@@ -413,30 +413,30 @@ inline PlotBuffer2D::~PlotBuffer2D()
 	//mCanvasがnullptrでないときはこのPlotBufferが最終処理を担当する。
 	if (m_canvas != nullptr)
 	{
-		if (!m_stacked_histogram_data.empty())
-		{
-			size_t stack_size = m_stacked_histogram_data.size();
-			for (size_t i = 0; i < stack_size; ++i)
-			{
-				// 自身より後ろのヒストグラムをすべて加算する。
-				for (size_t j = i + 1; j < stack_size; ++j)
-				{
-					auto& self = m_stacked_histogram_data[i].second;
-					const auto& data = m_stacked_histogram_data[j].second;
-					for (size_t k = 0; k < data.size(); ++k)
-					{
-						self[k] += data[k];
-					}
-				}
-				MakeDataObject(m_canvas, m_stacked_histogram_data[i].first, std::tie(m_stacked_histogram_bins, m_stacked_histogram_data[i].second));
-			}
-		}
 		Flush();
 	}
 }
 inline void PlotBuffer2D::Flush()
 {
 	if (m_canvas == nullptr) throw NotInitialized("Buffer is empty");
+	if (!m_stacked_histogram_data.empty())
+	{
+		size_t stack_size = m_stacked_histogram_data.size();
+		for (size_t i = 0; i < stack_size; ++i)
+		{
+			// 自身より後ろのヒストグラムをすべて加算する。
+			for (size_t j = i + 1; j < stack_size; ++j)
+			{
+				auto& self = m_stacked_histogram_data[i].second;
+				const auto& data = m_stacked_histogram_data[j].second;
+				for (size_t k = 0; k < data.size(); ++k)
+				{
+					self[k] += data[k];
+				}
+			}
+			MakeDataObject(m_canvas, m_stacked_histogram_data[i].first, std::tie(m_stacked_histogram_bins, m_stacked_histogram_data[i].second));
+		}
+	}
 	std::string c = "plot";
 	for (auto& i : m_commands)
 	{
